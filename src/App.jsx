@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useState } from 'react'
+import Marketing from './pages/Marketing.jsx'
 import Auth from './pages/Auth.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Assets from './pages/Assets.jsx'
@@ -19,19 +20,20 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', next ? 'dark' : '')
   }
 
-  if (!authed) return <Auth onLogin={() => { localStorage.setItem('ac_authed','1'); setAuthed(true) }} />
+  const login = () => { localStorage.setItem('ac_authed','1'); setAuthed(true) }
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/dashboard" element={<Dashboard dark={dark} toggleDark={toggleDark} />} />
-      <Route path="/assets" element={<Assets dark={dark} toggleDark={toggleDark} />} />
-      <Route path="/work-orders" element={<WorkOrders dark={dark} toggleDark={toggleDark} />} />
-      <Route path="/maintenance" element={<Maintenance dark={dark} toggleDark={toggleDark} />} />
-      <Route path="/notifications" element={<Notifications dark={dark} toggleDark={toggleDark} />} />
-      <Route path="/reports" element={<Reports dark={dark} toggleDark={toggleDark} />} />
-      <Route path="/admin" element={<Admin dark={dark} toggleDark={toggleDark} />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Marketing />} />
+      <Route path="/auth" element={authed ? <Navigate to="/dashboard" replace /> : <Auth onLogin={login} />} />
+      <Route path="/dashboard" element={authed ? <Dashboard dark={dark} toggleDark={toggleDark} /> : <Navigate to="/auth" replace />} />
+      <Route path="/assets" element={authed ? <Assets dark={dark} toggleDark={toggleDark} /> : <Navigate to="/auth" replace />} />
+      <Route path="/work-orders" element={authed ? <WorkOrders dark={dark} toggleDark={toggleDark} /> : <Navigate to="/auth" replace />} />
+      <Route path="/maintenance" element={authed ? <Maintenance dark={dark} toggleDark={toggleDark} /> : <Navigate to="/auth" replace />} />
+      <Route path="/notifications" element={authed ? <Notifications dark={dark} toggleDark={toggleDark} /> : <Navigate to="/auth" replace />} />
+      <Route path="/reports" element={authed ? <Reports dark={dark} toggleDark={toggleDark} /> : <Navigate to="/auth" replace />} />
+      <Route path="/admin" element={authed ? <Admin dark={dark} toggleDark={toggleDark} /> : <Navigate to="/auth" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
