@@ -160,12 +160,20 @@ create policy impersonation_self_read on public.impersonation_grants for select 
 
 -- ============================================================================
 -- Grants (RLS is the gate; these expose the tables to the API roles)
--- service_role bypasses RLS and already has full access — no grant needed.
+-- service_role bypasses RLS but still needs object-level privileges —
+-- Supabase does NOT auto-grant DML to service_role on newly created tables.
 -- ============================================================================
-grant select on public.platform_admins     to authenticated;
-grant select on public.platform_audit_log  to authenticated;
-grant select on public.billing_invoices    to authenticated;
+grant select on public.platform_admins      to authenticated;
+grant select on public.platform_audit_log   to authenticated;
+grant select on public.billing_invoices     to authenticated;
 grant select on public.impersonation_grants to authenticated;
+
+-- service_role (Edge Function gateway): full DML on all backoffice tables.
+grant select, insert, update, delete on public.platform_admins      to service_role;
+grant select, insert, update, delete on public.platform_audit_log   to service_role;
+grant select, insert, update, delete on public.billing_invoices     to service_role;
+grant select, insert, update, delete on public.org_notes            to service_role;
+grant select, insert, update, delete on public.impersonation_grants to service_role;
 
 -- ============================================================================
 -- Suspension gate — fold org soft-delete into the access-token hook so that

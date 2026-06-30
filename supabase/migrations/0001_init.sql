@@ -340,16 +340,20 @@ grant execute on function public.create_organization to authenticated;
 --   (or supabase/config.toml [auth.hook.custom_access_token]).
 -- ============================================================================
 create or replace function public.custom_access_token_hook(event jsonb)
-returns jsonb language plpgsql stable as $$
+returns jsonb
+language plpgsql stable
+security definer
+set search_path = ''
+as $$
 declare
   v_claims jsonb := event -> 'claims';
   v_org  uuid;
   v_role text;
 begin
-  select org_id, role_key into v_org, v_role
-  from public.memberships
-  where user_id = (event ->> 'user_id')::uuid and status = 'active'
-  order by created_at asc
+  select m.org_id, m.role_key into v_org, v_role
+  from public.memberships m
+  where m.user_id = (event ->> 'user_id')::uuid and m.status = 'active'
+  order by m.created_at asc
   limit 1;
 
   if v_org is not null then
