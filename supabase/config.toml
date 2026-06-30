@@ -1,0 +1,21 @@
+# AssetCore — Supabase CLI config (used for local dev: `supabase start` / `db reset`).
+# On a hosted project, enable the auth hook in the Dashboard instead:
+#   Authentication → Hooks → Custom Access Token → public.custom_access_token_hook
+project_id = "assetcore"
+
+[db]
+major_version = 15
+
+[auth]
+# Allow the marketing/app dev origins + the deployed app to complete auth redirects.
+site_url = "http://localhost:5174"
+additional_redirect_urls = ["http://localhost:5174", "http://localhost:5175"]
+
+# Inject org_id + role_key into the access token (see 0001_init.sql).
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false

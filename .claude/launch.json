@@ -4,8 +4,22 @@
     {
       "name": "assetcore",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": ["run", "dev:app"],
       "port": 5174,
+      "autoPort": true
+    },
+    {
+      "name": "assetcore-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:web"],
+      "port": 5175,
+      "autoPort": true
+    },
+    {
+      "name": "assetcore-admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:admin"],
+      "port": 5176,
       "autoPort": true
     }
   ]
