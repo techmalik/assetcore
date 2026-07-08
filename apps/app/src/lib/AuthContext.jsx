@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
     if (!isConfigured || !orgId) { setOrg(null); setNeedsOnboarding(false); return }
     let cancelled = false
     Promise.all([
-      supabase.from('organizations').select('id,name,short_name,settings').eq('id', orgId).single(),
+      supabase.from('organizations').select('id,name,short_name,region,plan,settings').eq('id', orgId).single(),
       supabase.from('sites').select('id', { count: 'exact', head: true }).is('deleted_at', null),
     ]).then(([{ data: orgData }, { count }]) => {
       if (cancelled) return

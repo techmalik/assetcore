@@ -23,6 +23,10 @@ insert into public.regulatory_authorities (name, code, jurisdiction, sector) val
 
 grant select on public.regulatory_authorities to authenticated, anon;
 
+-- Global reference data — readable by anyone, writable by no one via the API.
+alter table public.regulatory_authorities enable row level security;
+create policy sel on public.regulatory_authorities for select using (true);
+
 -- ── Compliance Licences ────────────────────────────────────────────────────────
 
 create table public.compliance_licences (
