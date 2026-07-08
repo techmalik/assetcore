@@ -1,0 +1,25 @@
+# Local dev: Postgres only. apps/api runs on the host (npm run dev:api) so it
+# can hot-reload with tsx; apps/app/apps/admin run via Vite. The full 3-service
+# deploy/docker-compose.yml (postgres + api + nginx) comes in Phase 7.
+name: assetcore-dev
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: assetcore
+    ports:
+      - '5432:5432'
+    volumes:
+      - assetcore_dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  assetcore_dev_pgdata:

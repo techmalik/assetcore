@@ -21,6 +21,13 @@
       "runtimeArgs": ["run", "dev:admin"],
       "port": 5176,
       "autoPort": true
+    },
+    {
+      "name": "assetcore-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:api"],
+      "port": 8787,
+      "autoPort": true
     }
   ]
 }

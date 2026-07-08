@@ -7,3 +7,4 @@ dist/
 !.env.example
 supabase/.branches/
 supabase/.temp/
+apps/api/data/
