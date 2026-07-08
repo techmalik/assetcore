@@ -7,5 +7,11 @@ export default defineConfig({
     host: true,
     port: parseInt(process.env.PORT || '5176'),
     strictPort: true,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:8787',
+        changeOrigin: true,
+      },
+    },
   },
 })

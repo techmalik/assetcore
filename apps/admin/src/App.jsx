@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Center, Loader, Stack, Title, Text, Button, Paper } from '@mantine/core'
-import { isConfigured } from './lib/supabaseAdmin'
+import { isConfigured } from './lib/apiClient'
 import { AdminAuthProvider, useAdminAuth } from './lib/AdminAuthContext'
 import AdminShell from './components/AdminShell.jsx'
 import Login from './pages/Login.jsx'
@@ -21,10 +21,10 @@ function NotConfigured() {
   return (
     <FullCenter>
       <Paper withBorder p="xl" maw={440} radius="md">
-        <Title order={3} mb="xs">Backend not configured</Title>
+        <Title order={3} mb="xs">Backend unreachable</Title>
         <Text c="dimmed" size="sm">
-          Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> in
-          <code> apps/admin/.env</code>, then restart the dev server.
+          Couldn't reach the AssetCore API. Make sure it's running
+          (<code>npm run dev:api</code>) and reload.
         </Text>
       </Paper>
     </FullCenter>

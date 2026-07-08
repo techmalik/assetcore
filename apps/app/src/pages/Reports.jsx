@@ -45,7 +45,7 @@ export default function Reports({ dark, toggleDark }) {
   const [loading, setLoading]     = useState(true)
   const [err, setErr]             = useState(null)
   const [selectedKind, setKind]   = useState(null)
-  const [format, setFormat]       = useState('pdf')
+  const [format, setFormat]       = useState('xlsx')
   const [dateRange, setDateRange] = useState('last_30')
   const [requesting, setRequesting] = useState(false)
   const [pendingId, setPendingId] = useState(null)

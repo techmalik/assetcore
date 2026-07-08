@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useState } from 'react'
-import { isConfigured } from './lib/supabase'
+import { isConfigured } from './lib/apiClient'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { NotificationsProvider } from './lib/NotificationsContext'
 import { SidebarProvider } from './lib/SidebarContext'

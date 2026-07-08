@@ -1,40 +1,17 @@
-import { supabase } from '../supabase'
-import { logAudit } from './audit'
+import { api } from '../apiClient'
 
 export async function listCategories() {
-  const { data, error } = await supabase
-    .from('asset_categories')
-    .select('*')
-    .order('name')
-  if (error) throw error
-  return data
+  return api.get('/categories')
 }
 
 export async function createCategory(input) {
-  const { data, error } = await supabase
-    .from('asset_categories')
-    .insert(input)
-    .select()
-    .single()
-  if (error) throw error
-  await logAudit({ action: 'category.create', entityType: 'asset_category', entityId: data.id, after: data })
-  return data
+  return api.post('/categories', input)
 }
 
 export async function updateCategory(id, patch) {
-  const { data, error } = await supabase
-    .from('asset_categories')
-    .update(patch)
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) throw error
-  await logAudit({ action: 'category.update', entityType: 'asset_category', entityId: id, after: patch })
-  return data
+  return api.patch(`/categories/${id}`, patch)
 }
 
 export async function deleteCategory(id) {
-  const { error } = await supabase.from('asset_categories').delete().eq('id', id)
-  if (error) throw error
-  await logAudit({ action: 'category.delete', entityType: 'asset_category', entityId: id })
+  await api.del(`/categories/${id}`)
 }

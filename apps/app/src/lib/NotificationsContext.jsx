@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { supabase } from './supabase'
 import { useAuth } from './AuthContext'
 import { countUnread, listNotifications, markRead as doMarkRead, markAllRead as doMarkAllRead } from './db/notifications'
 
 const NotifCtx = createContext(null)
+const POLL_MS = 30_000
 
 export function NotificationsProvider({ children }) {
   const { authed, user } = useAuth()
@@ -28,15 +28,13 @@ export function NotificationsProvider({ children }) {
       return
     }
     refresh()
-    const channel = supabase
-      .channel(`notif-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        () => refresh()
-      )
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    const interval = setInterval(refresh, POLL_MS)
+    const onFocus = () => refresh()
+    window.addEventListener('focus', onFocus)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+    }
   }, [authed, user?.id, refresh])
 
   const markRead = useCallback(async (id) => {

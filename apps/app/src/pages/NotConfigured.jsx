@@ -1,4 +1,4 @@
-// Shown when the Supabase env vars are missing, so the app gives a clear,
+// Shown if the API base URL can't be reached, so the app gives a clear,
 // actionable message instead of crashing.
 export default function NotConfigured() {
   return (
@@ -9,18 +9,17 @@ export default function NotConfigured() {
           <span style={{fontFamily:'var(--ff-d)',fontSize:17,fontWeight:700,color:'#fff',letterSpacing:'-.3px'}}>AssetCore</span>
         </div>
         <div style={{padding:'28px 28px 26px'}}>
-          <h1 style={{fontFamily:'var(--ff-d)',fontSize:20,fontWeight:700,color:'var(--n950)',marginBottom:8}}>Backend not configured</h1>
+          <h1 style={{fontFamily:'var(--ff-d)',fontSize:20,fontWeight:700,color:'var(--n950)',marginBottom:8}}>Backend unreachable</h1>
           <p style={{fontSize:13,color:'var(--n600)',lineHeight:1.7,marginBottom:18}}>
-            The app needs a Supabase project to connect to. Create one (free), then add its
-            keys to <code style={{fontFamily:'var(--ff-m)',background:'var(--n100)',padding:'1px 5px',borderRadius:3}}>apps/app/.env</code>:
+            The app couldn't reach the AssetCore API. If you're running this locally, make sure
+            the API is running (<code style={{fontFamily:'var(--ff-m)',background:'var(--n100)',padding:'1px 5px',borderRadius:3}}>npm run dev:api</code>)
+            and that <code style={{fontFamily:'var(--ff-m)',background:'var(--n100)',padding:'1px 5px',borderRadius:3}}>VITE_API_URL</code> in
+            <code style={{fontFamily:'var(--ff-m)',background:'var(--n100)',padding:'1px 5px',borderRadius:3}}> apps/app/.env</code> (if set) points at it.
           </p>
-          <pre style={{fontFamily:'var(--ff-m)',fontSize:12,background:'var(--n950)',color:'var(--b200)',padding:'14px 16px',borderRadius:6,overflowX:'auto',lineHeight:1.7,marginBottom:18}}>{`VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOi...`}</pre>
           <ol style={{fontSize:13,color:'var(--n600)',lineHeight:1.8,paddingLeft:18,margin:0}}>
-            <li>Create a project at <span style={{fontFamily:'var(--ff-m)'}}>supabase.com</span></li>
-            <li>Apply the migration in <span style={{fontFamily:'var(--ff-m)'}}>supabase/migrations</span> and run <span style={{fontFamily:'var(--ff-m)'}}>seed.sql</span></li>
-            <li>Enable the Custom Access Token hook (Authentication → Hooks)</li>
-            <li>Copy URL + anon key from Project Settings → API into the file above, then restart the dev server</li>
+            <li>Start Postgres and run <span style={{fontFamily:'var(--ff-m)'}}>node scripts/migrate.mjs</span></li>
+            <li>Seed demo data with <span style={{fontFamily:'var(--ff-m)'}}>node scripts/seed-dev.mjs</span></li>
+            <li>Start the API with <span style={{fontFamily:'var(--ff-m)'}}>npm run dev:api</span>, then reload this page</li>
           </ol>
         </div>
       </div>

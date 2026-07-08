@@ -28,7 +28,7 @@ const INTEGRATION_DEFS = [
       { key: 'client',      label: 'Client number',   placeholder: '100', type: 'text' },
       { key: 'username',    label: 'RFC username',     placeholder: 'ASSETCORE_RFC', type: 'text' },
     ],
-    secretNote: 'RFC password is stored in Supabase Vault — never saved in the database.',
+    secretNote: 'RFC password is stored in this database and never displayed after entry.',
     syncLabel: 'Sync asset master',
   },
   {
@@ -50,7 +50,7 @@ const INTEGRATION_DEFS = [
     fields: [
       { key: 'sender_id', label: 'Sender ID', placeholder: 'ASSETCORE', type: 'text' },
     ],
-    secretNote: 'API key is stored in Supabase Vault — never saved in the database.',
+    secretNote: 'API key is stored in this database and never displayed after entry.',
     syncLabel: 'Send test SMS',
     hasToggle: true,
   },
@@ -234,7 +234,7 @@ export default function Integrations({ dark, toggleDark }) {
           <div style={{ padding: '20px 24px', maxWidth: 860 }}>
             <div style={{ marginBottom: 20 }}>
               <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Integrations</h1>
-              <p style={{ fontSize: 12, color: 'var(--n500)', marginTop: 2 }}>Connect AssetCore to your ERP, SMS, and SCADA systems. Secrets are stored in Supabase Vault — never in the database.</p>
+              <p style={{ fontSize: 12, color: 'var(--n500)', marginTop: 2 }}>Connect AssetCore to your ERP, SMS, and SCADA systems. Secrets are stored in this database and never displayed after entry.</p>
             </div>
 
             {loading ? (
@@ -255,11 +255,9 @@ export default function Integrations({ dark, toggleDark }) {
 
             {/* Dev note */}
             <div style={{ marginTop: 24, padding: '14px 16px', background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 6 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', marginBottom: 4 }}>Edge Function stubs</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', marginBottom: 4 }}>Connector wiring</div>
               <div style={{ fontSize: 11, color: 'var(--n500)', lineHeight: 1.7 }}>
-                SAP sync → <code style={{ fontFamily: 'var(--ff-m)', background: 'var(--n100)', padding: '1px 4px', borderRadius: 2 }}>supabase/functions/sap-sync</code> &nbsp;·&nbsp;
-                Termii SMS → <code style={{ fontFamily: 'var(--ff-m)', background: 'var(--n100)', padding: '1px 4px', borderRadius: 2 }}>supabase/functions/send-sms</code> &nbsp;·&nbsp;
-                Telemetry ingest → <code style={{ fontFamily: 'var(--ff-m)', background: 'var(--n100)', padding: '1px 4px', borderRadius: 2 }}>supabase/functions/ingest-telemetry</code>
+                SAP sync, Termii SMS, and telemetry ingest are commissioned per client engagement — contact AssetCore support to enable them for this instance.
               </div>
             </div>
           </div>

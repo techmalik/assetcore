@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { supabaseAdmin, isConfigured } from './supabaseAdmin'
+import { isConfigured } from './apiClient'
+import { getSession, onAuthStateChange, signOut as doSignOut } from './auth'
+import { api } from './api'
 import { can as canCap } from './rbac'
 
 const Ctx = createContext(null)
@@ -7,29 +9,27 @@ const Ctx = createContext(null)
 export function AdminAuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState(null)
-  const [admin, setAdmin] = useState(null) // platform_admins row, or null
+  const [admin, setAdmin] = useState(null) // { role, fullName }, or null
   const [adminLoaded, setAdminLoaded] = useState(false)
 
   useEffect(() => {
     if (!isConfigured) { setLoading(false); return }
-    supabaseAdmin.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
-    const { data: sub } = supabaseAdmin.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => sub.subscription.unsubscribe()
+    setSession(getSession())
+    setLoading(false)
+    const sub = onAuthStateChange((s) => setSession(s))
+    return () => sub.unsubscribe()
   }, [])
 
-  // Whenever the session changes, resolve whether this user is a platform admin.
-  // RLS on platform_admins permits self-read only.
+  // Whenever the session changes, resolve whether this user is a platform
+  // admin via GET /api/admin/me (a 403 there means "not staff").
   const loadAdmin = useCallback(async (s) => {
     if (!s?.user) { setAdmin(null); setAdminLoaded(true); return }
-    const { data } = await supabaseAdmin
-      .from('platform_admins')
-      .select('role,full_name,status')
-      .eq('user_id', s.user.id)
-      .maybeSingle()
-    setAdmin(data && data.status === 'active' ? data : null)
+    try {
+      const data = await api.get('/me')
+      setAdmin({ role: data.role, full_name: data.fullName })
+    } catch {
+      setAdmin(null)
+    }
     setAdminLoaded(true)
   }, [])
 
@@ -40,7 +40,7 @@ export function AdminAuthProvider({ children }) {
   }, [session, loadAdmin])
 
   const signOut = useCallback(async () => {
-    if (isConfigured) await supabaseAdmin.auth.signOut()
+    if (isConfigured) await doSignOut()
     setAdmin(null)
   }, [])
 

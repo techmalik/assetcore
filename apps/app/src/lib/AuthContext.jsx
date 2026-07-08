@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, isConfigured } from './supabase'
+import { api, isConfigured } from './apiClient'
 import { getSession, onAuthStateChange, getOrgRole, signOut as doSignOut } from './auth'
 
 const AuthCtx = createContext(null)
@@ -29,14 +29,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!isConfigured || !orgId) { setOrg(null); setNeedsOnboarding(false); return }
     let cancelled = false
-    Promise.all([
-      supabase.from('organizations').select('id,name,short_name,region,plan,settings').eq('id', orgId).single(),
-      supabase.from('sites').select('id', { count: 'exact', head: true }).is('deleted_at', null),
-    ]).then(([{ data: orgData }, { count }]) => {
+    Promise.all([api.get('/org'), api.get('/sites')]).then(([orgData, sites]) => {
       if (cancelled) return
       setOrg(orgData || null)
       const alreadyOnboarded = orgData?.settings?.onboarded === true
-      setNeedsOnboarding(!alreadyOnboarded && (count ?? 0) === 0)
+      setNeedsOnboarding(!alreadyOnboarded && (sites?.length ?? 0) === 0)
     })
     return () => { cancelled = true }
   }, [orgId])

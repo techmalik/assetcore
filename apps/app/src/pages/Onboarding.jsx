@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/apiClient'
 import { createSite } from '../lib/db/sites'
 import { createCategory } from '../lib/db/categories'
 
@@ -108,7 +108,7 @@ export default function Onboarding() {
       for (const c of cats) await createCategory({ org_id: orgId, ...c })
 
       // Mark org as onboarded
-      await supabase.from('organizations').update({ settings: { onboarded: true } }).eq('id', orgId)
+      await api.patch('/org', { settings: { onboarded: true } })
 
       nav('/dashboard', { replace: true })
     } catch (e) {

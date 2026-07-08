@@ -3,8 +3,7 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
-import { supabase } from '../lib/supabase'
-import { getSession, getOrgRole } from '../lib/auth'
+import { api } from '../lib/apiClient'
 
 function SuccessBanner({ msg }) {
   if (!msg) return null
@@ -36,32 +35,27 @@ function ProfileTab() {
   const [pwErr, setPwErr] = useState(null)
 
   useEffect(() => {
-    getSession().then(session => {
-      if (!session) return
-      supabase.from('profiles').select('full_name,phone').eq('id', session.user.id).single()
-        .then(({ data }) => { if (data) setForm({ full_name: data.full_name || '', phone: data.phone || '' }) })
-    })
+    api.get('/profile')
+      .then(data => { if (data) setForm({ full_name: data.full_name || '', phone: data.phone || '' }) })
+      .catch(() => {})
   }, [])
 
   const saveProfile = async () => {
     setSaving(true); setErr(null); setOk(null)
     try {
-      const session = await getSession()
-      const { error } = await supabase.from('profiles').update({ full_name: form.full_name, phone: form.phone || null }).eq('id', session.user.id)
-      if (error) throw error
-      await supabase.auth.updateUser({ data: { full_name: form.full_name } })
+      await api.patch('/profile', { full_name: form.full_name, phone: form.phone || null })
       setOk('Profile updated.')
     } catch (e) { setErr(e.message) }
     finally { setSaving(false) }
   }
 
   const changePassword = async () => {
+    if (!pwForm.current) return setPwErr('Enter your current password.')
     if (pwForm.next !== pwForm.confirm) return setPwErr('Passwords do not match.')
     if (pwForm.next.length < 8) return setPwErr('Password must be at least 8 characters.')
     setPwSaving(true); setPwErr(null); setPwOk(null)
     try {
-      const { error } = await supabase.auth.updateUser({ password: pwForm.next })
-      if (error) throw error
+      await api.post('/auth/change-password', { currentPassword: pwForm.current, newPassword: pwForm.next })
       setPwOk('Password changed successfully.')
       setPwForm({ current: '', next: '', confirm: '' })
     } catch (e) { setPwErr(e.message) }
@@ -109,12 +103,16 @@ function ProfileTab() {
         <ErrorBanner msg={pwErr} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <label>
+            <span style={lbl}>Current password</span>
+            <input type="password" value={pwForm.current} onChange={e => setPwForm(f => ({ ...f, current: e.target.value }))} style={inp} autoComplete="current-password" />
+          </label>
+          <label>
             <span style={lbl}>New password</span>
-            <input type="password" value={pwForm.next} onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))} style={inp} placeholder="Min 8 characters" />
+            <input type="password" value={pwForm.next} onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))} style={inp} placeholder="Min 8 characters" autoComplete="new-password" />
           </label>
           <label>
             <span style={lbl}>Confirm new password</span>
-            <input type="password" value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} style={inp} />
+            <input type="password" value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} style={inp} autoComplete="new-password" />
           </label>
         </div>
         <button onClick={changePassword} disabled={pwSaving || !pwForm.next} className="btn btn-secondary" style={{ marginTop: 16, height: 36, padding: '0 20px', fontSize: 13 }}>
@@ -141,10 +139,7 @@ function OrgTab() {
   const save = async () => {
     setSaving(true); setErr(null); setOk(null)
     try {
-      const session = await getSession()
-      const { orgId } = getOrgRole(session)
-      const { error } = await supabase.from('organizations').update({ name: form.name, short_name: form.short_name, region: form.region || null }).eq('id', orgId)
-      if (error) throw error
+      await api.patch('/org', { name: form.name, short_name: form.short_name, region: form.region || null })
       setOk('Organisation details saved.')
     } catch (e) { setErr(e.message) }
     finally { setSaving(false) }

@@ -1,6 +1,6 @@
 // Platform-admin capability model. MUST mirror the server-side map in
-// supabase/functions/admin-api/_guard.ts. The UI uses can() to hide/disable
-// actions; the Edge function re-enforces every call, so this is UX only.
+// apps/api/src/middleware/platformRbac.ts. The UI uses can() to hide/disable
+// actions; the API re-enforces every call, so this is UX only.
 const ROLE_CAPS = {
   superadmin: ['*'],
   admin: [

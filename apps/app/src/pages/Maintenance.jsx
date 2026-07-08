@@ -199,7 +199,7 @@ export default function Maintenance({ dark, toggleDark }) {
                   ) : err ? (
                     <div style={{padding:24}}>
                       <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>
-                        {err.includes('does not exist') ? 'PM tables not yet created. Run migration 0003_phase2.sql then `supabase db reset`.' : err}
+                        {err.includes('does not exist') ? 'PM tables not yet created. Run `node scripts/migrate.mjs` against the database.' : err}
                       </div>
                       {schedules.length === 0 && tasks.length === 0 && !err && (
                         <EmptyPM onSchedule={() => setShowModal(true)} canCreate={canCreate} />

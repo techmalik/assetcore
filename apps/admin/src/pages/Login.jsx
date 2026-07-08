@@ -4,7 +4,7 @@ import {
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { IconAlertTriangle } from '@tabler/icons-react'
-import { supabaseAdmin } from '../lib/supabaseAdmin'
+import { signIn } from '../lib/auth'
 import { NAV_BG } from '../theme'
 
 export default function Login() {
@@ -21,10 +21,14 @@ export default function Login() {
   const submit = async (values) => {
     setError(null)
     setLoading(true)
-    const { error } = await supabaseAdmin.auth.signInWithPassword(values)
-    setLoading(false)
-    if (error) setError(error.message)
-    // On success the AdminAuthProvider's onAuthStateChange routes us in.
+    try {
+      await signIn(values.email, values.password)
+      // On success the AdminAuthProvider's onAuthStateChange routes us in.
+    } catch (err) {
+      setError(err?.message || 'Sign in failed. Check your email and password.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
