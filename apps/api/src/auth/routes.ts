@@ -184,7 +184,7 @@ authRouter.post('/reset-password', async (req, res) => {
 
   const client = await ownerPool.connect()
   try {
-    const userId = await consumeToken(client, token, 'reset')
+    const userId = await consumeToken(client, token, ['reset', 'invite'])
     if (!userId) return res.status(400).json({ error: 'invalid_or_expired_token' })
 
     const passwordHash = await hashPassword(password)

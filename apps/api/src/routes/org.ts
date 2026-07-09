@@ -4,10 +4,11 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
+import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { buildSet } from '../sqlUtil.js'
 
 export const orgRouter = Router()
-orgRouter.use(requireAuth, requireOrg)
+orgRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const ALLOWED = ['name', 'short_name', 'region', 'settings']
 

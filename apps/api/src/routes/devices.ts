@@ -4,11 +4,12 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
+import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 
 export const devicesRouter = Router()
-devicesRouter.use(requireAuth, requireOrg)
+devicesRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const ALLOWED = ['asset_id', 'site_id', 'serial_number', 'name', 'kind', 'protocol', 'status', 'firmware_version', 'ip_address', 'config']
 

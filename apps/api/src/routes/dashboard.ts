@@ -3,9 +3,10 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
+import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 
 export const dashboardRouter = Router()
-dashboardRouter.use(requireAuth, requireOrg)
+dashboardRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 dashboardRouter.get('/dashboard/stats', async (req, res) => {
   const stats = await withOrgContext(claimsFromReq(req), async (c) => {

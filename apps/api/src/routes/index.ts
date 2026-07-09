@@ -16,6 +16,7 @@ import { reportsRouter } from './reports.js'
 import { auditRouter } from './audit.js'
 import { dashboardRouter } from './dashboard.js'
 import { orgRouter } from './org.js'
+import { orgMembersRouter } from './orgMembers.js'
 import { profileRouter } from './profile.js'
 import { licenceRouter } from './licence.js'
 import { adminRouter } from './admin/index.js'
@@ -40,5 +41,6 @@ apiRouter.use(reportsRouter)
 apiRouter.use(auditRouter)
 apiRouter.use(dashboardRouter)
 apiRouter.use(orgRouter)
+apiRouter.use(orgMembersRouter)
 apiRouter.use(profileRouter)
 apiRouter.use(licenceRouter)

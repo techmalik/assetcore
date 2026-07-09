@@ -209,7 +209,7 @@ function IntegrationCard({ def, row, canEdit, onSaved }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Integrations({ dark, toggleDark }) {
   const { roleKey } = useAuth()
-  const canEdit = can(roleKey, 'admin:users')
+  const canEdit = can(roleKey, 'integration:manage')
   const [rows, setRows]       = useState([])
   const [loading, setLoading] = useState(true)
 

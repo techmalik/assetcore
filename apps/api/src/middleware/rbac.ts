@@ -2,6 +2,9 @@ import type { Request, Response, NextFunction } from 'express'
 
 // Server-side mirror of apps/app/src/lib/rbac.js — the single source of truth
 // for enforcement. The client copy stays for UI gating only.
+//
+// org:manage, user:manage, integration:manage are intentionally not listed
+// under any role below — they're owner-only, covered by owner's '*'.
 const ROLE_CAPABILITIES: Record<string, string[]> = {
   owner: ['*'],
   ops_manager: [

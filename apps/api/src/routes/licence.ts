@@ -3,9 +3,10 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
+import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 
 export const licenceRouter = Router()
-licenceRouter.use(requireAuth, requireOrg)
+licenceRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 // licence_info is a single, system-wide row (not org-scoped) — readable by
 // any active member per the licence_info_read RLS policy. Written only via

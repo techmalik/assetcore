@@ -1,6 +1,11 @@
 // Role → capability map. UI gates with can(); the database enforces the same
 // boundaries via RLS + role checks. Keep capability strings in `entity:action`
 // form. '*' = all; '*:read' = read-only across entities.
+//
+// org:manage, user:manage, integration:manage are intentionally not listed
+// under any role below — they're owner-only, covered by owner's '*'. Defined
+// here (and mirrored in apps/api/src/middleware/rbac.ts) so call sites use a
+// real capability name instead of a made-up one.
 const ROLE_CAPABILITIES = {
   owner: ['*'],
   ops_manager: [

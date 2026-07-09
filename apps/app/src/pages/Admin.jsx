@@ -4,7 +4,9 @@ import Topbar from '../components/Topbar.jsx'
 import { listSites, createSite, updateSite, softDeleteSite } from '../lib/db/sites.js'
 import { listCategories, createCategory, updateCategory, deleteCategory } from '../lib/db/categories.js'
 import { listAuditLog } from '../lib/db/audit.js'
+import { listOrgMembers, inviteOrgMember, updateOrgMemberRole, setOrgMemberStatus, resetOrgMemberPassword } from '../lib/db/orgMembers.js'
 import { useAuth } from '../lib/AuthContext.jsx'
+import { can } from '../lib/rbac.js'
 
 // ── Sites Tab ────────────────────────────────────────────────────────────────
 
@@ -203,11 +205,7 @@ function CategoriesTab() {
   )
 }
 
-// ── Users Tab (static + invite stub) ─────────────────────────────────────────
-
-const STATIC_USERS = [
-  {id:1,name:'Adaeze Okeke',email:'a.okeke@ngml.example',role:'Owner',sites:['All Sites'],active:true,initials:'AO'},
-]
+// ── Users Tab ──────────────────────────────────────────────────────────────
 
 const ROLES_LIST = [
   {key:'owner',label:'Owner',desc:'Full access including billing and org settings.',perms:['All modules','Admin','Billing']},
@@ -218,10 +216,109 @@ const ROLES_LIST = [
   {key:'viewer',label:'Viewer',desc:'Read-only access to dashboard and reports.',perms:['Dashboard (view)','Reports (view)']},
 ]
 
+function initials(name) {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || name[0].toUpperCase()
+}
+
+function InviteModal({ onClose, onInvited }) {
+  const [form, setForm] = useState({ email: '', full_name: '', role_key: 'field_tech' })
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const [link, setLink] = useState(null)
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!form.email.trim() || !form.full_name.trim()) { setErr('Email and name are required.'); return }
+    setBusy(true); setErr('')
+    try {
+      const { invite_link } = await inviteOrgMember(form)
+      if (invite_link) setLink(invite_link)
+      else { onInvited(); onClose() }
+    } catch (ex) { setErr(ex.message) } finally { setBusy(false) }
+  }
+
+  if (link) {
+    return (
+      <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,padding:24,boxShadow:'var(--sh-lg)'}}>
+          <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:10}}>Invite sent</div>
+          <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>SMTP isn't configured in dev — share this set-password link with {form.email} directly:</p>
+          <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all',marginBottom:16}}>{link}</code>
+          <div style={{display:'flex',justifyContent:'flex-end'}}>
+            <button className="btn btn-primary" onClick={() => { onInvited(); onClose() }}>Done</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:400,padding:24,boxShadow:'var(--sh-lg)'}}>
+        <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:18}}>Invite a team member</div>
+        <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
+          <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
+            Full name
+            <input value={form.full_name} onChange={e => setForm(f => ({...f,full_name:e.target.value}))} placeholder="e.g. Chidi Umeh"
+              style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}/>
+          </label>
+          <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
+            Email address
+            <input type="email" value={form.email} onChange={e => setForm(f => ({...f,email:e.target.value}))} placeholder="name@company.com"
+              style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}/>
+          </label>
+          <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
+            Role
+            <select value={form.role_key} onChange={e => setForm(f => ({...f,role_key:e.target.value}))}
+              style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}>
+              {ROLES_LIST.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+            </select>
+          </label>
+          {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:6}}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Sending…' : 'Send Invite'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function UsersTab() {
   const [subtab, setSubtab] = useState('members')
   const [inviteOpen, setInviteOpen] = useState(false)
-  const { org } = useAuth()
+  const [members, setMembers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState('')
+  const [resetLink, setResetLink] = useState(null)
+  const { roleKey, user } = useAuth()
+  const canManage = can(roleKey, 'user:manage')
+
+  function load() {
+    setLoading(true)
+    listOrgMembers().then(m => { setMembers(m); setLoading(false) }).catch(e => { setErr(e.message); setLoading(false) })
+  }
+  useEffect(() => { load() }, [])
+
+  async function changeRole(m, role_key) {
+    try { await updateOrgMemberRole(m.id, role_key); load() } catch (e) { alert(e.message) }
+  }
+
+  async function toggleStatus(m) {
+    const enable = m.status === 'disabled'
+    if (!enable && !confirm(`Disable ${m.full_name || m.email}? They will lose access immediately.`)) return
+    try { await setOrgMemberStatus(m.id, enable); load() } catch (e) { alert(e.message) }
+  }
+
+  async function sendReset(m) {
+    try {
+      const { action_link } = await resetOrgMemberPassword(m.id)
+      setResetLink(action_link || 'Link generated (check email delivery settings).')
+    } catch (e) { alert(e.message) }
+  }
 
   return (
     <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
@@ -233,61 +330,65 @@ function UsersTab() {
       <div style={{flex:1,overflow:'hidden',display:'flex'}}>
         {subtab === 'members' && (
           <div style={{flex:1,overflowY:'auto'}}>
-            <div style={{padding:'16px 24px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:8}}>
-              <button className="btn btn-primary" style={{height:32,padding:'0 14px',fontSize:13}} onClick={() => setInviteOpen(true)}>
-                + Invite User
-              </button>
-              <span style={{fontSize:12,color:'var(--n400)',marginLeft:4}}>Invite team members by email</span>
-            </div>
-            {inviteOpen && (
-              <div style={{padding:'16px 24px',background:'var(--b50)',borderBottom:'1px solid var(--b200)'}}>
-                <div style={{fontSize:13,fontWeight:500,color:'var(--b800)',marginBottom:10}}>Invite a team member</div>
-                <div style={{display:'flex',gap:8,alignItems:'flex-end',flexWrap:'wrap'}}>
-                  <input placeholder="Email address" style={{height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)',width:220}}/>
-                  <select style={{height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 28px 0 10px',fontSize:13,color:'var(--n700)',background:'var(--n0)'}}>
-                    {ROLES_LIST.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
-                  </select>
-                  <button className="btn btn-primary" style={{height:34,fontSize:13}}>Send Invite</button>
-                  <button className="btn btn-secondary" style={{height:34,fontSize:13}} onClick={() => setInviteOpen(false)}>Cancel</button>
-                </div>
-                <div style={{marginTop:8,fontSize:11,color:'var(--b700)',background:'var(--b100)',border:'1px solid var(--b200)',borderRadius:4,padding:'6px 10px'}}>
-                  Email invitations are coming soon. For now, add team members by creating accounts through the sign-up flow.
-                </div>
+            {canManage && (
+              <div style={{padding:'16px 24px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:8}}>
+                <button className="btn btn-primary" style={{height:32,padding:'0 14px',fontSize:13}} onClick={() => setInviteOpen(true)}>
+                  + Invite User
+                </button>
+                <span style={{fontSize:12,color:'var(--n400)',marginLeft:4}}>Invite team members by email</span>
               </div>
             )}
-            <table style={{width:'100%',borderCollapse:'collapse'}}>
-              <thead>
-                <tr style={{background:'var(--n50)'}}>
-                  {['User','Email','Role','Status',''].map(h => (
-                    <th key={h} style={{padding:'9px 14px',textAlign:'left',fontSize:10,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--n500)',borderBottom:'var(--bdr)'}}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {STATIC_USERS.map(u => (
-                  <tr key={u.id} style={{borderBottom:'var(--bdr)'}}>
-                    <td style={{padding:'11px 14px'}}>
-                      <div style={{display:'flex',alignItems:'center',gap:10}}>
-                        <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b700)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:600,color:'#fff',flexShrink:0}}>{u.initials}</div>
-                        <span style={{fontSize:13,fontWeight:500,color:'var(--n900)'}}>{u.name}</span>
-                      </div>
-                    </td>
-                    <td style={{padding:'11px 14px',fontSize:12,color:'var(--n600)'}}>{u.email}</td>
-                    <td style={{padding:'11px 14px',fontSize:12,color:'var(--n700)'}}>{u.role}</td>
-                    <td style={{padding:'11px 14px'}}>
-                      <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,color:'var(--sgt)',fontWeight:500}}>
-                        <div style={{width:6,height:6,borderRadius:'50%',background:'var(--sg)'}}/>Active
-                      </span>
-                    </td>
-                    <td style={{padding:'11px 14px'}}>
-                      <button style={{background:'none',border:'none',cursor:'pointer',color:'var(--n400)'}}>
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="3" r="1" fill="currentColor"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="11" r="1" fill="currentColor"/></svg>
-                      </button>
-                    </td>
+            {loading ? (
+              <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
+            ) : err ? (
+              <div style={{padding:12,background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:6,fontSize:13,color:'var(--srt)'}}>{err}</div>
+            ) : (
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead>
+                  <tr style={{background:'var(--n50)'}}>
+                    {['User','Email','Role','Status',''].map(h => (
+                      <th key={h} style={{padding:'9px 14px',textAlign:'left',fontSize:10,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--n500)',borderBottom:'var(--bdr)'}}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {members.map(m => {
+                    const isSelf = m.user_id === user?.id
+                    const disabled = m.status === 'disabled'
+                    return (
+                      <tr key={m.id} style={{borderBottom:'var(--bdr)'}}>
+                        <td style={{padding:'11px 14px'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:10}}>
+                            <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b700)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:600,color:'#fff',flexShrink:0}}>{initials(m.full_name)}</div>
+                            <span style={{fontSize:13,fontWeight:500,color:'var(--n900)'}}>{m.full_name || '—'}{isSelf && <span style={{color:'var(--n400)',fontWeight:400}}> (you)</span>}</span>
+                          </div>
+                        </td>
+                        <td style={{padding:'11px 14px',fontSize:12,color:'var(--n600)'}}>{m.email}</td>
+                        <td style={{padding:'11px 14px'}}>
+                          <select value={m.role_key} disabled={!canManage} onChange={e => changeRole(m, e.target.value)}
+                            style={{height:28,border:'1px solid var(--n200)',borderRadius:4,padding:'0 6px',fontSize:12,color:'var(--n700)',background:canManage?'var(--n0)':'var(--n50)'}}>
+                            {ROLES_LIST.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+                          </select>
+                        </td>
+                        <td style={{padding:'11px 14px'}}>
+                          <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,color:disabled?'var(--n500)':'var(--sgt)',fontWeight:500}}>
+                            <div style={{width:6,height:6,borderRadius:'50%',background:disabled?'var(--n400)':'var(--sg)'}}/>{disabled?'Disabled':'Active'}
+                          </span>
+                        </td>
+                        <td style={{padding:'11px 14px'}}>
+                          {canManage && !isSelf && (
+                            <div style={{display:'flex',gap:6}}>
+                              <button onClick={() => sendReset(m)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--n600)',cursor:'pointer'}}>Reset password</button>
+                              <button onClick={() => toggleStatus(m)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:disabled?'var(--sgt)':'var(--srt)',cursor:'pointer'}}>{disabled?'Enable':'Disable'}</button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
         {subtab === 'roles' && (
@@ -308,6 +409,19 @@ function UsersTab() {
           </div>
         )}
       </div>
+      {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} onInvited={load} />}
+      {resetLink && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,padding:24,boxShadow:'var(--sh-lg)'}}>
+            <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:10}}>Password reset link</div>
+            <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>Share this one-time link with the user (also emailed if SMTP is configured):</p>
+            <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all',marginBottom:16}}>{resetLink}</code>
+            <div style={{display:'flex',justifyContent:'flex-end'}}>
+              <button className="btn btn-primary" onClick={() => setResetLink(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

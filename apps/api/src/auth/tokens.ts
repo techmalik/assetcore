@@ -28,13 +28,16 @@ export async function issueToken(client: PoolClient, userId: string, kind: Token
   return token
 }
 
-/** Atomically consumes an unused, unexpired token of `kind`, returning its user_id (or null). */
-export async function consumeToken(client: PoolClient, token: string, kind: TokenKind): Promise<string | null> {
+/** Atomically consumes an unused, unexpired token of `kind` (or any of several
+ * kinds — e.g. reset-password accepts both 'reset' and 'invite' links, since
+ * they land on the same set-password page), returning its user_id (or null). */
+export async function consumeToken(client: PoolClient, token: string, kind: TokenKind | TokenKind[]): Promise<string | null> {
+  const kinds = Array.isArray(kind) ? kind : [kind]
   const { rows } = await client.query(
     `update public.auth_tokens set used_at = now()
-     where token_hash = $1 and kind = $2 and used_at is null and expires_at > now()
+     where token_hash = $1 and kind = any($2) and used_at is null and expires_at > now()
      returning user_id`,
-    [hash(token), kind]
+    [hash(token), kinds]
   )
   return rows[0]?.user_id ?? null
 }

@@ -4,9 +4,10 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
+import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 
 export const integrationsRouter = Router()
-integrationsRouter.use(requireAuth, requireOrg)
+integrationsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 integrationsRouter.get('/integrations', async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) =>

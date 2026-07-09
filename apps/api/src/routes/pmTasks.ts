@@ -4,12 +4,13 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
+import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 
 export const pmTasksRouter = Router()
-pmTasksRouter.use(requireAuth, requireOrg)
+pmTasksRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const ALLOWED = ['status', 'assignee_id', 'notes', 'checklist_results', 'completed_at', 'due_date']
 

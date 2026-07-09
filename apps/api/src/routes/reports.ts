@@ -4,10 +4,11 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
+import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 
 export const reportsRouter = Router()
-reportsRouter.use(requireAuth, requireOrg)
+reportsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const SELECT = `
   select r.*,

@@ -4,12 +4,13 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
+import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 
 export const complianceRouter = Router()
-complianceRouter.use(requireAuth, requireOrg)
+complianceRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const ALLOWED = ['site_id', 'asset_id', 'authority_id', 'name', 'licence_number', 'issued_date', 'expiry_date', 'notes', 'document_url']
 
