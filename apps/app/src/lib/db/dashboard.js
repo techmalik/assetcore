@@ -7,3 +7,7 @@ export async function getDashboardStats() {
 export async function getRecentWorkOrders() {
   return api.get('/dashboard/recent-work-orders')
 }
+
+export async function getDashboardAlerts() {
+  return api.get('/dashboard/alerts')
+}

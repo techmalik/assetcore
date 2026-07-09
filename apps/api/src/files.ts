@@ -7,21 +7,23 @@ import { requireAuth } from './middleware/requireAuth.js'
 
 /** multer storage rooted at FILES_DIR/{org_id}/{subdir}/ — org_id comes from the
  * authenticated caller's claims, never the request body, so uploads can't cross
- * tenants. Routes wire `field` per use (e.g. multer({ storage }).single('photo')). */
-export const storage = multer.diskStorage({
-  destination(req, _file, cb) {
-    const orgId = req.claims?.org_id
-    if (!orgId) return cb(new Error('missing_org_context'), '')
-    const dir = path.join(config.FILES_DIR, orgId, req.body?.subdir || 'uploads')
-    mkdirSync(dir, { recursive: true })
-    cb(null, dir)
-  },
-  filename(_req, file, cb) {
-    cb(null, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`)
-  },
-})
-
-export const upload = multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } })
+ * tenants. One fixed-subdir instance per upload surface (asset photos, WO
+ * attachments, compliance documents) — no reliance on multipart field ordering. */
+export function uploadTo(subdir: string) {
+  const storage = multer.diskStorage({
+    destination(req, _file, cb) {
+      const orgId = req.claims?.org_id
+      if (!orgId) return cb(new Error('missing_org_context'), '')
+      const dir = path.join(config.FILES_DIR, orgId, subdir)
+      mkdirSync(dir, { recursive: true })
+      cb(null, dir)
+    },
+    filename(_req, file, cb) {
+      cb(null, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`)
+    },
+  })
+  return multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } })
+}
 
 export const filesRouter = Router()
 

@@ -3,7 +3,7 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
-import { listIntegrations, upsertIntegration, triggerSync } from '../lib/db/integrations'
+import { listIntegrations, upsertIntegration } from '../lib/db/integrations'
 
 // ── Integration card configs ──────────────────────────────────────────────────
 const INTEGRATION_DEFS = [
@@ -102,7 +102,6 @@ function IntegrationCard({ def, row, canEdit, onSaved }) {
     return out
   })
   const [saving, setSaving]   = useState(false)
-  const [syncing, setSyncing] = useState(false)
   const [saved, setSaved]     = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -116,13 +115,6 @@ function IntegrationCard({ def, row, canEdit, onSaved }) {
       onSaved()
     } catch { /* non-fatal */ }
     finally { setSaving(false) }
-  }
-
-  const sync = async () => {
-    setSyncing(true)
-    try { await triggerSync(def.kind); onSaved() }
-    catch { /* non-fatal */ }
-    finally { setSyncing(false) }
   }
 
   const inp = { height: 34, border: '1px solid var(--n200)', borderRadius: 4, padding: '0 10px', fontSize: 13, outline: 'none', background: 'var(--n0)', color: 'var(--n900)', width: '100%', boxSizing: 'border-box', fontFamily: 'var(--ff-u)' }
@@ -190,14 +182,17 @@ function IntegrationCard({ def, row, canEdit, onSaved }) {
               {def.secretNote}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={save} disabled={saving} className="btn btn-primary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>
               {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save Configuration'}
             </button>
             {row?.enabled && (
-              <button onClick={sync} disabled={syncing} className="btn btn-secondary" style={{ height: 34, padding: '0 14px', fontSize: 13 }}>
-                {syncing ? 'Running…' : def.syncLabel}
-              </button>
+              <>
+                <button disabled title="Commissioned per engagement — contact AssetCore support" className="btn btn-secondary" style={{ height: 34, padding: '0 14px', fontSize: 13, opacity: .5, cursor: 'not-allowed' }}>
+                  {def.syncLabel}
+                </button>
+                <span style={{ fontSize: 11, color: 'var(--n500)' }}>Commissioned per engagement — contact AssetCore support</span>
+              </>
             )}
           </div>
         </div>

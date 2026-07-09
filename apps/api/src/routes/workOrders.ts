@@ -8,9 +8,12 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
+import { uploadTo } from '../files.js'
 
 export const workOrdersRouter = Router()
 workOrdersRouter.use(requireAuth, requireOrg, requireActiveMembership)
+
+const attachmentUpload = uploadTo('attachments')
 
 const ALLOWED = [
   'site_id', 'asset_id', 'ref', 'title', 'description', 'type', 'status', 'priority',
@@ -187,6 +190,22 @@ workOrdersRouter.post('/work-orders/:id/transition', requireCap('wo:transition')
     return res.status(409).json({ error: 'invalid_transition', from: result.from, to: newStatus })
   }
   res.json(result.data)
+})
+
+workOrdersRouter.post('/work-orders/:id/attachments', requireCap('wo:update'), attachmentUpload.single('file'), async (req, res) => {
+  const file = req.file
+  if (!file) return res.status(400).json({ error: 'missing_file' })
+  const url = `attachments/${file.filename}`
+
+  const row = await withOrgContext(claimsFromReq(req), (c) =>
+    c.query(
+      `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body, attachments)
+       values (current_org_id(), $1, current_user_id(), 'attachment', $2, $3::jsonb)
+       returning *`,
+      [req.params.id, file.originalname, JSON.stringify([{ url, name: file.originalname, size: file.size }])]
+    ).then((r) => r.rows[0])
+  )
+  res.status(201).json(row)
 })
 
 const commentInput = z.object({ body: z.string().min(1) })

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
@@ -7,9 +7,10 @@ import { can } from '../lib/rbac'
 import {
   listComplianceLicences, createComplianceLicence, updateComplianceLicence,
   softDeleteComplianceLicence, listAuthorities, checkLicenceExpiry,
-  licenceStatus, daysUntilExpiry,
+  licenceStatus, daysUntilExpiry, uploadComplianceDocument,
 } from '../lib/db/complianceLicences'
 import { listSites } from '../lib/db/sites'
+import { api } from '../lib/apiClient'
 
 const STATUS_META = {
   active:   { label:'Active',        bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -124,9 +125,26 @@ function LicenceModal({ licence, authorities, sites, onClose, onSaved }) {
 }
 
 // ── Detail Panel ─────────────────────────────────────────────────────────────
-function DetailPanel({ lic, onEdit, onDelete, onClose }) {
+function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded }) {
   const meta = STATUS_META[lic.status] || STATUS_META.active
   const days = daysUntilExpiry(lic.expiry_date)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef(null)
+
+  async function viewDocument() {
+    try { await api.download(`/files/${lic.document_url}`, lic.document_url.split('/').pop()) }
+    catch (ex) { alert(ex.message) }
+  }
+
+  async function handleDocPick(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try { onDocUploaded(await uploadComplianceDocument(lic.id, file)) }
+    catch (ex) { alert(ex.message) }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
+  }
+
   return (
     <div style={{width:320,flexShrink:0,borderLeft:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <div style={{padding:'14px 16px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:8}}>
@@ -157,6 +175,20 @@ function DetailPanel({ lic, onEdit, onDelete, onClose }) {
               <div style={{fontSize:12,color:'var(--n700)',lineHeight:1.6,background:'var(--n50)',border:'var(--bdr)',borderRadius:4,padding:'8px 10px'}}>{lic.notes}</div>
             </div>
           )}
+          <div>
+            <div style={{fontSize:11,color:'var(--n500)',marginBottom:4}}>Document</div>
+            {lic.document_url ? (
+              <button onClick={viewDocument} style={{fontSize:12,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>View document</button>
+            ) : (
+              <span style={{fontSize:12,color:'var(--n400)'}}>No document uploaded</span>
+            )}
+            {canEdit && (
+              <label style={{display:'block',fontSize:11,color:'var(--b600)',cursor:uploading?'not-allowed':'pointer',marginTop:6}}>
+                {uploading ? 'Uploading…' : lic.document_url ? 'Replace document' : 'Upload document'}
+                <input ref={fileRef} type="file" onChange={handleDocPick} disabled={uploading} style={{display:'none'}} />
+              </label>
+            )}
+          </div>
         </div>
 
         <div style={{display:'flex',gap:8}}>
@@ -172,6 +204,7 @@ function DetailPanel({ lic, onEdit, onDelete, onClose }) {
 export default function Compliance({ dark, toggleDark }) {
   const { roleKey } = useAuth()
   const canCreate = can(roleKey, 'wo:create') // ops_manager+
+  const canEditDoc = can(roleKey, 'compliance:update')
   const [licences, setLicences]       = useState([])
   const [authorities, setAuthorities] = useState([])
   const [sites, setSites]             = useState([])
@@ -312,6 +345,8 @@ export default function Compliance({ dark, toggleDark }) {
                 onEdit={() => { setModal(selected); setSelected(null) }}
                 onDelete={() => handleDelete(selected.id)}
                 onClose={() => setSelected(null)}
+                canEdit={canEditDoc}
+                onDocUploaded={(updated) => { setSelected(updated); setLicences(prev => prev.map(l => l.id === updated.id ? { ...updated, status: l.status } : l)) }}
               />
             )}
           </div>

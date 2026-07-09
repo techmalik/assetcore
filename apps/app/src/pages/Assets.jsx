@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
-import { listAssets, createAsset, updateAsset, softDeleteAsset } from '../lib/db/assets'
+import AuthImage from '../components/AuthImage.jsx'
+import { listAssets, createAsset, updateAsset, softDeleteAsset, uploadAssetPhoto } from '../lib/db/assets'
 import { listSites } from '../lib/db/sites'
 import { listCategories } from '../lib/db/categories'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -52,6 +53,9 @@ function AssetModal({ asset, sites, categories, onClose, onSave }) {
   } : { ain: '', name: '', site_id: '', category_id: '', status: 'operational', health_score: 100 })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const [photos, setPhotos] = useState(asset?.photos || [])
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const fileRef = useRef(null)
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
@@ -65,6 +69,17 @@ function AssetModal({ asset, sites, categories, onClose, onSave }) {
       else await createAsset(form)
       onSave()
     } catch (ex) { setErr(ex.message || 'Save failed.'); setSaving(false) }
+  }
+
+  async function handlePhotoPick(e) {
+    const file = e.target.files?.[0]
+    if (!file || !asset) return
+    setUploadingPhoto(true)
+    try {
+      const updated = await uploadAssetPhoto(asset.id, file)
+      setPhotos(updated.photos || [])
+    } catch (ex) { setErr(ex.message || 'Photo upload failed.') }
+    finally { setUploadingPhoto(false); if (fileRef.current) fileRef.current.value = '' }
   }
 
   return (
@@ -117,6 +132,19 @@ function AssetModal({ asset, sites, categories, onClose, onSave }) {
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Health score (0–100)</label>
           <input className="input" type="number" min={0} max={100} value={form.health_score} onChange={e => set('health_score', Number(e.target.value))} style={{ width: '100%' }} />
         </div>
+
+        {asset && (
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Photos</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+              {photos.map((p, i) => (
+                <AuthImage key={i} relPath={p} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--n200)' }} />
+              ))}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoPick} disabled={uploadingPhoto} style={{ fontSize: 12 }} />
+            {uploadingPhoto && <span style={{ fontSize: 11, color: 'var(--n500)', marginLeft: 8 }}>Uploading…</span>}
+          </div>
+        )}
 
         {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginBottom: 12 }}>{err}</p>}
 
@@ -290,6 +318,14 @@ export default function Assets({ dark, toggleDark }) {
                       </div>
                     </div>
                   </div>
+
+                  {selected.photos?.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {selected.photos.map((p, i) => (
+                        <AuthImage key={i} relPath={p} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--n200)' }} />
+                      ))}
+                    </div>
+                  )}
 
                   <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden' }}>
                     <div style={{ padding: '10px 14px', borderBottom: 'var(--bdr)', fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)' }}>Details</div>

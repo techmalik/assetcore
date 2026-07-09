@@ -24,6 +24,12 @@ export async function softDeleteComplianceLicence(id) {
   await api.del(`/compliance-licences/${id}`)
 }
 
+export async function uploadComplianceDocument(id, file) {
+  const form = new FormData()
+  form.append('document', file)
+  return api.upload(`/compliance-licences/${id}/document`, form)
+}
+
 export async function listAuthorities() {
   return api.get('/regulatory-authorities')
 }

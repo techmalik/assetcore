@@ -12,6 +12,5 @@ export async function upsertIntegration(kind, { label, config, enabled }) {
   return api.put(`/integrations/${kind}`, { label, config, enabled })
 }
 
-export async function triggerSync(kind) {
-  return api.post(`/integrations/${kind}/sync`)
-}
+// No sync trigger: connector wiring (SAP/Termii/SCADA) is commissioned per
+// client engagement — see the disabled Sync button in Integrations.jsx.

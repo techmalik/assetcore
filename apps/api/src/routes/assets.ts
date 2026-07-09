@@ -8,9 +8,12 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
+import { uploadTo } from '../files.js'
 
 export const assetsRouter = Router()
 assetsRouter.use(requireAuth, requireOrg, requireActiveMembership)
+
+const photoUpload = uploadTo('assets')
 
 const ALLOWED = [
   'site_id', 'ain', 'name', 'category_id', 'status', 'health_score', 'lat', 'lng',
@@ -101,6 +104,23 @@ assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) =
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
   res.json(row)
+})
+
+assetsRouter.post('/assets/:id/photos', requireCap('asset:update'), photoUpload.single('photo'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'missing_file' })
+  const url = `assets/${req.file.filename}`
+
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query(
+      `update public.assets set photos = photos || $2::jsonb where id = $1 returning id, org_id`,
+      [req.params.id, JSON.stringify([url])]
+    )
+    if (!rows[0]) return null
+    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
+    return full[0]
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
+  res.status(201).json(row)
 })
 
 assetsRouter.delete('/assets/:id', requireCap('asset:update'), async (req, res) => {

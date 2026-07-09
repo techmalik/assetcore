@@ -1,15 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
-import { listReports, requestReport, simulateReportReady } from '../lib/db/reports'
+import { listReports, requestReport, generateReport, downloadReport, REPORT_KINDS } from '../lib/db/reports'
 
 const KIND_META = {
-  health:      { label:'Health',      icon:'H', bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
-  work_orders: { label:'Work Orders', icon:'W', bg:'var(--sab)', c:'var(--sat)', br:'var(--sabr)' },
-  maintenance: { label:'Maintenance', icon:'M', bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)' },
-  compliance:  { label:'Compliance',  icon:'C', bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)' },
-  inspection:  { label:'Inspection',  icon:'I', bg:'var(--n100)', c:'var(--n700)', br:'var(--n300)' },
-  financial:   { label:'Financial',   icon:'F', bg:'var(--b50)', c:'var(--b700)', br:'var(--b200)' },
+  asset_register:      { icon:'A', bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
+  wo_summary:          { icon:'W', bg:'var(--sab)', c:'var(--sat)', br:'var(--sabr)' },
+  compliance_register: { icon:'C', bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)' },
+  pm_history:          { icon:'P', bg:'var(--n100)', c:'var(--n700)', br:'var(--n300)' },
 }
 
 const STATUS_META = {
@@ -19,14 +17,7 @@ const STATUS_META = {
   failed:     { label:'Failed',     bg:'var(--srb)', c:'var(--srt)', br:'var(--srbr)' },
 }
 
-const TEMPLATES = [
-  { key:'health',      label:'Asset Health Summary',       desc:'Fleet health KPIs, critical assets, health score trends' },
-  { key:'work_orders', label:'Work Order Report',          desc:'Open, in-progress and completed work orders by site/type' },
-  { key:'maintenance', label:'Preventive Maintenance',     desc:'PM completion rates, overdue tasks, upcoming schedule' },
-  { key:'compliance',  label:'Compliance Status',          desc:'Licence and certificate status across all sites' },
-  { key:'inspection',  label:'Inspection Report',          desc:'Inspection findings, pass rates, follow-up actions' },
-  { key:'financial',   label:'Asset Valuation',            desc:'NBV summary, depreciation schedule by category' },
-]
+const TEMPLATES = Object.entries(REPORT_KINDS).map(([key, v]) => ({ key, label: v.label, desc: v.desc }))
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -49,7 +40,7 @@ export default function Reports({ dark, toggleDark }) {
   const [dateRange, setDateRange] = useState('last_30')
   const [requesting, setRequesting] = useState(false)
   const [pendingId, setPendingId] = useState(null)
-  const pollRef = useRef(null)
+  const [downloadingId, setDownloadingId] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
@@ -60,21 +51,6 @@ export default function Reports({ dark, toggleDark }) {
 
   useEffect(() => { load() }, [load])
 
-  // Poll until the pending report is ready
-  useEffect(() => {
-    if (!pendingId) { clearInterval(pollRef.current); return }
-    pollRef.current = setInterval(async () => {
-      const updated = await simulateReportReady(pendingId)
-      if (updated.status === 'ready') {
-        clearInterval(pollRef.current)
-        setPendingId(null)
-        setReports(prev => prev.map(r => r.id === updated.id ? { ...r, ...updated } : r))
-        setTab('library')
-      }
-    }, 2500)
-    return () => clearInterval(pollRef.current)
-  }, [pendingId])
-
   const handleGenerate = async () => {
     if (!selectedKind) return
     const template = TEMPLATES.find(t => t.key === selectedKind)
@@ -84,8 +60,19 @@ export default function Reports({ dark, toggleDark }) {
       const row = await requestReport({ title, kind: selectedKind, format, params: { dateRange } })
       setReports(prev => [row, ...prev])
       setPendingId(row.id)
-    } catch { /* ignore */ }
+      const ready = await generateReport(row.id)
+      setReports(prev => prev.map(r => r.id === ready.id ? ready : r))
+      setPendingId(null)
+      setTab('library')
+    } catch (e) { setErr(e.message) }
     finally { setRequesting(false) }
+  }
+
+  const handleDownload = async (report) => {
+    setDownloadingId(report.id)
+    try { await downloadReport(report) }
+    catch (e) { alert(e.message) }
+    finally { setDownloadingId(null) }
   }
 
   return (
@@ -142,7 +129,8 @@ export default function Reports({ dark, toggleDark }) {
                       </thead>
                       <tbody>
                         {reports.map(r => {
-                          const km = KIND_META[r.kind]   || KIND_META.health
+                          const km = KIND_META[r.kind]   || KIND_META.asset_register
+                          const kindLabel = REPORT_KINDS[r.kind]?.label || r.kind
                           const sm = STATUS_META[r.status] || STATUS_META.pending
                           return (
                             <tr key={r.id} className="row-hover" style={{borderBottom:'var(--bdr)'}}>
@@ -150,7 +138,7 @@ export default function Reports({ dark, toggleDark }) {
                                 <div style={{fontSize:13,fontWeight:500,color:'var(--n900)'}}>{r.title}</div>
                               </td>
                               <td style={{padding:'11px 14px'}}>
-                                <span style={{display:'inline-flex',padding:'2px 7px',borderRadius:2,border:`1px solid ${km.br}`,fontSize:10,fontWeight:500,background:km.bg,color:km.c}}>{km.label}</span>
+                                <span style={{display:'inline-flex',padding:'2px 7px',borderRadius:2,border:`1px solid ${km.br}`,fontSize:10,fontWeight:500,background:km.bg,color:km.c}}>{kindLabel}</span>
                               </td>
                               <td style={{padding:'11px 14px'}}>
                                 <span style={{background:'var(--n100)',color:'var(--n700)',border:'1px solid var(--n200)',borderRadius:2,fontSize:10,fontWeight:600,padding:'2px 6px',fontFamily:'var(--ff-m)',textTransform:'uppercase'}}>{r.format}</span>
@@ -166,9 +154,13 @@ export default function Reports({ dark, toggleDark }) {
                               </td>
                               <td style={{padding:'11px 14px'}}>
                                 {r.status === 'ready' ? (
-                                  <button style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Download</button>
+                                  <button onClick={() => handleDownload(r)} disabled={downloadingId === r.id} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>
+                                    {downloadingId === r.id ? 'Downloading…' : 'Download'}
+                                  </button>
                                 ) : r.status === 'pending' || r.status === 'generating' ? (
                                   <span style={{fontSize:11,color:'var(--n400)'}}>Generating…</span>
+                                ) : r.status === 'failed' ? (
+                                  <span style={{fontSize:11,color:'var(--srt)'}}>Failed</span>
                                 ) : null}
                               </td>
                             </tr>
@@ -211,7 +203,6 @@ export default function Reports({ dark, toggleDark }) {
                     </label>
                     <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Output format
                       <select value={format} onChange={e=>setFormat(e.target.value)} style={{height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',background:'var(--n0)',appearance:'none'}}>
-                        <option value="pdf">PDF</option>
                         <option value="xlsx">Excel (XLSX)</option>
                         <option value="csv">CSV</option>
                       </select>

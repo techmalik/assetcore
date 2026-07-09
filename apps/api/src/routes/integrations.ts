@@ -47,19 +47,5 @@ integrationsRouter.put('/integrations/:kind', async (req, res) => {
   res.json(row)
 })
 
-// Mechanical port of the old fake `triggerSync` (marks last_synced_at/ok). The
-// honest replacement — a disabled sync notice — lands in Phase 6.
-integrationsRouter.post('/integrations/:kind/sync', async (req, res) => {
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query('select id from public.integrations where kind = $1', [req.params.kind])
-    if (!rows[0]) return null
-    const { rows: updated } = await c.query(
-      `update public.integrations set last_synced_at = now(), last_sync_status = 'ok', last_sync_error = null
-       where id = $1 returning *`,
-      [rows[0].id]
-    )
-    return updated[0]
-  })
-  if (!row) return res.status(404).json({ error: 'not_found' })
-  res.json(row)
-})
+// No sync endpoint: connector wiring (SAP/Termii/SCADA) is commissioned per
+// client engagement, not something this instance can fake a result for.

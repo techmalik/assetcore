@@ -24,3 +24,9 @@ export async function updateAsset(id, patch) {
 export async function softDeleteAsset(id) {
   await api.del(`/assets/${id}`)
 }
+
+export async function uploadAssetPhoto(id, file) {
+  const form = new FormData()
+  form.append('photo', file)
+  return api.upload(`/assets/${id}/photos`, form)
+}

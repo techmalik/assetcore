@@ -2,8 +2,28 @@ import { useEffect, useState } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
-import { getDashboardStats, getRecentWorkOrders } from '../lib/db/dashboard.js'
+import { getDashboardStats, getRecentWorkOrders, getDashboardAlerts } from '../lib/db/dashboard.js'
 import { getComplianceLicenceCounts } from '../lib/db/complianceLicences.js'
+import { listPMTasks } from '../lib/db/pmTasks.js'
+
+const ALERT_SEVERITY_STYLE = {
+  critical: { c: 'var(--srt)', bg: 'var(--srb)' },
+  high:     { c: 'var(--srt)', bg: 'var(--srb)' },
+  medium:   { c: 'var(--sat)', bg: 'var(--sab)' },
+  low:      { c: 'var(--n500)', bg: 'var(--n100)' },
+}
+
+function alertAtLabel(at) {
+  if (!at) return ''
+  return new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
+function pmDueLabel(due_date) {
+  const diff = Math.ceil((new Date(due_date) - Date.now()) / 86400000)
+  if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, color: 'var(--srt)' }
+  if (diff === 0) return { text: 'Today', color: 'var(--sat)' }
+  return { text: `in ${diff}d`, color: 'var(--n500)' }
+}
 
 const WO_STATUS_LABEL = {
   new: 'New', assigned: 'Assigned', in_progress: 'In Progress',
@@ -49,12 +69,19 @@ export default function Dashboard({ dark, toggleDark }) {
   const [recentWOs, setRecentWOs] = useState([])
   const [statsErr, setStatsErr] = useState(null)
   const [complianceCounts, setComplianceCounts] = useState(null)
+  const [alerts, setAlerts] = useState(null)
+  const [upcomingPM, setUpcomingPM] = useState(null)
 
   useEffect(() => {
     Promise.all([getDashboardStats(), getRecentWorkOrders()])
       .then(([s, wos]) => { setStats(s); setRecentWOs(wos) })
       .catch(e => setStatsErr(e.message))
     getComplianceLicenceCounts().then(setComplianceCounts).catch(() => {})
+    getDashboardAlerts().then(setAlerts).catch(() => setAlerts([]))
+    const today = new Date().toISOString().slice(0, 10)
+    const in14 = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
+    listPMTasks({ statuses: ['pending', 'in_progress'], dueAfter: today, dueBefore: in14, limit: 10 })
+      .then(setUpcomingPM).catch(() => setUpcomingPM([]))
   }, [])
 
   const a = stats?.assets
@@ -159,7 +186,7 @@ export default function Dashboard({ dark, toggleDark }) {
           </div>
 
           {/* Main grid */}
-          <div style={{display:'grid',gridTemplateColumns:'280px 1fr 300px',gap:16,marginBottom:16}}>
+          <div style={{display:'grid',gridTemplateColumns:'280px 1fr',gap:16,marginBottom:16}}>
             {/* Health donut */}
             <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:20,boxShadow:'var(--sh-sm)'}}>
               <div style={{fontSize:14,fontWeight:600,color:'var(--n800)',marginBottom:16}}>Network Health</div>
@@ -210,63 +237,39 @@ export default function Dashboard({ dark, toggleDark }) {
               </div>
             </div>
 
-            {/* Asset Network Map — static visual */}
-            <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,overflow:'hidden',boxShadow:'var(--sh-sm)'}}>
-              <div style={{padding:'14px 16px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                <div style={{fontSize:14,fontWeight:600,color:'var(--n800)'}}>Asset Network Map</div>
-                <div style={{display:'flex',alignItems:'center',gap:6}}>
-                  <select style={{height:26,border:'1px solid var(--n200)',borderRadius:3,padding:'0 6px',fontSize:12,color:'var(--n600)',background:'var(--n0)'}}>
-                    <option>All Types</option><option>Metering</option><option>Compressor</option>
-                  </select>
-                  <button style={{height:26,padding:'0 10px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:12,color:'var(--n700)'}}>Map →</button>
-                </div>
-              </div>
-              <div style={{position:'relative',height:320,background:'oklch(95% 0.015 160)',overflow:'hidden'}}>
-                <svg style={{position:'absolute',inset:0,width:'100%',height:'100%'}} viewBox="0 0 600 320" preserveAspectRatio="none">
-                  <defs><pattern id="netgrid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="oklch(90% 0.012 160)" strokeWidth="1"/></pattern></defs>
-                  <rect x="0" y="0" width="600" height="320" fill="url(#netgrid)"/>
-                  <path d="M80 200 L180 160 L310 140 L420 100 L520 120" stroke="oklch(60% 0.04 145)" strokeWidth="2" fill="none" strokeDasharray="6 3" opacity=".5"/>
-                  <path d="M180 160 L200 240 L300 260" stroke="oklch(60% 0.04 145)" strokeWidth="2" fill="none" strokeDasharray="6 3" opacity=".5"/>
-                  <path d="M310 140 L330 200 L380 220 L440 200" stroke="oklch(60% 0.04 145)" strokeWidth="2" fill="none" strokeDasharray="6 3" opacity=".5"/>
-                </svg>
-                {[
-                  {l:'13%',t:'62%',c:'var(--sr)',label:'MTR-0042'},
-                  {l:'30%',t:'50%',c:'var(--sa)',label:'CMP-0017'},
-                  {l:'52%',t:'43%',c:'var(--sg)',label:null},
-                  {l:'70%',t:'37%',c:'var(--sg)',label:null},
-                ].map((m,i) => (
-                  <div key={i} style={{position:'absolute',left:m.l,top:m.t,transform:'translate(-50%,-100%)'}}>
-                    <div style={{width:24,height:24,background:m.c,borderRadius:'50% 50% 50% 0',transform:'rotate(-45deg)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 8px rgba(0,0,0,.2)'}}>
-                      <div style={{transform:'rotate(45deg)',width:8,height:8,background:'#fff',borderRadius:'50%'}}/>
-                    </div>
-                    {m.label && <div style={{marginTop:4,background:'var(--n950)',color:'#fff',fontSize:9,fontFamily:'var(--ff-m)',padding:'2px 5px',borderRadius:2,whiteSpace:'nowrap',transform:'translateX(-30%)'}}>{m.label}</div>}
-                  </div>
-                ))}
-                <div style={{position:'absolute',bottom:10,left:12,background:'rgba(255,255,255,.92)',border:'1px solid var(--n200)',borderRadius:4,padding:'6px 8px',display:'flex',gap:10}}>
-                  {[{c:'var(--sg)',cc:'var(--sgt)',l:'Operational'},{c:'var(--sa)',cc:'var(--sat)',l:'Attention'},{c:'var(--sr)',cc:'var(--srt)',l:'Critical'}].map(i=>(
-                    <span key={i.l} style={{fontSize:10,color:i.cc,display:'flex',alignItems:'center',gap:4}}>
-                      <span style={{width:8,height:8,background:i.c,borderRadius:'50%'}}/>
-                      {i.l}
-                    </span>
-                  ))}
-                </div>
-                {[{l:'13%',t:'78%',n:'Lagos'},{l:'30%',t:'68%',n:'Delta'},{l:'52%',t:'60%',n:'North'},{l:'70%',t:'53%',n:'Warri'},{l:'83%',t:'70%',n:'Aba'}].map(r=>(
-                  <div key={r.n} style={{position:'absolute',top:r.t,left:r.l,fontSize:10,fontWeight:600,color:'rgba(0,0,0,.35)',letterSpacing:'.05em',textTransform:'uppercase',fontFamily:'var(--ff-m)'}}>{r.n}</div>
-                ))}
-              </div>
-            </div>
-
-            {/* Active Alerts — Phase 2 stub */}
+            {/* Active Alerts — live merge of overdue PM, expiring licences, critical WOs, offline devices */}
             <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,boxShadow:'var(--sh-sm)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
               <div style={{padding:'14px 16px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
                 <div style={{fontSize:14,fontWeight:600,color:'var(--n800)'}}>Active Alerts</div>
-                <span style={{background:'var(--n100)',color:'var(--n500)',fontSize:11,fontWeight:600,padding:'2px 7px',borderRadius:999,border:'1px solid var(--n200)'}}>Phase 2</span>
+                {alerts && alerts.length > 0 && (
+                  <span style={{background:'var(--srb)',color:'var(--srt)',fontSize:11,fontWeight:600,padding:'2px 7px',borderRadius:999,border:'1px solid var(--srbr)'}}>{alerts.length}</span>
+                )}
               </div>
-              <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,gap:8}}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7L12 2Z" stroke="var(--n300)" strokeWidth="1.5" fill="none"/></svg>
-                <div style={{fontSize:13,fontWeight:500,color:'var(--n400)'}}>Alerts coming in Phase 2</div>
-                <div style={{fontSize:12,color:'var(--n300)',textAlign:'center'}}>Real-time notifications, SCADA alerts, and compliance warnings will appear here.</div>
-              </div>
+              {alerts === null ? (
+                <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontSize:13,color:'var(--n400)'}}>Loading…</div>
+              ) : alerts.length === 0 ? (
+                <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,gap:8}}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7L12 2Z" stroke="var(--n300)" strokeWidth="1.5" fill="none"/></svg>
+                  <div style={{fontSize:13,fontWeight:500,color:'var(--n400)'}}>No active alerts</div>
+                  <div style={{fontSize:12,color:'var(--n300)',textAlign:'center'}}>Overdue PM, expiring licences, critical work orders, and offline devices will appear here.</div>
+                </div>
+              ) : (
+                <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
+                  {alerts.map(al => {
+                    const sev = ALERT_SEVERITY_STYLE[al.severity] || ALERT_SEVERITY_STYLE.low
+                    return (
+                      <div key={al.id} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 16px'}}>
+                        <span style={{width:8,height:8,borderRadius:'50%',background:sev.c,marginTop:5,flexShrink:0}}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,color:'var(--n800)',fontWeight:500}}>{al.title}</div>
+                          {al.subtitle && <div style={{fontSize:11,color:'var(--n500)'}}>{al.subtitle}</div>}
+                        </div>
+                        <span style={{fontSize:10,color:sev.c,fontFamily:'var(--ff-m)',whiteSpace:'nowrap'}}>{alertAtLabel(al.at)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -323,17 +326,37 @@ export default function Dashboard({ dark, toggleDark }) {
               </div>
             </div>
 
-            {/* Upcoming Maintenance — Phase 2 stub */}
+            {/* Upcoming Maintenance — live PM tasks due in the next 14 days */}
             <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,boxShadow:'var(--sh-sm)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
               <div style={{padding:'14px 16px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
                 <div style={{fontSize:14,fontWeight:600,color:'var(--n800)'}}>Upcoming Maintenance</div>
-                <button style={{border:'none',background:'none',fontSize:13,color:'var(--b600)',fontWeight:500,cursor:'pointer',padding:0}}>Schedule →</button>
+                <button style={{border:'none',background:'none',fontSize:13,color:'var(--b600)',fontWeight:500,cursor:'pointer',padding:0}}
+                  onClick={() => window.location.assign('/maintenance')}>Schedule →</button>
               </div>
-              <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,gap:8}}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="var(--n300)" strokeWidth="1.5"/><path d="M3 9h18M8 2v4M16 2v4" stroke="var(--n300)" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                <div style={{fontSize:13,fontWeight:500,color:'var(--n400)'}}>PM Schedules in Phase 2</div>
-                <div style={{fontSize:12,color:'var(--n300)',textAlign:'center'}}>Preventive maintenance schedules and auto-generated work orders coming next.</div>
-              </div>
+              {upcomingPM === null ? (
+                <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontSize:13,color:'var(--n400)'}}>Loading…</div>
+              ) : upcomingPM.length === 0 ? (
+                <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,gap:8}}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="var(--n300)" strokeWidth="1.5"/><path d="M3 9h18M8 2v4M16 2v4" stroke="var(--n300)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <div style={{fontSize:13,fontWeight:500,color:'var(--n400)'}}>No PM due in the next 14 days</div>
+                  <div style={{fontSize:12,color:'var(--n300)',textAlign:'center'}}>Preventive maintenance tasks due soon will appear here.</div>
+                </div>
+              ) : (
+                <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
+                  {upcomingPM.map(t => {
+                    const due = pmDueLabel(t.due_date)
+                    return (
+                      <div key={t.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'8px 16px'}}>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:12,color:'var(--n800)',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.title}</div>
+                          <div style={{fontSize:11,color:'var(--n500)'}}>{t.asset?.name || t.site?.name || '—'}</div>
+                        </div>
+                        <span style={{fontSize:11,color:due.color,fontFamily:'var(--ff-m)',whiteSpace:'nowrap'}}>{due.text}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

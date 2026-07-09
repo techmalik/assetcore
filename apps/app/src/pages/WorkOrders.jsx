@@ -1,14 +1,16 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import {
   listWorkOrders, getWorkOrder, createWorkOrder, transitionWorkOrder, addWorkOrderComment,
+  uploadWorkOrderAttachment,
   WO_TRANSITIONS, WO_STATUS_LABEL, WO_PRIORITY_LABEL, WO_TYPE_LABEL,
 } from '../lib/db/workOrders'
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
+import { api } from '../lib/apiClient'
 
 const PRIORITY_STYLE = {
   critical: { bg: 'var(--srb)', c: 'var(--srt)', br: 'var(--srbr)' },
@@ -126,6 +128,8 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
   const [comment, setComment] = useState('')
   const [posting, setPosting] = useState(false)
   const [transitioning, setTransitioning] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -155,6 +159,23 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
       setWo(fresh)
     } catch (ex) { alert(ex.message) }
     finally { setPosting(false) }
+  }
+
+  async function handleAttach(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      await uploadWorkOrderAttachment(wo.id, file)
+      const fresh = await getWorkOrder(wo.id)
+      setWo(fresh)
+    } catch (ex) { alert(ex.message) }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
+  }
+
+  async function downloadAttachment(att) {
+    try { await api.download(`/files/${att.url}`, att.name) }
+    catch (ex) { alert(ex.message) }
   }
 
   if (loading) return (
@@ -220,7 +241,13 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
         )}
 
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--n500)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8, fontFamily: 'var(--ff-m)' }}>Activity</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--n500)', textTransform: 'uppercase', letterSpacing: '.05em', fontFamily: 'var(--ff-m)' }}>Activity</div>
+            <label style={{ fontSize: 11, color: 'var(--b600)', cursor: uploading ? 'not-allowed' : 'pointer' }}>
+              {uploading ? 'Uploading…' : 'Attach file'}
+              <input ref={fileRef} type="file" onChange={handleAttach} disabled={uploading} style={{ display: 'none' }} />
+            </label>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(wo.activity || []).length === 0 && <p style={{ fontSize: 12, color: 'var(--n400)' }}>No activity yet.</p>}
             {(wo.activity || []).map(a => (
@@ -230,8 +257,15 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12, color: 'var(--n700)', lineHeight: 1.5 }}>
-                    {a.kind === 'status_change' ? <em style={{ color: 'var(--n500)' }}>{a.body}</em> : a.body}
+                    {a.kind === 'status_change' ? <em style={{ color: 'var(--n500)' }}>{a.body}</em>
+                      : a.kind === 'attachment' ? <span>Attached <strong>{a.body}</strong></span>
+                      : a.body}
                   </div>
+                  {a.kind === 'attachment' && (a.attachments || []).map((att, i) => (
+                    <button key={i} onClick={() => downloadAttachment(att)} style={{ fontSize: 11, color: 'var(--b600)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 2, display: 'block' }}>
+                      Download {att.name}
+                    </button>
+                  ))}
                   <div style={{ fontSize: 10, color: 'var(--n400)', marginTop: 2, fontFamily: 'var(--ff-m)' }}>
                     {a.actor?.full_name || 'Unknown'} · {new Date(a.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </div>

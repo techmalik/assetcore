@@ -73,10 +73,68 @@ async function request(method, path, body, { retry = true } = {}) {
   return payload
 }
 
+async function upload(path, formData, { retry = true } = {}) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+    body: formData,
+  })
+
+  if (res.status === 401 && retry) {
+    const refreshed = await refresh()
+    if (refreshed) return upload(path, formData, { retry: false })
+  }
+
+  let payload = null
+  try { payload = await res.json() } catch { /* no body */ }
+  if (!res.ok) {
+    const err = new Error(payload?.error || `Upload failed (${res.status})`)
+    err.status = res.status
+    throw err
+  }
+  return payload
+}
+
+// Authenticated file download — plain <a href> can't carry the Authorization
+// header, so this fetches the blob and triggers a save via a throwaway link.
+async function download(path, filename) {
+  const res = await fetch(`${BASE}${path}`, {
+    credentials: 'include',
+    headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+  })
+  if (!res.ok) throw new Error(`Download failed (${res.status})`)
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+// Authenticated file fetch for inline display (<img>, "View document" links) —
+// same auth problem as download(), but returns an object URL instead of
+// triggering a save. Caller is responsible for URL.revokeObjectURL when done.
+async function blobUrl(path) {
+  const res = await fetch(`${BASE}${path}`, {
+    credentials: 'include',
+    headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+  })
+  if (!res.ok) throw new Error(`Fetch failed (${res.status})`)
+  const blob = await res.blob()
+  return URL.createObjectURL(blob)
+}
+
 export const api = {
   get: (path) => request('GET', path),
   post: (path, body) => request('POST', path, body),
   put: (path, body) => request('PUT', path, body),
   patch: (path, body) => request('PATCH', path, body),
   del: (path) => request('DELETE', path),
+  upload,
+  download,
+  blobUrl,
 }

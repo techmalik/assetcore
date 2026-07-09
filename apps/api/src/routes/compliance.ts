@@ -8,9 +8,12 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
+import { uploadTo } from '../files.js'
 
 export const complianceRouter = Router()
 complianceRouter.use(requireAuth, requireOrg, requireActiveMembership)
+
+const documentUpload = uploadTo('compliance-documents')
 
 const ALLOWED = ['site_id', 'asset_id', 'authority_id', 'name', 'licence_number', 'issued_date', 'expiry_date', 'notes', 'document_url']
 
@@ -105,6 +108,24 @@ complianceRouter.patch('/compliance-licences/:id', requireCap('compliance:update
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
   res.json(row)
+})
+
+complianceRouter.post('/compliance-licences/:id/document', requireCap('compliance:update'), documentUpload.single('document'), async (req, res) => {
+  const file = req.file
+  if (!file) return res.status(400).json({ error: 'missing_file' })
+  const url = `compliance-documents/${file.filename}`
+
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query(
+      `update public.compliance_licences set document_url = $2 where id = $1 returning id, org_id`,
+      [req.params.id, url]
+    )
+    if (!rows[0]) return null
+    const { rows: full } = await c.query(`${SELECT} where cl.id = $1`, [req.params.id])
+    return full[0]
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
+  res.status(201).json(row)
 })
 
 complianceRouter.delete('/compliance-licences/:id', requireCap('compliance:update'), async (req, res) => {

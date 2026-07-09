@@ -53,3 +53,9 @@ export async function addWorkOrderComment(workOrderId, body) {
 export async function softDeleteWorkOrder(id) {
   await api.del(`/work-orders/${id}`)
 }
+
+export async function uploadWorkOrderAttachment(id, file) {
+  const form = new FormData()
+  form.append('file', file)
+  return api.upload(`/work-orders/${id}/attachments`, form)
+}
