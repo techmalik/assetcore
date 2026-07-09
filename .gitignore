@@ -5,7 +5,11 @@ dist/
 .env
 .env.*
 !.env.example
+!deploy/.env.deploy.example
 supabase/.branches/
 supabase/.temp/
 apps/api/data/
 deploy/instance.config.json
+dist-release/
+assetcore-v*.tar.gz
+assetcore-support-*.tar.gz

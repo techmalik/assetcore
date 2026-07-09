@@ -17,6 +17,17 @@ npm run dev                    # apps/app on :5175 (proxies /api)
 npm run dev:admin              # apps/admin on :5176
 ```
 
+## Deploying to a client
+
+See `docs/DEPLOYMENT.md` for the full runbook. In short: `npm run package`
+builds both SPAs + the API and bundles everything a client's Docker host
+needs (pre-built dist output, vendored `node_modules`, migrations, deploy
+configs, docs) into `assetcore-vX.Y.Z.tar.gz` — no npm registry access is
+required on the client's box. `docs/UPGRADE.md`, `docs/OPERATIONS.md`, and
+`docs/SECURITY.md` cover applying later releases, day-2 operations
+(backups, monitoring, licence renewal), and the auth/RLS/network security
+model, respectively. See `CHANGELOG.md` for what shipped in each release.
+
 ## Backlog
 
 Explicitly parked, not part of the current licensed build:

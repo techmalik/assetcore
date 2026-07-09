@@ -1,7 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig({
+// Deployed at the /admin/ subpath behind nginx (see deploy/nginx.conf) —
+// only the production build needs the base path; the dev server still
+// serves from / on its own port.
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/admin/' : '/',
   plugins: [react()],
   server: {
     host: true,
@@ -14,4 +18,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

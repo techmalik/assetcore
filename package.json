@@ -1,7 +1,7 @@
 {
   "name": "assetcore",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "workspaces": [
     "packages/*",
@@ -18,7 +18,9 @@
     "build:api": "npm run build -w @assetcore/api",
     "migrate": "node scripts/migrate.mjs",
     "seed:dev": "node scripts/seed-dev.mjs",
-    "provision": "node scripts/provision.mjs"
+    "provision": "node scripts/provision.mjs",
+    "package": "node scripts/package.mjs",
+    "support-bundle": "node scripts/support-bundle.mjs"
   },
   "dependencies": {
     "argon2": "^0.41.1",
