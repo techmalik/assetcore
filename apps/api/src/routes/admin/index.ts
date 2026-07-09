@@ -9,6 +9,8 @@ import { billingRouter } from './billing.js'
 import { supportRouter } from './support.js'
 import { platformAuditRouter } from './audit.js'
 import { platformAdminsRouter } from './admins.js'
+import { adminLicenceRouter } from './licence.js'
+import { adminVersionRouter } from './version.js'
 
 export const adminRouter = Router()
 
@@ -23,3 +25,5 @@ adminRouter.use(billingRouter)
 adminRouter.use(supportRouter)
 adminRouter.use(platformAuditRouter)
 adminRouter.use(platformAdminsRouter)
+adminRouter.use(adminLicenceRouter)
+adminRouter.use(adminVersionRouter)

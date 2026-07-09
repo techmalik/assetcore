@@ -60,7 +60,7 @@ export default function Users() {
     <Stack gap="lg">
       <div>
         <Title order={2}>Users</Title>
-        <Text c="dimmed" size="sm">Every membership across all tenant organizations.</Text>
+        <Text c="dimmed" size="sm">Every membership on this client instance.</Text>
       </div>
 
       <TextInput placeholder="Search by name, email, or org" leftSection={<IconSearch size={16} />}

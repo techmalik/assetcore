@@ -1,26 +1,24 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Title, Text, Stack, Group, Button, TextInput, Table, Card, Modal, Select, ActionIcon,
+  Title, Text, Stack, Group, TextInput, Table, Card, ActionIcon,
 } from '@mantine/core'
-import { useForm } from '@mantine/form'
-import { notifications } from '@mantine/notifications'
-import { IconPlus, IconSearch, IconChevronRight } from '@tabler/icons-react'
+import { IconSearch, IconChevronRight } from '@tabler/icons-react'
 import { api } from '../lib/api'
 import { useAsync } from '../lib/useAsync'
 import { date } from '../lib/format'
-import { useAdminAuth } from '../lib/AdminAuthContext'
 import DataState from '../components/DataState.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 
 const PLANS = ['trial', 'starter', 'growth', 'enterprise']
 const BILLING = ['trial', 'invoice', 'active', 'overdue', 'suspended']
 
+// Dev fallback only: production deployments have exactly one client instance,
+// so /orgs redirects straight to its detail page (see App.jsx ClientHome).
+// This list only renders when a dev seed has 0 or 2+ orgs.
 export default function Organizations() {
   const navigate = useNavigate()
-  const { can } = useAdminAuth()
   const [q, setQ] = useState('')
-  const [createOpen, setCreateOpen] = useState(false)
   const { data, loading, error, reload } = useAsync(() => api.get('/orgs'), [])
 
   const orgs = data?.orgs ?? []
@@ -31,36 +29,12 @@ export default function Organizations() {
       o.name?.toLowerCase().includes(s) || o.short_name?.toLowerCase().includes(s) || o.region?.toLowerCase().includes(s))
   }, [orgs, q])
 
-  const form = useForm({
-    initialValues: { name: '', short_name: '', industry: '', region: '', plan: 'trial' },
-    validate: { name: (v) => (v ? null : 'Required') },
-  })
-
-  const create = async (values) => {
-    try {
-      const { org } = await api.post('/orgs', values)
-      notifications.show({ message: `Created ${org.name}`, color: 'teal' })
-      setCreateOpen(false)
-      form.reset()
-      navigate(`/orgs/${org.id}`)
-    } catch (e) {
-      notifications.show({ message: e.message, color: 'red' })
-    }
-  }
-
   return (
     <Stack gap="lg">
-      <Group justify="space-between" align="flex-end">
-        <div>
-          <Title order={2}>Organizations</Title>
-          <Text c="dimmed" size="sm">Every tenant on the platform.</Text>
-        </div>
-        {can('org:write') && (
-          <Button leftSection={<IconPlus size={16} />} onClick={() => setCreateOpen(true)}>
-            New organization
-          </Button>
-        )}
-      </Group>
+      <div>
+        <Title order={2}>Client instances</Title>
+        <Text c="dimmed" size="sm">Every org visible to this console (dev fallback — expect exactly one in production).</Text>
+      </div>
 
       <TextInput
         placeholder="Search by name, short name, or region"
@@ -111,24 +85,6 @@ export default function Organizations() {
           </Table.ScrollContainer>
         </DataState>
       </Card>
-
-      <Modal opened={createOpen} onClose={() => setCreateOpen(false)} title="New organization" centered>
-        <form onSubmit={form.onSubmit(create)}>
-          <Stack gap="sm">
-            <TextInput label="Name" withAsterisk {...form.getInputProps('name')} />
-            <Group grow>
-              <TextInput label="Short name" {...form.getInputProps('short_name')} />
-              <TextInput label="Region" {...form.getInputProps('region')} />
-            </Group>
-            <TextInput label="Industry" {...form.getInputProps('industry')} />
-            <Select label="Plan" data={PLANS} {...form.getInputProps('plan')} />
-            <Group justify="flex-end" mt="xs">
-              <Button variant="default" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button type="submit">Create</Button>
-            </Group>
-          </Stack>
-        </form>
-      </Modal>
     </Stack>
   )
 }

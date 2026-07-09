@@ -7,7 +7,7 @@ import {
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import {
-  IconArrowLeft, IconEdit, IconBan, IconRestore, IconPlus,
+  IconArrowLeft, IconEdit, IconPlus,
 } from '@tabler/icons-react'
 import { api } from '../lib/api'
 import { useAsync } from '../lib/useAsync'
@@ -87,7 +87,7 @@ function AuditTab({ orgId }) {
   const { data, loading, error, reload } = useAsync(() => api.get(`/orgs/${orgId}/audit`), [orgId])
   const rows = data?.entries ?? []
   return (
-    <DataState loading={loading} error={error} onRetry={reload} empty={rows.length === 0} emptyLabel="No tenant audit activity.">
+    <DataState loading={loading} error={error} onRetry={reload} empty={rows.length === 0} emptyLabel="No client instance audit activity.">
       <Table>
         <Table.Thead>
           <Table.Tr><Table.Th>When</Table.Th><Table.Th>Action</Table.Th><Table.Th>Entity</Table.Th></Table.Tr>
@@ -176,7 +176,6 @@ export default function OrgDetail() {
   const navigate = useNavigate()
   const { can } = useAdminAuth()
   const [editOpen, setEditOpen] = useState(false)
-  const [confirmSuspend, setConfirmSuspend] = useState(false)
   const { data, loading, error, reload } = useAsync(() => api.get(`/orgs/${id}`), [id])
   const org = data?.org
   const suspended = Boolean(org?.deleted_at)
@@ -196,15 +195,6 @@ export default function OrgDetail() {
       await api.patch(`/orgs/${id}`, values)
       notifications.show({ message: 'Organization updated', color: 'teal' })
       setEditOpen(false)
-      reload()
-    } catch (e) { notifications.show({ message: e.message, color: 'red' }) }
-  }
-
-  const toggleSuspend = async () => {
-    try {
-      await api.post(`/orgs/${id}/${suspended ? 'restore' : 'suspend'}`)
-      notifications.show({ message: suspended ? 'Organization restored' : 'Organization suspended', color: suspended ? 'teal' : 'orange' })
-      setConfirmSuspend(false)
       reload()
     } catch (e) { notifications.show({ message: e.message, color: 'red' }) }
   }
@@ -232,13 +222,6 @@ export default function OrgDetail() {
               </div>
               <Group gap="xs">
                 {can('org:write') && <Button variant="default" leftSection={<IconEdit size={16} />} onClick={openEdit}>Edit</Button>}
-                {can('org:suspend') && (
-                  <Button color={suspended ? 'teal' : 'red'} variant="light"
-                    leftSection={suspended ? <IconRestore size={16} /> : <IconBan size={16} />}
-                    onClick={() => setConfirmSuspend(true)}>
-                    {suspended ? 'Restore' : 'Suspend'}
-                  </Button>
-                )}
               </Group>
             </Group>
 
@@ -300,23 +283,6 @@ export default function OrgDetail() {
             </Group>
           </Stack>
         </form>
-      </Modal>
-
-      <Modal opened={confirmSuspend} onClose={() => setConfirmSuspend(false)}
-        title={suspended ? 'Restore organization?' : 'Suspend organization?'} centered>
-        <Stack gap="md">
-          <Text size="sm" c="dimmed">
-            {suspended
-              ? 'Members will regain access on their next sign-in / token refresh.'
-              : 'Members lose access on their next token refresh. Data is retained and can be restored.'}
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setConfirmSuspend(false)}>Cancel</Button>
-            <Button color={suspended ? 'teal' : 'red'} onClick={toggleSuspend}>
-              {suspended ? 'Restore' : 'Suspend'}
-            </Button>
-          </Group>
-        </Stack>
       </Modal>
     </Stack>
   )

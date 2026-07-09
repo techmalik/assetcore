@@ -54,14 +54,14 @@ export default function Support() {
     <Stack gap="lg">
       <div>
         <Title order={2}>Support</Title>
-        <Text c="dimmed" size="sm">Time-boxed, audited, read-only access to a tenant’s data.</Text>
+        <Text c="dimmed" size="sm">Time-boxed, audited, read-only access to a client instance’s data.</Text>
       </div>
 
       {!grant && (
         <Card padding="lg" maw={560}>
           <Group gap="xs" mb="md"><IconLifebuoy size={18} /><Text fw={600}>Start a support session</Text></Group>
           <Stack gap="sm">
-            <Select label="Organization" placeholder="Select tenant" data={orgOptions} searchable
+            <Select label="Organization" placeholder="Select client" data={orgOptions} searchable
               value={orgId || null} onChange={(v) => setOrgId(v || '')} />
             <Textarea label="Reason" placeholder="Ticket #, what you’re investigating…" autosize minRows={2}
               value={reason} onChange={(e) => setReason(e.currentTarget.value)} />
@@ -79,7 +79,7 @@ export default function Support() {
             title="Read-only support session active">
             <Group justify="space-between">
               <Text size="sm">
-                Viewing <b>{snapshot?.org?.name || 'tenant'}</b> · expires {dateTime(grant.expires_at)} · this access is logged.
+                Viewing <b>{snapshot?.org?.name || 'client instance'}</b> · expires {dateTime(grant.expires_at)} · this access is logged.
               </Text>
               <Button size="xs" color="red" variant="white" leftSection={<IconLockOpen2 size={14} />} onClick={end}>
                 End session

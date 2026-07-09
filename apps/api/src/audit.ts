@@ -34,7 +34,7 @@ export async function writeAuditLog(client: PoolClient, entry: OrgAuditEntry): P
 type PlatformAuditEntry = {
   actorId: string | null
   action: string
-  targetType: 'org' | 'user' | 'invoice' | 'admin' | 'impersonation' | 'note'
+  targetType: 'org' | 'user' | 'invoice' | 'admin' | 'impersonation' | 'note' | 'licence'
   targetId?: string | null
   orgId?: string | null
   before?: unknown

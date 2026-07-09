@@ -15,9 +15,9 @@ import { NAV_BG, NAV_FG, NAV_ACTIVE } from '../theme'
 
 const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: IconLayoutDashboard, cap: null },
-  { to: '/orgs', label: 'Organizations', icon: IconBuildingSkyscraper, cap: 'org:read' },
+  { to: '/orgs', label: 'Client', icon: IconBuildingSkyscraper, cap: 'org:read' },
   { to: '/users', label: 'Users', icon: IconUsers, cap: 'user:read' },
-  { to: '/billing', label: 'Billing', icon: IconReceipt2, cap: 'billing:read' },
+  { to: '/billing', label: 'Licence & Invoices', icon: IconReceipt2, cap: 'billing:read' },
   { to: '/support', label: 'Support', icon: IconLifebuoy, cap: 'impersonate' },
   { to: '/audit', label: 'Platform Audit', icon: IconHistory, cap: 'audit:read' },
   { to: '/settings', label: 'Platform Admins', icon: IconShieldLock, cap: 'admin:read' },

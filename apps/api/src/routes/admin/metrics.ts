@@ -5,13 +5,14 @@ import { requirePlatformCap } from '../../middleware/platformRbac.js'
 export const metricsRouter = Router()
 
 metricsRouter.get('/metrics', requirePlatformCap('org:read'), async (_req, res) => {
-  const [{ rows: orgs }, { rows: invoices }, assets, woTotal, woOpen, members] = await Promise.all([
+  const [{ rows: orgs }, { rows: invoices }, assets, woTotal, woOpen, members, auditEvents24h] = await Promise.all([
     ownerPool.query('select id, plan, billing_status, deleted_at, created_at from public.organizations'),
     ownerPool.query('select amount_cents, status from public.billing_invoices'),
     ownerPool.query('select count(*)::int as c from public.assets where deleted_at is null').then((r) => r.rows[0].c),
     ownerPool.query('select count(*)::int as c from public.work_orders where deleted_at is null').then((r) => r.rows[0].c),
     ownerPool.query("select count(*)::int as c from public.work_orders where deleted_at is null and status <> 'closed'").then((r) => r.rows[0].c),
     ownerPool.query("select count(*)::int as c from public.memberships where status = 'active'").then((r) => r.rows[0].c),
+    ownerPool.query("select count(*)::int as c from public.audit_log where created_at >= now() - interval '24 hours'").then((r) => r.rows[0].c),
   ])
 
   const live = orgs.filter((o) => !o.deleted_at)
@@ -32,6 +33,7 @@ metricsRouter.get('/metrics', requirePlatformCap('org:read'), async (_req, res) 
     users: members,
     assets,
     workOrders: { total: woTotal, open: woOpen },
+    auditEvents24h,
     billing: {
       collectedCents: sum((s) => s === 'paid'),
       outstandingCents: sum((s) => s === 'sent' || s === 'overdue'),

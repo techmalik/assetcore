@@ -3,6 +3,12 @@ import { config } from './config.js'
 
 const { Pool } = pg
 
+// DATE columns (OID 1082) are calendar dates with no time component, but pg's
+// default parser builds a JS Date from them, which then re-renders in the
+// process's local TZ — round-tripping a date through a client `type="date"`
+// input can drift by a day. Keep them as the raw 'YYYY-MM-DD' string instead.
+pg.types.setTypeParser(1082, (val) => val)
+
 /** RLS-enforced pool. Connects as `assetcore_app` (non-owner, non-superuser) — every
  * query on this pool is subject to row-level security. Used for all normal
  * tenant-scoped request handling via `withOrgContext`. */

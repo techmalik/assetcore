@@ -763,7 +763,7 @@ create table public.platform_audit_log (
   actor_id    uuid references public.users(id) on delete set null,
   action      text not null,
   target_type text not null
-                check (target_type in ('org','user','invoice','admin','impersonation','note')),
+                check (target_type in ('org','user','invoice','admin','impersonation','note','licence')),
   target_id   uuid,
   org_id      uuid references public.organizations(id) on delete set null,
   before      jsonb,

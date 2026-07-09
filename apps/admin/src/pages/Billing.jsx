@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Title, Text, Stack, Group, Button, Table, Card, Menu, ActionIcon, Modal,
   Select, TextInput, NumberInput, Textarea,
@@ -21,6 +21,94 @@ const NEXT_STATUS = {
   void: [],
 }
 
+function LicenceEditor() {
+  const { can } = useAdminAuth()
+  const canWrite = can('billing:write')
+  const { data, loading, error, reload } = useAsync(() => api.get('/licence'), [])
+  const [initialized, setInitialized] = useState(false)
+
+  const form = useForm({
+    initialValues: {
+      licensed_to: '', contract_ref: '', issued_at: '', expires_at: '', maintenance_expires_at: '',
+      annual_fee: 0, currency: 'NGN', seats: 0, notes: '',
+    },
+    validate: { licensed_to: (v) => (v ? null : 'Required') },
+  })
+
+  useEffect(() => {
+    if (data?.licence && !initialized) {
+      const l = data.licence
+      form.setValues({
+        licensed_to: l.licensed_to || '',
+        contract_ref: l.contract_ref || '',
+        issued_at: l.issued_at ? String(l.issued_at).slice(0, 10) : '',
+        expires_at: l.expires_at ? String(l.expires_at).slice(0, 10) : '',
+        maintenance_expires_at: l.maintenance_expires_at ? String(l.maintenance_expires_at).slice(0, 10) : '',
+        annual_fee: l.annual_fee_cents ? Number(l.annual_fee_cents) / 100 : 0,
+        currency: l.currency || 'NGN',
+        seats: l.seats ?? 0,
+        notes: l.notes || '',
+      })
+      setInitialized(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, initialized])
+
+  const save = async (v) => {
+    try {
+      await api.patch('/licence', {
+        licensed_to: v.licensed_to,
+        contract_ref: v.contract_ref || null,
+        issued_at: v.issued_at || null,
+        expires_at: v.expires_at || null,
+        maintenance_expires_at: v.maintenance_expires_at || null,
+        annual_fee_cents: dollarsToCents(v.annual_fee),
+        currency: v.currency,
+        seats: v.seats,
+        notes: v.notes || null,
+      })
+      notifications.show({ message: 'Licence updated', color: 'teal' })
+      reload()
+    } catch (e) { notifications.show({ message: e.message, color: 'red' }) }
+  }
+
+  return (
+    <Card padding="lg">
+      <Text fw={600} mb="md">Licence</Text>
+      <DataState
+        loading={loading} error={error} onRetry={reload}
+        empty={!loading && !error && !data?.licence}
+        emptyLabel="No licence provisioned yet — run scripts/provision.mjs against this instance."
+      >
+        <form onSubmit={form.onSubmit(save)}>
+          <Stack gap="sm">
+            <Group grow>
+              <TextInput label="Licensed to" withAsterisk disabled={!canWrite} {...form.getInputProps('licensed_to')} />
+              <TextInput label="Contract ref" disabled={!canWrite} {...form.getInputProps('contract_ref')} />
+            </Group>
+            <Group grow>
+              <TextInput label="Issued" type="date" disabled={!canWrite} {...form.getInputProps('issued_at')} />
+              <TextInput label="Expires" type="date" disabled={!canWrite} {...form.getInputProps('expires_at')} />
+              <TextInput label="Maintenance until" type="date" disabled={!canWrite} {...form.getInputProps('maintenance_expires_at')} />
+            </Group>
+            <Group grow>
+              <NumberInput label="Annual fee" min={0} decimalScale={2} thousandSeparator="," disabled={!canWrite} {...form.getInputProps('annual_fee')} />
+              <Select label="Currency" data={['NGN', 'USD']} disabled={!canWrite} {...form.getInputProps('currency')} />
+              <NumberInput label="Seats" min={0} disabled={!canWrite} {...form.getInputProps('seats')} />
+            </Group>
+            <Textarea label="Notes" autosize minRows={2} disabled={!canWrite} {...form.getInputProps('notes')} />
+            {canWrite && (
+              <Group justify="flex-end">
+                <Button type="submit">Save licence</Button>
+              </Group>
+            )}
+          </Stack>
+        </form>
+      </DataState>
+    </Card>
+  )
+}
+
 export default function Billing() {
   const { can } = useAdminAuth()
   const [orgFilter, setOrgFilter] = useState('')
@@ -36,7 +124,7 @@ export default function Billing() {
   const rows = data?.invoices ?? []
 
   const form = useForm({
-    initialValues: { org_id: '', number: '', amount: 0, po_number: '', due_at: '', notes: '', status: 'draft' },
+    initialValues: { org_id: '', number: '', amount: 0, currency: 'NGN', po_number: '', due_at: '', notes: '', status: 'draft' },
     validate: {
       org_id: (v) => (v ? null : 'Required'),
       number: (v) => (v ? null : 'Required'),
@@ -46,7 +134,7 @@ export default function Billing() {
   const create = async (v) => {
     try {
       await api.post('/billing/invoices', {
-        org_id: v.org_id, number: v.number, amount_cents: dollarsToCents(v.amount),
+        org_id: v.org_id, number: v.number, amount_cents: dollarsToCents(v.amount), currency: v.currency,
         po_number: v.po_number || null, due_at: v.due_at ? new Date(v.due_at).toISOString() : null,
         notes: v.notes || null, status: v.status,
       })
@@ -74,11 +162,15 @@ export default function Billing() {
 
   return (
     <Stack gap="lg">
+      <div>
+        <Title order={2}>Licence &amp; Invoices</Title>
+        <Text c="dimmed" size="sm">Annual licence &amp; maintenance fee records. No payment processing.</Text>
+      </div>
+
+      <LicenceEditor />
+
       <Group justify="space-between" align="flex-end">
-        <div>
-          <Title order={2}>Billing</Title>
-          <Text c="dimmed" size="sm">Invoice / PO records — USD. No payment processing.</Text>
-        </div>
+        <Title order={3} fz="lg">Invoices</Title>
         {can('billing:write') && (
           <Button leftSection={<IconPlus size={16} />} onClick={() => setCreateOpen(true)}>New invoice</Button>
         )}
@@ -143,7 +235,8 @@ export default function Billing() {
               <TextInput label="PO number" {...form.getInputProps('po_number')} />
             </Group>
             <Group grow>
-              <NumberInput label="Amount (USD)" min={0} decimalScale={2} thousandSeparator="," prefix="$ " {...form.getInputProps('amount')} />
+              <NumberInput label="Amount" min={0} decimalScale={2} thousandSeparator="," {...form.getInputProps('amount')} />
+              <Select label="Currency" data={['NGN', 'USD']} {...form.getInputProps('currency')} />
               <TextInput label="Due date" type="date" {...form.getInputProps('due_at')} />
             </Group>
             <Select label="Status" data={['draft', 'sent']} {...form.getInputProps('status')} />
