@@ -10,12 +10,10 @@
   "scripts": {
     "dev": "npm run dev -w @assetcore/app",
     "dev:app": "npm run dev -w @assetcore/app",
-    "dev:web": "npm run dev -w @assetcore/web",
     "dev:admin": "npm run dev -w @assetcore/admin",
     "dev:api": "npm run dev -w @assetcore/api",
-    "build": "npm run build -w @assetcore/web && npm run build -w @assetcore/app && npm run build -w @assetcore/admin",
+    "build": "npm run build -w @assetcore/app && npm run build -w @assetcore/admin",
     "build:app": "npm run build -w @assetcore/app",
-    "build:web": "npm run build -w @assetcore/web",
     "build:admin": "npm run build -w @assetcore/admin",
     "build:api": "npm run build -w @assetcore/api",
     "migrate": "node scripts/migrate.mjs",

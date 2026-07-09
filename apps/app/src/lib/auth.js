@@ -78,13 +78,8 @@ export async function signOut() {
   setAccessToken(null)
 }
 
-// Self-serve org registration doesn't exist in the licensed on-prem model —
-// clients are provisioned by AssetCore (scripts/provision.mjs, Phase 3).
-export async function registerOrg() {
-  throw new Error('Self-serve registration is not available. Contact your AssetCore account manager.')
-}
-
-// SSO/SAML (Azure AD) is a fast-follow — this boundary keeps the call site stable.
+// SSO/SAML (Azure AD) is parked backlog — this boundary keeps the call site stable
+// for when it's picked up, even with no caller today.
 export async function signInWithSSO(/* domain */) {
   throw new Error('SSO is not enabled yet')
 }

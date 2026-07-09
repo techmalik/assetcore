@@ -9,13 +9,6 @@
       "autoPort": true
     },
     {
-      "name": "assetcore-web",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:web"],
-      "port": 5175,
-      "autoPort": true
-    },
-    {
       "name": "assetcore-admin",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev:admin"],

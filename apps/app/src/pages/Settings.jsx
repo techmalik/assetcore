@@ -4,6 +4,7 @@ import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 import { api } from '../lib/apiClient'
+import { SUPPORT_EMAIL } from '../lib/instance'
 
 function SuccessBanner({ msg }) {
   if (!msg) return null
@@ -180,18 +181,12 @@ function OrgTab() {
         )}
       </div>
 
-      {/* Plan info */}
+      {/* Licence */}
       <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, padding: '20px 24px' }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--n800)', marginBottom: 16 }}>Subscription & billing</div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--n900)' }}>{org?.plan === 'enterprise' ? 'Enterprise' : org?.plan || 'Enterprise'}</div>
-            <div style={{ fontSize: 12, color: 'var(--n500)', marginTop: 2 }}>Invoice / Purchase Order billing</div>
-          </div>
-          <span style={{ padding: '3px 10px', background: 'var(--sgb)', border: '1px solid var(--sgbr)', borderRadius: 2, fontSize: 11, fontWeight: 600, color: 'var(--sgt)' }}>Active</span>
-        </div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--n800)', marginBottom: 16 }}>Licence</div>
         <div style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.6 }}>
-          To upgrade, downgrade, or get a copy of your invoice, contact <span style={{ color: 'var(--b600)', fontWeight: 500 }}>billing@assetcore.io</span> or speak to your account manager.
+          This is a licensed deployment of AssetCore for {org?.name || 'your organisation'}.
+          For licence terms, renewal, or support, contact <span style={{ color: 'var(--b600)', fontWeight: 500 }}>{SUPPORT_EMAIL}</span>.
         </div>
       </div>
     </div>

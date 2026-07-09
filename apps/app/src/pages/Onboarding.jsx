@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/apiClient'
@@ -17,7 +17,7 @@ const DEFAULT_CATEGORIES = [
   { name: 'Gas Turbine', code: 'GTU' },
 ]
 
-const STEPS = ['Welcome', 'Sites', 'Categories', 'Invite']
+const STEPS = ['Welcome', 'Sites', 'Categories']
 
 function StepBar({ step }) {
   return (
@@ -64,8 +64,24 @@ function SiteRow({ site, onRemove }) {
   )
 }
 
+function WaitingForAdmin({ orgName }) {
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--n50)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 10, padding: 40, maxWidth: 440, textAlign: 'center' }}>
+        <div style={{ width: 56, height: 56, background: 'var(--b50)', border: '1px solid var(--b200)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M14 2L25 8V20L14 26L3 20V8L14 2Z" stroke="var(--b500)" strokeWidth="1.8" fill="none"/><text x="14" y="18" textAnchor="middle" fontFamily="'Bricolage Grotesque',sans-serif" fontSize="11" fontWeight="700" fill="var(--b600)">A</text></svg>
+        </div>
+        <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 20, fontWeight: 700, color: 'var(--n950)', marginBottom: 10 }}>Your administrator is completing setup</h1>
+        <p style={{ fontSize: 14, color: 'var(--n600)', lineHeight: 1.7 }}>
+          {orgName || 'Your organisation'} is still being configured. You'll get access as soon as the Org Owner finishes adding sites and asset categories.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function Onboarding() {
-  const { org, orgId } = useAuth()
+  const { org, orgId, roleKey } = useAuth()
   const nav = useNavigate()
   const [step, setStep] = useState(0)
 
@@ -78,13 +94,12 @@ export default function Onboarding() {
   const [selectedCats, setSelectedCats] = useState(
     DEFAULT_CATEGORIES.slice(0, 7).map((c) => c.code)
   )
-  const [customCat, setCustomCat] = useState({ name: '', code: '' })
-
-  // Step 3 — invite (stub for now)
-  const [invites, setInvites] = useState([{ email: '', role: 'maint_engineer' }])
 
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+
+  // Only the Org Owner runs the wizard — everyone else waits.
+  if (roleKey !== 'owner') return <WaitingForAdmin orgName={org?.name} />
 
   function addSite() {
     setSiteErr('')
@@ -147,7 +162,6 @@ export default function Onboarding() {
                 {[
                   ['Add your sites', 'Operational locations — terminals, stations, network segments'],
                   ['Configure categories', 'Asset types relevant to your operation'],
-                  ['Invite your team', 'Engineers, technicians, and managers — optional now'],
                 ].map(([title, desc], i) => (
                   <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--b500)', color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
@@ -235,34 +249,14 @@ export default function Onboarding() {
                 })}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button onClick={() => setStep(1)} style={{ height: 38, padding: '0 16px', background: 'none', border: '1px solid var(--n200)', borderRadius: 5, fontSize: 13, color: 'var(--n600)', cursor: 'pointer', fontFamily: 'inherit' }}>Back</button>
-                <button onClick={() => { if (selectedCats.length === 0) return; setStep(3) }}
-                  disabled={selectedCats.length === 0}
-                  style={{ height: 38, padding: '0 20px', background: selectedCats.length === 0 ? 'var(--n200)' : 'var(--b500)', color: selectedCats.length === 0 ? 'var(--n400)' : '#fff', border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 500, cursor: selectedCats.length === 0 ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
-                  Continue →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 3: Invite ──────────────────────────────────── */}
-          {step === 3 && (
-            <div style={{ background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 10, padding: 40 }}>
-              <h2 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, color: 'var(--n950)', marginBottom: 6 }}>Invite your team</h2>
-              <p style={{ fontSize: 14, color: 'var(--n500)', marginBottom: 8 }}>Optional — you can always invite from Admin → Users later.</p>
-              <div style={{ background: 'var(--sab)', border: '1px solid var(--sabr)', borderRadius: 6, padding: '10px 14px', marginBottom: 24, fontSize: 13, color: 'var(--sat)' }}>
-                Team invitations are coming soon. For now, additional users can register and you can assign their role from Admin → Users.
-              </div>
-
               {err && (
                 <div style={{ background: 'var(--srb)', border: '1px solid var(--srbr)', borderRadius: 6, padding: '10px 14px', marginBottom: 20, fontSize: 13, color: 'var(--srt)' }}>{err}</div>
               )}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button onClick={() => setStep(2)} style={{ height: 38, padding: '0 16px', background: 'none', border: '1px solid var(--n200)', borderRadius: 5, fontSize: 13, color: 'var(--n600)', cursor: 'pointer', fontFamily: 'inherit' }}>Back</button>
-                <button onClick={finish} disabled={saving}
-                  style={{ height: 44, padding: '0 28px', background: 'var(--b500)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: saving ? .7 : 1 }}>
+                <button onClick={() => setStep(1)} style={{ height: 38, padding: '0 16px', background: 'none', border: '1px solid var(--n200)', borderRadius: 5, fontSize: 13, color: 'var(--n600)', cursor: 'pointer', fontFamily: 'inherit' }}>Back</button>
+                <button onClick={finish} disabled={saving || selectedCats.length === 0}
+                  style={{ height: 44, padding: '0 28px', background: (saving || selectedCats.length === 0) ? 'var(--n200)' : 'var(--b500)', color: (saving || selectedCats.length === 0) ? 'var(--n400)' : '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 500, cursor: (saving || selectedCats.length === 0) ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
                   {saving ? 'Setting up…' : 'Go to dashboard →'}
                 </button>
               </div>

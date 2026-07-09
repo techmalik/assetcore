@@ -9,6 +9,8 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
 import NotConfigured from './pages/NotConfigured.jsx'
 import Auth from './pages/Auth.jsx'
+import ForgotPassword from './pages/ForgotPassword.jsx'
+import ResetPassword from './pages/ResetPassword.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Assets from './pages/Assets.jsx'
@@ -58,6 +60,8 @@ function Routed() {
     <Routes>
       <Route path="/" element={<Navigate to={authed ? (needsOnboarding ? '/onboarding' : '/dashboard') : '/auth'} replace />} />
       <Route path="/auth" element={authed ? <Navigate to={needsOnboarding ? '/onboarding' : '/dashboard'} replace /> : <Auth />} />
+      <Route path="/forgot-password" element={authed ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} />
+      <Route path="/reset-password" element={authed ? <Navigate to="/dashboard" replace /> : <ResetPassword />} />
       <Route path="/onboarding" element={authed ? <Onboarding /> : <Navigate to="/auth" replace />} />
       <Route path="/dashboard" element={gate(<Dashboard {...props} />)} />
       <Route path="/assets" element={gate(<Assets {...props} />)} />
