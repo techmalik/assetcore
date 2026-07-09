@@ -1,0 +1,26 @@
+{
+  "org": {
+    "name": "Nigeria Gas Marketing Limited",
+    "shortName": "NGML",
+    "industry": "Oil & Gas Distribution",
+    "region": "Nigeria"
+  },
+  "owner": {
+    "email": "owner@client.example",
+    "fullName": "Org Owner"
+  },
+  "staff": [
+    { "email": "staff@assetcore.io", "fullName": "AssetCore Staff", "role": "superadmin" }
+  ],
+  "licence": {
+    "licensedTo": "Nigeria Gas Marketing Limited",
+    "contractRef": "NGML-2026-001",
+    "issuedAt": "2026-01-01",
+    "expiresAt": "2027-01-01",
+    "maintenanceExpiresAt": "2027-01-01",
+    "annualFeeCents": 500000000,
+    "currency": "NGN",
+    "seats": 50,
+    "notes": ""
+  }
+}

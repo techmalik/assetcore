@@ -7,11 +7,13 @@ import { SidebarProvider } from './lib/SidebarContext'
 import { can } from './lib/rbac'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
+import LicenceBanner from './components/LicenceBanner.jsx'
 import NotConfigured from './pages/NotConfigured.jsx'
 import Auth from './pages/Auth.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import Onboarding from './pages/Onboarding.jsx'
+import ForcePasswordChange from './pages/ForcePasswordChange.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Assets from './pages/Assets.jsx'
 import WorkOrders from './pages/WorkOrders.jsx'
@@ -37,7 +39,7 @@ function Splash() {
 }
 
 function Routed() {
-  const { loading, authed, needsOnboarding, roleKey } = useAuth()
+  const { loading, authed, needsOnboarding, mustChangePassword, roleKey } = useAuth()
   const [dark, setDark] = useState(false)
 
   const toggleDark = () => {
@@ -48,9 +50,17 @@ function Routed() {
 
   if (loading) return <Splash />
 
-  // Authenticated users who haven't completed onboarding go to /onboarding.
+  // Where an authenticated user lands: forced password change first, then
+  // onboarding, then the app.
+  const postAuthPath = () => {
+    if (mustChangePassword) return '/force-password-change'
+    if (needsOnboarding) return '/onboarding'
+    return '/dashboard'
+  }
+
   const gate = (el) => {
     if (!authed) return <Navigate to="/auth" replace />
+    if (mustChangePassword) return <Navigate to="/force-password-change" replace />
     if (needsOnboarding) return <Navigate to="/onboarding" replace />
     return el
   }
@@ -58,11 +68,20 @@ function Routed() {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to={authed ? (needsOnboarding ? '/onboarding' : '/dashboard') : '/auth'} replace />} />
-      <Route path="/auth" element={authed ? <Navigate to={needsOnboarding ? '/onboarding' : '/dashboard'} replace /> : <Auth />} />
-      <Route path="/forgot-password" element={authed ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} />
-      <Route path="/reset-password" element={authed ? <Navigate to="/dashboard" replace /> : <ResetPassword />} />
-      <Route path="/onboarding" element={authed ? <Onboarding /> : <Navigate to="/auth" replace />} />
+      <Route path="/" element={<Navigate to={authed ? postAuthPath() : '/auth'} replace />} />
+      <Route path="/auth" element={authed ? <Navigate to={postAuthPath()} replace /> : <Auth />} />
+      <Route path="/forgot-password" element={authed ? <Navigate to={postAuthPath()} replace /> : <ForgotPassword />} />
+      <Route path="/reset-password" element={authed ? <Navigate to={postAuthPath()} replace /> : <ResetPassword />} />
+      <Route path="/force-password-change" element={
+        !authed ? <Navigate to="/auth" replace />
+        : mustChangePassword ? <ForcePasswordChange />
+        : <Navigate to={postAuthPath()} replace />
+      } />
+      <Route path="/onboarding" element={
+        !authed ? <Navigate to="/auth" replace />
+        : mustChangePassword ? <Navigate to="/force-password-change" replace />
+        : <Onboarding />
+      } />
       <Route path="/dashboard" element={gate(<Dashboard {...props} />)} />
       <Route path="/assets" element={gate(<Assets {...props} />)} />
       <Route path="/work-orders" element={gate(<WorkOrders {...props} />)} />
@@ -89,6 +108,7 @@ export default function App() {
           <SidebarProvider>
             <Routed />
             <OfflineBanner />
+            <LicenceBanner />
           </SidebarProvider>
         </NotificationsProvider>
       </AuthProvider>

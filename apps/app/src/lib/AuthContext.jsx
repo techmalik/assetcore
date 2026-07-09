@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { api, isConfigured } from './apiClient'
 import { getSession, onAuthStateChange, getOrgRole, signOut as doSignOut } from './auth'
 
@@ -21,6 +21,14 @@ export function AuthProvider({ children }) {
     getSession().then((s) => { setSession(s); setLoading(false) })
     const sub = onAuthStateChange((s) => setSession(s))
     return () => sub.unsubscribe()
+  }, [])
+
+  // Re-fetches /auth/me so DB-side flags (e.g. must_change_password clearing
+  // after a successful change) are reflected without a full re-login.
+  const refreshSession = useCallback(async () => {
+    const s = await getSession()
+    setSession(s)
+    return s
   }, [])
 
   const { orgId, roleKey } = getOrgRole(session)
@@ -52,7 +60,9 @@ export function AuthProvider({ children }) {
     fullName,
     initials: initialsOf(fullName),
     needsOnboarding,
+    mustChangePassword: Boolean(user?.must_change_password),
     signOut: doSignOut,
+    refreshSession,
   }
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }

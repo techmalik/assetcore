@@ -8,3 +8,4 @@ dist/
 supabase/.branches/
 supabase/.temp/
 apps/api/data/
+deploy/instance.config.json

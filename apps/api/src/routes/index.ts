@@ -17,6 +17,7 @@ import { auditRouter } from './audit.js'
 import { dashboardRouter } from './dashboard.js'
 import { orgRouter } from './org.js'
 import { profileRouter } from './profile.js'
+import { licenceRouter } from './licence.js'
 import { adminRouter } from './admin/index.js'
 
 export const apiRouter = Router()
@@ -40,3 +41,4 @@ apiRouter.use(auditRouter)
 apiRouter.use(dashboardRouter)
 apiRouter.use(orgRouter)
 apiRouter.use(profileRouter)
+apiRouter.use(licenceRouter)

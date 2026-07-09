@@ -5,6 +5,7 @@ import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 import { api } from '../lib/apiClient'
 import { SUPPORT_EMAIL } from '../lib/instance'
+import { getLicence, licenceDaysRemaining } from '../lib/db/licence'
 
 function SuccessBanner({ msg }) {
   if (!msg) return null
@@ -124,6 +125,62 @@ function ProfileTab() {
   )
 }
 
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+
+function LicenceCard() {
+  const [licence, setLicence] = useState(undefined) // undefined = loading, null = none configured
+  useEffect(() => {
+    getLicence().then(setLicence).catch(() => setLicence(null))
+  }, [])
+
+  const daysLeft = licence ? licenceDaysRemaining(licence.expires_at) : null
+  const expired = daysLeft !== null && daysLeft < 0
+
+  return (
+    <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, padding: '20px 24px' }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--n800)', marginBottom: 16 }}>Licence</div>
+      {licence === undefined ? (
+        <div style={{ fontSize: 12, color: 'var(--n500)' }}>Loading…</div>
+      ) : licence ? (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--n500)', marginBottom: 2 }}>Licensed to</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--n900)' }}>{licence.licensed_to}</div>
+            </div>
+            {licence.contract_ref && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--n500)', marginBottom: 2 }}>Contract ref</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--n900)', fontFamily: 'var(--ff-m)' }}>{licence.contract_ref}</div>
+              </div>
+            )}
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--n500)', marginBottom: 2 }}>Expires</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: expired ? 'var(--srt)' : 'var(--n900)' }}>{fmtDate(licence.expires_at)}</div>
+            </div>
+            {licence.seats != null && (
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--n500)', marginBottom: 2 }}>Seats</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--n900)' }}>{licence.seats}</div>
+              </div>
+            )}
+          </div>
+          {expired && (
+            <div style={{ background: 'var(--srb)', border: '1px solid var(--srbr)', borderRadius: 4, padding: '8px 14px', fontSize: 12, color: 'var(--srt)', marginBottom: 12 }}>
+              This licence has expired.
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 12 }}>Licence details are not yet configured for this instance.</div>
+      )}
+      <div style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.6 }}>
+        For licence terms, renewal, or support, contact <span style={{ color: 'var(--b600)', fontWeight: 500 }}>{SUPPORT_EMAIL}</span>.
+      </div>
+    </div>
+  )
+}
+
 // ── Organisation Tab ──────────────────────────────────────────────────────────
 function OrgTab() {
   const { org, roleKey } = useAuth()
@@ -181,14 +238,7 @@ function OrgTab() {
         )}
       </div>
 
-      {/* Licence */}
-      <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, padding: '20px 24px' }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--n800)', marginBottom: 16 }}>Licence</div>
-        <div style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.6 }}>
-          This is a licensed deployment of AssetCore for {org?.name || 'your organisation'}.
-          For licence terms, renewal, or support, contact <span style={{ color: 'var(--b600)', fontWeight: 500 }}>{SUPPORT_EMAIL}</span>.
-        </div>
-      </div>
+      <LicenceCard />
     </div>
   )
 }
