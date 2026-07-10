@@ -71,8 +71,11 @@ create table public.organizations (
   short_name     text,
   industry       text,
   region         text,
-  plan           text not null default 'trial',
-  billing_status text not null default 'trial',
+  -- Every org is provisioned as 'licensed' (scripts/provision.mjs) — these
+  -- columns exist for reporting/historical reasons and are never rendered
+  -- in either app's UI. No SaaS tiers or trial periods in this product.
+  plan           text not null default 'licensed',
+  billing_status text not null default 'licensed',
   settings       jsonb not null default '{}'::jsonb,
   created_at     timestamptz not null default now(),
   deleted_at     timestamptz

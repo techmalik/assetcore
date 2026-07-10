@@ -3,9 +3,11 @@
 // DEV-ONLY DEMO SEED — do not run against a client instance. Real client
 // commissioning happens via scripts/provision.mjs (Phase 3).
 //
-// Ports supabase/seed.sql (NGML org, demo owner, demo platform admin, sample
-// assets/WOs/licences/inspections/devices) onto the plain-Postgres baseline.
-// Connects via DATABASE_URL_OWNER (bypasses RLS) — same role migrate.mjs uses.
+// Demo data (NGML org, demo owner, demo platform admin, sample
+// assets/WOs/licences/inspections/devices) — originally ported from the
+// pre-pivot Supabase-era seed.sql, now the only seed script (supabase/
+// removed in Phase 8). Connects via DATABASE_URL_OWNER (bypasses RLS) —
+// same role migrate.mjs uses.
 //
 // DEMO OWNER LOGIN  → email: a.okeke@ngml.example   password: Password123!
 // DEMO ADMIN LOGIN  → email: admin@assetcore.io      password: Password123!
@@ -58,7 +60,7 @@ async function main() {
 
   await client.query(
     `insert into public.organizations (id, name, short_name, industry, region, plan, billing_status)
-     values ($1, 'Nigeria Gas Marketing Limited', 'NGML', 'Oil & Gas Distribution', 'Nigeria', 'growth', 'invoice')
+     values ($1, 'Nigeria Gas Marketing Limited', 'NGML', 'Oil & Gas Distribution', 'Nigeria', 'licensed', 'licensed')
      on conflict (id) do nothing`,
     [ORG]
   )

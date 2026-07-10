@@ -10,9 +10,6 @@ import { date } from '../lib/format'
 import DataState from '../components/DataState.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 
-const PLANS = ['trial', 'starter', 'growth', 'enterprise']
-const BILLING = ['trial', 'invoice', 'active', 'overdue', 'suspended']
-
 // Dev fallback only: production deployments have exactly one client instance,
 // so /orgs redirects straight to its detail page (see App.jsx ClientHome).
 // This list only renders when a dev seed has 0 or 2+ orgs.
@@ -53,8 +50,7 @@ export default function Organizations() {
                 <Table.Tr>
                   <Table.Th>Name</Table.Th>
                   <Table.Th>Region</Table.Th>
-                  <Table.Th>Plan</Table.Th>
-                  <Table.Th>Billing</Table.Th>
+                  <Table.Th>Status</Table.Th>
                   <Table.Th>Created</Table.Th>
                   <Table.Th />
                 </Table.Tr>
@@ -70,9 +66,8 @@ export default function Organizations() {
                       <Text size="xs" c="dimmed">{o.short_name || '—'}</Text>
                     </Table.Td>
                     <Table.Td>{o.region || '—'}</Table.Td>
-                    <Table.Td><StatusBadge value={o.plan} /></Table.Td>
                     <Table.Td>
-                      <StatusBadge value={o.deleted_at ? 'suspended' : o.billing_status} />
+                      <StatusBadge value={o.deleted_at ? 'suspended' : 'active'} />
                     </Table.Td>
                     <Table.Td><Text size="sm" c="dimmed">{date(o.created_at)}</Text></Table.Td>
                     <Table.Td>
@@ -88,5 +83,3 @@ export default function Organizations() {
     </Stack>
   )
 }
-
-export { PLANS, BILLING }

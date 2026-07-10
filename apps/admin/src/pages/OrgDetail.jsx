@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Title, Text, Stack, Group, Button, Tabs, Card, Table, Badge, SimpleGrid,
-  Modal, TextInput, Select, Textarea, ActionIcon, Anchor, Box, Divider,
+  Modal, TextInput, Textarea, ActionIcon, Anchor, Box, Divider,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
@@ -16,7 +16,6 @@ import { useAdminAuth } from '../lib/AdminAuthContext'
 import DataState from '../components/DataState.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import StatCard from '../components/StatCard.jsx'
-import { PLANS, BILLING } from './Organizations.jsx'
 
 function CountTiles({ counts }) {
   return (
@@ -180,12 +179,12 @@ export default function OrgDetail() {
   const org = data?.org
   const suspended = Boolean(org?.deleted_at)
 
-  const form = useForm({ initialValues: { name: '', short_name: '', industry: '', region: '', plan: 'trial', billing_status: 'trial' } })
+  const form = useForm({ initialValues: { name: '', short_name: '', industry: '', region: '' } })
 
   const openEdit = () => {
     form.setValues({
       name: org.name || '', short_name: org.short_name || '', industry: org.industry || '',
-      region: org.region || '', plan: org.plan || 'trial', billing_status: org.billing_status || 'trial',
+      region: org.region || '',
     })
     setEditOpen(true)
   }
@@ -215,8 +214,6 @@ export default function OrgDetail() {
                   {suspended && <Badge color="red" variant="filled">Suspended</Badge>}
                 </Group>
                 <Group gap="xs" mt={6}>
-                  <StatusBadge value={org.plan} />
-                  <StatusBadge value={org.billing_status} />
                   <Text size="sm" c="dimmed">{org.region || '—'} · {org.industry || '—'}</Text>
                 </Group>
               </div>
@@ -244,8 +241,6 @@ export default function OrgDetail() {
                       <Divider mb="sm" />
                       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
                         <Text size="sm"><b>Created:</b> {date(org.created_at)}</Text>
-                        <Text size="sm"><b>Plan:</b> {org.plan}</Text>
-                        <Text size="sm"><b>Billing:</b> {org.billing_status}</Text>
                         <Text size="sm"><b>Short name:</b> {org.short_name || '—'}</Text>
                         <Text size="sm"><b>Region:</b> {org.region || '—'}</Text>
                         <Text size="sm"><b>Industry:</b> {org.industry || '—'}</Text>
@@ -273,10 +268,6 @@ export default function OrgDetail() {
               <TextInput label="Region" {...form.getInputProps('region')} />
             </Group>
             <TextInput label="Industry" {...form.getInputProps('industry')} />
-            <Group grow>
-              <Select label="Plan" data={PLANS} {...form.getInputProps('plan')} />
-              <Select label="Billing status" data={BILLING} {...form.getInputProps('billing_status')} />
-            </Group>
             <Group justify="flex-end" mt="xs">
               <Button variant="default" onClick={() => setEditOpen(false)}>Cancel</Button>
               <Button type="submit">Save</Button>

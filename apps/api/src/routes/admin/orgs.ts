@@ -39,7 +39,7 @@ orgsRouter.post('/orgs', requirePlatformCap('org:write'), async (req, res) => {
   const { rows } = await ownerPool.query(
     `insert into public.organizations (name, short_name, industry, region, plan, billing_status)
      values ($1, $2, $3, $4, $5, $6) returning *`,
-    [body.name, body.short_name ?? null, body.industry ?? null, body.region ?? null, body.plan ?? 'trial', body.billing_status ?? 'trial']
+    [body.name, body.short_name ?? null, body.industry ?? null, body.region ?? null, body.plan ?? 'licensed', body.billing_status ?? 'licensed']
   )
   const org = rows[0]
   await writePlatformAuditLog({ actorId: req.claims!.sub, action: 'org.create', targetType: 'org', targetId: org.id, orgId: org.id, after: org, ip: req.ip })

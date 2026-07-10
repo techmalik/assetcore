@@ -2,13 +2,11 @@ import { Badge } from '@mantine/core'
 
 // Color is paired with the text label (never color alone).
 const COLORS = {
-  // org billing_status
-  trial: 'gray', invoice: 'blue', active: 'teal', paid: 'teal',
-  suspended: 'red', overdue: 'orange', past_due: 'orange',
-  // invoice status
-  draft: 'gray', sent: 'blue', void: 'dark',
-  // plans
-  growth: 'indigo', enterprise: 'grape', starter: 'cyan',
+  // org status — every org is provisioned 'licensed' with no plan tiers;
+  // the only state worth badging here is suspended
+  active: 'teal', suspended: 'red',
+  // invoice status (billing_invoices.status)
+  draft: 'gray', sent: 'blue', paid: 'teal', overdue: 'orange', void: 'dark',
   // membership / admin status
   disabled: 'red',
   // generic
