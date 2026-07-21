@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import AuthImage from '../components/AuthImage.jsx'
@@ -7,6 +8,7 @@ import { listSites } from '../lib/db/sites'
 import { listCategories } from '../lib/db/categories'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
+import { healthColor } from '../lib/health'
 
 const STATUS_STYLE = {
   critical:    { bg: 'var(--srb)', c: 'var(--srt)', br: 'var(--srbr)', label: 'Critical' },
@@ -25,7 +27,7 @@ function StatusBadge({ status }) {
 }
 
 function HealthBar({ score }) {
-  const color = score < 40 ? 'var(--sr)' : score < 70 ? 'var(--sa)' : 'var(--sg)'
+  const color = healthColor(score)
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <div style={{ width: 60, height: 5, background: 'var(--n200)', borderRadius: 99, overflow: 'hidden' }}>
@@ -170,7 +172,8 @@ export default function Assets({ dark, toggleDark }) {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [filter, setFilter] = useState('all')
+  const [searchParams] = useSearchParams()
+  const [filter, setFilter] = useState(searchParams.get('status') || 'all')
   const [selected, setSelected] = useState(null)
   const [modal, setModal] = useState(null) // null | 'add' | asset object for edit
 
@@ -304,7 +307,7 @@ export default function Assets({ dark, toggleDark }) {
                       <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
                         <svg viewBox="0 0 64 64" width="64" height="64">
                           <circle cx="32" cy="32" r="24" fill="none" stroke="var(--n200)" strokeWidth="7" />
-                          <circle cx="32" cy="32" r="24" fill="none" stroke={selected.health_score < 40 ? 'var(--sr)' : selected.health_score < 70 ? 'var(--sa)' : 'var(--sg)'} strokeWidth="7" strokeDasharray={`${150.8 * (selected.health_score ?? 0) / 100} ${150.8}`} strokeLinecap="round" transform="rotate(-90 32 32)" />
+                          <circle cx="32" cy="32" r="24" fill="none" stroke={healthColor(selected.health_score)} strokeWidth="7" strokeDasharray={`${150.8 * (selected.health_score ?? 0) / 100} ${150.8}`} strokeLinecap="round" transform="rotate(-90 32 32)" />
                         </svg>
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <span style={{ fontFamily: 'var(--ff-m)', fontSize: 16, fontWeight: 500 }}>{selected.health_score ?? 0}</span>

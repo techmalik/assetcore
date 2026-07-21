@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -64,6 +65,7 @@ const SITES = ['All Sites', 'Lagos', 'Delta', 'North', 'Warri', 'Aba']
 
 export default function Dashboard({ dark, toggleDark }) {
   const { org } = useAuth()
+  const nav = useNavigate()
   const [activeSite, setActiveSite] = useState(0)
   const [stats, setStats] = useState(null)
   const [recentWOs, setRecentWOs] = useState([])
@@ -138,7 +140,7 @@ export default function Dashboard({ dark, toggleDark }) {
 
           {/* KPI cards */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:20}}>
-            <div className="kpi">
+            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/assets')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/assets') }}>
               <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Total Assets</div>
               <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:'var(--n950)',lineHeight:1,marginBottom:8}}>
                 {stats ? a.total.toLocaleString() : '—'}
@@ -147,7 +149,7 @@ export default function Dashboard({ dark, toggleDark }) {
                 {stats && a.total > 0 ? `${pct(a.operational, a.total)} operational` : stats ? 'No assets yet' : ''}
               </div>
             </div>
-            <div className="kpi">
+            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/assets?status=operational')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/assets?status=operational') }}>
               <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Operational</div>
               <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:'var(--n950)',lineHeight:1,marginBottom:8}}>
                 {stats ? pct(a.operational, a.total) : '—'}
@@ -156,7 +158,7 @@ export default function Dashboard({ dark, toggleDark }) {
                 {stats ? `${a.operational.toLocaleString()} of ${a.total.toLocaleString()} assets` : ''}
               </div>
             </div>
-            <div className="kpi">
+            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/work-orders')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/work-orders') }}>
               <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Open Work Orders</div>
               <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:'var(--n950)',lineHeight:1,marginBottom:8}}>
                 {stats ? w.open : '—'}
@@ -165,7 +167,7 @@ export default function Dashboard({ dark, toggleDark }) {
                 {stats ? `${w.overdue} overdue · ${w.critical} critical` : ''}
               </div>
             </div>
-            <div className="kpi">
+            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/maintenance')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/maintenance') }}>
               <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Overdue PM</div>
               <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:stats?.overduePM>0?'var(--sat)':'var(--n950)',lineHeight:1,marginBottom:8}}>
                 {stats ? stats.overduePM : '—'}
@@ -174,7 +176,7 @@ export default function Dashboard({ dark, toggleDark }) {
                 {stats ? (stats.overduePM === 0 ? 'All tasks on schedule' : `task${stats.overduePM!==1?'s':''} past due date`) : ''}
               </div>
             </div>
-            <div className="kpi">
+            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/compliance')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/compliance') }}>
               <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Compliance Alerts</div>
               <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:complianceCounts&&(complianceCounts.expiring+complianceCounts.expired)>0?'var(--srt)':'var(--n950)',lineHeight:1,marginBottom:8}}>
                 {complianceCounts ? complianceCounts.expiring + complianceCounts.expired : '—'}

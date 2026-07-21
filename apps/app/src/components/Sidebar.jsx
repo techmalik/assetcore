@@ -60,11 +60,11 @@ export default function Sidebar({ active }) {
         <div className={`nav-item${active==='work-orders'?' active':''}`} onClick={() => go('/work-orders')}>
           {icons.workorders} Work Orders
         </div>
-        <div className={`nav-item${active==='maintenance'?' active':''}`} onClick={() => go('/maintenance')}>
-          {icons.maintenance} Maintenance
-        </div>
         <div className={`nav-item${active==='inspections'?' active':''}`} onClick={() => go('/inspections')}>
           {icons.inspections} Inspections
+        </div>
+        <div className={`nav-item${active==='maintenance'?' active':''}`} onClick={() => go('/maintenance')}>
+          {icons.maintenance} Maintenance
         </div>
         <div className={`nav-item${active==='compliance'?' active':''}`} onClick={() => go('/compliance')}>
           {icons.compliance} Compliance

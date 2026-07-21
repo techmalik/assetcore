@@ -190,6 +190,19 @@ a { text-decoration: none; color: inherit; }
   padding: 20px;
   box-shadow: var(--sh-sm);
 }
+.kpi-link {
+  cursor: pointer;
+  transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+}
+.kpi-link:hover {
+  border-color: var(--b300);
+  box-shadow: var(--sh-md);
+  transform: translateY(-1px);
+}
+.kpi-link:focus-visible {
+  outline: 2px solid var(--b400);
+  outline-offset: 2px;
+}
 
 /* Tab buttons */
 .tab-btn {
