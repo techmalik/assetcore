@@ -22,6 +22,21 @@ orgRouter.get('/org', async (req, res) => {
   res.json(row)
 })
 
+// Lightweight active-member roster for assignee/operator pickers — readable by
+// any active member (unlike /org/members, which is owner-only management).
+orgRouter.get('/org/users', async (req, res) => {
+  const rows = await withOrgContext(claimsFromReq(req), (c) =>
+    c.query(
+      `select u.id, u.full_name, u.email
+       from public.memberships m
+       join public.users u on u.id = m.user_id
+       where m.org_id = current_org_id() and m.status = 'active'
+       order by u.full_name asc`
+    ).then((r) => r.rows)
+  )
+  res.json(rows)
+})
+
 const orgPatch = z.object({
   name: z.string().min(1).optional(),
   short_name: z.string().nullable().optional(),

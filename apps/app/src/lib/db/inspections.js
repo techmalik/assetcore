@@ -1,8 +1,9 @@
 import { api } from '../apiClient'
 
-export async function listInspections({ statuses, limit = 100 } = {}) {
+export async function listInspections({ statuses, asset_id, limit = 100 } = {}) {
   const params = new URLSearchParams()
   if (statuses?.length) params.set('statuses', statuses.join(','))
+  if (asset_id) params.set('asset_id', asset_id)
   params.set('limit', limit)
   return api.get(`/inspections?${params.toString()}`)
 }
