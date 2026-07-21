@@ -56,6 +56,9 @@ services:
       - api
     ports:
       - '${HTTP_PORT:-80}:80'
+      - '443:443'
+    volumes:
+      - /etc/letsencrypt:/etc/nginx/certs:ro
 
 volumes:
   assetcore_pgdata:
