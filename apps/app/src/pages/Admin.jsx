@@ -24,35 +24,108 @@ const GRANTABLE_CAPS = [
   { key: 'audit:read', label: 'View audit log' },
 ]
 
+// A toggle chip with an explicit check when selected — reads more clearly than
+// a bare colour swap, especially for people filling the form quickly.
+function Chip({ on, disabled, onClick, children, title }) {
+  return (
+    <button type="button" disabled={disabled} onClick={onClick} title={title}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, padding: '5px 11px', borderRadius: 999,
+        cursor: disabled ? 'default' : 'pointer', fontFamily: 'var(--ff-u)',
+        border: `1px solid ${on ? 'var(--b400)' : 'var(--n300)'}`,
+        background: on ? 'var(--b50)' : 'var(--n0)', color: on ? 'var(--b700)' : 'var(--n700)',
+        opacity: disabled ? .6 : 1, fontWeight: on ? 500 : 400,
+      }}>
+      {on && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2l2.2 2.2L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+      {children}
+    </button>
+  )
+}
+
 // Shared scope + capability picker used by the invite and edit-access modals.
+// Locations and sites are separated visually and sites are grouped under their
+// location, so it's obvious what a selection grants (a location grants every
+// site in it; individual sites add oversight beyond that).
 function ScopeCapsFields({ locations, sites, value, onChange }) {
   const toggle = (field, id) => {
     const cur = value[field] || []
     onChange({ ...value, [field]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] })
   }
-  const scoped = (value.location_scope?.length || 0) + (value.site_scope?.length || 0) > 0
-  const box = { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }
-  const chip = (on) => ({ fontSize: 11, padding: '3px 9px', borderRadius: 12, cursor: 'pointer', border: `1px solid ${on ? 'var(--b300)' : 'var(--n200)'}`, background: on ? 'var(--b50)' : 'var(--n0)', color: on ? 'var(--b700)' : 'var(--n600)' })
+  const locSel = value.location_scope || []
+  const siteSel = value.site_scope || []
+  const capSel = value.extra_caps || []
+  const scoped = locSel.length + siteSel.length > 0
+
+  // Group sites under their location (plus an "Unassigned" bucket) for scanning.
+  const groups = []
+  for (const l of locations) {
+    const inLoc = sites.filter((s) => s.location_id === l.id)
+    if (inLoc.length) groups.push({ id: l.id, name: l.name, sites: inLoc })
+  }
+  const orphans = sites.filter((s) => !s.location_id || !locations.some((l) => l.id === s.location_id))
+  if (orphans.length) groups.push({ id: 'none', name: 'Unassigned', sites: orphans })
+
+  const summary = scoped
+    ? `Limited to ${locSel.length ? `${locSel.length} location${locSel.length !== 1 ? 's' : ''}` : ''}${locSel.length && siteSel.length ? ' + ' : ''}${siteSel.length ? `${siteSel.length} site${siteSel.length !== 1 ? 's' : ''}` : ''}.`
+    : 'Full access — every location and site.'
+
+  const secLabel = { fontSize: 13, fontWeight: 600, color: 'var(--n800)' }
+  const secHint = { fontSize: 12, color: 'var(--n500)', marginTop: 1, lineHeight: 1.5 }
+  const box = { display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 8 }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* Scope */}
       <div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)' }}>Access scope</div>
-        <div style={{ fontSize: 11, color: 'var(--n500)' }}>{scoped ? 'Limited to the selections below.' : 'No selection = access to all locations & sites.'}</div>
-        <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 8 }}>Locations (grants every site in them)</div>
-        <div style={box}>
-          {locations.map((l) => <span key={l.id} onClick={() => toggle('location_scope', l.id)} style={chip(value.location_scope?.includes(l.id))}>{l.name}</span>)}
-          {locations.length === 0 && <span style={{ fontSize: 11, color: 'var(--n400)' }}>No locations yet.</span>}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={secLabel}>Access scope</div>
+          <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 9px', borderRadius: 999, background: scoped ? 'var(--b50)' : 'var(--sgb)', color: scoped ? 'var(--b700)' : 'var(--sgt)', border: `1px solid ${scoped ? 'var(--b200)' : 'var(--sgbr)'}` }}>{scoped ? 'Restricted' : 'All access'}</span>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 8 }}>Additional specific sites</div>
-        <div style={box}>
-          {sites.map((s) => <span key={s.id} onClick={() => toggle('site_scope', s.id)} style={chip(value.site_scope?.includes(s.id))}>{s.name}</span>)}
+        <div style={secHint}>{summary}</div>
+
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--n700)' }}>Locations</div>
+          <div style={{ fontSize: 11, color: 'var(--n500)' }}>Selecting a location grants every site inside it.</div>
+          <div style={box}>
+            {locations.map((l) => (
+              <Chip key={l.id} on={locSel.includes(l.id)} onClick={() => toggle('location_scope', l.id)}>
+                {l.name}{typeof l.site_count === 'number' ? <span style={{ opacity: .6, marginLeft: 3 }}>· {l.site_count}</span> : null}
+              </Chip>
+            ))}
+            {locations.length === 0 && <span style={{ fontSize: 12, color: 'var(--n400)' }}>No locations yet — add them in Admin → Locations.</span>}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--n700)' }}>Individual sites</div>
+          <div style={{ fontSize: 11, color: 'var(--n500)' }}>Add specific sites for oversight beyond the locations above.</div>
+          {groups.map((g) => (
+            <div key={g.id} style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n400)', fontFamily: 'var(--ff-m)' }}>{g.name}</div>
+              <div style={box}>
+                {g.sites.map((s) => {
+                  const viaLoc = g.id !== 'none' && locSel.includes(g.id)
+                  return (
+                    <Chip key={s.id} on={viaLoc || siteSel.includes(s.id)} disabled={viaLoc}
+                      title={viaLoc ? `Included via ${g.name}` : undefined}
+                      onClick={() => toggle('site_scope', s.id)}>
+                      {s.name}
+                    </Chip>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+          {sites.length === 0 && <div style={{ fontSize: 12, color: 'var(--n400)', marginTop: 8 }}>No sites yet.</div>}
         </div>
       </div>
-      <div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)' }}>Extra permissions</div>
-        <div style={{ fontSize: 11, color: 'var(--n500)' }}>Granted on top of the role's defaults.</div>
+
+      {/* Extra permissions */}
+      <div style={{ borderTop: 'var(--bdr)', paddingTop: 16 }}>
+        <div style={secLabel}>Extra permissions</div>
+        <div style={secHint}>Granted on top of the role's defaults.{capSel.length ? ` (${capSel.length} added)` : ''}</div>
         <div style={box}>
-          {GRANTABLE_CAPS.map((c) => <span key={c.key} onClick={() => toggle('extra_caps', c.key)} style={chip(value.extra_caps?.includes(c.key))}>{c.label}</span>)}
+          {GRANTABLE_CAPS.map((c) => <Chip key={c.key} on={capSel.includes(c.key)} onClick={() => toggle('extra_caps', c.key)}>{c.label}</Chip>)}
         </div>
       </div>
     </div>
@@ -87,13 +160,13 @@ function SiteModal({ site, locations, onClose, onSave }) {
             <label key={k} style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
               {l}
               <input value={form[k]} onChange={e => setForm(f => ({...f,[k]:e.target.value}))} placeholder={ph}
-                style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}/>
+                className="input"/>
             </label>
           ))}
           <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
             Location
             <select value={form.location_id} onChange={e => setForm(f => ({...f,location_id:e.target.value}))}
-              style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}>
+              className="input">
               <option value="">— Unassigned —</option>
               {(locations||[]).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
@@ -154,7 +227,7 @@ function SitesTab() {
                 </div>
                 <div style={{display:'flex',gap:4}}>
                   <button onClick={() => setModal(s)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--n600)',cursor:'pointer'}}>Edit</button>
-                  <button onClick={() => archive(s.id)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--srt)',cursor:'pointer'}}>Archive</button>
+                  <button onClick={() => archive(s.id)} style={{padding:'3px 8px',border:'1px solid var(--srbr)',borderRadius:3,background:'var(--srb)',fontSize:11,color:'var(--srt)',cursor:'pointer'}}>Archive</button>
                 </div>
               </div>
               <div style={{fontSize:11,color:'var(--n500)',display:'flex',gap:8}}>
@@ -204,7 +277,7 @@ function LocationModal({ location, onClose, onSave }) {
             <label key={k} style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
               {l}
               <input value={form[k]} onChange={e => setForm(f => ({...f,[k]:e.target.value}))} placeholder={ph}
-                style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}/>
+                className="input"/>
             </label>
           ))}
           {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
@@ -258,7 +331,7 @@ function LocationsTab() {
                 </div>
                 <div style={{display:'flex',gap:4}}>
                   <button onClick={() => setModal(l)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--n600)',cursor:'pointer'}}>Edit</button>
-                  <button onClick={() => archive(l.id)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--srt)',cursor:'pointer'}}>Archive</button>
+                  <button onClick={() => archive(l.id)} style={{padding:'3px 8px',border:'1px solid var(--srbr)',borderRadius:3,background:'var(--srb)',fontSize:11,color:'var(--srt)',cursor:'pointer'}}>Archive</button>
                 </div>
               </div>
             </div>
@@ -303,7 +376,7 @@ function CatModal({ cat, onClose, onSave }) {
             <label key={k} style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
               {l}
               <input value={form[k]} onChange={e => setForm(f => ({...f,[k]:e.target.value}))} placeholder={ph}
-                style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}/>
+                className="input"/>
             </label>
           ))}
           {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
@@ -355,7 +428,7 @@ function CategoriesTab() {
               <span style={{flex:1,fontSize:13,color:'var(--n900)'}}>{c.name}</span>
               <div style={{display:'flex',gap:6}}>
                 <button onClick={() => setModal(c)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--n600)',cursor:'pointer'}}>Edit</button>
-                <button onClick={() => remove(c.id)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--srt)',cursor:'pointer'}}>Delete</button>
+                <button onClick={() => remove(c.id)} style={{padding:'3px 8px',border:'1px solid var(--srbr)',borderRadius:3,background:'var(--srb)',fontSize:11,color:'var(--srt)',cursor:'pointer'}}>Delete</button>
               </div>
             </div>
           ))}
@@ -387,7 +460,10 @@ const ROLES_LIST = [
 function initials(name) {
   if (!name) return '?'
   const parts = name.trim().split(/\s+/)
-  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || name[0].toUpperCase()
+    .map((p) => p.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(Boolean)
+  if (!parts.length) return name.trim()[0]?.toUpperCase() || '?'
+  return ((parts[0][0] || '') + (parts[1]?.[0] || '')).toUpperCase()
 }
 
 function InviteModal({ locations, sites, onClose, onInvited }) {
@@ -436,17 +512,17 @@ function InviteModal({ locations, sites, onClose, onInvited }) {
           <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
             Full name
             <input value={form.full_name} onChange={e => setForm(f => ({...f,full_name:e.target.value}))} placeholder="e.g. Chidi Umeh"
-              style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}/>
+              className="input"/>
           </label>
           <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
             Email address
             <input type="email" value={form.email} onChange={e => setForm(f => ({...f,email:e.target.value}))} placeholder="name@company.com"
-              style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}/>
+              className="input"/>
           </label>
           <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
             Role
             <select value={form.role_key} onChange={e => setForm(f => ({...f,role_key:e.target.value}))}
-              style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}>
+              className="input">
               {ROLES_LIST.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
             </select>
           </label>
@@ -597,7 +673,7 @@ function UsersTab() {
                             <div style={{display:'flex',gap:6}}>
                               <button onClick={() => setAccessMember(m)} style={{padding:'3px 8px',border:'1px solid var(--b200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--b700)',cursor:'pointer'}}>Access</button>
                               <button onClick={() => sendReset(m)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--n600)',cursor:'pointer'}}>Reset password</button>
-                              <button onClick={() => toggleStatus(m)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:disabled?'var(--sgt)':'var(--srt)',cursor:'pointer'}}>{disabled?'Enable':'Disable'}</button>
+                              <button onClick={() => toggleStatus(m)} style={{padding:'3px 8px',border:`1px solid ${disabled?'var(--n200)':'var(--srbr)'}`,borderRadius:3,background:disabled?'var(--n0)':'var(--srb)',fontSize:11,color:disabled?'var(--sgt)':'var(--srt)',cursor:'pointer'}}>{disabled?'Enable':'Disable'}</button>
                             </div>
                           )}
                         </td>

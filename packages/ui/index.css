@@ -98,6 +98,34 @@ a { text-decoration: none; color: inherit; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width .16s ease;
+}
+
+/* Collapse / expand rail (desktop). Labels stay in the DOM and are hidden with
+   CSS so the mobile drawer (which ignores .collapsed) still shows them. */
+.sidebar-collapse-btn {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 9px 18px; margin: 0;
+  background: none; border: none; border-top: var(--bdr);
+  color: var(--n500); font-size: 12px; font-family: var(--ff-u);
+  cursor: pointer; flex-shrink: 0;
+}
+.sidebar-collapse-btn:hover { background: var(--n50); color: var(--n700); }
+.sidebar-collapse-chevron { flex-shrink: 0; transition: transform .16s ease; }
+
+@media (min-width: 769px) {
+  .sidebar.collapsed { width: 64px; }
+  .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .sidebar-section,
+  .sidebar.collapsed .sidebar-orginfo,
+  .sidebar.collapsed .sidebar-orgchevron,
+  .sidebar.collapsed .sidebar-userinfo,
+  .sidebar.collapsed .sidebar-collapse-label { display: none; }
+  .sidebar.collapsed .nav-item { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; border-left-width: 0; }
+  .sidebar.collapsed .sidebar-header { justify-content: center; padding-left: 0; padding-right: 0; }
+  .sidebar.collapsed .sidebar-footer { justify-content: center; padding-left: 0; padding-right: 0; }
+  .sidebar.collapsed .sidebar-collapse-btn { justify-content: center; padding-left: 0; padding-right: 0; }
+  .sidebar.collapsed .sidebar-collapse-chevron { transform: rotate(180deg); }
 }
 
 .nav-item {
@@ -150,15 +178,21 @@ a { text-decoration: none; color: inherit; }
 
 /* Buttons */
 .btn {
-  display: flex; align-items: center; justify-content: center;
-  gap: 8px; height: 40px; border-radius: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; height: 40px; padding: 0 18px; border-radius: 4px;
   font-family: var(--ff-u); font-size: 14px; font-weight: 500;
-  cursor: pointer; border: none;
+  white-space: nowrap; cursor: pointer; border: none;
 }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
 .btn-primary { background: var(--b500); color: #fff; }
-.btn-primary:hover { background: var(--b600); }
+.btn-primary:hover:not(:disabled) { background: var(--b600); }
 .btn-secondary { background: var(--n0); color: var(--n800); border: 1px solid var(--n300); }
-.btn-secondary:hover { background: var(--n50); }
+.btn-secondary:hover:not(:disabled) { background: var(--n50); }
+/* Destructive actions read red so archive/delete visibly warn before acting. */
+.btn-danger { background: var(--sr); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: var(--srt); }
+.btn-danger-soft { background: var(--srb); color: var(--srt); border: 1px solid var(--srbr); }
+.btn-danger-soft:hover:not(:disabled) { background: var(--sr); color: #fff; border-color: var(--sr); }
 
 /* Input */
 .input {
@@ -272,6 +306,8 @@ a { text-decoration: none; color: inherit; }
   .sidebar-hamburger {
     display: flex !important;
   }
+  /* Collapse is a desktop affordance; the mobile drawer is always full-width. */
+  .sidebar-collapse-btn { display: none; }
   /* Tables scroll horizontally on small screens */
   table { min-width: 560px; }
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }

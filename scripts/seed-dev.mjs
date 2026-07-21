@@ -94,6 +94,22 @@ async function main() {
     )
   }
 
+  // Locations (larger zones) — one per distinct site region — then link sites,
+  // so demo data reflects the location -> site hierarchy the app enforces.
+  await client.query(
+    `insert into public.locations (org_id, name)
+     select distinct org_id, region from public.sites
+     where org_id = $1 and region is not null and btrim(region) <> ''
+     on conflict (org_id, name) do nothing`,
+    [ORG]
+  )
+  await client.query(
+    `update public.sites s set location_id = l.id
+     from public.locations l
+     where l.org_id = s.org_id and l.name = s.region and s.org_id = $1`,
+    [ORG]
+  )
+
   const categories = [
     ['c0000000-0000-0000-0000-000000000001', 'Metering Station', 'MTR'],
     ['c0000000-0000-0000-0000-000000000002', 'Compressor', 'CMP'],

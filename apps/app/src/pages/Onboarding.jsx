@@ -17,7 +17,7 @@ const DEFAULT_CATEGORIES = [
   { name: 'Gas Turbine', code: 'GTU' },
 ]
 
-const STEPS = ['Welcome', 'Sites', 'Categories']
+const STEPS = ['Welcome', 'Locations & Sites', 'Categories']
 
 function StepBar({ step }) {
   return (
@@ -105,6 +105,7 @@ export default function Onboarding() {
     setSiteErr('')
     if (!siteForm.name.trim()) { setSiteErr('Site name is required.'); return }
     if (!siteForm.code.trim()) { setSiteErr('Site code is required.'); return }
+    if (!siteForm.region.trim()) { setSiteErr('Location / zone is required — it groups your sites.'); return }
     if (sites.find(s => s.code.toLowerCase() === siteForm.code.toLowerCase())) {
       setSiteErr('That code is already used.'); return
     }
@@ -160,7 +161,7 @@ export default function Onboarding() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 36 }}>
                 {[
-                  ['Add your sites', 'Operational locations — terminals, stations, network segments'],
+                  ['Add locations & sites', 'Group specific sites (terminals, stations) under larger location zones'],
                   ['Configure categories', 'Asset types relevant to your operation'],
                 ].map(([title, desc], i) => (
                   <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -181,8 +182,8 @@ export default function Onboarding() {
           {/* ── Step 1: Sites ───────────────────────────────────── */}
           {step === 1 && (
             <div style={{ background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 10, padding: 40 }}>
-              <h2 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, color: 'var(--n950)', marginBottom: 6 }}>Add your sites</h2>
-              <p style={{ fontSize: 14, color: 'var(--n500)', marginBottom: 28 }}>Add at least one operational site. You can add more later from Admin → Sites.</p>
+              <h2 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, color: 'var(--n950)', marginBottom: 6 }}>Add your locations & sites</h2>
+              <p style={{ fontSize: 14, color: 'var(--n500)', marginBottom: 28 }}>A <strong>location</strong> is a larger zone (e.g. Lagos); a <strong>site</strong> is a specific area within it. Each site you add here is filed under its location — we create the location for you. Manage both later from Admin.</p>
 
               {/* Existing sites */}
               {sites.length > 0 && (
@@ -206,9 +207,10 @@ export default function Onboarding() {
                   </div>
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 6 }}>State / Region</label>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 6 }}>Location / Zone *</label>
                   <input className="input" value={siteForm.region} onChange={e => setSiteForm(p => ({ ...p, region: e.target.value }))}
                     placeholder="e.g. Lagos, Delta, Rivers" style={{ width: '100%' }} />
+                  <div style={{ fontSize: 11, color: 'var(--n400)', marginTop: 5 }}>The larger zone this site belongs to. Sites sharing a zone are grouped under one location.</div>
                 </div>
                 {siteErr && <p style={{ fontSize: 12, color: 'var(--srt)', marginBottom: 10 }}>{siteErr}</p>}
                 <button onClick={addSite} style={{ height: 34, padding: '0 16px', background: 'var(--b500)', color: '#fff', border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>

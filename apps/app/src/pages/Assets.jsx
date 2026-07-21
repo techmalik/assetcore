@@ -3,11 +3,13 @@ import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import AuthImage from '../components/AuthImage.jsx'
+import ImageLightbox from '../components/ImageLightbox.jsx'
 import {
   listAssets, createAsset, updateAsset, softDeleteAsset, restoreAsset, importAssets,
   uploadAssetPhoto, uploadAssetDocument, deleteAssetDocument, listAssetActivity, addAssetComment,
 } from '../lib/db/assets'
 import { listSites } from '../lib/db/sites'
+import { listLocations } from '../lib/db/locations'
 import { listCategories } from '../lib/db/categories'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { createWorkOrder, WO_TYPE_LABEL, WO_PRIORITY_LABEL } from '../lib/db/workOrders'
@@ -77,7 +79,7 @@ function Field({ label, required, full, children }) {
 }
 
 // ── CSV helpers ────────────────────────────────────────────────────────────────
-const CSV_HEADERS = ['ain', 'name', 'category', 'site', 'status', 'manufacturer', 'model', 'serial_number', 'install_date', 'value', 'health_score', 'tags', 'lat', 'lng']
+const CSV_HEADERS = ['ain', 'name', 'category', 'location', 'site', 'status', 'manufacturer', 'model', 'serial_number', 'install_date', 'value', 'health_score', 'tags', 'lat', 'lng']
 
 function csvCell(v) {
   const s = String(v ?? '')
@@ -85,7 +87,7 @@ function csvCell(v) {
 }
 
 function downloadTemplate() {
-  const example = ['AST-001', 'Compressor Unit X-5', 'Compressor', 'Lagos DS-04', 'operational', 'GE', 'GCF-700', 'SN-001', '2023-01-15', '5000000', '90', 'critical,offshore', '6.45', '3.4']
+  const example = ['AST-001', 'Compressor Unit X-5', 'Compressor', 'Lagos', 'Lagos DS-04', 'operational', 'GE', 'GCF-700', 'SN-001', '2023-01-15', '5000000', '90', 'critical,offshore', '6.45', '3.4']
   const csv = CSV_HEADERS.join(',') + '\n' + example.map(csvCell).join(',') + '\n'
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
@@ -124,11 +126,15 @@ function parseCSV(text) {
 }
 
 // ── Add / Edit Asset Modal ────────────────────────────────────────────────────
-function AssetModal({ asset, sites, categories, operators, onClose, onSave }) {
+function AssetModal({ asset, sites, locations, categories, operators, onClose, onSave }) {
   const editing = Boolean(asset)
   const s0 = asset?.specs || {}
+  // An asset stores only its site; its location is the site's location. Seed the
+  // Location picker from the current site so editing shows the right zone.
+  const initialSite = asset?.site_id ? sites.find((s) => s.id === asset.site_id) : null
   const [form, setForm] = useState({
     ain: asset?.ain || '', name: asset?.name || '',
+    location_id: initialSite?.location_id || '',
     site_id: asset?.site_id || '', category_id: asset?.category_id || '',
     status: asset?.status || 'operational', health_score: asset?.health_score ?? 100,
     manufacturer: s0.manufacturer || '', model: s0.model || '', serial_number: s0.serial_number || '',
@@ -146,10 +152,18 @@ function AssetModal({ asset, sites, categories, operators, onClose, onSave }) {
   const [pendingPhotos, setPendingPhotos] = useState([])
   const [pendingDocs, setPendingDocs] = useState([])
   const [busyFile, setBusyFile] = useState(false)
+  const [lightbox, setLightbox] = useState(null) // { images, index } | null
   const photoRef = useRef(null)
   const docRef = useRef(null)
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
+  // Switching location clears the site unless the current site is in the new one.
+  const setLocation = (id) => setForm((p) => ({
+    ...p,
+    location_id: id,
+    site_id: p.site_id && sites.find((s) => s.id === p.site_id)?.location_id === id ? p.site_id : '',
+  }))
+  const sitesForLocation = form.location_id ? sites.filter((s) => s.location_id === form.location_id) : []
   const photoCount = photos.length + pendingPhotos.length
   const inputProps = { className: 'input', style: { width: '100%' } }
 
@@ -178,8 +192,8 @@ function AssetModal({ asset, sites, categories, operators, onClose, onSave }) {
 
   async function submit(e) {
     e.preventDefault(); setErr('')
-    if (!form.ain.trim() || !form.name.trim() || !form.site_id || !form.category_id) {
-      setErr('AIN, name, location and type are required.'); return
+    if (!form.ain.trim() || !form.name.trim() || !form.category_id || !form.location_id || !form.site_id) {
+      setErr('AIN, name, type, location and site are all required.'); return
     }
     if (form.value !== '' && isNaN(Number(form.value))) { setErr('Asset value must be a number.'); return }
     if (form.lat !== '' && isNaN(Number(form.lat))) { setErr('Latitude must be a number.'); return }
@@ -255,9 +269,15 @@ function AssetModal({ asset, sites, categories, operators, onClose, onSave }) {
             </select>
           </Field>
           <Field label="Location" required>
-            <select {...inputProps} value={form.site_id} onChange={(e) => set('site_id', e.target.value)}>
+            <select {...inputProps} value={form.location_id} onChange={(e) => setLocation(e.target.value)}>
               <option value="">Select location…</option>
-              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Site" required>
+            <select {...inputProps} value={form.site_id} onChange={(e) => set('site_id', e.target.value)} disabled={!form.location_id}>
+              <option value="">{!form.location_id ? 'Select a location first' : sitesForLocation.length ? 'Select site…' : 'No sites in this location'}</option>
+              {sitesForLocation.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </Field>
           <Field label="Status">
@@ -308,9 +328,13 @@ function AssetModal({ asset, sites, categories, operators, onClose, onSave }) {
 
         {/* Images */}
         <div style={{ marginTop: 18 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 6 }}>Images ({photoCount}/{MAX_PHOTOS})</label>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 6 }}>Images ({photoCount}/{MAX_PHOTOS}){photos.length > 0 && <span style={{ fontWeight: 400, color: 'var(--n400)' }}> · click to enlarge</span>}</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-            {photos.map((p, i) => <AuthImage key={`p${i}`} relPath={p} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--n200)' }} />)}
+            {photos.map((p, i) => (
+              <button type="button" key={`p${i}`} onClick={() => setLightbox({ images: photos, index: i })} title="Click to enlarge" style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', borderRadius: 4, lineHeight: 0 }}>
+                <AuthImage relPath={p} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--n200)', display: 'block' }} />
+              </button>
+            ))}
             {pendingPhotos.map((f, i) => (
               <div key={`pp${i}`} style={{ width: 56, height: 56, borderRadius: 4, border: '1px dashed var(--n300)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'var(--n500)', textAlign: 'center', padding: 2, overflow: 'hidden' }}>{f.name.slice(0, 14)}</div>
             ))}
@@ -344,6 +368,7 @@ function AssetModal({ asset, sites, categories, operators, onClose, onSave }) {
           </button>
         </div>
       </form>
+      {lightbox && <ImageLightbox images={lightbox.images} index={lightbox.index} onClose={() => setLightbox(null)} />}
     </div>
   )
 }
@@ -427,7 +452,7 @@ function ImportModal({ onClose, onDone }) {
       <div style={{ position: 'relative', width: 460, maxWidth: '92vw', maxHeight: '88vh', overflowY: 'auto', background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 24, zIndex: 1 }}>
         <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)', marginBottom: 6 }}>Import assets from CSV</h3>
         <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 14, lineHeight: 1.6 }}>
-          Download the template, fill it in, then upload it. Assets are matched by AIN — existing AINs are skipped. Category and Location are matched by name or code.
+          Download the template, fill it in, then upload it. Assets are matched by AIN — existing AINs are skipped. Category, Location and Site are matched by name or code; the Location column disambiguates sites that share a name across locations.
         </p>
         <button onClick={downloadTemplate} className="btn btn-secondary" style={{ height: 34, padding: '0 14px', fontSize: 13, marginBottom: 14 }}>↓ Download template</button>
         <div>
@@ -471,6 +496,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore,
   const [inspections, setInspections] = useState(null)
   const [comment, setComment] = useState('')
   const [posting, setPosting] = useState(false)
+  const [lightbox, setLightbox] = useState(null) // { images, index } | null
   const archived = Boolean(asset.deleted_at)
   const s = asset.specs || {}
 
@@ -515,6 +541,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore,
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <StatusBadge status={asset.status} />
           {asset.category && <span className="badge badge-n">{asset.category.name}</span>}
+          {asset.location && <span className="badge badge-n">📍 {asset.location.name}</span>}
           {asset.site && <span className="badge badge-n">{asset.site.name}</span>}
         </div>
 
@@ -541,7 +568,8 @@ function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore,
           <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden' }}>
             {[
               ['Category', asset.category?.name || '—'],
-              ['Location', asset.site?.name || '—'],
+              ['Location', asset.location?.name || '—'],
+              ['Site', asset.site?.name || '—'],
               ['Operator', asset.operator?.full_name || '—'],
               ['Manufacturer', s.manufacturer || '—'],
               ['Model', s.model || '—'],
@@ -613,8 +641,15 @@ function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore,
 
         {/* Photos */}
         {asset.photos?.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {asset.photos.map((p, i) => <AuthImage key={i} relPath={p} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--n200)' }} />)}
+          <div>
+            <div style={section}>Photos <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: 'var(--n400)' }}>· click to enlarge</span></div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {asset.photos.map((p, i) => (
+                <button key={i} type="button" onClick={() => setLightbox({ images: asset.photos, index: i })} title="Click to enlarge" style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', borderRadius: 4, lineHeight: 0 }}>
+                  <AuthImage relPath={p} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--n200)', display: 'block' }} />
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -654,13 +689,14 @@ function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore,
               {canEdit && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <button onClick={onEdit} className="btn btn-secondary" style={{ height: 34, fontSize: 13 }}>Edit Asset</button>
-                  <button onClick={onArchive} style={{ height: 34, fontSize: 13, background: 'none', border: '1px solid var(--srbr)', color: 'var(--srt)', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit' }}>Archive</button>
+                  <button onClick={onArchive} className="btn btn-danger-soft" style={{ height: 34, fontSize: 13 }}>Archive</button>
                 </div>
               )}
             </>
           )}
         </div>
       </div>
+      {lightbox && <ImageLightbox images={lightbox.images} index={lightbox.index} onClose={() => setLightbox(null)} />}
     </div>
   )
 }
@@ -674,6 +710,7 @@ export default function Assets({ dark, toggleDark }) {
 
   const [assets, setAssets] = useState([])
   const [sites, setSites] = useState([])
+  const [locations, setLocations] = useState([])
   const [categories, setCategories] = useState([])
   const [operators, setOperators] = useState([])
   const [loading, setLoading] = useState(true)
@@ -689,10 +726,10 @@ export default function Assets({ dark, toggleDark }) {
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const [a, s, c, u] = await Promise.all([
-        listAssets({ status: filter, archived: archivedView }), listSites(), listCategories(), listOrgUsers().catch(() => []),
+      const [a, s, l, c, u] = await Promise.all([
+        listAssets({ status: filter, archived: archivedView }), listSites(), listLocations().catch(() => []), listCategories(), listOrgUsers().catch(() => []),
       ])
-      setAssets(a); setSites(s); setCategories(c); setOperators(u)
+      setAssets(a); setSites(s); setLocations(l); setCategories(c); setOperators(u)
       setSelected((sel) => (sel ? a.find((x) => x.id === sel.id) || null : null))
     } catch (e) { setError(e.message || 'Failed to load assets.') }
     finally { setLoading(false) }
@@ -725,7 +762,7 @@ export default function Assets({ dark, toggleDark }) {
             <div>
               <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Asset Registry</h1>
               <p style={{ fontSize: 12, color: 'var(--n500)' }}>
-                {loading ? 'Loading…' : `${assets.length} ${archivedView ? 'archived ' : ''}assets · ${sites.length} locations`}
+                {loading ? 'Loading…' : `${assets.length} ${archivedView ? 'archived ' : ''}assets · ${locations.length} location${locations.length !== 1 ? 's' : ''} · ${sites.length} site${sites.length !== 1 ? 's' : ''}`}
               </p>
             </div>
             <div style={{ flex: 1 }} />
@@ -767,7 +804,7 @@ export default function Assets({ dark, toggleDark }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
-                      {['AIN', 'Name & Model', 'Type', 'Location', 'Status', 'Health', 'Operator', 'Actions'].map((h) => (
+                      {['AIN', 'Name & Model', 'Type', 'Location', 'Site', 'Status', 'Health', 'Operator', 'Actions'].map((h) => (
                         <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
                       ))}
                     </tr>
@@ -781,6 +818,7 @@ export default function Assets({ dark, toggleDark }) {
                           {(a.specs?.manufacturer || a.specs?.model) && <div style={{ fontSize: 11, color: 'var(--n500)' }}>{[a.specs?.manufacturer, a.specs?.model].filter(Boolean).join(' / ')}</div>}
                         </td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{a.category?.name || '—'}</td>
+                        <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.location?.name || '—'}</td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.site?.name || '—'}</td>
                         <td style={{ padding: '11px 14px' }}><StatusBadge status={a.status} /></td>
                         <td style={{ padding: '11px 14px' }}><HealthBar score={a.health_score ?? 0} /></td>
@@ -823,6 +861,7 @@ export default function Assets({ dark, toggleDark }) {
         <AssetModal
           asset={modal === 'add' ? null : modal}
           sites={sites}
+          locations={locations}
           categories={categories}
           operators={operators}
           onClose={() => setModal(null)}

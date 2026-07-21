@@ -6,8 +6,13 @@ const AuthCtx = createContext(null)
 
 export function initialsOf(name) {
   if (!name) return '?'
+  // Keep only word-initial letters/digits so names like "Malik (Admin)" or
+  // "O'Brien" yield clean initials instead of punctuation ("M(").
   const parts = name.trim().split(/\s+/)
-  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || name[0].toUpperCase()
+    .map((p) => p.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(Boolean)
+  if (!parts.length) return name.trim()[0]?.toUpperCase() || '?'
+  return ((parts[0][0] || '') + (parts[1]?.[0] || '')).toUpperCase()
 }
 
 export function AuthProvider({ children }) {

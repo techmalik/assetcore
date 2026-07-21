@@ -35,10 +35,23 @@ sitesRouter.post('/sites', async (req, res) => {
   const { name, code, region, lat, lng, location_id } = parsed.data
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    // Every site belongs to a location. When none is chosen but a region/zone
+    // is given, upsert a location of that name and link it — so onboarding and
+    // quick adds still produce the location→site hierarchy the app relies on.
+    let locId = location_id ?? null
+    if (!locId && region && region.trim()) {
+      const { rows: loc } = await c.query(
+        `insert into public.locations (org_id, name) values (current_org_id(), $1)
+         on conflict (org_id, name) do update set name = excluded.name
+         returning id`,
+        [region.trim()]
+      )
+      locId = loc[0].id
+    }
     const { rows } = await c.query(
       `insert into public.sites (org_id, name, code, region, lat, lng, location_id)
        values (current_org_id(), $1, $2, $3, $4, $5, $6) returning *`,
-      [name, code ?? null, region ?? null, lat ?? null, lng ?? null, location_id ?? null]
+      [name, code ?? null, region ?? null, lat ?? null, lng ?? null, locId]
     )
     const site = rows[0]
     await writeAuditLog(c, { orgId: site.org_id, actorId: req.claims!.sub, action: 'site.create', entityType: 'site', entityId: site.id, after: site })

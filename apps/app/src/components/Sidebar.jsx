@@ -1,14 +1,8 @@
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { can, ROLE_LABELS } from '../lib/rbac'
 import { useSidebar } from '../lib/SidebarContext'
-
-const Logo = () => (
-  <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-    <path d="M14 2L25 8V20L14 26L3 20V8L14 2Z" stroke="var(--b300)" strokeWidth="1.6" fill="none"/>
-    <text x="14" y="18" textAnchor="middle" fontFamily="'Bricolage Grotesque',sans-serif" fontSize="11" fontWeight="700" fill="var(--b300)">A</text>
-  </svg>
-)
 
 const icons = {
   dashboard: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/></svg>,
@@ -25,78 +19,104 @@ const icons = {
   settings: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2"/><path d="M6.8 2.1l-.5 1.5A4.6 4.6 0 005 4.4L3.5 4l-1.2 2 1.1 1.1a4.5 4.5 0 000 1.8L2.3 10l1.2 2 1.5-.4A4.6 4.6 0 006.3 12.4l.5 1.5h2.4l.5-1.5A4.6 4.6 0 0011 11.6l1.5.4 1.2-2-1.1-1.1a4.5 4.5 0 000-1.8l1.1-1.1-1.2-2-1.5.4A4.6 4.6 0 009.7 3.6L9.2 2.1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>,
 }
 
+const OPERATIONS = [
+  { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: icons.dashboard },
+  { key: 'assets', label: 'Assets', path: '/assets', icon: icons.assets },
+  { key: 'work-orders', label: 'Work Orders', path: '/work-orders', icon: icons.workorders },
+  { key: 'inspections', label: 'Inspections', path: '/inspections', icon: icons.inspections },
+  { key: 'maintenance', label: 'Maintenance', path: '/maintenance', icon: icons.maintenance },
+  { key: 'compliance', label: 'Compliance', path: '/compliance', icon: icons.compliance },
+  { key: 'reports', label: 'Reports', path: '/reports', icon: icons.reports },
+  { key: 'devices', label: 'Devices', path: '/devices', icon: icons.devices },
+]
+
 export default function Sidebar({ active }) {
   const nav = useNavigate()
   const { org, fullName, initials, roleKey } = useAuth()
-  const { isOpen, close } = useSidebar()
+  const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
   const canAdmin = can(roleKey, 'audit:read')
+  const [orgMenu, setOrgMenu] = useState(false)
+  const orgRef = useRef(null)
+
+  useEffect(() => {
+    if (!orgMenu) return
+    const onDown = (e) => { if (orgRef.current && !orgRef.current.contains(e.target)) setOrgMenu(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setOrgMenu(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [orgMenu])
 
   const go = (path) => { nav(path); close() }
+  const goMenu = (path) => { setOrgMenu(false); go(path) }
+
+  const NavItem = ({ item }) => (
+    <div className={`nav-item${active === item.key ? ' active' : ''}`} onClick={() => go(item.path)} title={item.label}>
+      {item.icon}<span className="nav-label">{item.label}</span>
+    </div>
+  )
+  const orgMenuItem = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', background: 'none', border: 'none', fontFamily: 'var(--ff-u)', fontSize: 13, color: 'var(--n700)', cursor: 'pointer', textAlign: 'left' }
 
   return (
     <>
       {isOpen && <div onClick={close} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:99,display:'none'}} className="sidebar-overlay"/>}
-    <aside className={`sidebar${isOpen ? ' sidebar--mobile-open' : ''}`}>
-      <div style={{padding:'14px 16px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
-        <div style={{width:28,height:28,background:'var(--b800)',borderRadius:4,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-          <span style={{fontFamily:'var(--ff-m)',fontSize:10,fontWeight:700,color:'var(--b200)'}}>{(org?.short_name || org?.name || '?').slice(0,2).toUpperCase()}</span>
-        </div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:12,fontWeight:600,color:'var(--n900)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{org?.short_name || '—'}</div>
-          <div style={{fontSize:10,color:'var(--n500)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{org?.name || ''}</div>
-        </div>
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="var(--n400)" strokeWidth="1.3" strokeLinecap="round"/></svg>
+    <aside className={`sidebar${isOpen ? ' sidebar--mobile-open' : ''}${collapsed ? ' collapsed' : ''}`}>
+      <div ref={orgRef} style={{position:'relative',flexShrink:0}}>
+        <button className="sidebar-header" onClick={() => setOrgMenu((o) => !o)} title={org?.name || ''} aria-haspopup="menu" aria-expanded={orgMenu}
+          style={{width:'100%',padding:'14px 16px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:8,background:orgMenu?'var(--n50)':'var(--n0)',border:'none',cursor:'pointer',fontFamily:'var(--ff-u)'}}>
+          <div style={{width:28,height:28,background:'var(--b800)',borderRadius:4,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <span style={{fontFamily:'var(--ff-m)',fontSize:10,fontWeight:700,color:'var(--b200)'}}>{(org?.short_name || org?.name || '?').slice(0,2).toUpperCase()}</span>
+          </div>
+          <div className="sidebar-orginfo" style={{flex:1,minWidth:0,textAlign:'left'}}>
+            <div style={{fontSize:12,fontWeight:600,color:'var(--n900)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{org?.short_name || '—'}</div>
+            <div style={{fontSize:10,color:'var(--n500)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{org?.name || ''}</div>
+          </div>
+          <svg className="sidebar-orgchevron" width="12" height="12" viewBox="0 0 12 12" fill="none" style={{flexShrink:0,transition:'transform .15s',transform:orgMenu?'rotate(180deg)':'none'}}><path d="M3 4.5l3 3 3-3" stroke="var(--n400)" strokeWidth="1.3" strokeLinecap="round"/></svg>
+        </button>
+
+        {orgMenu && (
+          <div role="menu" style={{position:'absolute',top:'calc(100% - 2px)',left:8,right:8,minWidth:200,background:'var(--n0)',border:'var(--bdr)',borderRadius:10,boxShadow:'var(--sh-lg)',zIndex:70,overflow:'hidden'}}>
+            <div style={{padding:'12px 14px',borderBottom:'var(--bdr)'}}>
+              <div style={{fontSize:13,fontWeight:600,color:'var(--n900)'}}>{org?.name || '—'}</div>
+              <div style={{fontSize:11,color:'var(--n500)',marginTop:2}}>Organisation workspace</div>
+            </div>
+            <div style={{padding:'6px 0'}}>
+              {canAdmin && (
+                <button role="menuitem" style={orgMenuItem} onClick={() => goMenu('/admin')}
+                  onMouseEnter={(e)=>e.currentTarget.style.background='var(--n50)'} onMouseLeave={(e)=>e.currentTarget.style.background='none'}>
+                  {icons.users} Organisation admin
+                </button>
+              )}
+              <button role="menuitem" style={orgMenuItem} onClick={() => goMenu('/settings')}
+                onMouseEnter={(e)=>e.currentTarget.style.background='var(--n50)'} onMouseLeave={(e)=>e.currentTarget.style.background='none'}>
+                {icons.settings} Settings
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <nav style={{flex:1,padding:'8px 0',overflowY:'auto'}}>
-        <div style={{padding:'12px 16px 4px',fontSize:10,fontWeight:600,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--n400)',fontFamily:'var(--ff-m)'}}>Operations</div>
+        <div className="sidebar-section" style={{padding:'12px 16px 4px',fontSize:10,fontWeight:600,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--n400)',fontFamily:'var(--ff-m)'}}>Operations</div>
 
-        <div className={`nav-item${active==='dashboard'?' active':''}`} onClick={() => go('/dashboard')}>
-          {icons.dashboard} Dashboard
-        </div>
-        <div className={`nav-item${active==='assets'?' active':''}`} onClick={() => go('/assets')}>
-          {icons.assets} Assets
-        </div>
-        <div className={`nav-item${active==='work-orders'?' active':''}`} onClick={() => go('/work-orders')}>
-          {icons.workorders} Work Orders
-        </div>
-        <div className={`nav-item${active==='inspections'?' active':''}`} onClick={() => go('/inspections')}>
-          {icons.inspections} Inspections
-        </div>
-        <div className={`nav-item${active==='maintenance'?' active':''}`} onClick={() => go('/maintenance')}>
-          {icons.maintenance} Maintenance
-        </div>
-        <div className={`nav-item${active==='compliance'?' active':''}`} onClick={() => go('/compliance')}>
-          {icons.compliance} Compliance
-        </div>
-        <div className={`nav-item${active==='reports'?' active':''}`} onClick={() => go('/reports')}>
-          {icons.reports} Reports
-        </div>
-        <div className={`nav-item${active==='devices'?' active':''}`} onClick={() => go('/devices')}>
-          {icons.devices} Devices
-        </div>
+        {OPERATIONS.map((item) => <NavItem key={item.key} item={item} />)}
 
         <div style={{height:1,background:'var(--n200)',margin:'8px 16px'}}/>
 
-        <div className={`nav-item${active==='notifications'?' active':''}`} onClick={() => go('/notifications')}>
-          {icons.notifications} Notifications
-        </div>
-        {canAdmin && (
-          <div className={`nav-item${active==='admin'?' active':''}`} onClick={() => go('/admin')}>
-            {icons.users} Admin
-          </div>
-        )}
-        <div className={`nav-item${active==='integrations'?' active':''}`} onClick={() => go('/integrations')}>
-          {icons.integrations} Integrations
-        </div>
-        <div className={`nav-item${active==='settings'?' active':''}`} onClick={() => go('/settings')}>
-          {icons.settings} Settings
-        </div>
+        <NavItem item={{ key: 'notifications', label: 'Notifications', path: '/notifications', icon: icons.notifications }} />
+        {canAdmin && <NavItem item={{ key: 'admin', label: 'Admin', path: '/admin', icon: icons.users }} />}
+        <NavItem item={{ key: 'integrations', label: 'Integrations', path: '/integrations', icon: icons.integrations }} />
+        <NavItem item={{ key: 'settings', label: 'Settings', path: '/settings', icon: icons.settings }} />
       </nav>
 
-      <div style={{borderTop:'var(--bdr)',padding:'12px 16px',display:'flex',alignItems:'center',gap:8}}>
-        <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b700)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'#fff'}}>{initials}</div>
-        <div style={{minWidth:0}}>
+      <button className="sidebar-collapse-btn" onClick={toggleCollapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+        <svg className="sidebar-collapse-chevron" width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <span className="sidebar-collapse-label">Collapse</span>
+      </button>
+
+      <div className="sidebar-footer" style={{borderTop:'var(--bdr)',padding:'12px 16px',display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+        <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b700)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'#fff',flexShrink:0}}>{initials}</div>
+        <div className="sidebar-userinfo" style={{minWidth:0}}>
           <div style={{fontSize:12,fontWeight:500,color:'var(--n900)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fullName || '—'}</div>
           <div style={{fontSize:10,color:'var(--n500)'}}>{ROLE_LABELS[roleKey] || ''}</div>
         </div>

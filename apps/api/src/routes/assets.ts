@@ -24,13 +24,17 @@ const ALLOWED = [
   'assigned_operator_id', 'last_maintenance_at', 'next_maintenance_at', 'documents',
 ]
 
+// An asset's location is derived from its site (site -> location), so the two
+// always stay in sync from the single site_id the asset stores.
 const SELECT = `
   select a.*,
-    case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name) end as site,
+    case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name, 'location_id', s.location_id) end as site,
+    case when loc.id is null then null else jsonb_build_object('id', loc.id, 'name', loc.name) end as location,
     case when c.id is null then null else jsonb_build_object('id', c.id, 'name', c.name) end as category,
     case when op.id is null then null else jsonb_build_object('id', op.id, 'full_name', op.full_name) end as operator
   from public.assets a
   left join public.sites s on s.id = a.site_id
+  left join public.locations loc on loc.id = s.location_id
   left join public.asset_categories c on c.id = a.category_id
   left join public.users op on op.id = a.assigned_operator_id
 `
@@ -152,11 +156,22 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
 
   const results = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows: cats } = await c.query('select id, name, code from public.asset_categories where org_id = current_org_id()')
-    const { rows: sites } = await c.query('select id, name, code from public.sites where deleted_at is null')
+    const { rows: sites } = await c.query('select id, name, code, location_id from public.sites where deleted_at is null')
+    const { rows: locs } = await c.query('select id, name, code from public.locations where deleted_at is null')
     const catByKey = new Map<string, string>()
     for (const cat of cats) { if (cat.name) catByKey.set(String(cat.name).toLowerCase(), cat.id); if (cat.code) catByKey.set(String(cat.code).toLowerCase(), cat.id) }
+    const locByKey = new Map<string, string>()
+    for (const l of locs) { if (l.name) locByKey.set(String(l.name).toLowerCase(), l.id); if (l.code) locByKey.set(String(l.code).toLowerCase(), l.id) }
+    // name/code -> a site id; and (locationId::name/code) -> site id, so a
+    // `location` column disambiguates sites that share a name across locations.
     const siteByKey = new Map<string, string>()
-    for (const s of sites) { if (s.name) siteByKey.set(String(s.name).toLowerCase(), s.id); if (s.code) siteByKey.set(String(s.code).toLowerCase(), s.id) }
+    const siteByLocKey = new Map<string, string>()
+    for (const s of sites) {
+      for (const k of [s.name, s.code].filter(Boolean).map((v: string) => String(v).toLowerCase())) {
+        if (!siteByKey.has(k)) siteByKey.set(k, s.id)
+        if (s.location_id) siteByLocKey.set(`${s.location_id}::${k}`, s.id)
+      }
+    }
 
     const out: Array<{ ain: string; status: 'created' | 'skipped' | 'error'; message?: string }> = []
     for (const raw of rows) {
@@ -164,7 +179,11 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
       if (!parsed.success) { out.push({ ain: String(raw?.ain ?? '(missing)'), status: 'error', message: 'ain and name are required' }); continue }
       const r = parsed.data as Record<string, any>
       const categoryId = r.category ? catByKey.get(String(r.category).toLowerCase()) ?? null : null
-      const siteId = r.site ? siteByKey.get(String(r.site).toLowerCase()) ?? null : null
+      const locationId = r.location ? locByKey.get(String(r.location).toLowerCase()) ?? null : null
+      const siteKey = r.site ? String(r.site).toLowerCase() : null
+      const siteId = siteKey
+        ? (locationId && siteByLocKey.get(`${locationId}::${siteKey}`)) || siteByKey.get(siteKey) || null
+        : null
       const specs: Record<string, unknown> = {}
       if (r.manufacturer) specs.manufacturer = r.manufacturer
       if (r.model) specs.model = r.model
