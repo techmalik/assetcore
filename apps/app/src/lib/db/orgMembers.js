@@ -10,12 +10,16 @@ export async function listOrgUsers() {
   return api.get('/org/users')
 }
 
-export async function inviteOrgMember({ email, full_name, role_key }) {
-  return api.post('/org/members/invite', { email, full_name, role_key })
+export async function inviteOrgMember({ email, full_name, role_key, site_scope, location_scope, extra_caps }) {
+  return api.post('/org/members/invite', { email, full_name, role_key, site_scope, location_scope, extra_caps })
 }
 
 export async function updateOrgMemberRole(id, role_key) {
   return api.patch(`/org/members/${id}/role`, { role_key })
+}
+
+export async function updateOrgMemberAccess(id, { site_scope, location_scope, extra_caps }) {
+  return api.patch(`/org/members/${id}/access`, { site_scope, location_scope, extra_caps })
 }
 
 export async function setOrgMemberStatus(id, enable) {

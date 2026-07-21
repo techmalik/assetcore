@@ -667,10 +667,10 @@ function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore,
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Assets({ dark, toggleDark }) {
-  const { roleKey } = useAuth()
-  const canCreate = can(roleKey, 'asset:create')
-  const canEdit = can(roleKey, 'asset:update')
-  const canWO = can(roleKey, 'wo:create')
+  const { roleKey, extraCaps } = useAuth()
+  const canCreate = can(roleKey, 'asset:create', extraCaps)
+  const canEdit = can(roleKey, 'asset:update', extraCaps)
+  const canWO = can(roleKey, 'wo:create', extraCaps)
 
   const [assets, setAssets] = useState([])
   const [sites, setSites] = useState([])

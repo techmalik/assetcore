@@ -51,9 +51,9 @@ export function onAuthStateChange(cb) {
 }
 
 export function getOrgRole(session) {
-  if (!session?.access_token) return { orgId: null, roleKey: null }
+  if (!session?.access_token) return { orgId: null, roleKey: null, extraCaps: [] }
   const c = decodeJwt(session.access_token)
-  return { orgId: c.org_id ?? null, roleKey: c.role_key ?? null }
+  return { orgId: c.org_id ?? null, roleKey: c.role_key ?? null, extraCaps: c.extra_caps ?? [] }
 }
 
 export async function currentOrgId() {

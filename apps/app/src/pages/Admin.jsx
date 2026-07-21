@@ -2,16 +2,67 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { listSites, createSite, updateSite, softDeleteSite } from '../lib/db/sites.js'
+import { listLocations, createLocation, updateLocation, softDeleteLocation } from '../lib/db/locations.js'
 import { listCategories, createCategory, updateCategory, deleteCategory } from '../lib/db/categories.js'
 import { listAuditLog } from '../lib/db/audit.js'
-import { listOrgMembers, inviteOrgMember, updateOrgMemberRole, setOrgMemberStatus, resetOrgMemberPassword } from '../lib/db/orgMembers.js'
+import { listOrgMembers, inviteOrgMember, updateOrgMemberRole, updateOrgMemberAccess, setOrgMemberStatus, resetOrgMemberPassword } from '../lib/db/orgMembers.js'
+import { getOrg, updateOrg } from '../lib/db/org.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac.js'
 
+// Capabilities an admin can grant per-user on top of the role baseline
+// (mirrors GRANTABLE_CAPS in apps/api/src/routes/orgMembers.ts).
+const GRANTABLE_CAPS = [
+  { key: 'asset:update', label: 'Edit assets' },
+  { key: 'asset:create', label: 'Create assets' },
+  { key: 'wo:create', label: 'Create work orders' },
+  { key: 'wo:transition', label: 'Change work-order status' },
+  { key: 'pm:update', label: 'Update maintenance status' },
+  { key: 'inspection:update', label: 'Update inspection status' },
+  { key: 'compliance:update', label: 'Manage compliance' },
+  { key: 'report:create', label: 'Generate reports' },
+  { key: 'audit:read', label: 'View audit log' },
+]
+
+// Shared scope + capability picker used by the invite and edit-access modals.
+function ScopeCapsFields({ locations, sites, value, onChange }) {
+  const toggle = (field, id) => {
+    const cur = value[field] || []
+    onChange({ ...value, [field]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] })
+  }
+  const scoped = (value.location_scope?.length || 0) + (value.site_scope?.length || 0) > 0
+  const box = { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }
+  const chip = (on) => ({ fontSize: 11, padding: '3px 9px', borderRadius: 12, cursor: 'pointer', border: `1px solid ${on ? 'var(--b300)' : 'var(--n200)'}`, background: on ? 'var(--b50)' : 'var(--n0)', color: on ? 'var(--b700)' : 'var(--n600)' })
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)' }}>Access scope</div>
+        <div style={{ fontSize: 11, color: 'var(--n500)' }}>{scoped ? 'Limited to the selections below.' : 'No selection = access to all locations & sites.'}</div>
+        <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 8 }}>Locations (grants every site in them)</div>
+        <div style={box}>
+          {locations.map((l) => <span key={l.id} onClick={() => toggle('location_scope', l.id)} style={chip(value.location_scope?.includes(l.id))}>{l.name}</span>)}
+          {locations.length === 0 && <span style={{ fontSize: 11, color: 'var(--n400)' }}>No locations yet.</span>}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 8 }}>Additional specific sites</div>
+        <div style={box}>
+          {sites.map((s) => <span key={s.id} onClick={() => toggle('site_scope', s.id)} style={chip(value.site_scope?.includes(s.id))}>{s.name}</span>)}
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)' }}>Extra permissions</div>
+        <div style={{ fontSize: 11, color: 'var(--n500)' }}>Granted on top of the role's defaults.</div>
+        <div style={box}>
+          {GRANTABLE_CAPS.map((c) => <span key={c.key} onClick={() => toggle('extra_caps', c.key)} style={chip(value.extra_caps?.includes(c.key))}>{c.label}</span>)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Sites Tab ────────────────────────────────────────────────────────────────
 
-function SiteModal({ site, onClose, onSave }) {
-  const [form, setForm] = useState({ name: site?.name || '', code: site?.code || '', region: site?.region || '' })
+function SiteModal({ site, locations, onClose, onSave }) {
+  const [form, setForm] = useState({ name: site?.name || '', code: site?.code || '', region: site?.region || '', location_id: site?.location_id || '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -20,8 +71,9 @@ function SiteModal({ site, onClose, onSave }) {
     if (!form.name.trim() || !form.code.trim()) { setErr('Name and code are required.'); return }
     setSaving(true)
     try {
-      if (site) await updateSite(site.id, form)
-      else await createSite(form)
+      const payload = { ...form, location_id: form.location_id || null }
+      if (site) await updateSite(site.id, payload)
+      else await createSite(payload)
       onSave()
     } catch (ex) { setErr(ex.message) } finally { setSaving(false) }
   }
@@ -38,6 +90,14 @@ function SiteModal({ site, onClose, onSave }) {
                 style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}/>
             </label>
           ))}
+          <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
+            Location
+            <select value={form.location_id} onChange={e => setForm(f => ({...f,location_id:e.target.value}))}
+              style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}>
+              <option value="">— Unassigned —</option>
+              {(locations||[]).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </label>
           {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
           <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:6}}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -51,13 +111,17 @@ function SiteModal({ site, onClose, onSave }) {
 
 function SitesTab() {
   const [sites, setSites] = useState([])
+  const [locations, setLocations] = useState([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
   const [modal, setModal] = useState(null) // null | 'new' | site object
+  const locName = (id) => locations.find(l => l.id === id)?.name
 
   function load() {
     setLoading(true)
-    listSites().then(s => { setSites(s); setLoading(false) }).catch(e => { setErr(e.message); setLoading(false) })
+    Promise.all([listSites(), listLocations().catch(() => [])])
+      .then(([s, l]) => { setSites(s); setLocations(l); setLoading(false) })
+      .catch(e => { setErr(e.message); setLoading(false) })
   }
 
   useEffect(() => { load() }, [])
@@ -93,7 +157,10 @@ function SitesTab() {
                   <button onClick={() => archive(s.id)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--srt)',cursor:'pointer'}}>Archive</button>
                 </div>
               </div>
-              {s.region && <div style={{fontSize:11,color:'var(--n500)'}}>{s.region}</div>}
+              <div style={{fontSize:11,color:'var(--n500)',display:'flex',gap:8}}>
+                {locName(s.location_id) && <span style={{color:'var(--b600)'}}>📍 {locName(s.location_id)}</span>}
+                {s.region && <span>{s.region}</span>}
+              </div>
             </div>
           ))}
         </div>
@@ -101,6 +168,106 @@ function SitesTab() {
       {modal && (
         <SiteModal
           site={modal === 'new' ? null : modal}
+          locations={locations}
+          onClose={() => setModal(null)}
+          onSave={() => { setModal(null); load() }}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Locations Tab ─────────────────────────────────────────────────────────────
+
+function LocationModal({ location, onClose, onSave }) {
+  const [form, setForm] = useState({ name: location?.name || '', code: location?.code || '' })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!form.name.trim()) { setErr('Name is required.'); return }
+    setSaving(true)
+    try {
+      if (location) await updateLocation(location.id, form)
+      else await createLocation(form)
+      onSave()
+    } catch (ex) { setErr(ex.message) } finally { setSaving(false) }
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:380,padding:24,boxShadow:'var(--sh-lg)'}}>
+        <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:18}}>{location ? 'Edit Location' : 'Add Location'}</div>
+        <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
+          {[['name','Location Name','e.g. Lagos'],['code','Short Code (optional)','e.g. LG']].map(([k,l,ph]) => (
+            <label key={k} style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
+              {l}
+              <input value={form[k]} onChange={e => setForm(f => ({...f,[k]:e.target.value}))} placeholder={ph}
+                style={{height:36,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,color:'var(--n900)',background:'var(--n0)'}}/>
+            </label>
+          ))}
+          {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:6}}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function LocationsTab() {
+  const [locations, setLocations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState('')
+  const [modal, setModal] = useState(null)
+
+  function load() {
+    setLoading(true)
+    listLocations().then(l => { setLocations(l); setLoading(false) }).catch(e => { setErr(e.message); setLoading(false) })
+  }
+  useEffect(() => { load() }, [])
+
+  async function archive(id) {
+    if (!confirm('Archive this location? Its sites keep working but lose their location link.')) return
+    try { await softDeleteLocation(id); load() } catch (e) { alert(e.message) }
+  }
+
+  return (
+    <div style={{flex:1,overflowY:'auto',padding:'20px 24px'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+        <div style={{fontSize:14,fontWeight:600,color:'var(--n800)'}}>Locations ({locations.length})</div>
+        <button className="btn btn-primary" style={{height:32,padding:'0 14px',fontSize:13}} onClick={() => setModal('new')}>+ Add Location</button>
+      </div>
+      {loading ? (
+        <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
+      ) : err ? (
+        <div style={{padding:12,background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:6,fontSize:13,color:'var(--srt)'}}>{err}</div>
+      ) : locations.length === 0 ? (
+        <div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>No locations yet. A location groups one or more sites; staff can be scoped to whole locations.</div>
+      ) : (
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:10}}>
+          {locations.map(l => (
+            <div key={l.id} style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:6,padding:'14px 16px',display:'flex',flexDirection:'column',gap:6}}>
+              <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:'var(--n900)'}}>📍 {l.name}</div>
+                  <div style={{fontSize:11,color:'var(--n500)',marginTop:2}}>{l.site_count} site{l.site_count !== 1 ? 's' : ''}{l.code ? ` · ${l.code}` : ''}</div>
+                </div>
+                <div style={{display:'flex',gap:4}}>
+                  <button onClick={() => setModal(l)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--n600)',cursor:'pointer'}}>Edit</button>
+                  <button onClick={() => archive(l.id)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--srt)',cursor:'pointer'}}>Archive</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {modal && (
+        <LocationModal
+          location={modal === 'new' ? null : modal}
           onClose={() => setModal(null)}
           onSave={() => { setModal(null); load() }}
         />
@@ -208,11 +375,12 @@ function CategoriesTab() {
 // ── Users Tab ──────────────────────────────────────────────────────────────
 
 const ROLES_LIST = [
-  {key:'owner',label:'Owner',desc:'Full access including billing and org settings.',perms:['All modules','Admin','Billing']},
-  {key:'ops_manager',label:'Ops Manager',desc:'Full access to assets, work orders, maintenance, reports.',perms:['Assets (full)','Work Orders (full)','Maintenance (full)','Reports (full)']},
+  {key:'owner',label:'System Admin',desc:'Full access including team, locations, org settings and audit.',perms:['All modules','Admin','Team & RBAC']},
+  {key:'ops_manager',label:'Operations Manager',desc:'Full access to assets, work orders, maintenance, reports.',perms:['Assets (full)','Work Orders (full)','Maintenance (full)','Reports (full)']},
   {key:'maint_engineer',label:'Maintenance Engineer',desc:'Create and complete work orders, log maintenance.',perms:['Assets (view/edit)','Work Orders (full)','Maintenance (full)']},
   {key:'field_tech',label:'Field Technician',desc:'View and update assigned work orders.',perms:['Assets (view)','Work Orders (assigned only)','Maintenance (assigned only)']},
   {key:'hse_officer',label:'HSE / Compliance Officer',desc:'Full access to compliance and inspections.',perms:['Assets (view)','Compliance (full)','Inspections (full)','Reports (view)']},
+  {key:'auditor',label:'Auditor',desc:'Read-only across all modules, plus full audit-log visibility.',perms:['All modules (read)','Audit log']},
   {key:'viewer',label:'Viewer',desc:'Read-only access to dashboard and reports.',perms:['Dashboard (view)','Reports (view)']},
 ]
 
@@ -222,8 +390,9 @@ function initials(name) {
   return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || name[0].toUpperCase()
 }
 
-function InviteModal({ onClose, onInvited }) {
+function InviteModal({ locations, sites, onClose, onInvited }) {
   const [form, setForm] = useState({ email: '', full_name: '', role_key: 'field_tech' })
+  const [scope, setScope] = useState({ location_scope: [], site_scope: [], extra_caps: [] })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [link, setLink] = useState(null)
@@ -233,7 +402,12 @@ function InviteModal({ onClose, onInvited }) {
     if (!form.email.trim() || !form.full_name.trim()) { setErr('Email and name are required.'); return }
     setBusy(true); setErr('')
     try {
-      const { invite_link } = await inviteOrgMember(form)
+      const { invite_link } = await inviteOrgMember({
+        ...form,
+        location_scope: scope.location_scope.length ? scope.location_scope : null,
+        site_scope: scope.site_scope.length ? scope.site_scope : null,
+        extra_caps: scope.extra_caps,
+      })
       if (invite_link) setLink(invite_link)
       else { onInvited(); onClose() }
     } catch (ex) { setErr(ex.message) } finally { setBusy(false) }
@@ -256,7 +430,7 @@ function InviteModal({ onClose, onInvited }) {
 
   return (
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:400,padding:24,boxShadow:'var(--sh-lg)'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:480,maxWidth:'94vw',maxHeight:'92vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
         <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:18}}>Invite a team member</div>
         <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
           <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
@@ -276,6 +450,7 @@ function InviteModal({ onClose, onInvited }) {
               {ROLES_LIST.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
             </select>
           </label>
+          <ScopeCapsFields locations={locations} sites={sites} value={scope} onChange={setScope} />
           {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
           <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:6}}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -287,10 +462,50 @@ function InviteModal({ onClose, onInvited }) {
   )
 }
 
+function AccessModal({ member, locations, sites, onClose, onSaved }) {
+  const [scope, setScope] = useState({
+    location_scope: member.location_scope || [],
+    site_scope: member.site_scope || [],
+    extra_caps: member.extra_caps || [],
+  })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function save() {
+    setSaving(true); setErr('')
+    try {
+      await updateOrgMemberAccess(member.id, {
+        location_scope: scope.location_scope.length ? scope.location_scope : null,
+        site_scope: scope.site_scope.length ? scope.site_scope : null,
+        extra_caps: scope.extra_caps,
+      })
+      onSaved()
+    } catch (e) { setErr(e.message); setSaving(false) }
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:480,maxWidth:'94vw',maxHeight:'92vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
+        <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:4}}>Access & permissions</div>
+        <div style={{fontSize:12,color:'var(--n500)',marginBottom:16}}>{member.full_name || member.email}</div>
+        <ScopeCapsFields locations={locations} sites={sites} value={scope} onChange={setScope} />
+        {err && <div style={{fontSize:12,color:'var(--srt)',marginTop:10}}>{err}</div>}
+        <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:18}}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn btn-primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save access'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function UsersTab() {
   const [subtab, setSubtab] = useState('members')
   const [inviteOpen, setInviteOpen] = useState(false)
   const [members, setMembers] = useState([])
+  const [locations, setLocations] = useState([])
+  const [sites, setSites] = useState([])
+  const [accessMember, setAccessMember] = useState(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
   const [resetLink, setResetLink] = useState(null)
@@ -299,7 +514,9 @@ function UsersTab() {
 
   function load() {
     setLoading(true)
-    listOrgMembers().then(m => { setMembers(m); setLoading(false) }).catch(e => { setErr(e.message); setLoading(false) })
+    Promise.all([listOrgMembers(), listLocations().catch(() => []), listSites().catch(() => [])])
+      .then(([m, l, s]) => { setMembers(m); setLocations(l); setSites(s); setLoading(false) })
+      .catch(e => { setErr(e.message); setLoading(false) })
   }
   useEffect(() => { load() }, [])
 
@@ -378,6 +595,7 @@ function UsersTab() {
                         <td style={{padding:'11px 14px'}}>
                           {canManage && !isSelf && (
                             <div style={{display:'flex',gap:6}}>
+                              <button onClick={() => setAccessMember(m)} style={{padding:'3px 8px',border:'1px solid var(--b200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--b700)',cursor:'pointer'}}>Access</button>
                               <button onClick={() => sendReset(m)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--n600)',cursor:'pointer'}}>Reset password</button>
                               <button onClick={() => toggleStatus(m)} style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:disabled?'var(--sgt)':'var(--srt)',cursor:'pointer'}}>{disabled?'Enable':'Disable'}</button>
                             </div>
@@ -409,7 +627,8 @@ function UsersTab() {
           </div>
         )}
       </div>
-      {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} onInvited={load} />}
+      {inviteOpen && <InviteModal locations={locations} sites={sites} onClose={() => setInviteOpen(false)} onInvited={load} />}
+      {accessMember && <AccessModal member={accessMember} locations={locations} sites={sites} onClose={() => setAccessMember(null)} onSaved={() => { setAccessMember(null); load() }} />}
       {resetLink && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,padding:24,boxShadow:'var(--sh-lg)'}}>
@@ -519,17 +738,76 @@ function AuditTab() {
   )
 }
 
+// ── Configuration Tab ─────────────────────────────────────────────────────────
+
+function ConfigTab() {
+  const { roleKey } = useAuth()
+  const canEdit = can(roleKey, 'org:manage')
+  const [org, setOrg] = useState(null)
+  const [threshold, setThreshold] = useState(50)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  useEffect(() => {
+    getOrg()
+      .then(o => { setOrg(o); setThreshold(o.settings?.health?.inspectionThreshold ?? 50); setLoading(false) })
+      .catch(e => { setMsg(e.message); setLoading(false) })
+  }, [])
+
+  async function save() {
+    setSaving(true); setMsg(null)
+    try {
+      const t = Math.max(1, Math.min(99, Number(threshold) || 50))
+      const settings = { ...(org?.settings || {}), health: { ...(org?.settings?.health || {}), inspectionThreshold: t } }
+      const updated = await updateOrg({ settings })
+      setOrg(updated); setThreshold(t); setMsg('Saved.')
+    } catch (e) { setMsg(e.message) } finally { setSaving(false) }
+  }
+
+  return (
+    <div style={{flex:1,overflowY:'auto',padding:'20px 24px'}}>
+      {loading ? (
+        <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
+      ) : (
+        <div style={{maxWidth:520,background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:'18px 20px'}}>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--n800)',marginBottom:4}}>Health & inspection threshold</div>
+          <div style={{fontSize:12,color:'var(--n500)',marginBottom:14,lineHeight:1.6}}>
+            When an asset's health falls to this percentage, an inspection alert is raised. Maintenance alerts and auto-drafted work orders always trigger at 30%.
+          </div>
+          <label style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'var(--n700)'}}>
+            Inspection alert at
+            <input type="number" min={1} max={99} value={threshold} disabled={!canEdit}
+              onChange={e => setThreshold(e.target.value)}
+              style={{width:80,height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,background:canEdit?'var(--n0)':'var(--n50)',color:'var(--n900)'}}/>
+            % health
+          </label>
+          {!canEdit && <div style={{fontSize:11,color:'var(--n400)',marginTop:8}}>Only a System Admin can change this.</div>}
+          {msg && <div style={{fontSize:12,color:msg==='Saved.'?'var(--sgt)':'var(--srt)',marginTop:10}}>{msg}</div>}
+          {canEdit && (
+            <div style={{marginTop:16}}>
+              <button className="btn btn-primary" style={{height:34,padding:'0 16px',fontSize:13}} disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Admin page ───────────────────────────────────────────────────────────
 
 const TABS = [
+  { k: 'locations', label: 'Locations' },
   { k: 'sites', label: 'Sites' },
   { k: 'categories', label: 'Asset Categories' },
   { k: 'users', label: 'Users & Roles' },
+  { k: 'config', label: 'Configuration' },
   { k: 'audit', label: 'Audit Log' },
 ]
 
 export default function Admin({ dark, toggleDark }) {
-  const [tab, setTab] = useState('sites')
+  const [tab, setTab] = useState('locations')
 
   return (
     <div className="app-shell">
@@ -549,9 +827,11 @@ export default function Admin({ dark, toggleDark }) {
             </div>
           </div>
           <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+            {tab === 'locations' && <LocationsTab />}
             {tab === 'sites' && <SitesTab />}
             {tab === 'categories' && <CategoriesTab />}
             {tab === 'users' && <UsersTab />}
+            {tab === 'config' && <ConfigTab />}
             {tab === 'audit' && <AuditTab />}
           </div>
         </div>

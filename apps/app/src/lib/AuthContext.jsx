@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
     return s
   }, [])
 
-  const { orgId, roleKey } = getOrgRole(session)
+  const { orgId, roleKey, extraCaps } = getOrgRole(session)
 
   // Load org and check if onboarding is needed (no sites yet).
   useEffect(() => {
@@ -56,6 +56,7 @@ export function AuthProvider({ children }) {
     user,
     orgId,
     roleKey,
+    extraCaps: extraCaps ?? [],
     org,
     fullName,
     initials: initialsOf(fullName),
