@@ -33,10 +33,12 @@ const ROLE_CAPABILITIES = {
     'compliance:read', 'compliance:create', 'compliance:update',
     'report:read', 'report:create',
   ],
+  auditor: ['*:read', 'audit:read'],
   viewer: ['*:read'],
 }
 
-export function can(roleKey, capability) {
+export function can(roleKey, capability, extraCaps = []) {
+  if (extraCaps?.includes(capability)) return true
   const caps = ROLE_CAPABILITIES[roleKey]
   if (!caps) return false
   if (caps.includes('*')) return true
@@ -46,10 +48,11 @@ export function can(roleKey, capability) {
 }
 
 export const ROLE_LABELS = {
-  owner: 'Org Owner / Admin',
+  owner: 'System Admin',
   ops_manager: 'Operations Manager',
   maint_engineer: 'Maintenance Engineer',
   field_tech: 'Field Technician',
   hse_officer: 'HSE Officer',
+  auditor: 'Auditor',
   viewer: 'Executive / Viewer',
 }

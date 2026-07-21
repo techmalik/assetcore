@@ -23,6 +23,9 @@ export type Claims = {
   userId: string | null
   orgId: string | null
   roleKey: string | null
+  // Effective site scope; null = all sites. Serialized into the app.site_ids
+  // GUC that current_site_ids() reads for RLS scoping.
+  siteIds?: string[] | null
 }
 
 /**
@@ -39,10 +42,11 @@ export async function withOrgContext<T>(
   const client = await pool.connect()
   try {
     await client.query('begin')
-    await client.query('select set_config($1, $2, true), set_config($3, $4, true), set_config($5, $6, true)', [
+    await client.query('select set_config($1, $2, true), set_config($3, $4, true), set_config($5, $6, true), set_config($7, $8, true)', [
       'app.org_id', claims.orgId ?? '',
       'app.user_id', claims.userId ?? '',
       'app.role_key', claims.roleKey ?? '',
+      'app.site_ids', claims.siteIds && claims.siteIds.length ? claims.siteIds.join(',') : '',
     ])
     const result = await fn(client)
     await client.query('commit')

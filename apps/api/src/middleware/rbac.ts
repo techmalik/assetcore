@@ -32,10 +32,18 @@ const ROLE_CAPABILITIES: Record<string, string[]> = {
     'compliance:read', 'compliance:create', 'compliance:update',
     'report:read', 'report:create',
   ],
+  // Read-only across entities, plus audit visibility.
+  auditor: ['*:read', 'audit:read'],
   viewer: ['*:read'],
 }
 
-export function can(roleKey: string | null | undefined, capability: string): boolean {
+export function can(
+  roleKey: string | null | undefined,
+  capability: string,
+  extraCaps: string[] = []
+): boolean {
+  // Per-user grants (admin-assigned) sit on top of the role baseline.
+  if (extraCaps.includes(capability)) return true
   const caps = roleKey ? ROLE_CAPABILITIES[roleKey] : undefined
   if (!caps) return false
   if (caps.includes('*')) return true
@@ -44,10 +52,11 @@ export function can(roleKey: string | null | undefined, capability: string): boo
   return false
 }
 
-/** Mount after requireAuth. 403s unless the caller's role_key has `capability`. */
+/** Mount after requireAuth. 403s unless the caller's role or per-user grants
+ * include `capability`. */
 export function requireCap(capability: string) {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!can(req.claims?.role_key, capability)) {
+    if (!can(req.claims?.role_key, capability, req.claims?.extra_caps ?? [])) {
       return res.status(403).json({ error: 'forbidden', capability })
     }
     next()

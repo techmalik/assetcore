@@ -16,7 +16,25 @@ import { sendMail } from '../auth/mailer.js'
 export const orgMembersRouter = Router()
 orgMembersRouter.use(requireAuth, requireOrg, requireActiveMembership, requireCap('user:manage'))
 
-const ROLE_KEYS = ['owner', 'ops_manager', 'maint_engineer', 'field_tech', 'hse_officer', 'viewer'] as const
+const ROLE_KEYS = ['owner', 'ops_manager', 'maint_engineer', 'field_tech', 'hse_officer', 'auditor', 'viewer'] as const
+
+// Capabilities an admin may grant per-user on top of the role baseline. Kept to
+// operational edit rights — never wildcards or org/user/integration management,
+// which stay owner-only.
+const GRANTABLE_CAPS = [
+  'asset:create', 'asset:update',
+  'wo:create', 'wo:update', 'wo:assign', 'wo:transition',
+  'pm:create', 'pm:update',
+  'inspection:create', 'inspection:update',
+  'compliance:create', 'compliance:update',
+  'report:create', 'audit:read',
+] as const
+
+const scopeSchema = z.object({
+  site_scope: z.array(z.string().uuid()).nullable().optional(),
+  location_scope: z.array(z.string().uuid()).nullable().optional(),
+  extra_caps: z.array(z.enum(GRANTABLE_CAPS)).optional(),
+})
 
 async function countActiveOwners(orgId: string): Promise<number> {
   const { rows } = await ownerPool.query(
@@ -39,7 +57,8 @@ async function getOrgMembership(orgId: string, membershipId: string) {
 orgMembersRouter.get('/org/members', async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(
-      `select m.id, m.user_id, m.role_key, m.status, m.created_at, u.full_name, u.email, u.phone
+      `select m.id, m.user_id, m.role_key, m.status, m.created_at, m.site_scope, m.location_scope, m.extra_caps,
+              u.full_name, u.email, u.phone
        from public.memberships m
        join public.users u on u.id = m.user_id
        where m.org_id = current_org_id()
@@ -53,12 +72,15 @@ const inviteSchema = z.object({
   email: z.string().email(),
   full_name: z.string().min(1),
   role_key: z.enum(ROLE_KEYS),
+  site_scope: z.array(z.string().uuid()).nullable().optional(),
+  location_scope: z.array(z.string().uuid()).nullable().optional(),
+  extra_caps: z.array(z.enum(GRANTABLE_CAPS)).optional(),
 })
 
 orgMembersRouter.post('/org/members/invite', async (req, res) => {
   const parsed = inviteSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { email, full_name, role_key } = parsed.data
+  const { email, full_name, role_key, site_scope, location_scope, extra_caps } = parsed.data
   const orgId = req.claims!.org_id!
 
   const client = await ownerPool.connect()
@@ -93,8 +115,9 @@ orgMembersRouter.post('/org/members/invite', async (req, res) => {
     }
 
     await client.query(
-      `insert into public.memberships (org_id, user_id, role_key, status) values ($1, $2, $3, 'active')`,
-      [orgId, userId, role_key]
+      `insert into public.memberships (org_id, user_id, role_key, site_scope, location_scope, extra_caps, status)
+       values ($1, $2, $3, $4, $5, $6, 'active')`,
+      [orgId, userId, role_key, site_scope ?? null, location_scope ?? null, extra_caps ?? []]
     )
 
     let inviteLink: string | null = null
@@ -147,6 +170,44 @@ orgMembersRouter.patch('/org/members/:id/role', async (req, res) => {
     await writeAuditLog(client, {
       orgId, actorId: req.claims!.sub, action: 'user.role', entityType: 'membership', entityId: req.params.id,
       before: { role_key: before.role_key }, after: { role_key: parsed.data.role_key },
+    })
+    await client.query('commit')
+    res.json(rows[0])
+  } catch (err) {
+    await client.query('rollback')
+    throw err
+  } finally {
+    client.release()
+  }
+})
+
+// Update a member's location/site scope and per-user capability grants. Sending
+// a field replaces it; omit a field to leave it unchanged. null scope = all.
+orgMembersRouter.patch('/org/members/:id/access', async (req, res) => {
+  const parsed = scopeSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const orgId = req.claims!.org_id!
+
+  const sets: string[] = []
+  const values: unknown[] = [req.params.id, orgId]
+  if ('site_scope' in parsed.data) { values.push(parsed.data.site_scope ?? null); sets.push(`site_scope = $${values.length}`) }
+  if ('location_scope' in parsed.data) { values.push(parsed.data.location_scope ?? null); sets.push(`location_scope = $${values.length}`) }
+  if ('extra_caps' in parsed.data) { values.push(parsed.data.extra_caps ?? []); sets.push(`extra_caps = $${values.length}`) }
+  if (!sets.length) return res.status(400).json({ error: 'empty_patch' })
+
+  const client = await ownerPool.connect()
+  try {
+    await client.query('begin')
+    const before = await getOrgMembership(orgId, req.params.id)
+    if (!before) { await client.query('rollback'); return res.status(404).json({ error: 'not_found' }) }
+    const { rows } = await client.query(
+      `update public.memberships set ${sets.join(', ')} where id = $1 and org_id = $2 returning *`,
+      values
+    )
+    await writeAuditLog(client, {
+      orgId, actorId: req.claims!.sub, action: 'user.access', entityType: 'membership', entityId: req.params.id,
+      before: { site_scope: before.site_scope, location_scope: before.location_scope, extra_caps: before.extra_caps },
+      after: parsed.data,
     })
     await client.query('commit')
     res.json(rows[0])

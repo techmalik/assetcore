@@ -24,12 +24,19 @@ const refreshCookieOpts = {
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false })
 const forgotLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false })
 
-/** Resolves the active membership (org_id/role_key) for a user, matching the old
- * custom_access_token_hook's semantics: earliest active membership in a non-deleted
- * org, or null/null for a platform admin with no membership. */
-async function resolveOrgRole(userId: string): Promise<{ orgId: string | null; roleKey: string | null }> {
+// UUID that matches no real site — the encoding for "scoped, but to zero sites"
+// (so an empty scope denies rather than falling back to the null = all-sites case).
+const NO_SITE = '00000000-0000-0000-0000-000000000000'
+
+/** Resolves the active membership (org/role/scope/grants) for a user: earliest
+ * active membership in a non-deleted org, or nulls for a platform admin with no
+ * membership. */
+async function resolveOrgRole(userId: string): Promise<{
+  orgId: string | null; roleKey: string | null
+  siteScope: string[] | null; locationScope: string[] | null; extraCaps: string[]
+}> {
   const { rows } = await ownerPool.query(
-    `select m.org_id, m.role_key
+    `select m.org_id, m.role_key, m.site_scope, m.location_scope, m.extra_caps
      from public.memberships m
      join public.organizations o on o.id = m.org_id
      where m.user_id = $1 and m.status = 'active' and o.deleted_at is null
@@ -37,12 +44,43 @@ async function resolveOrgRole(userId: string): Promise<{ orgId: string | null; r
      limit 1`,
     [userId]
   )
-  return { orgId: rows[0]?.org_id ?? null, roleKey: rows[0]?.role_key ?? null }
+  const r = rows[0]
+  return {
+    orgId: r?.org_id ?? null,
+    roleKey: r?.role_key ?? null,
+    siteScope: r?.site_scope ?? null,
+    locationScope: r?.location_scope ?? null,
+    extraCaps: r?.extra_caps ?? [],
+  }
+}
+
+/** Effective site-id set for the caller. NULL only when BOTH scopes are unset
+ * (= all sites, System Admin / senior staff). Otherwise the union of the
+ * explicit sites and every site in the scoped locations; [] collapses to
+ * [NO_SITE] so an empty scope denies. */
+async function resolveSiteIds(
+  orgId: string | null, siteScope: string[] | null, locationScope: string[] | null
+): Promise<string[] | null> {
+  if (!orgId) return null
+  if (siteScope == null && locationScope == null) return null
+  const ids = new Set<string>(siteScope ?? [])
+  if (locationScope && locationScope.length) {
+    const { rows } = await ownerPool.query(
+      'select id from public.sites where org_id = $1 and location_id = any($2) and deleted_at is null',
+      [orgId, locationScope]
+    )
+    for (const row of rows) ids.add(row.id)
+  }
+  const arr = [...ids]
+  return arr.length ? arr : [NO_SITE]
 }
 
 async function issueSession(res: import('express').Response, user: { id: string; email: string }) {
-  const { orgId, roleKey } = await resolveOrgRole(user.id)
-  const accessToken = await signAccessToken({ sub: user.id, email: user.email, org_id: orgId, role_key: roleKey })
+  const { orgId, roleKey, siteScope, locationScope, extraCaps } = await resolveOrgRole(user.id)
+  const siteIds = await resolveSiteIds(orgId, siteScope, locationScope)
+  const accessToken = await signAccessToken({
+    sub: user.id, email: user.email, org_id: orgId, role_key: roleKey, site_ids: siteIds, extra_caps: extraCaps,
+  })
   const client = await ownerPool.connect()
   try {
     const refreshToken = await issueToken(client, user.id, 'refresh')
@@ -50,7 +88,7 @@ async function issueSession(res: import('express').Response, user: { id: string;
   } finally {
     client.release()
   }
-  return { accessToken, orgId, roleKey }
+  return { accessToken, orgId, roleKey, extraCaps }
 }
 
 const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) })
@@ -143,6 +181,8 @@ authRouter.get('/me', requireAuth, async (req, res) => {
     mustChangePassword: user.must_change_password,
     orgId: req.claims!.org_id,
     roleKey: req.claims!.role_key,
+    extraCaps: req.claims!.extra_caps ?? [],
+    siteIds: req.claims!.site_ids ?? null,
   })
 })
 

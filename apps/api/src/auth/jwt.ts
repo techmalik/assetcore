@@ -8,10 +8,20 @@ export type AccessClaims = {
   email: string
   org_id: string | null
   role_key: string | null
+  // Effective site scope resolved at token-issue time; null = all sites.
+  site_ids: string[] | null
+  // Per-user capability grants beyond the role baseline.
+  extra_caps: string[]
 }
 
 export async function signAccessToken(claims: AccessClaims): Promise<string> {
-  return new SignJWT({ email: claims.email, org_id: claims.org_id, role_key: claims.role_key })
+  return new SignJWT({
+    email: claims.email,
+    org_id: claims.org_id,
+    role_key: claims.role_key,
+    site_ids: claims.site_ids,
+    extra_caps: claims.extra_caps,
+  })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(claims.sub)
     .setIssuedAt()
@@ -26,5 +36,7 @@ export async function verifyAccessToken(token: string): Promise<AccessClaims> {
     email: payload.email as string,
     org_id: (payload.org_id as string) ?? null,
     role_key: (payload.role_key as string) ?? null,
+    site_ids: (payload.site_ids as string[] | null) ?? null,
+    extra_caps: (payload.extra_caps as string[]) ?? [],
   }
 }

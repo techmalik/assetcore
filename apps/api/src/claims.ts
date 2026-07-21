@@ -6,5 +6,6 @@ export function claimsFromReq(req: Request): Claims {
     userId: req.claims?.sub ?? null,
     orgId: req.claims?.org_id ?? null,
     roleKey: req.claims?.role_key ?? null,
+    siteIds: req.claims?.site_ids ?? null,
   }
 }
