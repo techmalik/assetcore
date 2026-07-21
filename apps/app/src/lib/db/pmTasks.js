@@ -18,3 +18,9 @@ export async function generatePMTasks() {
   const { count } = await api.post('/pm/generate')
   return count
 }
+
+export async function uploadMaintenanceReport(id, file) {
+  const form = new FormData()
+  form.append('report', file)
+  return api.upload(`/pm-tasks/${id}/report`, form)
+}

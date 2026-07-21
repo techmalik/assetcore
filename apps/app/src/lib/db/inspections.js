@@ -15,3 +15,9 @@ export async function createInspection(data) {
 export async function updateInspection(id, updates) {
   return api.patch(`/inspections/${id}`, updates)
 }
+
+export async function uploadInspectionReport(id, file) {
+  const form = new FormData()
+  form.append('report', file)
+  return api.upload(`/inspections/${id}/report`, form)
+}

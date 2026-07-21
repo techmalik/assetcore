@@ -8,9 +8,12 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
+import { uploadTo } from '../files.js'
 
 export const pmTasksRouter = Router()
 pmTasksRouter.use(requireAuth, requireOrg, requireActiveMembership)
+
+const reportUpload = uploadTo('maintenance-reports')
 
 const ALLOWED = ['status', 'assignee_id', 'notes', 'checklist_results', 'completed_at', 'due_date']
 
@@ -70,12 +73,53 @@ pmTasksRouter.patch('/pm-tasks/:id', requireCap('pm:update'), async (req, res) =
     const { rows: full } = await c.query(`${SELECT} where t.id = $1`, [req.params.id])
     const task = full[0]
     if (patch.status === 'completed') {
+      // Completing maintenance resets the asset to full health and (re)sets the
+      // maintenance dates that the daily health-decay job reads from.
+      if (task.asset_id) {
+        await c.query(
+          `update public.assets
+           set health_score = 100, last_maintenance_at = current_date,
+               next_maintenance_at = coalesce(
+                 (select s.next_due from public.pm_schedules s where s.id = $2),
+                 current_date + interval '90 days'
+               )
+           where id = $1`,
+          [task.asset_id, task.schedule_id]
+        )
+        await c.query(
+          `insert into public.asset_activity (org_id, asset_id, user_id, kind, body)
+           values (current_org_id(), $1, current_user_id(), 'maintenance', $2)`,
+          [task.asset_id, `Maintenance completed (${task.title}) — health reset to 100%.`]
+        )
+      }
       await writeAuditLog(c, { orgId: task.org_id, actorId: req.claims!.sub, action: 'pm_task.complete', entityType: 'pm_task', entityId: task.id, after: task })
     }
     return task
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
   res.json(row)
+})
+
+// Maintenance report upload (by whoever can update PM tasks). Stored per task
+// and surfaced in the asset's maintenance history + activity feed.
+pmTasksRouter.post('/pm-tasks/:id/report', requireCap('pm:update'), reportUpload.single('report'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'missing_file' })
+  const url = `maintenance-reports/${req.file.filename}`
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query('update public.pm_tasks set report_url = $2 where id = $1 returning id, asset_id', [req.params.id, url])
+    if (!rows[0]) return null
+    if (rows[0].asset_id) {
+      await c.query(
+        `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
+         values (current_org_id(), $1, current_user_id(), 'maintenance', 'Maintenance report uploaded.', $2::jsonb)`,
+        [rows[0].asset_id, JSON.stringify([{ url, name: req.file!.originalname }])]
+      )
+    }
+    const { rows: full } = await c.query(`${SELECT} where t.id = $1`, [req.params.id])
+    return full[0]
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
+  res.status(201).json(row)
 })
 
 pmTasksRouter.post('/pm/generate', requireCap('pm:create'), async (req, res) => {

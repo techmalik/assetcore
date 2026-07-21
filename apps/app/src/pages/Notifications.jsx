@@ -10,6 +10,9 @@ const KIND_META = {
   wo_assigned:   { label:'Work Order', dot:'var(--sl)', bg:'var(--slb)', c:'var(--slt)' },
   pm_due:        { label:'Maintenance', dot:'var(--sa)', bg:'var(--sab)', c:'var(--sat)' },
   pm_overdue:    { label:'Maintenance', dot:'var(--sr)', bg:'var(--srb)', c:'var(--srt)' },
+  inspection_due:{ label:'Inspection',  dot:'var(--sa)', bg:'var(--sab)', c:'var(--sat)' },
+  maintenance_due:{ label:'Maintenance', dot:'var(--sr)', bg:'var(--srb)', c:'var(--srt)' },
+  licence_expiry:{ label:'Compliance',  dot:'var(--sr)', bg:'var(--srb)', c:'var(--srt)' },
   system:        { label:'System',      dot:'var(--n400)', bg:'var(--n100)', c:'var(--n700)' },
 }
 const DEFAULT_META = { label:'Notification', dot:'var(--n400)', bg:'var(--n100)', c:'var(--n700)' }
@@ -46,12 +49,15 @@ function fmtTime(ts) {
 }
 
 const PREF_KINDS = [
-  { key:'wo_transition', label:'Work order transitions', desc:'Status changes on work orders' },
-  { key:'wo_comment',    label:'Work order comments',    desc:'New comments on work orders' },
-  { key:'wo_assigned',   label:'Work order assignments', desc:'When a WO is assigned to you' },
-  { key:'pm_due',        label:'PM due reminders',       desc:'Upcoming PM tasks (7-day warning)' },
-  { key:'pm_overdue',    label:'PM overdue alerts',      desc:'Tasks that missed their due date' },
-  { key:'system',        label:'System updates',         desc:'Platform announcements', email:false },
+  { key:'wo_transition',  label:'Work order transitions', desc:'Status changes on work orders' },
+  { key:'wo_comment',     label:'Work order comments',    desc:'New comments on work orders' },
+  { key:'wo_assigned',    label:'Work order assignments', desc:'When a WO is assigned to you' },
+  { key:'inspection_due', label:'Inspection alerts',      desc:'Asset health fell to the inspection threshold' },
+  { key:'maintenance_due',label:'Maintenance alerts',     desc:'Asset health critical — maintenance required' },
+  { key:'pm_due',         label:'PM due reminders',       desc:'Upcoming PM tasks (7-day warning)' },
+  { key:'pm_overdue',     label:'PM overdue alerts',      desc:'Tasks that missed their due date' },
+  { key:'licence_expiry', label:'Licence expiry',         desc:'Licences and permits nearing expiry' },
+  { key:'system',         label:'System updates',         desc:'Platform announcements', email:false },
 ]
 
 export default function Notifications({ dark, toggleDark }) {

@@ -8,13 +8,16 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
+import { uploadTo } from '../files.js'
 
 export const inspectionsRouter = Router()
 inspectionsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
+const reportUpload = uploadTo('inspection-reports')
+
 const ALLOWED = [
   'asset_id', 'site_id', 'title', 'kind', 'status', 'inspector_id',
-  'scheduled_date', 'completed_date', 'findings', 'notes', 'checklist_results',
+  'scheduled_date', 'completed_date', 'findings', 'notes', 'checklist_results', 'report_url',
 ]
 
 const SELECT = `
@@ -40,6 +43,7 @@ const inspectionInput = z.object({
   findings: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   checklist_results: z.record(z.unknown()).nullable().optional(),
+  report_url: z.string().nullable().optional(),
 })
 
 inspectionsRouter.get('/inspections', async (req, res) => {
@@ -96,4 +100,25 @@ inspectionsRouter.patch('/inspections/:id', requireCap('inspection:update'), asy
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
   res.json(row)
+})
+
+// Inspection report upload — attach a report file after the inspection is done.
+inspectionsRouter.post('/inspections/:id/report', requireCap('inspection:update'), reportUpload.single('report'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'missing_file' })
+  const url = `inspection-reports/${req.file.filename}`
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query('update public.inspections set report_url = $2 where id = $1 returning id, asset_id', [req.params.id, url])
+    if (!rows[0]) return null
+    if (rows[0].asset_id) {
+      await c.query(
+        `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
+         values (current_org_id(), $1, current_user_id(), 'inspection', 'Inspection report uploaded.', $2::jsonb)`,
+        [rows[0].asset_id, JSON.stringify([{ url, name: req.file!.originalname }])]
+      )
+    }
+    const { rows: full } = await c.query(`${SELECT} where i.id = $1`, [req.params.id])
+    return full[0]
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
+  res.status(201).json(row)
 })

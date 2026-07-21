@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { listPMSchedules, createPMSchedule, softDeletePMSchedule } from '../lib/db/pmSchedules'
-import { listPMTasks, updatePMTask, generatePMTasks } from '../lib/db/pmTasks'
+import { listPMTasks, updatePMTask, generatePMTasks, uploadMaintenanceReport } from '../lib/db/pmTasks'
+import { api } from '../lib/apiClient'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 
@@ -130,11 +131,11 @@ export default function Maintenance({ dark, toggleDark }) {
     try { await generatePMTasks(); await load() } catch { /* ignore */ } finally { setGenerating(false) }
   }
 
-  const handleComplete = async (taskId) => {
-    try {
-      await updatePMTask(taskId, { status:'completed' })
-      setTasks(prev => prev.filter(t => t.id !== taskId))
-    } catch { /* ignore */ }
+  const [completing, setCompleting] = useState(null)
+
+  const onTaskCompleted = (taskId) => {
+    setCompleting(null)
+    setTasks(prev => prev.filter(t => t.id !== taskId))
   }
 
   const weekTaskMap = {}
@@ -210,7 +211,7 @@ export default function Maintenance({ dark, toggleDark }) {
                   ) : tasks.length === 0 ? (
                     <SchedulesView schedules={schedules} />
                   ) : (
-                    <TasksTable tasks={tasks} onComplete={handleComplete} />
+                    <TasksTable tasks={tasks} onComplete={setCompleting} />
                   )}
                 </div>
 
@@ -308,6 +309,52 @@ export default function Maintenance({ dark, toggleDark }) {
       </div>
 
       {showModal && <ScheduleModal onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load() }}/>}
+      {completing && <CompleteTaskModal task={completing} onClose={() => setCompleting(null)} onDone={onTaskCompleted}/>}
+    </div>
+  )
+}
+
+// Completion modal — mark a PM task done and (optionally) attach the report in
+// one step, since completed tasks drop out of the active list afterwards.
+function CompleteTaskModal({ task, onClose, onDone }) {
+  const [notes, setNotes] = useState(task.notes || '')
+  const [reportFile, setReportFile] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState(null)
+
+  async function confirm() {
+    setSaving(true); setErr(null)
+    try {
+      await updatePMTask(task.id, { status: 'completed', notes: notes || null })
+      if (reportFile) await uploadMaintenanceReport(task.id, reportFile)
+      onDone(task.id)
+    } catch (e) { setErr(e.message || 'Failed to complete.'); setSaving(false) }
+  }
+
+  const inp = { width: '100%', border: '1px solid var(--n200)', borderRadius: 4, padding: '8px 10px', fontSize: 13, fontFamily: 'var(--ff-u)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', background: 'var(--n0)', color: 'var(--n900)' }
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.35)' }}>
+      <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, padding: 24, width: 440, maxWidth: '92vw' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+          <h2 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)', flex: 1 }}>Complete Maintenance</h2>
+          <button onClick={onClose} style={{ width: 28, height: 28, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--n500)', fontSize: 20, lineHeight: 1 }}>×</button>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--n600)', marginBottom: 14 }}>{task.title}{task.asset ? ` · ${task.asset.name}` : ''}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--n800)', display: 'flex', flexDirection: 'column', gap: 4 }}>Notes
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="What was done…" style={inp} />
+          </label>
+          <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--n800)', display: 'flex', flexDirection: 'column', gap: 4 }}>Maintenance report (optional)
+            <input type="file" onChange={(e) => setReportFile(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
+          </label>
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--n500)', marginTop: 10 }}>Completing this resets the linked asset's health to 100%.</p>
+        {err && <div style={{ background: 'var(--srb)', border: '1px solid var(--srbr)', borderRadius: 4, padding: '8px 12px', fontSize: 12, color: 'var(--srt)', marginTop: 10 }}>{err}</div>}
+        <div style={{ display: 'flex', gap: 8, marginTop: 18, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Cancel</button>
+          <button onClick={confirm} disabled={saving} className="btn btn-primary" style={{ height: 34, padding: '0 18px', fontSize: 13 }}>{saving ? 'Saving…' : 'Mark Complete'}</button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -349,7 +396,7 @@ function TasksTable({ tasks, onComplete }) {
               </td>
               <td style={{padding:'10px 14px'}}>
                 {t.status !== 'completed' && t.status !== 'skipped' && (
-                  <button onClick={() => onComplete(t.id)} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0,whiteSpace:'nowrap'}}>Mark done</button>
+                  <button onClick={() => onComplete(t)} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0,whiteSpace:'nowrap'}}>Mark done</button>
                 )}
               </td>
             </tr>

@@ -574,10 +574,13 @@ function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore,
           </div>
           {pmTasks === null ? <div style={{ fontSize: 12, color: 'var(--n400)' }}>Loading…</div> : pmTasks.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--n400)' }}>No PM tasks for this asset.</div>
-          ) : pmTasks.slice(0, 5).map((t) => (
+          ) : pmTasks.slice(0, 8).map((t) => (
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '6px 0', fontSize: 12, borderBottom: 'var(--bdr)' }}>
               <span style={{ color: 'var(--n700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-              <span style={{ color: PM_STATUS_C[t.status] || 'var(--n500)', flexShrink: 0, fontWeight: 500 }}>{t.status}</span>
+              <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+                {t.report_url && <button onClick={() => viewDoc({ url: t.report_url, name: t.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
+                <span style={{ color: PM_STATUS_C[t.status] || 'var(--n500)', fontWeight: 500 }}>{t.status}</span>
+              </span>
             </div>
           ))}
         </div>
@@ -587,10 +590,13 @@ function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore,
           <div style={section}>Inspections</div>
           {inspections === null ? <div style={{ fontSize: 12, color: 'var(--n400)' }}>Loading…</div> : inspections.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--n400)' }}>No inspections for this asset.</div>
-          ) : inspections.slice(0, 5).map((i) => (
+          ) : inspections.slice(0, 8).map((i) => (
             <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '6px 0', fontSize: 12, borderBottom: 'var(--bdr)' }}>
               <span style={{ color: 'var(--n700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.title}</span>
-              <span style={{ color: INSP_STATUS_C[i.status] || 'var(--n500)', flexShrink: 0, fontWeight: 500 }}>{i.status}</span>
+              <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+                {i.report_url && <button onClick={() => viewDoc({ url: i.report_url, name: i.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
+                <span style={{ color: INSP_STATUS_C[i.status] || 'var(--n500)', fontWeight: 500 }}>{i.status}</span>
+              </span>
             </div>
           ))}
         </div>

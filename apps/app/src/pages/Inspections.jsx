@@ -3,8 +3,9 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
-import { listInspections, createInspection, updateInspection } from '../lib/db/inspections'
+import { listInspections, createInspection, updateInspection, uploadInspectionReport } from '../lib/db/inspections'
 import { listSites } from '../lib/db/sites'
+import { api } from '../lib/apiClient'
 
 const STATUS_META = {
   scheduled:   { label:'Scheduled',   bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)' },
@@ -100,15 +101,22 @@ function InspectionModal({ onClose, onSaved, sites }) {
 function FindingsModal({ inspection, onClose, onSaved }) {
   const [findings, setFindings] = useState(inspection.findings || '')
   const [notes, setNotes]       = useState(inspection.notes    || '')
+  const [reportFile, setReportFile] = useState(null)
+  const [reportUrl, setReportUrl] = useState(inspection.report_url || null)
   const [saving, setSaving]     = useState(false)
+  const [err, setErr]           = useState(null)
 
   const save = async () => {
-    setSaving(true)
+    setSaving(true); setErr(null)
     try {
       await updateInspection(inspection.id, { status:'completed', findings, notes })
+      if (reportFile) await uploadInspectionReport(inspection.id, reportFile)
       onSaved()
-    } catch { /* ignore */ }
-    finally { setSaving(false) }
+    } catch (e) { setErr(e.message || 'Failed to save.'); setSaving(false) }
+  }
+
+  async function viewReport() {
+    try { await api.download(`/files/${reportUrl}`, reportUrl.split('/').pop()) } catch (e) { alert(e.message) }
   }
 
   const inp = { width:'100%', border:'1px solid var(--n200)', borderRadius:4, padding:'8px 10px', fontSize:13, fontFamily:'var(--ff-u)', outline:'none', resize:'vertical', boxSizing:'border-box', background:'var(--n0)', color:'var(--n900)' }
@@ -128,7 +136,12 @@ function FindingsModal({ inspection, onClose, onSaved }) {
           <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Additional notes
             <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} style={inp}/>
           </label>
+          <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Inspection report (optional)
+            <input type="file" onChange={e=>setReportFile(e.target.files?.[0]||null)} style={{fontSize:12}}/>
+            {reportUrl && <button type="button" onClick={viewReport} style={{alignSelf:'flex-start',background:'none',border:'none',color:'var(--b600)',cursor:'pointer',fontSize:12,padding:0}}>View uploaded report</button>}
+          </label>
         </div>
+        {err && <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'8px 12px',fontSize:12,color:'var(--srt)',marginTop:12}}>{err}</div>}
         <div style={{display:'flex',gap:8,marginTop:20,justifyContent:'flex-end'}}>
           <button onClick={onClose} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>Cancel</button>
           <button onClick={save} disabled={saving||!findings.trim()} className="btn btn-primary" style={{height:34,padding:'0 18px',fontSize:13}}>{saving?'Saving…':'Mark Complete'}</button>
