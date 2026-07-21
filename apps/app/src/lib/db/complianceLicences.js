@@ -30,6 +30,29 @@ export async function uploadComplianceDocument(id, file) {
   return api.upload(`/compliance-licences/${id}/document`, form)
 }
 
+export async function deleteComplianceDocument(id, url) {
+  return api.del(`/compliance-licences/${id}/documents?url=${encodeURIComponent(url)}`)
+}
+
+// Compliance audits (ISO / routine-maintenance attestations)
+export async function listComplianceAudits() {
+  return api.get('/compliance-audits')
+}
+export async function createComplianceAudit(data) {
+  return api.post('/compliance-audits', data)
+}
+export async function updateComplianceAudit(id, updates) {
+  return api.patch(`/compliance-audits/${id}`, updates)
+}
+export async function softDeleteComplianceAudit(id) {
+  await api.del(`/compliance-audits/${id}`)
+}
+export async function uploadAuditDocument(id, file) {
+  const form = new FormData()
+  form.append('document', file)
+  return api.upload(`/compliance-audits/${id}/document`, form)
+}
+
 export async function listAuthorities() {
   return api.get('/regulatory-authorities')
 }
