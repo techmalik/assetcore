@@ -22,8 +22,14 @@ const MAX_PHOTOS = 5
 // via the dedicated upload/remove endpoints below, which validate file
 // content and enforce the photo cap server-side. Accepting them here would
 // let a client PATCH in arbitrary URLs, bypassing both checks entirely.
+//
+// health_score is also excluded: it's written through apply_asset_health()
+// below instead of the generic column update, so a manual edit runs through
+// the same 50%/30% crossing logic (inspection creation, notifications,
+// auto-drafted work order) as the daily decay job — a PATCH that drops an
+// asset to 20% health should behave identically to it decaying there.
 const ALLOWED = [
-  'site_id', 'ain', 'name', 'category_id', 'status', 'health_score', 'lat', 'lng',
+  'site_id', 'ain', 'name', 'category_id', 'status', 'lat', 'lng',
   'specs', 'purchase_value_cents', 'nbv_cents', 'parent_asset_id',
   'assigned_operator_id', 'last_maintenance_at', 'next_maintenance_at',
 ]
@@ -153,7 +159,16 @@ assetsRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
        returning id`,
       values
     )
-    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [rows[0].id])
+    const assetId = rows[0].id
+    // health_score starts null (coalesced to 100 by apply_asset_health), so a
+    // newly-registered asset created already below threshold gets exactly
+    // the same inspection/notification/auto-WO treatment as one that decayed
+    // there — registering a compressor at 20% health shouldn't need a full
+    // day's cron cycle before anyone's alerted.
+    if (parsed.data.health_score != null) {
+      await c.query('select public.apply_asset_health($1, $2, $3)', [assetId, parsed.data.health_score, req.claims!.sub])
+    }
+    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [assetId])
     const asset = full[0]
     await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.create', entityType: 'asset', entityId: asset.id, after: asset })
     return asset
@@ -247,14 +262,27 @@ assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) =
   const parsed = assetInput.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { setSql, values } = buildSet(parsed.data, ALLOWED)
-  if (!setSql) return res.status(400).json({ error: 'empty_patch' })
+  // health_score isn't in ALLOWED (see comment above) — a request setting
+  // ONLY health_score would otherwise 400 as an empty patch.
+  const hasHealthUpdate = typeof parsed.data.health_score === 'number'
+  const clearsHealth = parsed.data.health_score === null
+  if (!setSql && !hasHealthUpdate && !clearsHealth) return res.status(400).json({ error: 'empty_patch' })
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(
-      `update public.assets set ${setSql} where id = $1 returning id, org_id`,
-      [req.params.id, ...values]
-    )
-    if (!rows[0]) return null
+    if (setSql) {
+      const { rows } = await c.query(`update public.assets set ${setSql} where id = $1 returning id`, [req.params.id, ...values])
+      if (!rows[0]) return null
+    } else {
+      const { rows } = await c.query('select id from public.assets where id = $1', [req.params.id])
+      if (!rows[0]) return null
+    }
+    if (hasHealthUpdate) {
+      // Routes the write through the same 50%/30% crossing logic the daily
+      // decay job uses, attributed to the caller (asset_activity.user_id).
+      await c.query('select public.apply_asset_health($1, $2, $3)', [req.params.id, parsed.data.health_score, req.claims!.sub])
+    } else if (clearsHealth) {
+      await c.query('update public.assets set health_score = null where id = $1', [req.params.id])
+    }
     const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
     await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.update', entityType: 'asset', entityId: asset.id, after: parsed.data })
