@@ -8,7 +8,7 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
-import { uploadTo } from '../files.js'
+import { uploadTo, cleanupOrphanedUpload, deleteUploadedFile } from '../files.js'
 
 export const complianceRouter = Router()
 complianceRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -118,16 +118,26 @@ complianceRouter.post('/compliance-licences/:id/document', requireCap('complianc
   const url = `compliance-documents/${file.filename}`
   const doc = { url, name: file.originalname, size: file.size }
 
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(
-      `update public.compliance_licences set documents = documents || $2::jsonb, document_url = $3 where id = $1 returning id, org_id`,
-      [req.params.id, JSON.stringify([doc]), url]
-    )
-    if (!rows[0]) return null
-    const { rows: full } = await c.query(`${SELECT} where cl.id = $1`, [req.params.id])
-    return full[0]
-  })
-  if (!row) return res.status(404).json({ error: 'not_found' })
+  let row
+  try {
+    row = await withOrgContext(claimsFromReq(req), async (c) => {
+      const { rows } = await c.query(
+        `update public.compliance_licences set documents = documents || $2::jsonb, document_url = $3 where id = $1 returning id, org_id`,
+        [req.params.id, JSON.stringify([doc]), url]
+      )
+      if (!rows[0]) return null
+      const { rows: full } = await c.query(`${SELECT} where cl.id = $1`, [req.params.id])
+      await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_licence.attachment.add', entityType: 'compliance_licence', entityId: rows[0].id, after: doc })
+      return full[0]
+    })
+  } catch (err) {
+    await cleanupOrphanedUpload(file.path)
+    throw err
+  }
+  if (!row) {
+    await cleanupOrphanedUpload(file.path)
+    return res.status(404).json({ error: 'not_found' })
+  }
   res.status(201).json(row)
 })
 
@@ -138,14 +148,16 @@ complianceRouter.delete('/compliance-licences/:id/documents', requireCap('compli
     const { rows } = await c.query(
       `update public.compliance_licences
        set documents = coalesce((select jsonb_agg(d) from jsonb_array_elements(documents) d where d->>'url' <> $2), '[]'::jsonb)
-       where id = $1 returning id`,
+       where id = $1 returning id, org_id`,
       [req.params.id, url]
     )
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${SELECT} where cl.id = $1`, [req.params.id])
+    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_licence.attachment.remove', entityType: 'compliance_licence', entityId: rows[0].id, before: { url } })
     return full[0]
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
+  await deleteUploadedFile(req.claims!.org_id!, url)
   res.json(row)
 })
 
@@ -228,13 +240,23 @@ complianceRouter.patch('/compliance-audits/:id', requireCap('compliance:update')
 complianceRouter.post('/compliance-audits/:id/document', requireCap('compliance:update'), auditDocumentUpload.single('document'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'missing_file' })
   const url = `compliance-audits/${req.file.filename}`
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query('update public.compliance_audits set document_url = $2 where id = $1 returning id', [req.params.id, url])
-    if (!rows[0]) return null
-    const { rows: full } = await c.query(`${AUDIT_SELECT} where ca.id = $1`, [req.params.id])
-    return full[0]
-  })
-  if (!row) return res.status(404).json({ error: 'not_found' })
+  let row
+  try {
+    row = await withOrgContext(claimsFromReq(req), async (c) => {
+      const { rows } = await c.query('update public.compliance_audits set document_url = $2 where id = $1 returning id, org_id', [req.params.id, url])
+      if (!rows[0]) return null
+      const { rows: full } = await c.query(`${AUDIT_SELECT} where ca.id = $1`, [req.params.id])
+      await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_audit.attachment.add', entityType: 'compliance_audit', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
+      return full[0]
+    })
+  } catch (err) {
+    await cleanupOrphanedUpload(req.file.path)
+    throw err
+  }
+  if (!row) {
+    await cleanupOrphanedUpload(req.file.path)
+    return res.status(404).json({ error: 'not_found' })
+  }
   res.status(201).json(row)
 })
 

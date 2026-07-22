@@ -8,7 +8,7 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
-import { uploadTo, guardedSingle, validateUploadOrCleanup, IMAGE_MIME_TYPES, DOCUMENT_MIME_TYPES } from '../files.js'
+import { uploadTo, guardedSingle, validateUploadOrCleanup, cleanupOrphanedUpload, deleteUploadedFile, IMAGE_MIME_TYPES, DOCUMENT_MIME_TYPES } from '../files.js'
 
 export const assetsRouter = Router()
 assetsRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -299,15 +299,24 @@ assetsRouter.post('/assets/:id/photos', requireCap('asset:update'), guardedSingl
   }
   const url = `assets/${req.file.filename}`
 
-  const result = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows: cur } = await c.query('select coalesce(jsonb_array_length(photos), 0) as n from public.assets where id = $1', [req.params.id])
-    if (!cur[0]) return { error: 'not_found' as const }
-    if (cur[0].n >= MAX_PHOTOS) return { error: 'photo_limit' as const }
-    await c.query(`update public.assets set photos = photos || $2::jsonb where id = $1`, [req.params.id, JSON.stringify([url])])
-    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
-    return { data: full[0] }
-  })
+  let result
+  try {
+    result = await withOrgContext(claimsFromReq(req), async (c) => {
+      const { rows: cur } = await c.query('select coalesce(jsonb_array_length(photos), 0) as n from public.assets where id = $1', [req.params.id])
+      if (!cur[0]) return { error: 'not_found' as const }
+      if (cur[0].n >= MAX_PHOTOS) return { error: 'photo_limit' as const }
+      await c.query(`update public.assets set photos = photos || $2::jsonb where id = $1`, [req.params.id, JSON.stringify([url])])
+      const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
+      const asset = full[0]
+      await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.attachment.add', entityType: 'asset', entityId: asset.id, after: { kind: 'photo', url } })
+      return { data: asset }
+    })
+  } catch (err) {
+    await cleanupOrphanedUpload(req.file.path)
+    throw err
+  }
   if ('error' in result) {
+    await cleanupOrphanedUpload(req.file.path)
     if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' })
     return res.status(400).json({ error: 'photo_limit', max: MAX_PHOTOS })
   }
@@ -321,14 +330,17 @@ assetsRouter.delete('/assets/:id/photos', requireCap('asset:update'), async (req
     const { rows } = await c.query(
       `update public.assets
        set photos = coalesce((select jsonb_agg(p) from jsonb_array_elements(photos) p where p <> to_jsonb($2::text)), '[]'::jsonb)
-       where id = $1 returning id`,
+       where id = $1 returning id, org_id`,
       [req.params.id, url]
     )
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
-    return full[0]
+    const asset = full[0]
+    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.attachment.remove', entityType: 'asset', entityId: rows[0].id, before: { kind: 'photo', url } })
+    return asset
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
+  await deleteUploadedFile(req.claims!.org_id!, url)
   res.json(row)
 })
 
@@ -339,13 +351,24 @@ assetsRouter.post('/assets/:id/documents', requireCap('asset:update'), guardedSi
   }
   const doc = { url: `asset-documents/${req.file.filename}`, name: req.file.originalname, size: req.file.size }
 
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(`update public.assets set documents = documents || $2::jsonb where id = $1 returning id`, [req.params.id, JSON.stringify([doc])])
-    if (!rows[0]) return null
-    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
-    return full[0]
-  })
-  if (!row) return res.status(404).json({ error: 'not_found' })
+  let row
+  try {
+    row = await withOrgContext(claimsFromReq(req), async (c) => {
+      const { rows } = await c.query(`update public.assets set documents = documents || $2::jsonb where id = $1 returning id, org_id`, [req.params.id, JSON.stringify([doc])])
+      if (!rows[0]) return null
+      const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
+      const asset = full[0]
+      await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.attachment.add', entityType: 'asset', entityId: rows[0].id, after: { kind: 'document', ...doc } })
+      return asset
+    })
+  } catch (err) {
+    await cleanupOrphanedUpload(req.file.path)
+    throw err
+  }
+  if (!row) {
+    await cleanupOrphanedUpload(req.file.path)
+    return res.status(404).json({ error: 'not_found' })
+  }
   res.status(201).json(row)
 })
 
@@ -356,14 +379,17 @@ assetsRouter.delete('/assets/:id/documents', requireCap('asset:update'), async (
     const { rows } = await c.query(
       `update public.assets
        set documents = coalesce((select jsonb_agg(d) from jsonb_array_elements(documents) d where d->>'url' <> $2), '[]'::jsonb)
-       where id = $1 returning id`,
+       where id = $1 returning id, org_id`,
       [req.params.id, url]
     )
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
-    return full[0]
+    const asset = full[0]
+    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.attachment.remove', entityType: 'asset', entityId: rows[0].id, before: { kind: 'document', url } })
+    return asset
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
+  await deleteUploadedFile(req.claims!.org_id!, url)
   res.json(row)
 })
 

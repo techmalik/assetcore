@@ -8,7 +8,7 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
-import { uploadTo } from '../files.js'
+import { uploadTo, cleanupOrphanedUpload } from '../files.js'
 
 export const workOrdersRouter = Router()
 workOrdersRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -196,14 +196,23 @@ workOrdersRouter.post('/work-orders/:id/attachments', requireCap('wo:update'), a
   if (!file) return res.status(400).json({ error: 'missing_file' })
   const url = `attachments/${file.filename}`
 
-  const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(
-      `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body, attachments)
-       values (current_org_id(), $1, current_user_id(), 'attachment', $2, $3::jsonb)
-       returning *`,
-      [req.params.id, file.originalname, JSON.stringify([{ url, name: file.originalname, size: file.size }])]
-    ).then((r) => r.rows[0])
-  )
+  let row
+  try {
+    row = await withOrgContext(claimsFromReq(req), async (c) => {
+      const { rows } = await c.query(
+        `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body, attachments)
+         values (current_org_id(), $1, current_user_id(), 'attachment', $2, $3::jsonb)
+         returning *`,
+        [req.params.id, file.originalname, JSON.stringify([{ url, name: file.originalname, size: file.size }])]
+      )
+      const activity = rows[0]
+      await writeAuditLog(c, { orgId: activity.org_id, actorId: req.claims!.sub, action: 'work_order.attachment.add', entityType: 'work_order', entityId: activity.work_order_id, after: { url, name: file.originalname, size: file.size } })
+      return activity
+    })
+  } catch (err) {
+    await cleanupOrphanedUpload(file.path)
+    throw err
+  }
   res.status(201).json(row)
 })
 

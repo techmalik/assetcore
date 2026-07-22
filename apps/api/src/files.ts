@@ -8,6 +8,7 @@ import { config } from './config.js'
 import { withOrgContext } from './db.js'
 import { claimsFromReq } from './claims.js'
 import { requireAuth } from './middleware/requireAuth.js'
+import { logger } from './logger.js'
 
 /** multer storage rooted at FILES_DIR/{org_id}/{subdir}/ — org_id comes from the
  * authenticated caller's claims, never the request body, so uploads can't cross
@@ -79,6 +80,34 @@ export async function validateUploadOrCleanup(filePath: string, allowed: readonl
   if (mime && allowed.includes(mime)) return true
   await unlink(filePath).catch(() => {})
   return false
+}
+
+/** Best-effort delete of a just-written upload after the DB write that was
+ * supposed to reference it fails (or the referenced row turns out not to
+ * exist) — otherwise the file is orphaned on disk with nothing pointing to
+ * it. Never throws; logs and swallows so cleanup failure doesn't mask the
+ * original error the caller is already handling. */
+export async function cleanupOrphanedUpload(filePath: string | undefined | null): Promise<void> {
+  if (!filePath) return
+  await unlink(filePath).catch((err) => {
+    logger.warn({ err, filePath }, 'failed to clean up orphaned upload')
+  })
+}
+
+/** Best-effort delete of an upload's on-disk file once the DB row/array entry
+ * that referenced it has been removed — the counterpart to
+ * cleanupOrphanedUpload for the "remove attachment" side of the lifecycle, so
+ * disk usage doesn't grow unbounded from photos/documents users delete.
+ * `relPath` is the same org-relative path stored in the DB (e.g.
+ * `assets/172-photo.jpg`), resolved the same way filesRouter resolves it for
+ * download. Never throws. */
+export async function deleteUploadedFile(orgId: string, relPath: string): Promise<void> {
+  const fullPath = path.join(config.FILES_DIR, orgId, relPath)
+  await unlink(fullPath).catch((err) => {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      logger.warn({ err, fullPath }, 'failed to delete removed upload')
+    }
+  })
 }
 
 export const filesRouter = Router()

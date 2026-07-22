@@ -7,7 +7,7 @@ import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
-import { uploadTo, guardedSingle, validateUploadOrCleanup, DOCUMENT_MIME_TYPES } from '../files.js'
+import { uploadTo, guardedSingle, validateUploadOrCleanup, cleanupOrphanedUpload, DOCUMENT_MIME_TYPES } from '../files.js'
 
 export const maintenanceEventsRouter = Router()
 maintenanceEventsRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -85,7 +85,9 @@ maintenanceEventsRouter.post(
       reportUrl = `maintenance-completions/${req.file.filename}`
     }
 
-    const result = await withOrgContext(claimsFromReq(req), async (c) => {
+    let result
+    try {
+      result = await withOrgContext(claimsFromReq(req), async (c) => {
       const { rows: assetRows } = await c.query('select id, org_id, site_id from public.assets where id = $1', [req.params.id])
       const asset = assetRows[0]
       if (!asset) return { error: 'not_found' as const }
@@ -138,9 +140,16 @@ maintenanceEventsRouter.post(
       })
 
       return { data: event }
-    })
+      })
+    } catch (err) {
+      await cleanupOrphanedUpload(req.file?.path)
+      throw err
+    }
 
-    if ('error' in result) return res.status(404).json({ error: 'not_found' })
+    if ('error' in result) {
+      await cleanupOrphanedUpload(req.file?.path)
+      return res.status(404).json({ error: 'not_found' })
+    }
     res.status(201).json(result.data)
   }
 )
@@ -156,18 +165,28 @@ maintenanceEventsRouter.post(
       return res.status(400).json({ error: 'unsupported_type' })
     }
     const url = `maintenance-completions/${req.file.filename}`
-    const row = await withOrgContext(claimsFromReq(req), async (c) => {
-      const { rows } = await c.query('update public.maintenance_events set report_url = $2 where id = $1 returning id, asset_id', [req.params.id, url])
-      if (!rows[0]) return null
-      await c.query(
-        `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
-         values (current_org_id(), $1, current_user_id(), 'maintenance', 'Maintenance completion report uploaded.', $2::jsonb)`,
-        [rows[0].asset_id, JSON.stringify([{ url, name: req.file!.originalname }])]
-      )
-      const { rows: full } = await c.query('select * from public.maintenance_events where id = $1', [req.params.id])
-      return full[0]
-    })
-    if (!row) return res.status(404).json({ error: 'not_found' })
+    let row
+    try {
+      row = await withOrgContext(claimsFromReq(req), async (c) => {
+        const { rows } = await c.query('update public.maintenance_events set report_url = $2 where id = $1 returning id, org_id, asset_id', [req.params.id, url])
+        if (!rows[0]) return null
+        await c.query(
+          `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
+           values (current_org_id(), $1, current_user_id(), 'maintenance', 'Maintenance completion report uploaded.', $2::jsonb)`,
+          [rows[0].asset_id, JSON.stringify([{ url, name: req.file!.originalname }])]
+        )
+        const { rows: full } = await c.query('select * from public.maintenance_events where id = $1', [req.params.id])
+        await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'maintenance_event.attachment.add', entityType: 'maintenance_event', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
+        return full[0]
+      })
+    } catch (err) {
+      await cleanupOrphanedUpload(req.file.path)
+      throw err
+    }
+    if (!row) {
+      await cleanupOrphanedUpload(req.file.path)
+      return res.status(404).json({ error: 'not_found' })
+    }
     res.status(201).json(row)
   }
 )
