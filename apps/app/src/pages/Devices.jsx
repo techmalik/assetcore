@@ -213,7 +213,7 @@ export default function Devices({ dark, toggleDark }) {
             ) : err ? (
               <div style={{ padding: 24 }}>
                 <div style={{ background: 'var(--srb)', border: '1px solid var(--srbr)', borderRadius: 4, padding: '10px 14px', fontSize: 12, color: 'var(--srt)' }}>
-                  {err.includes('does not exist') ? 'Run migration 0005_phase4.sql to enable devices.' : err}
+                  {err.includes('does not exist') ? 'Device data unavailable — ensure all database migrations have been applied (npm run migrate).' : err}
                 </div>
               </div>
             ) : shown.length === 0 ? (

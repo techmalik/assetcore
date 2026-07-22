@@ -108,7 +108,7 @@ export default function Reports({ dark, toggleDark }) {
                   <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
                 ) : err ? (
                   <div style={{padding:24}}>
-                    <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>{err.includes('does not exist') ? 'Run migration 0004_phase3.sql to enable reports.' : err}</div>
+                    <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>{err.includes('does not exist') ? 'Report data unavailable — ensure all database migrations have been applied (npm run migrate).' : err}</div>
                   </div>
                 ) : reports.length === 0 ? (
                   <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',gap:12,textAlign:'center'}}>

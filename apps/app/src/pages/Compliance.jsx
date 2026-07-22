@@ -28,6 +28,17 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'2-digit' })
 }
 
+// A "relation ... does not exist" error means a migration hasn't been
+// applied yet — give an accurate, generic pointer instead of naming a
+// specific migration file (which drifts as new ones are added and, in the
+// case this replaces, was already wrong — it said 0004_phase3.sql, a file
+// that has never existed in this repo).
+function loadErrorMessage(err) {
+  if (!err) return null
+  if (err.includes('does not exist')) return 'Compliance data unavailable — ensure all database migrations have been applied (npm run migrate).'
+  return err
+}
+
 function daysLabel(expiryDate) {
   const d = daysUntilExpiry(expiryDate)
   if (d < 0)  return `${Math.abs(d)}d ago`
@@ -363,7 +374,9 @@ function AuditsPanel({ canCreate }) {
       {loading ? (
         <div style={{ padding: 32, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>Loading…</div>
       ) : err ? (
-        <div style={{ padding: 24, fontSize: 13, color: 'var(--srt)' }}>{err}</div>
+        <div style={{ padding: 24 }}>
+          <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>{loadErrorMessage(err)}</div>
+        </div>
       ) : audits.length === 0 ? (
         <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>No audits recorded yet.</div>
       ) : (
@@ -518,7 +531,7 @@ export default function Compliance({ dark, toggleDark }) {
                 <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
               ) : err ? (
                 <div style={{padding:24}}>
-                  <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>{err.includes('does not exist') ? 'Run migration 0004_phase3.sql to enable compliance licences.' : err}</div>
+                  <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>{loadErrorMessage(err)}</div>
                 </div>
               ) : filtered.length === 0 ? (
                 <EmptyState canCreate={canCreate} onAdd={() => setModal('add')} />
