@@ -594,6 +594,9 @@ function ImportModal({ onClose, onDone }) {
 // ── Asset detail panel ─────────────────────────────────────────────────────────
 const PM_STATUS_C = { pending: 'var(--slt)', in_progress: 'var(--sat)', completed: 'var(--sgt)', overdue: 'var(--srt)', skipped: 'var(--n500)' }
 const INSP_STATUS_C = { scheduled: 'var(--slt)', due: 'var(--sat)', in_progress: 'var(--sat)', completed: 'var(--sgt)', overdue: 'var(--srt)' }
+// Activity-feed dot color by asset_activity.kind — lets a maintenance
+// completion or health alert read at a glance without opening every entry.
+const ACTIVITY_DOT_C = { maintenance: 'var(--sgt)', alert: 'var(--srt)', inspection: 'var(--sat)', comment: 'var(--b400)', status_change: 'var(--b400)', attachment: 'var(--b400)' }
 
 function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdit, onArchive, onRestore, onRaiseWO, onCompleteMaintenance, onClose, refreshToken }) {
   const [activity, setActivity] = useState(null)
@@ -774,11 +777,18 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {activity.map((ev) => (
                 <div key={`${ev.source}-${ev.id}`} style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: ev.source === 'audit' ? 'var(--n300)' : 'var(--b400)', marginTop: 5, flexShrink: 0 }} />
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: ev.source === 'audit' ? 'var(--n300)' : (ACTIVITY_DOT_C[ev.kind] || 'var(--b400)'), marginTop: 5, flexShrink: 0 }} />
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, color: 'var(--n800)' }}>
                       {ev.source === 'audit' ? <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n600)' }}>{ev.kind}</span> : ev.body}
                     </div>
+                    {ev.attachments?.length > 0 && (
+                      <div style={{ marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        {ev.attachments.map((a, i) => (
+                          <button key={i} onClick={() => viewDoc(a)} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>📎 {a.name || 'attachment'}</button>
+                        ))}
+                      </div>
+                    )}
                     <div style={{ fontSize: 10, color: 'var(--n400)' }}>{ev.actor?.full_name || 'System'} · {fmtDateTime(ev.created_at)}</div>
                   </div>
                 </div>
