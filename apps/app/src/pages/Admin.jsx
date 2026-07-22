@@ -8,7 +8,7 @@ import { listAuditLog } from '../lib/db/audit.js'
 import { listOrgMembers, inviteOrgMember, updateOrgMemberRole, updateOrgMemberAccess, setOrgMemberStatus, resetOrgMemberPassword } from '../lib/db/orgMembers.js'
 import { getOrg, updateOrgSettings } from '../lib/db/org.js'
 import { useAuth } from '../lib/AuthContext.jsx'
-import { can } from '../lib/rbac.js'
+import { can, ROLE_CAPABILITIES, ROLE_LABELS, ADMIN_ENTRY_CAPS } from '../lib/rbac.js'
 import { useToast } from '../lib/ToastContext'
 
 // Capabilities an admin can grant per-user on top of the role baseline
@@ -459,6 +459,70 @@ const ROLES_LIST = [
   {key:'viewer',label:'Viewer',desc:'Read-only access to dashboard and reports.',perms:['Dashboard (view)','Reports (view)']},
 ]
 
+// Capability groups for the read-only permissions matrix below — each ✓/–
+// cell is derived live from ROLE_CAPABILITIES via can(), not hardcoded, so
+// editing the map changes the table. A group's `cap` (or first match in
+// `caps`) is checked with can() the same way the rest of the app gates UI —
+// wildcards ('*', '*:read') resolve through that same function, not a
+// second, driftable expansion here.
+const PERMISSION_MATRIX_GROUPS = [
+  { label: 'Assets', cap: 'asset:read' },
+  { label: 'Work Orders', cap: 'wo:read' },
+  { label: 'Maintenance', cap: 'pm:read' },
+  { label: 'Inspections', cap: 'inspection:read' },
+  { label: 'Compliance', cap: 'compliance:read' },
+  { label: 'Reports', cap: 'report:read' },
+  { label: 'Admin', caps: ADMIN_ENTRY_CAPS },
+]
+
+function PermissionsMatrix() {
+  const [open, setOpen] = useState(false)
+  const roleKeys = Object.keys(ROLE_CAPABILITIES)
+
+  return (
+    <div style={{marginTop:16,background:'var(--n0)',border:'var(--bdr)',borderRadius:6,overflow:'hidden'}}>
+      <button onClick={() => setOpen(o => !o)} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',background:'none',border:'none',cursor:'pointer',fontSize:13,fontWeight:600,color:'var(--n900)'}}>
+        Role permissions matrix
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{transform:open?'rotate(180deg)':'none',transition:'transform .15s'}}><path d="M3 4.5l3 3 3-3" stroke="var(--n500)" strokeWidth="1.3" strokeLinecap="round"/></svg>
+      </button>
+      {open && (
+        <div style={{padding:'0 16px 16px'}}>
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              <thead>
+                <tr>
+                  <th style={{textAlign:'left',padding:'6px 10px',color:'var(--n500)',fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',whiteSpace:'nowrap'}}>Role</th>
+                  {PERMISSION_MATRIX_GROUPS.map(g => (
+                    <th key={g.label} style={{textAlign:'center',padding:'6px 10px',color:'var(--n500)',fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em',whiteSpace:'nowrap'}}>{g.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {roleKeys.map(rk => (
+                  <tr key={rk} style={{borderTop:'var(--bdr)'}}>
+                    <td style={{padding:'8px 10px',fontWeight:500,color:'var(--n800)',whiteSpace:'nowrap'}}>{ROLE_LABELS[rk] || rk}</td>
+                    {PERMISSION_MATRIX_GROUPS.map(g => {
+                      const has = g.caps ? g.caps.some((c) => can(rk, c)) : can(rk, g.cap)
+                      return (
+                        <td key={g.label} style={{textAlign:'center',padding:'8px 10px',color:has?'var(--sgt)':'var(--n300)',fontWeight:600}}>
+                          {has ? '✓' : '–'}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{fontSize:11,color:'var(--n400)',marginTop:10}}>
+            Individual members may hold additional granted permissions (see each member's Access settings).
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function initials(name) {
   if (!name) return '?'
   const parts = name.trim().split(/\s+/)
@@ -708,6 +772,9 @@ function UsersTab() {
                   </div>
                 </div>
               ))}
+            </div>
+            <div style={{maxWidth:780}}>
+              <PermissionsMatrix />
             </div>
           </div>
         )}

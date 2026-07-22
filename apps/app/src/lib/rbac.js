@@ -9,7 +9,7 @@
 // categories without full admin rights. Defined here (and mirrored in
 // apps/api/src/middleware/rbac.ts) so call sites use a real capability name
 // instead of a made-up one.
-const ROLE_CAPABILITIES = {
+export const ROLE_CAPABILITIES = {
   owner: ['*'],
   ops_manager: [
     'asset:read', 'asset:create', 'asset:update',
