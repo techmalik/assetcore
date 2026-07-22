@@ -107,7 +107,7 @@ function Field({ label, required, full, children }) {
 }
 
 // ── CSV helpers ────────────────────────────────────────────────────────────────
-const CSV_HEADERS = ['ain', 'name', 'category', 'location', 'site', 'status', 'manufacturer', 'model', 'serial_number', 'install_date', 'value', 'health_score', 'tags', 'lat', 'lng']
+const CSV_HEADERS = ['ain', 'name', 'category', 'location', 'site', 'status', 'manufacturer', 'model', 'serial_number', 'install_date', 'purchase_date', 'runtime_hours', 'value', 'health_score', 'tags', 'lat', 'lng']
 
 function csvCell(v) {
   const s = String(v ?? '')
@@ -115,7 +115,7 @@ function csvCell(v) {
 }
 
 function downloadTemplate() {
-  const example = ['AST-001', 'Compressor Unit X-5', 'Compressor', 'Lagos', 'Lagos DS-04', 'operational', 'GE', 'GCF-700', 'SN-001', '2023-01-15', '5000000', '90', 'critical,offshore', '6.45', '3.4']
+  const example = ['AST-001', 'Compressor Unit X-5', 'Compressor', 'Lagos', 'Lagos DS-04', 'operational', 'GE', 'GCF-700', 'SN-001', '2023-01-15', '2022-11-01', '18240', '5000000', '90', 'critical,offshore', '6.45', '3.4']
   const csv = CSV_HEADERS.join(',') + '\n' + example.map(csvCell).join(',') + '\n'
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
@@ -168,6 +168,8 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
     status: asset?.status || 'operational', health_score: asset?.health_score ?? 100,
     manufacturer: s0.manufacturer || '', model: s0.model || '', serial_number: s0.serial_number || '',
     install_date: s0.install_date || '',
+    runtime_hours: s0.runtime_hours != null ? String(s0.runtime_hours) : '',
+    purchase_date: s0.purchase_date || '',
     tags: Array.isArray(s0.tags) ? s0.tags.join(', ') : (s0.tags || ''),
     assigned_operator_id: asset?.assigned_operator_id || '',
     value: asset?.purchase_value_cents != null ? String(asset.purchase_value_cents / 100) : '',
@@ -203,6 +205,8 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
     setSpec('model', form.model.trim())
     setSpec('serial_number', form.serial_number.trim())
     setSpec('install_date', form.install_date || null)
+    setSpec('runtime_hours', form.runtime_hours === '' ? null : Math.max(0, Math.round(Number(form.runtime_hours))))
+    setSpec('purchase_date', form.purchase_date || null)
     setSpec('tags', form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : null)
     return {
       ain: form.ain.trim(), name: form.name.trim(),
@@ -227,6 +231,7 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
     if (form.value !== '' && isNaN(Number(form.value))) { setErr('Asset value must be a number.'); return }
     if (form.lat !== '' && isNaN(Number(form.lat))) { setErr('Latitude must be a number.'); return }
     if (form.lng !== '' && isNaN(Number(form.lng))) { setErr('Longitude must be a number.'); return }
+    if (form.runtime_hours !== '' && (isNaN(Number(form.runtime_hours)) || Number(form.runtime_hours) < 0)) { setErr('Runtime hours must be a non-negative number.'); return }
     setSaving(true)
     try {
       const payload = buildPayload()
@@ -335,6 +340,12 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
           </Field>
           <Field label="Install date">
             <input {...inputProps} type="date" value={form.install_date} onChange={(e) => set('install_date', e.target.value)} />
+          </Field>
+          <Field label="Purchase date">
+            <input {...inputProps} type="date" value={form.purchase_date} onChange={(e) => set('purchase_date', e.target.value)} />
+          </Field>
+          <Field label="Runtime (hours)">
+            <input {...inputProps} type="number" min="0" step="1" value={form.runtime_hours} onChange={(e) => set('runtime_hours', e.target.value)} placeholder="e.g. 18240" />
           </Field>
           <Field label="Asset value (USD)">
             <input {...inputProps} type="number" min={0} value={form.value} onChange={(e) => set('value', e.target.value)} placeholder="e.g. 5000000" />
@@ -805,6 +816,8 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
               ['Model', s.model || '—'],
               ['Serial', s.serial_number || '—'],
               ['Install date', s.install_date ? fmtDate(s.install_date) : '—'],
+              ['Purchase date', s.purchase_date ? fmtDate(s.purchase_date) : '—'],
+              ['Runtime', s.runtime_hours != null ? `${Number(s.runtime_hours).toLocaleString()} hrs` : '—'],
               ['Asset value', asset.purchase_value_cents != null ? `$${(asset.purchase_value_cents / 100).toLocaleString()}` : '—'],
               ['Coordinates', asset.lat != null && asset.lng != null ? `${asset.lat}, ${asset.lng}` : '—'],
               ['Tags', Array.isArray(s.tags) && s.tags.length ? s.tags.join(', ') : '—'],

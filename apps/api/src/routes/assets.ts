@@ -228,6 +228,10 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
       if (r.model) specs.model = r.model
       if (r.serial_number) specs.serial_number = r.serial_number
       if (r.install_date) specs.install_date = r.install_date
+      if (r.purchase_date) specs.purchase_date = r.purchase_date
+      if (r.runtime_hours != null && r.runtime_hours !== '' && !isNaN(Number(r.runtime_hours))) {
+        specs.runtime_hours = Math.max(0, Math.round(Number(r.runtime_hours)))
+      }
       if (r.tags) specs.tags = String(r.tags).split(',').map((t: string) => t.trim()).filter(Boolean)
       const rawStatus = r.status != null ? String(r.status).trim() : ''
       if (rawStatus && !ASSET_STATUSES.includes(rawStatus as typeof ASSET_STATUSES[number])) {
