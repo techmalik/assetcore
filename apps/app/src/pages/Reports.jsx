@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
-import { listReports, requestReport, generateReport, downloadReport, REPORT_KINDS } from '../lib/db/reports'
+import { listReports, requestReport, generateReport, downloadReport, getLocationAnalytics, REPORT_KINDS } from '../lib/db/reports'
 
 const KIND_META = {
   asset_register:      { icon:'A', bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -30,6 +30,14 @@ function fmtSize(bytes) {
   return `${(bytes/1000000).toFixed(1)} MB`
 }
 
+function fmtNaira(cents) {
+  if (!cents) return '₦0'
+  const n = cents / 100
+  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`
+  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`
+  return `₦${n.toLocaleString()}`
+}
+
 export default function Reports({ dark, toggleDark }) {
   const [tab, setTab]             = useState('library')
   const [reports, setReports]     = useState([])
@@ -41,6 +49,8 @@ export default function Reports({ dark, toggleDark }) {
   const [requesting, setRequesting] = useState(false)
   const [pendingId, setPendingId] = useState(null)
   const [downloadingId, setDownloadingId] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
+  const [analyticsErr, setAnalyticsErr] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
@@ -50,6 +60,11 @@ export default function Reports({ dark, toggleDark }) {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (tab !== 'analytics' || analytics) return
+    getLocationAnalytics().then(setAnalytics).catch((e) => setAnalyticsErr(e.message))
+  }, [tab, analytics])
 
   const handleGenerate = async () => {
     if (!selectedKind) return
@@ -95,7 +110,7 @@ export default function Reports({ dark, toggleDark }) {
               </button>
             </div>
             <div style={{display:'flex',gap:0}}>
-              {[{k:'library',label:'Report Library'},{k:'generate',label:'Generate Report'}].map(t => (
+              {[{k:'library',label:'Report Library'},{k:'analytics',label:'Analytics'},{k:'generate',label:'Generate Report'}].map(t => (
                 <button key={t.k} className={`tab-btn${tab===t.k?' active':''}`} onClick={() => setTab(t.k)}>{t.label}</button>
               ))}
             </div>
@@ -171,6 +186,59 @@ export default function Reports({ dark, toggleDark }) {
                   </div>
                 )}
               </>
+            )}
+
+            {tab === 'analytics' && (
+              <div style={{padding:'20px 24px'}}>
+                {analyticsErr ? (
+                  <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>{analyticsErr}</div>
+                ) : !analytics ? (
+                  <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
+                ) : (
+                  <>
+                    <div style={{fontSize:13,fontWeight:600,color:'var(--n700)',marginBottom:12}}>By Location</div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:12,marginBottom:28}}>
+                      {analytics.locations.length === 0 ? (
+                        <div style={{fontSize:13,color:'var(--n400)'}}>No locations yet.</div>
+                      ) : analytics.locations.map(loc => (
+                        <div key={loc.id} style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:6,padding:'14px 16px'}}>
+                          <div style={{fontSize:13,fontWeight:600,color:'var(--n900)',marginBottom:8}}>{loc.name}</div>
+                          <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--n600)',marginBottom:4}}>
+                            <span>Assets</span><span style={{fontFamily:'var(--ff-m)',color:'var(--n900)'}}>{loc.asset_count}</span>
+                          </div>
+                          <div style={{marginBottom:8}}>
+                            <div style={{width:'100%',height:5,background:'var(--n200)',borderRadius:99,overflow:'hidden'}}>
+                              <div style={{width:`${loc.avg_health ?? 0}%`,height:'100%',background:loc.avg_health >= 70 ? 'var(--sg)' : loc.avg_health >= 40 ? 'var(--sa)' : 'var(--sr)',borderRadius:99}}/>
+                            </div>
+                            <div style={{fontSize:10,color:'var(--n500)',marginTop:2}}>Avg health: {loc.avg_health ?? '—'}</div>
+                          </div>
+                          <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--n600)',marginBottom:4}}>
+                            <span>Total value</span><span style={{fontFamily:'var(--ff-m)',color:'var(--n900)'}}>{fmtNaira(loc.total_value_cents)}</span>
+                          </div>
+                          <div style={{height:1,background:'var(--n100)',margin:'8px 0'}}/>
+                          <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--n600)',marginBottom:4}}>
+                            <span>WO open / completed</span><span style={{fontFamily:'var(--ff-m)',color:'var(--n900)'}}>{loc.wo_open} / {loc.wo_completed}</span>
+                          </div>
+                          <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--n600)'}}>
+                            <span>Total WO cost</span><span style={{fontFamily:'var(--ff-m)',color:'var(--n900)'}}>{fmtNaira(loc.wo_cost_cents)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{fontSize:13,fontWeight:600,color:'var(--n700)',marginBottom:12}}>Asset Type Breakdown</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                      {analytics.categories.length === 0 ? (
+                        <div style={{fontSize:13,color:'var(--n400)'}}>No assets yet.</div>
+                      ) : analytics.categories.map(cat => (
+                        <span key={cat.name} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 10px',background:'var(--n100)',border:'1px solid var(--n200)',borderRadius:999,fontSize:12,color:'var(--n700)'}}>
+                          {cat.name} <span style={{fontFamily:'var(--ff-m)',fontWeight:600,color:'var(--n900)'}}>{cat.count}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
 
             {tab === 'generate' && (

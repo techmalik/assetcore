@@ -31,6 +31,68 @@ reportsRouter.get('/reports', async (req, res) => {
   res.json(rows)
 })
 
+// Per-location asset/WO rollups + a category breakdown, for the Reports page's
+// analytics tab. Asset and work-order aggregates are computed in separate
+// CTEs before joining to locations — joining assets AND work_orders directly
+// (both on sites) in one query would fan out (N assets x M work orders per
+// site), silently inflating sum(purchase_value_cents)/sum(cost_cents). RLS
+// (via withOrgContext) already scopes every table here to the caller's org
+// and site access, so no separate scoping logic is needed.
+reportsRouter.get('/reports/location-analytics', async (req, res) => {
+  const data = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows: locations } = await c.query(`
+      with asset_agg as (
+        select s.location_id,
+          count(a.id) as asset_count,
+          avg(a.health_score) as avg_health,
+          sum(coalesce(a.purchase_value_cents, 0)) as total_value_cents
+        from public.assets a
+        join public.sites s on s.id = a.site_id
+        where a.deleted_at is null
+        group by s.location_id
+      ),
+      wo_agg as (
+        select s.location_id,
+          count(*) filter (where w.status <> 'closed') as wo_open,
+          count(*) filter (where w.status = 'closed') as wo_completed,
+          -- Total cost across every non-deleted WO regardless of status, not
+          -- just completed ones — a WO's cost is normally estimated/logged at
+          -- creation (see the new "Estimated cost" field), so a rollup scoped
+          -- to closed-only would hide it until someone closes the ticket.
+          sum(coalesce(w.cost_cents, 0)) as wo_cost_cents
+        from public.work_orders w
+        join public.sites s on s.id = w.site_id
+        where w.deleted_at is null
+        group by s.location_id
+      )
+      select loc.id, loc.name,
+        coalesce(aa.asset_count, 0)::int as asset_count,
+        round(aa.avg_health)::int as avg_health,
+        coalesce(aa.total_value_cents, 0)::bigint as total_value_cents,
+        coalesce(wa.wo_open, 0)::int as wo_open,
+        coalesce(wa.wo_completed, 0)::int as wo_completed,
+        coalesce(wa.wo_cost_cents, 0)::bigint as wo_cost_cents
+      from public.locations loc
+      left join asset_agg aa on aa.location_id = loc.id
+      left join wo_agg wa on wa.location_id = loc.id
+      where loc.deleted_at is null
+      order by loc.name
+    `)
+
+    const { rows: categories } = await c.query(`
+      select coalesce(cat.name, 'Uncategorized') as name, count(a.id)::int as count
+      from public.assets a
+      left join public.asset_categories cat on cat.id = a.category_id
+      where a.deleted_at is null
+      group by coalesce(cat.name, 'Uncategorized')
+      order by count desc
+    `)
+
+    return { locations, categories }
+  })
+  res.json(data)
+})
+
 const requestInput = z.object({
   title: z.string().min(1),
   kind: z.enum(REPORT_KINDS as [ReportKind, ...ReportKind[]]),

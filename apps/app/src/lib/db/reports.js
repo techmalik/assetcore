@@ -23,3 +23,8 @@ export async function downloadReport(report) {
   const filename = `${report.title.replace(/[^a-zA-Z0-9._-]+/g, '_')}.${report.format}`
   return api.download(`/files/${report.storage_path}`, filename)
 }
+
+// { locations: [{id,name,asset_count,avg_health,total_value_cents,wo_open,wo_completed,wo_cost_cents}], categories: [{name,count}] }
+export async function getLocationAnalytics() {
+  return api.get('/reports/location-analytics')
+}

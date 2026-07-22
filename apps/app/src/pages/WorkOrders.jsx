@@ -32,6 +32,13 @@ function TypeBadge({ t }) {
   return <span style={{ padding: '1px 6px', borderRadius: 2, fontSize: 10, fontWeight: 500, background: 'var(--n100)', color: 'var(--n600)', border: '1px solid var(--n200)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{WO_TYPE_LABEL[t] || t}</span>
 }
 
+function fmtNaira(cents) {
+  if (!cents) return '—'
+  const n = cents / 100
+  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`
+  return `₦${n.toLocaleString()}`
+}
+
 function SlaDue({ date }) {
   if (!date) return null
   const d = new Date(date)
@@ -45,7 +52,7 @@ function SlaDue({ date }) {
 // ── New WO Modal ──────────────────────────────────────────────────────────────
 function NewWOModal({ sites, assets, onClose, onSave }) {
   const toast = useToast()
-  const [form, setForm] = useState({ title: '', description: '', type: 'corrective', priority: 'medium', site_id: '', asset_id: '', sla_due: '' })
+  const [form, setForm] = useState({ title: '', description: '', type: 'corrective', priority: 'medium', site_id: '', asset_id: '', sla_due: '', cost: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
@@ -55,7 +62,13 @@ function NewWOModal({ sites, assets, onClose, onSave }) {
     e.preventDefault(); setErr(''); setSaving(true)
     try {
       if (!form.title.trim()) { setErr('Title is required.'); setSaving(false); return }
-      const wo = await createWorkOrder({ ...form, site_id: form.site_id || null, asset_id: form.asset_id || null, sla_due: form.sla_due || null, status: 'new' })
+      if (form.cost !== '' && isNaN(Number(form.cost))) { setErr('Cost must be a number.'); setSaving(false); return }
+      const { cost, ...rest } = form
+      const wo = await createWorkOrder({
+        ...rest, site_id: form.site_id || null, asset_id: form.asset_id || null, sla_due: form.sla_due || null,
+        cost_cents: cost === '' ? null : Math.round(Number(cost) * 100),
+        status: 'new',
+      })
       toast.success(`Work order ${wo.ref} created.`)
       onSave()
     } catch (ex) { setErr(ex.message || 'Create failed.'); setSaving(false) }
@@ -109,9 +122,15 @@ function NewWOModal({ sites, assets, onClose, onSave }) {
             </select>
           </div>
         </div>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>SLA due date</label>
-          <input className="input" type="datetime-local" value={form.sla_due} onChange={e => set('sla_due', e.target.value)} style={{ width: '100%' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>SLA due date</label>
+            <input className="input" type="datetime-local" value={form.sla_due} onChange={e => set('sla_due', e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Estimated cost (₦)</label>
+            <input className="input" type="number" min="0" step="1" value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="e.g. 45000" style={{ width: '100%' }} />
+          </div>
         </div>
         {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginBottom: 12 }}>{err}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -218,6 +237,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
             ['Site', wo.site?.name || '—'],
             ['Asset', wo.asset ? `${wo.asset.ain} — ${wo.asset.name}` : '—'],
             ['SLA Due', wo.sla_due ? <SlaDue date={wo.sla_due} /> : '—'],
+            ['Cost', fmtNaira(wo.cost_cents)],
           ].map(([k, v]) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: 'var(--bdr)', fontSize: 12 }}>
               <span style={{ color: 'var(--n500)', flexShrink: 0 }}>{k}</span>
@@ -390,7 +410,10 @@ export default function WorkOrders({ dark, toggleDark }) {
                             <PriorityBadge p={w.priority} /><TypeBadge t={w.type} />
                           </div>
                           <div style={{ fontSize: 11, color: 'var(--n500)' }}>{w.asset?.ain || w.site?.name || '—'}</div>
-                          {w.sla_due && <div style={{ marginTop: 4 }}><SlaDue date={w.sla_due} /></div>}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                            {w.sla_due ? <SlaDue date={w.sla_due} /> : <span/>}
+                            {w.cost_cents > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{fmtNaira(w.cost_cents)}</span>}
+                          </div>
                         </div>
                       ))}
                     </div>
