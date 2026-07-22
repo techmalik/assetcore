@@ -13,7 +13,7 @@ const ROLE_CAPABILITIES: Record<string, string[]> = {
   ops_manager: [
     'asset:read', 'asset:create', 'asset:update',
     'wo:read', 'wo:create', 'wo:update', 'wo:assign', 'wo:transition',
-    'pm:read', 'pm:create', 'pm:update',
+    'pm:read', 'pm:create', 'pm:update', 'maintenance:complete',
     'inspection:read', 'compliance:read',
     'report:read', 'report:create', 'audit:read', 'user:read',
     'org:manage',
@@ -21,7 +21,7 @@ const ROLE_CAPABILITIES: Record<string, string[]> = {
   maint_engineer: [
     'asset:read', 'asset:update',
     'wo:read', 'wo:update', 'wo:transition',
-    'pm:read', 'pm:update', 'inspection:read', 'inspection:create',
+    'pm:read', 'pm:update', 'maintenance:complete', 'inspection:read', 'inspection:create',
     'report:read',
   ],
   field_tech: [

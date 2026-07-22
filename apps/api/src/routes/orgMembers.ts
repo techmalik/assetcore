@@ -31,7 +31,7 @@ const ROLE_KEYS = ['owner', 'ops_manager', 'maint_engineer', 'field_tech', 'hse_
 const GRANTABLE_CAPS = [
   'asset:create', 'asset:update',
   'wo:create', 'wo:update', 'wo:assign', 'wo:transition',
-  'pm:create', 'pm:update',
+  'pm:create', 'pm:update', 'maintenance:complete',
   'inspection:create', 'inspection:update',
   'compliance:create', 'compliance:update',
   'report:create', 'audit:read',

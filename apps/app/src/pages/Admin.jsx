@@ -18,6 +18,7 @@ const GRANTABLE_CAPS = [
   { key: 'wo:create', label: 'Create work orders' },
   { key: 'wo:transition', label: 'Change work-order status' },
   { key: 'pm:update', label: 'Update maintenance status' },
+  { key: 'maintenance:complete', label: 'Complete maintenance' },
   { key: 'inspection:update', label: 'Update inspection status' },
   { key: 'compliance:update', label: 'Manage compliance' },
   { key: 'report:create', label: 'Generate reports' },
