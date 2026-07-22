@@ -9,12 +9,19 @@ export const dashboardRouter = Router()
 dashboardRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 dashboardRouter.get('/dashboard/stats', async (req, res) => {
+  const locationId = typeof req.query.location_id === 'string' ? req.query.location_id : null
   const stats = await withOrgContext(claimsFromReq(req), async (c) => {
     const now = new Date().toISOString()
+    // EPIC-2 global location filter: same site_id-in-location-subquery
+    // translation the list pages use, applied identically across all three
+    // queries so every KPI/donut/alert stays consistent with one active
+    // location instead of some cards silently ignoring it.
+    const locClause = locationId ? 'and site_id in (select id from public.sites where location_id = $1)' : ''
+    const locParams = locationId ? [locationId] : []
     const [{ rows: assets }, { rows: wos }, { rows: pm }] = await Promise.all([
-      c.query('select status, health_score from public.assets where deleted_at is null'),
-      c.query("select status, priority, sla_due from public.work_orders where deleted_at is null and status <> 'closed'"),
-      c.query("select count(*)::int as count from public.pm_tasks where status = 'overdue'"),
+      c.query(`select status, health_score from public.assets where deleted_at is null ${locClause}`, locParams),
+      c.query(`select status, priority, sla_due from public.work_orders where deleted_at is null and status <> 'closed' ${locClause}`, locParams),
+      c.query(`select count(*)::int as count from public.pm_tasks where status = 'overdue' ${locClause}`, locParams),
     ])
 
     const byStatus: Record<string, number> = { operational: 0, attention: 0, critical: 0, offline: 0 }
@@ -63,33 +70,42 @@ dashboardRouter.get('/dashboard/stats', async (req, res) => {
 // within 30 days, critical open work orders, and offline devices. Replaces
 // the "Alerts coming in Phase 2" stub — every row here traces to a live query.
 dashboardRouter.get('/dashboard/alerts', async (req, res) => {
+  const locationId = typeof req.query.location_id === 'string' ? req.query.location_id : null
   const rows = await withOrgContext(claimsFromReq(req), async (c) => {
+    const locSites = 'select id from public.sites where location_id = $1'
     const [{ rows: pm }, { rows: lic }, { rows: wo }, { rows: dev }] = await Promise.all([
       c.query(
         `select t.id, t.title, t.due_date,
            case when a.id is null then null else a.name end as asset_name
          from public.pm_tasks t
          left join public.assets a on a.id = t.asset_id
-         where t.status = 'overdue'
-         order by t.due_date asc limit 10`
+         where t.status = 'overdue' ${locationId ? `and t.site_id in (${locSites})` : ''}
+         order by t.due_date asc limit 10`,
+        locationId ? [locationId] : []
       ),
       c.query(
         `select cl.id, cl.name, cl.expiry_date
          from public.compliance_licences cl
          where cl.deleted_at is null and cl.expiry_date <= current_date + interval '30 days'
-         order by cl.expiry_date asc limit 10`
+           ${locationId ? `and (cl.site_id is null or cl.site_id in (${locSites}))` : ''}
+         order by cl.expiry_date asc limit 10`,
+        locationId ? [locationId] : []
       ),
       c.query(
         `select w.id, w.ref, w.title, w.sla_due
          from public.work_orders w
          where w.deleted_at is null and w.status <> 'closed' and w.priority = 'critical'
-         order by w.created_at desc limit 10`
+           ${locationId ? `and w.site_id in (${locSites})` : ''}
+         order by w.created_at desc limit 10`,
+        locationId ? [locationId] : []
       ),
       c.query(
         `select d.id, d.name, d.last_seen_at
          from public.devices d
          where d.deleted_at is null and d.status = 'offline'
-         order by d.last_seen_at asc nulls first limit 10`
+           ${locationId ? `and d.site_id in (${locSites})` : ''}
+         order by d.last_seen_at asc nulls first limit 10`,
+        locationId ? [locationId] : []
       ),
     ])
 
@@ -123,6 +139,9 @@ dashboardRouter.get('/dashboard/alerts', async (req, res) => {
 })
 
 dashboardRouter.get('/dashboard/recent-work-orders', async (req, res) => {
+  const locationId = typeof req.query.location_id === 'string' ? req.query.location_id : null
+  const locClause = locationId ? 'and w.site_id in (select id from public.sites where location_id = $1)' : ''
+  const locParams = locationId ? [locationId] : []
   const rows = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(
       `select w.ref, w.title, w.status, w.priority, w.sla_due, w.updated_at,
@@ -131,9 +150,10 @@ dashboardRouter.get('/dashboard/recent-work-orders', async (req, res) => {
        from public.work_orders w
        left join public.sites s on s.id = w.site_id
        left join public.users u on u.id = w.assignee_id
-       where w.deleted_at is null
+       where w.deleted_at is null ${locClause}
        order by w.updated_at desc
-       limit 5`
+       limit 5`,
+      locParams
     ).then((r) => r.rows)
   )
   res.json(rows)

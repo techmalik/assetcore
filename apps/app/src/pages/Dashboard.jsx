@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
+import { useLocationFilter } from '../lib/LocationFilterContext'
 import { getDashboardStats, getRecentWorkOrders, getDashboardAlerts } from '../lib/db/dashboard.js'
 import { getComplianceLicenceCounts, getPmCompliance } from '../lib/db/complianceLicences.js'
 import { listPMTasks } from '../lib/db/pmTasks.js'
@@ -69,12 +70,11 @@ function initialsOf(name) {
   return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase()
 }
 
-const SITES = ['All Sites', 'Lagos', 'Delta', 'North', 'Warri', 'Aba']
-
 export default function Dashboard({ dark, toggleDark }) {
   const { org } = useAuth()
   const nav = useNavigate()
-  const [activeSite, setActiveSite] = useState(0)
+  const { locationId: globalLocationId, locations: myLocations } = useLocationFilter()
+  const globalLocation = myLocations.find((l) => l.id === globalLocationId)
   const [stats, setStats] = useState(null)
   const [recentWOs, setRecentWOs] = useState([])
   const [statsErr, setStatsErr] = useState(null)
@@ -84,17 +84,17 @@ export default function Dashboard({ dark, toggleDark }) {
   const [pmCompliance, setPmCompliance] = useState(null)
 
   useEffect(() => {
-    Promise.all([getDashboardStats(), getRecentWorkOrders()])
+    Promise.all([getDashboardStats({ locationId: globalLocationId }), getRecentWorkOrders({ locationId: globalLocationId })])
       .then(([s, wos]) => { setStats(s); setRecentWOs(wos) })
       .catch(e => setStatsErr(e.message))
     getComplianceLicenceCounts().then(setComplianceCounts).catch(() => {})
     getPmCompliance().then(setPmCompliance).catch(() => {})
-    getDashboardAlerts().then(setAlerts).catch(() => setAlerts([]))
+    getDashboardAlerts({ locationId: globalLocationId }).then(setAlerts).catch(() => setAlerts([]))
     const today = new Date().toISOString().slice(0, 10)
     const in14 = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
     listPMTasks({ statuses: ['pending', 'in_progress'], dueAfter: today, dueBefore: in14, limit: 10 })
       .then(setUpcomingPM).catch(() => setUpcomingPM([]))
-  }, [])
+  }, [globalLocationId])
 
   const a = stats?.assets
   const w = stats?.wos
@@ -115,18 +115,7 @@ export default function Dashboard({ dark, toggleDark }) {
     <div className="app-shell">
       <Sidebar active="dashboard"/>
       <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <Topbar breadcrumb="Dashboard" dark={dark} toggleDark={toggleDark}>
-          <div style={{height:34,display:'flex',alignItems:'center',padding:'0 24px',gap:6,background:'var(--n50)',borderTop:'var(--bdr)'}}>
-            <span style={{fontSize:12,color:'var(--n500)',fontWeight:500,marginRight:2}}>Site:</span>
-            {SITES.map((s, i) => (
-              <button key={s} onClick={() => setActiveSite(i)} style={{height:22,padding:'0 8px',border:i===activeSite?'1px solid var(--b300)':'1px solid transparent',borderRadius:3,background:i===activeSite?'var(--b50)':'transparent',fontSize:12,color:i===activeSite?'var(--b700)':'var(--n600)',cursor:'pointer'}}>{s}</button>
-            ))}
-            <div style={{flex:1}}/>
-            <span style={{fontFamily:'var(--ff-m)',fontSize:11,color:'var(--n400)'}}>
-              {new Date().toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} WAT
-            </span>
-          </div>
-        </Topbar>
+        <Topbar breadcrumb="Dashboard" dark={dark} toggleDark={toggleDark}/>
 
         <div style={{flex:1,overflowY:'auto',padding:24}}>
           {/* Page header */}
@@ -134,7 +123,7 @@ export default function Dashboard({ dark, toggleDark }) {
             <div>
               <h1 style={{fontFamily:'var(--ff-d)',fontSize:26,fontWeight:700,letterSpacing:'-.4px',color:'var(--n950)',lineHeight:1.15}}>Operations Dashboard</h1>
               <p style={{fontSize:13,color:'var(--n500)',marginTop:4}}>
-                Network health overview · {org?.name || 'Loading…'}
+                Network health overview · {org?.name || 'Loading…'}{globalLocation ? ` · ${globalLocation.name}` : ''}
               </p>
             </div>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
