@@ -96,16 +96,15 @@ workOrdersRouter.get('/work-orders/:id', async (req, res) => {
   res.json(row)
 })
 
-// WO-{year}-{4-digit sequence within the org for that year}, matching the
-// seed data's format. Not concurrency-safe under heavy simultaneous creates
-// (fine at this scale) — the ref column's unique constraint is the backstop.
+// WO-{year}-{4-digit sequence within the org for that year}. Delegates to
+// next_wo_ref() (0011_wo_ref_counter.sql) — a real per-org/year counter
+// table, upserted under its own row lock — instead of counting existing
+// rows itself. apply_asset_health()'s auto-draft path uses the same
+// function, so there is exactly one sequence per org/year, not two
+// independent counts that could compute the same next number and collide.
 async function generateWoRef(c: import('pg').PoolClient): Promise<string> {
-  const year = new Date().getFullYear()
-  const { rows } = await c.query(
-    `select count(*)::int as n from public.work_orders where ref like $1`,
-    [`WO-${year}-%`]
-  )
-  return `WO-${year}-${String(rows[0].n + 1).padStart(4, '0')}`
+  const { rows } = await c.query(`select public.next_wo_ref(current_org_id()) as ref`)
+  return rows[0].ref
 }
 
 workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) => {
