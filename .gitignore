@@ -7,6 +7,7 @@ dist/
 !.env.example
 !deploy/.env.deploy.example
 apps/api/data/
+apps/api/test/tmp/
 deploy/instance.config.json
 dist-release/
 assetcore-v*.tar.gz

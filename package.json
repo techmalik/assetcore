@@ -16,6 +16,8 @@
     "build:app": "npm run build -w @assetcore/app",
     "build:admin": "npm run build -w @assetcore/admin",
     "build:api": "npm run build -w @assetcore/api",
+    "test": "npm test -w @assetcore/api",
+    "test:api": "npm test -w @assetcore/api",
     "migrate": "node scripts/migrate.mjs",
     "seed:dev": "node scripts/seed-dev.mjs",
     "provision": "node scripts/provision.mjs",

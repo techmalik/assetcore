@@ -27,3 +27,9 @@ if (!parsed.success) {
 
 export const config = parsed.data
 export const isDev = config.NODE_ENV !== 'production'
+
+// Set as early as possible — anything importing config.ts (which is nearly
+// every module, transitively) gets the process-wide TZ before it runs any
+// date logic. Previously set at the top of index.ts, but that ran after
+// app.ts's import chain once the two were split for testability.
+process.env.TZ = config.TZ
