@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import AuthImage from '../components/AuthImage.jsx'
@@ -12,9 +12,9 @@ import { listSites } from '../lib/db/sites'
 import { listLocations } from '../lib/db/locations'
 import { listCategories } from '../lib/db/categories'
 import { listOrgUsers } from '../lib/db/orgMembers'
-import { createWorkOrder, listWorkOrders, WO_TYPE_LABEL, WO_PRIORITY_LABEL } from '../lib/db/workOrders'
-import { listPMTasks } from '../lib/db/pmTasks'
-import { listInspections } from '../lib/db/inspections'
+import { createWorkOrder, listWorkOrders, WO_STATUS_LABEL, WO_TYPE_LABEL, WO_PRIORITY_LABEL } from '../lib/db/workOrders'
+import { listPMTasks, updatePMTask, uploadMaintenanceReport } from '../lib/db/pmTasks'
+import { listInspections, updateInspection } from '../lib/db/inspections'
 import { completeMaintenance } from '../lib/db/maintenanceEvents'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
@@ -560,6 +560,55 @@ function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
   )
 }
 
+// ── PM Task Complete Modal ──────────────────────────────────────────────────────
+// Selecting "completed" from the inline status select on a PM task (asset
+// detail panel) opens this instead of PATCHing status directly — otherwise
+// a task could be marked completed (resetting the asset's health via
+// apply_asset_health) with no record of what was done or a report attached.
+function PMTaskCompleteModal({ task, onClose, onCompleted }) {
+  const [completedAt, setCompletedAt] = useState(localDateStr(0))
+  const [notes, setNotes] = useState('')
+  const [report, setReport] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function submit(e) {
+    e.preventDefault()
+    setSaving(true); setErr('')
+    try {
+      await updatePMTask(task.id, { status: 'completed', completed_at: completedAt, notes: notes.trim() || null })
+      if (report) await uploadMaintenanceReport(task.id, report)
+      onCompleted()
+    } catch (ex) { setErr(ex.message || 'Failed to complete task.'); setSaving(false) }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
+      <form onSubmit={submit} style={{ position: 'relative', width: 420, maxWidth: '92vw', background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 24, zIndex: 1 }}>
+        <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)', marginBottom: 4 }}>Complete PM Task</h3>
+        <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16 }}>{task.title} — resets the asset's health to 100% and advances the maintenance schedule.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Field label="Completed on" required>
+            <input className="input" style={{ width: '100%' }} type="date" max={localDateStr(0)} value={completedAt} onChange={(e) => setCompletedAt(e.target.value)} />
+          </Field>
+          <Field label="Notes">
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="input" style={{ width: '100%', height: 'auto', padding: '8px 10px', resize: 'vertical' }} placeholder="What was done…" />
+          </Field>
+          <Field label="Report (optional)">
+            <input type="file" onChange={(e) => setReport(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
+          </Field>
+        </div>
+        {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12 }}>{err}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
+          <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{saving ? 'Saving…' : 'Complete task'}</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 // ── CSV Import Modal ───────────────────────────────────────────────────────────
 function ImportModal({ onClose, onDone }) {
   const [busy, setBusy] = useState(false)
@@ -622,17 +671,24 @@ function ImportModal({ onClose, onDone }) {
 // ── Asset detail panel ─────────────────────────────────────────────────────────
 const PM_STATUS_C = { pending: 'var(--slt)', in_progress: 'var(--sat)', completed: 'var(--sgt)', overdue: 'var(--srt)', skipped: 'var(--n500)' }
 const INSP_STATUS_C = { scheduled: 'var(--slt)', due: 'var(--sat)', in_progress: 'var(--sat)', completed: 'var(--sgt)', overdue: 'var(--srt)' }
+const PRIORITY_C = { low: 'var(--sgt)', medium: 'var(--n600)', high: 'var(--sat)', critical: 'var(--srt)' }
 // Activity-feed dot color by asset_activity.kind — lets a maintenance
 // completion or health alert read at a glance without opening every entry.
 const ACTIVITY_DOT_C = { maintenance: 'var(--sgt)', alert: 'var(--srt)', inspection: 'var(--sat)', comment: 'var(--b400)', status_change: 'var(--b400)', attachment: 'var(--b400)' }
 
 function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdit, onArchive, onRestore, onRaiseWO, onCompleteMaintenance, onClose, refreshToken }) {
+  const nav = useNavigate()
+  const { roleKey, extraCaps } = useAuth()
+  const canUpdatePM = can(roleKey, 'pm:update', extraCaps)
+  const canUpdateInspection = can(roleKey, 'inspection:update', extraCaps)
   const [activity, setActivity] = useState(null)
   const [pmTasks, setPMTasks] = useState(null)
   const [inspections, setInspections] = useState(null)
+  const [workOrders, setWorkOrders] = useState(null)
   const [comment, setComment] = useState('')
   const [posting, setPosting] = useState(false)
   const [lightbox, setLightbox] = useState(null) // { images, index } | null
+  const [completingTask, setCompletingTask] = useState(null) // pm_task being completed via the confirm modal
   const archived = Boolean(asset.deleted_at)
   const s = asset.specs || {}
 
@@ -640,17 +696,37 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
     listAssetActivity(asset.id).then(setActivity).catch(() => setActivity([]))
   }, [asset.id])
 
+  const loadPMTasks = useCallback(() => {
+    listPMTasks({ asset_id: asset.id, limit: 20 }).then(setPMTasks).catch(() => setPMTasks([]))
+  }, [asset.id])
+
+  const loadInspections = useCallback(() => {
+    listInspections({ asset_id: asset.id, limit: 20 }).then(setInspections).catch(() => setInspections([]))
+  }, [asset.id])
+
   useEffect(() => {
     let cancelled = false
-    setActivity(null); setPMTasks(null); setInspections(null)
+    setActivity(null); setPMTasks(null); setInspections(null); setWorkOrders(null)
     listAssetActivity(asset.id).then((a) => !cancelled && setActivity(a)).catch(() => !cancelled && setActivity([]))
     listPMTasks({ asset_id: asset.id, limit: 20 }).then((t) => !cancelled && setPMTasks(t)).catch(() => !cancelled && setPMTasks([]))
     listInspections({ asset_id: asset.id, limit: 20 }).then((i) => !cancelled && setInspections(i)).catch(() => !cancelled && setInspections([]))
+    listWorkOrders({ asset_id: asset.id }).then((w) => !cancelled && setWorkOrders(w)).catch(() => !cancelled && setWorkOrders([]))
     return () => { cancelled = true }
     // refreshToken bumps after actions taken elsewhere (e.g. Complete
     // Maintenance) that change this asset's PM tasks/activity but don't
     // change asset.id, so the effect wouldn't otherwise refire.
   }, [asset.id, refreshToken])
+
+  async function changePMStatus(task, newStatus) {
+    if (newStatus === 'completed') { setCompletingTask(task); return }
+    try { await updatePMTask(task.id, { status: newStatus }); loadPMTasks() }
+    catch (ex) { alert(ex.message) }
+  }
+
+  async function changeInspectionStatus(inspection, newStatus) {
+    try { await updateInspection(inspection.id, { status: newStatus }); loadInspections() }
+    catch (ex) { alert(ex.message) }
+  }
 
   async function postComment() {
     if (!comment.trim()) return
@@ -746,7 +822,13 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
               <span style={{ color: 'var(--n700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
               <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                 {t.report_url && <button onClick={() => viewDoc({ url: t.report_url, name: t.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
-                <span style={{ color: PM_STATUS_C[t.status] || 'var(--n500)', fontWeight: 500 }}>{t.status}</span>
+                {canUpdatePM && t.status !== 'completed' ? (
+                  <select value={t.status} onChange={(e) => changePMStatus(t, e.target.value)} style={{ fontSize: 11, fontWeight: 500, color: PM_STATUS_C[t.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
+                    {Object.keys(PM_STATUS_C).map((k) => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                ) : (
+                  <span style={{ color: PM_STATUS_C[t.status] || 'var(--n500)', fontWeight: 500 }}>{t.status}</span>
+                )}
               </span>
             </div>
           ))}
@@ -758,12 +840,42 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
           {inspections === null ? <div style={{ fontSize: 12, color: 'var(--n400)' }}>Loading…</div> : inspections.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--n400)' }}>No inspections for this asset.</div>
           ) : inspections.slice(0, 8).map((i) => (
-            <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '6px 0', fontSize: 12, borderBottom: 'var(--bdr)' }}>
-              <span style={{ color: 'var(--n700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.title}</span>
-              <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
-                {i.report_url && <button onClick={() => viewDoc({ url: i.report_url, name: i.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
-                <span style={{ color: INSP_STATUS_C[i.status] || 'var(--n500)', fontWeight: 500 }}>{i.status}</span>
-              </span>
+            <div key={i.id} style={{ padding: '6px 0', fontSize: 12, borderBottom: 'var(--bdr)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ color: 'var(--n700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.title}</span>
+                <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+                  {i.report_url && <button onClick={() => viewDoc({ url: i.report_url, name: i.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
+                  {canUpdateInspection ? (
+                    <select value={i.status} onChange={(e) => changeInspectionStatus(i, e.target.value)} style={{ fontSize: 11, fontWeight: 500, color: INSP_STATUS_C[i.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
+                      {Object.keys(INSP_STATUS_C).map((k) => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                  ) : (
+                    <span style={{ color: INSP_STATUS_C[i.status] || 'var(--n500)', fontWeight: 500 }}>{i.status}</span>
+                  )}
+                </span>
+              </div>
+              {i.inspector?.full_name && <div style={{ fontSize: 10, color: 'var(--n400)', marginTop: 2 }}>Inspector: {i.inspector.full_name} · {fmtDate(i.scheduled_date)}</div>}
+            </div>
+          ))}
+        </div>
+
+        {/* Related work orders */}
+        <div>
+          <div style={section}>Work Orders</div>
+          {workOrders === null ? <div style={{ fontSize: 12, color: 'var(--n400)' }}>Loading…</div> : workOrders.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--n400)' }}>No work orders for this asset.</div>
+          ) : workOrders.slice(0, 8).map((w) => (
+            <div key={w.id} role="button" tabIndex={0} onClick={() => nav('/work-orders')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') nav('/work-orders') }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 0', fontSize: 12, borderBottom: 'var(--bdr)', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)' }}>{w.ref}</span>
+                <span style={{ color: PRIORITY_C[w.priority] || 'var(--n500)', fontWeight: 500, fontSize: 11 }}>{WO_PRIORITY_LABEL[w.priority] || w.priority}</span>
+              </div>
+              <div style={{ color: 'var(--n700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, color: 'var(--n400)' }}>
+                <span>{WO_STATUS_LABEL[w.status] || w.status}</span>
+                {w.sla_due && <span>Due {fmtDate(w.sla_due)}</span>}
+              </div>
             </div>
           ))}
         </div>
@@ -844,6 +956,13 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
         </div>
       </div>
       {lightbox && <ImageLightbox images={lightbox.images} index={lightbox.index} onClose={() => setLightbox(null)} />}
+      {completingTask && (
+        <PMTaskCompleteModal
+          task={completingTask}
+          onClose={() => setCompletingTask(null)}
+          onCompleted={() => { setCompletingTask(null); loadPMTasks() }}
+        />
+      )}
     </div>
   )
 }

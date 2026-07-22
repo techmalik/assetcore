@@ -65,12 +65,13 @@ const woInput = z.object({
 })
 
 workOrdersRouter.get('/work-orders', async (req, res) => {
-  const { status, priority } = req.query
+  const { status, priority, asset_id } = req.query
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [SELECT, 'where w.deleted_at is null']
     const values: unknown[] = []
     if (typeof status === 'string') { values.push(status); clauses.push(`and w.status = $${values.length}`) }
     if (typeof priority === 'string') { values.push(priority); clauses.push(`and w.priority = $${values.length}`) }
+    if (typeof asset_id === 'string' && asset_id) { values.push(asset_id); clauses.push(`and w.asset_id = $${values.length}`) }
     clauses.push('order by w.created_at desc')
     return c.query(clauses.join(' '), values).then((r) => r.rows)
   })

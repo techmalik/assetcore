@@ -22,10 +22,11 @@ export const WO_STATUS_LABEL = {
 export const WO_PRIORITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' }
 export const WO_TYPE_LABEL = { corrective: 'Corrective', preventive: 'Preventive', inspection: 'Inspection', emergency: 'Emergency' }
 
-export async function listWorkOrders({ status, priority } = {}) {
+export async function listWorkOrders({ status, priority, asset_id } = {}) {
   const params = new URLSearchParams()
   if (status) params.set('status', status)
   if (priority) params.set('priority', priority)
+  if (asset_id) params.set('asset_id', asset_id)
   const qs = params.toString()
   return api.get(`/work-orders${qs ? `?${qs}` : ''}`)
 }
