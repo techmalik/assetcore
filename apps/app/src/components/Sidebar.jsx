@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
-import { can, ROLE_LABELS } from '../lib/rbac'
+import { can, ROLE_LABELS, ADMIN_ENTRY_CAPS } from '../lib/rbac'
 import { useSidebar } from '../lib/SidebarContext'
 
 const icons = {
@@ -34,7 +34,7 @@ export default function Sidebar({ active }) {
   const nav = useNavigate()
   const { org, fullName, initials, roleKey } = useAuth()
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
-  const canAdmin = can(roleKey, 'audit:read')
+  const canAdmin = ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c))
   const [orgMenu, setOrgMenu] = useState(false)
   const orgRef = useRef(null)
 

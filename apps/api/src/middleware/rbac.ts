@@ -3,8 +3,11 @@ import type { Request, Response, NextFunction } from 'express'
 // Server-side mirror of apps/app/src/lib/rbac.js — the single source of truth
 // for enforcement. The client copy stays for UI gating only.
 //
-// org:manage, user:manage, integration:manage are intentionally not listed
-// under any role below — they're owner-only, covered by owner's '*'.
+// user:manage, integration:manage are intentionally not listed under any
+// role below — they're owner-only, covered by owner's '*'. org:manage is
+// also owner-only EXCEPT ops_manager, which is explicitly granted it so
+// operations managers can maintain the location/site hierarchy and asset
+// categories without full admin rights.
 const ROLE_CAPABILITIES: Record<string, string[]> = {
   owner: ['*'],
   ops_manager: [
@@ -13,6 +16,7 @@ const ROLE_CAPABILITIES: Record<string, string[]> = {
     'pm:read', 'pm:create', 'pm:update',
     'inspection:read', 'compliance:read',
     'report:read', 'report:create', 'audit:read', 'user:read',
+    'org:manage',
   ],
   maint_engineer: [
     'asset:read', 'asset:update',

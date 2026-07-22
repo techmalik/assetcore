@@ -874,16 +874,22 @@ function ConfigTab() {
 // ── Main Admin page ───────────────────────────────────────────────────────────
 
 const TABS = [
-  { k: 'locations', label: 'Locations' },
-  { k: 'sites', label: 'Sites' },
-  { k: 'categories', label: 'Asset Categories' },
-  { k: 'users', label: 'Users & Roles' },
-  { k: 'config', label: 'Configuration' },
-  { k: 'audit', label: 'Audit Log' },
+  { k: 'locations', label: 'Locations', cap: 'org:manage' },
+  { k: 'sites', label: 'Sites', cap: 'org:manage' },
+  { k: 'categories', label: 'Asset Categories', cap: 'org:manage' },
+  { k: 'users', label: 'Users & Roles', cap: 'user:manage' },
+  { k: 'config', label: 'Configuration', cap: 'org:manage' },
+  { k: 'audit', label: 'Audit Log', cap: 'audit:read' },
 ]
 
 export default function Admin({ dark, toggleDark }) {
-  const [tab, setTab] = useState('locations')
+  const { roleKey } = useAuth()
+  const visibleTabs = TABS.filter((t) => can(roleKey, t.cap))
+  const [tab, setTab] = useState(visibleTabs[0]?.k)
+
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.k === tab)) setTab(visibleTabs[0]?.k)
+  }, [roleKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="app-shell">
@@ -897,7 +903,7 @@ export default function Admin({ dark, toggleDark }) {
               <p style={{fontSize:12,color:'var(--n500)'}}>Manage your organisation settings, team, and audit trail</p>
             </div>
             <div style={{display:'flex',gap:0}}>
-              {TABS.map(t => (
+              {visibleTabs.map(t => (
                 <button key={t.k} className={`tab-btn${tab===t.k?' active':''}`} onClick={() => setTab(t.k)}>{t.label}</button>
               ))}
             </div>
@@ -909,6 +915,7 @@ export default function Admin({ dark, toggleDark }) {
             {tab === 'users' && <UsersTab />}
             {tab === 'config' && <ConfigTab />}
             {tab === 'audit' && <AuditTab />}
+            {!tab && <div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>You don't have access to any Admin section.</div>}
           </div>
         </div>
       </div>

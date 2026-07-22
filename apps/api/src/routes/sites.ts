@@ -5,6 +5,7 @@ import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
+import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 
@@ -29,7 +30,7 @@ sitesRouter.get('/sites', async (req, res) => {
   res.json(rows)
 })
 
-sitesRouter.post('/sites', async (req, res) => {
+sitesRouter.post('/sites', requireCap('org:manage'), async (req, res) => {
   const parsed = siteInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { name, code, region, lat, lng, location_id } = parsed.data
@@ -60,7 +61,7 @@ sitesRouter.post('/sites', async (req, res) => {
   res.status(201).json(row)
 })
 
-sitesRouter.patch('/sites/:id', async (req, res) => {
+sitesRouter.patch('/sites/:id', requireCap('org:manage'), async (req, res) => {
   const parsed = siteInput.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { setSql, values } = buildSet(parsed.data, ALLOWED)
@@ -79,7 +80,7 @@ sitesRouter.patch('/sites/:id', async (req, res) => {
   res.json(row)
 })
 
-sitesRouter.delete('/sites/:id', async (req, res) => {
+sitesRouter.delete('/sites/:id', requireCap('org:manage'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
       'update public.sites set deleted_at = now() where id = $1 returning id, org_id',

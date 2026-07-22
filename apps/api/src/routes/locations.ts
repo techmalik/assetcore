@@ -5,6 +5,7 @@ import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
+import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 
@@ -28,7 +29,7 @@ locationsRouter.get('/locations', async (req, res) => {
   res.json(rows)
 })
 
-locationsRouter.post('/locations', async (req, res) => {
+locationsRouter.post('/locations', requireCap('org:manage'), async (req, res) => {
   const parsed = locationInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { name, code } = parsed.data
@@ -44,7 +45,7 @@ locationsRouter.post('/locations', async (req, res) => {
   res.status(201).json(row)
 })
 
-locationsRouter.patch('/locations/:id', async (req, res) => {
+locationsRouter.patch('/locations/:id', requireCap('org:manage'), async (req, res) => {
   const parsed = locationInput.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { setSql, values } = buildSet(parsed.data, ALLOWED)
@@ -59,7 +60,7 @@ locationsRouter.patch('/locations/:id', async (req, res) => {
   res.json(row)
 })
 
-locationsRouter.delete('/locations/:id', async (req, res) => {
+locationsRouter.delete('/locations/:id', requireCap('org:manage'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query('update public.locations set deleted_at = now() where id = $1 returning id, org_id', [req.params.id])
     const loc = rows[0]

@@ -5,6 +5,7 @@ import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
+import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 
@@ -25,7 +26,7 @@ categoriesRouter.get('/categories', async (req, res) => {
   res.json(rows)
 })
 
-categoriesRouter.post('/categories', async (req, res) => {
+categoriesRouter.post('/categories', requireCap('org:manage'), async (req, res) => {
   const parsed = categoryInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { name, code } = parsed.data
@@ -42,7 +43,7 @@ categoriesRouter.post('/categories', async (req, res) => {
   res.status(201).json(row)
 })
 
-categoriesRouter.patch('/categories/:id', async (req, res) => {
+categoriesRouter.patch('/categories/:id', requireCap('org:manage'), async (req, res) => {
   const parsed = categoryInput.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { setSql, values } = buildSet(parsed.data, ALLOWED)
@@ -61,7 +62,7 @@ categoriesRouter.patch('/categories/:id', async (req, res) => {
   res.json(row)
 })
 
-categoriesRouter.delete('/categories/:id', async (req, res) => {
+categoriesRouter.delete('/categories/:id', requireCap('org:manage'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query('delete from public.asset_categories where id = $1 returning id, org_id', [req.params.id])
     const cat = rows[0]

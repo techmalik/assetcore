@@ -4,7 +4,7 @@ import { isConfigured } from './lib/apiClient'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { NotificationsProvider } from './lib/NotificationsContext'
 import { SidebarProvider } from './lib/SidebarContext'
-import { can } from './lib/rbac'
+import { can, ADMIN_ENTRY_CAPS } from './lib/rbac'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
 import LicenceBanner from './components/LicenceBanner.jsx'
@@ -93,7 +93,7 @@ function Routed() {
       <Route path="/notifications" element={gate(<Notifications {...props} />)} />
       <Route path="/settings" element={gate(<Settings {...props} />)} />
       <Route path="/reports" element={gate(<Reports {...props} />)} />
-      <Route path="/admin" element={gate(can(roleKey, 'audit:read') ? <Admin {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/admin" element={gate(ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c)) ? <Admin {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
