@@ -13,6 +13,13 @@ import { uploadTo, guardedSingle, validateUploadOrCleanup, cleanupOrphanedUpload
 export const assetsRouter = Router()
 assetsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
+// operational/maintenance/standby/offline is the current model (TASK-4.2);
+// attention/critical are legacy values kept legal so existing rows stay
+// valid and editable (0012_asset_status_expansion.sql keeps both sets in
+// the DB check constraint) — new writes aren't steered away from them here,
+// the UI picker does that (Assets.jsx's STATUS_PICKER_KEYS).
+const ASSET_STATUSES = ['operational', 'maintenance', 'standby', 'offline', 'attention', 'critical'] as const
+
 const photoUpload = uploadTo('assets', { maxSizeBytes: 10 * 1024 * 1024 })
 const documentUpload = uploadTo('asset-documents', { maxSizeBytes: 25 * 1024 * 1024 })
 
@@ -54,7 +61,7 @@ const assetInput = z.object({
   ain: z.string().min(1),
   name: z.string().min(1),
   category_id: z.string().uuid().nullable().optional(),
-  status: z.enum(['operational', 'attention', 'critical', 'offline']).optional(),
+  status: z.enum(ASSET_STATUSES).optional(),
   health_score: z.number().int().min(0).max(100).nullable().optional(),
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
@@ -222,7 +229,12 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
       if (r.serial_number) specs.serial_number = r.serial_number
       if (r.install_date) specs.install_date = r.install_date
       if (r.tags) specs.tags = String(r.tags).split(',').map((t: string) => t.trim()).filter(Boolean)
-      const status = ['operational', 'attention', 'critical', 'offline'].includes(r.status) ? r.status : 'operational'
+      const rawStatus = r.status != null ? String(r.status).trim() : ''
+      if (rawStatus && !ASSET_STATUSES.includes(rawStatus as typeof ASSET_STATUSES[number])) {
+        out.push({ ain: r.ain, status: 'error', message: `unrecognized status "${rawStatus}"` })
+        continue
+      }
+      const status = rawStatus || 'operational'
       const num = (v: any) => (v != null && v !== '' && !isNaN(Number(v)) ? Number(v) : null)
       const health = num(r.health_score) != null ? Math.max(0, Math.min(100, Math.round(num(r.health_score)!))) : null
       const value = num(r.value) != null ? Math.round(num(r.value)! * 100) : null

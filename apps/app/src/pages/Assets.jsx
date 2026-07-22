@@ -21,12 +21,27 @@ import { can } from '../lib/rbac'
 import { healthColor, healthLabel, healthBand } from '../lib/health'
 import { api } from '../lib/apiClient'
 
+// operational/maintenance/standby/offline describe WHAT the asset is doing
+// right now (the new, David-demo-adopted model — TASK-4.2); attention/critical
+// are the legacy severity-as-status values kept here ONLY so existing rows
+// still render a real badge instead of falling through to the offline
+// default. New/edited assets are steered toward the 4-value model by
+// STATUS_PICKER_OPTIONS below, not this map.
 const STATUS_STYLE = {
+  operational: { bg: 'var(--sgb)', c: 'var(--sgt)', br: 'var(--sgbr)', label: 'Operational' },
+  maintenance: { bg: 'var(--sab)', c: 'var(--sat)', br: 'var(--sabr)', label: 'Maintenance' },
+  standby:     { bg: 'var(--slb)', c: 'var(--slt)', br: 'var(--slbr)', label: 'Standby' },
+  offline:     { bg: 'var(--n100)', c: 'var(--n500)', br: 'var(--n300)', label: 'Offline' },
+  // Legacy values (pre-TASK-4.2) — still valid on existing rows.
   critical:    { bg: 'var(--srb)', c: 'var(--srt)', br: 'var(--srbr)', label: 'Critical' },
   attention:   { bg: 'var(--sab)', c: 'var(--sat)', br: 'var(--sabr)', label: 'Attention' },
-  operational: { bg: 'var(--sgb)', c: 'var(--sgt)', br: 'var(--sgbr)', label: 'Operational' },
-  offline:     { bg: 'var(--n100)', c: 'var(--n500)', br: 'var(--n300)', label: 'Offline' },
 }
+
+// The set offered on the Add/Edit picker going forward. An asset already
+// carrying a legacy status (attention/critical) still shows that as its
+// current option too, so opening Edit and saving unrelated fields doesn't
+// silently reassign its status.
+const STATUS_PICKER_KEYS = ['operational', 'maintenance', 'standby', 'offline']
 
 const MAX_PHOTOS = 5
 
@@ -301,7 +316,9 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
           </Field>
           <Field label="Status">
             <select {...inputProps} value={form.status} onChange={(e) => set('status', e.target.value)}>
-              {Object.entries(STATUS_STYLE).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              {[...new Set([...STATUS_PICKER_KEYS, form.status])].map((k) => (
+                <option key={k} value={k}>{STATUS_STYLE[k]?.label || k}</option>
+              ))}
             </select>
           </Field>
           <Field label="Manufacturer">
@@ -933,7 +950,7 @@ export default function Assets({ dark, toggleDark }) {
             )}
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', gap: 6 }}>
-              {[['all', 'All'], ['operational', 'Operational'], ['attention', 'Attention'], ['critical', 'Critical']].map(([v, l]) => (
+              {[['all', 'All'], ['operational', 'Operational'], ['maintenance', 'Maintenance'], ['standby', 'Standby'], ['offline', 'Offline'], ['attention', 'Attention'], ['critical', 'Critical']].map(([v, l]) => (
                 <button key={v} onClick={() => setFilter(v)} style={{ height: 30, padding: '0 12px', border: `1px solid ${filter === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filter === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: filter === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filter === v ? 500 : 400, cursor: 'pointer' }}>{l}</button>
               ))}
             </div>
