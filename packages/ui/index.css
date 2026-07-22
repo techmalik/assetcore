@@ -237,6 +237,13 @@ a { text-decoration: none; color: inherit; }
   outline: 2px solid var(--b400);
   outline-offset: 2px;
 }
+.dash-legend-row:hover, .dash-alert-row:hover {
+  background: var(--n50);
+}
+.dash-legend-row:focus-visible, .dash-alert-row:focus-visible {
+  outline: 2px solid var(--b400);
+  outline-offset: -2px;
+}
 
 /* Tab buttons */
 .tab-btn {

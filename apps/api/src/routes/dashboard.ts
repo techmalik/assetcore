@@ -18,16 +18,34 @@ dashboardRouter.get('/dashboard/stats', async (req, res) => {
     ])
 
     const byStatus: Record<string, number> = { operational: 0, attention: 0, critical: 0, offline: 0 }
+    // Health-band counts for the dashboard's health donut/legend, per the
+    // >50 good / 31-50 attention / <=30 critical spec (apps/app/src/lib/health.js
+    // is the canonical source of these thresholds - kept in lockstep here).
+    // Offline assets get their own bucket regardless of health_score, same as
+    // the asset list's own status display; every other asset lands in
+    // exactly one of the three health bands, so the four counts sum to total.
+    // A null health_score counts as 0 (critical), matching how the asset
+    // list and detail panel already render a missing score everywhere else.
+    const healthBands = { good: 0, attention: 0, critical: 0, offline: 0 }
     let healthSum = 0
     for (const a of assets) {
       if (a.status in byStatus) byStatus[a.status]++
       if (a.health_score != null) healthSum += a.health_score
+      if (a.status === 'offline') {
+        healthBands.offline++
+      } else {
+        const h = a.health_score ?? 0
+        if (h > 50) healthBands.good++
+        else if (h > 30) healthBands.attention++
+        else healthBands.critical++
+      }
     }
 
     return {
       assets: {
         total: assets.length,
         ...byStatus,
+        healthBands,
         avgHealth: assets.length ? Math.round(healthSum / assets.length) : 0,
       },
       wos: {

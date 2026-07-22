@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../lib/AuthContext'
@@ -415,7 +415,10 @@ export default function Compliance({ dark, toggleDark }) {
   const [err, setErr]                 = useState(null)
   const [selected, setSelected]       = useState(null)
   const [modal, setModal]             = useState(null) // null | 'add' | licence-obj (edit)
-  const [filter, setFilter]           = useState('all') // all|active|expiring|expired
+  const [searchParams] = useSearchParams()
+  // 'alerts' is a client-side pseudo-filter (expiring + due_soon + expired
+  // combined) matching the dashboard's "Compliance Alerts" KPI definition.
+  const [filter, setFilter]           = useState(searchParams.get('filter') || 'all') // all|active|expiring|expired|alerts
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
@@ -435,6 +438,7 @@ export default function Compliance({ dark, toggleDark }) {
     if (filter === 'active') return l.status === 'active' || l.status === 'due_soon'
     if (filter === 'expiring') return l.status === 'expiring' || l.status === 'due_soon'
     if (filter === 'expired') return l.status === 'expired'
+    if (filter === 'alerts') return l.status === 'expiring' || l.status === 'due_soon' || l.status === 'expired'
     return true
   })
 
@@ -496,6 +500,7 @@ export default function Compliance({ dark, toggleDark }) {
                   { key:'active',   label:`Active (${counts.active + counts.due_soon})`, c:'var(--sgt)', bg:'var(--sgb)', br:'var(--sgbr)' },
                   { key:'expiring', label:`Expiring (${counts.expiring + counts.due_soon})`, c:'var(--sat)', bg:'var(--sab)', br:'var(--sabr)' },
                   { key:'expired',  label:`Expired (${counts.expired})`,    c:'var(--srt)',  bg:'var(--srb)', br:'var(--srbr)' },
+                  { key:'alerts',   label:`Alerts (${counts.expiring + counts.due_soon + counts.expired})`, c:'var(--srt)', bg:'var(--srb)', br:'var(--srbr)' },
                 ].map(s => (
                   <button key={s.key} onClick={() => setFilter(s.key)} style={{height:28,padding:'0 12px',border:`1px solid ${filter===s.key?s.br:'var(--n200)'}`,borderRadius:4,background:filter===s.key?s.bg:'var(--n0)',fontSize:12,fontWeight:filter===s.key?600:400,color:filter===s.key?s.c:'var(--n600)',cursor:'pointer'}}>
                     {s.label}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import {
@@ -290,12 +291,16 @@ export default function WorkOrders({ dark, toggleDark }) {
   const canCreate     = can(roleKey, 'wo:create')
   const canTransition = can(roleKey, 'wo:transition')
 
+  const [searchParams] = useSearchParams()
   const [wos, setWos] = useState([])
   const [sites, setSites] = useState([])
   const [assets, setAssets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [filterStatus, setFilterStatus] = useState('all')
+  // 'open' is a client-side pseudo-status (not closed) — no single status
+  // value on the backend means "open", so it fetches everything and filters
+  // here, same as the dashboard's "Open Work Orders" KPI counts it.
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || 'all')
   const [view, setView] = useState('list')
   const [selectedId, setSelectedId] = useState(null)
   const [showNew, setShowNew] = useState(false)
@@ -304,10 +309,11 @@ export default function WorkOrders({ dark, toggleDark }) {
     setLoading(true); setError(null)
     try {
       const [w, s, a] = await Promise.all([
-        listWorkOrders({ status: filterStatus === 'all' ? undefined : filterStatus }),
+        listWorkOrders({ status: (filterStatus === 'all' || filterStatus === 'open') ? undefined : filterStatus }),
         listSites(), listAssets(),
       ])
-      setWos(w); setSites(s); setAssets(a)
+      setWos(filterStatus === 'open' ? w.filter(x => x.status !== 'closed') : w)
+      setSites(s); setAssets(a)
     } catch (e) { setError(e.message || 'Failed to load work orders.') }
     finally { setLoading(false) }
   }, [filterStatus])
@@ -329,7 +335,7 @@ export default function WorkOrders({ dark, toggleDark }) {
           </div>
           <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {[['all', 'All'], ...Object.entries(WO_STATUS_LABEL)].map(([v, l]) => (
+            {[['all', 'All'], ['open', 'Open'], ...Object.entries(WO_STATUS_LABEL)].map(([v, l]) => (
               <button key={v} onClick={() => setFilterStatus(v)} style={{ height: 28, padding: '0 10px', border: `1px solid ${filterStatus === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filterStatus === v ? 'var(--b50)' : 'var(--n0)', fontSize: 11, color: filterStatus === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filterStatus === v ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>{l}</button>
             ))}
           </div>

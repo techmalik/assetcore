@@ -14,6 +14,14 @@ const ALERT_SEVERITY_STYLE = {
   low:      { c: 'var(--n500)', bg: 'var(--n100)' },
 }
 
+const ALERT_KIND_HREF = {
+  pm_overdue: '/maintenance?filter=overdue',
+  licence_expiring: '/compliance?filter=alerts',
+  licence_expired: '/compliance?filter=alerts',
+  wo_critical: '/work-orders?status=open',
+  device_offline: '/devices',
+}
+
 function alertAtLabel(at) {
   if (!at) return ''
   return new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
@@ -88,12 +96,18 @@ export default function Dashboard({ dark, toggleDark }) {
 
   const a = stats?.assets
   const w = stats?.wos
+  const hb = a?.healthBands
 
-  // Donut arc math (circumference of r=54 circle ≈ 339.3)
+  // Donut arc math (circumference of r=54 circle ≈ 339.3). Segments are the
+  // health bands (>50/31-50/<=30), not the status enum - health_score is
+  // what the requirements' color spec is defined against, and a decaying
+  // asset should visibly change color on this chart even if nobody has
+  // touched its status field. Offline assets are excluded from the arcs
+  // entirely (own bucket, shown as the uncovered gray gap) same as before.
   const C = 339.3
-  const opArc   = a && a.total ? (a.operational / a.total) * C : 0
-  const attArc  = a && a.total ? (a.attention   / a.total) * C : 0
-  const critArc = a && a.total ? (a.critical    / a.total) * C : 0
+  const goodArc = hb && a.total ? (hb.good / a.total) * C : 0
+  const attArc  = hb && a.total ? (hb.attention / a.total) * C : 0
+  const critArc = hb && a.total ? (hb.critical / a.total) * C : 0
 
   return (
     <div className="app-shell">
@@ -158,7 +172,7 @@ export default function Dashboard({ dark, toggleDark }) {
                 {stats ? `${a.operational.toLocaleString()} of ${a.total.toLocaleString()} assets` : ''}
               </div>
             </div>
-            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/work-orders')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/work-orders') }}>
+            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/work-orders?status=open')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/work-orders?status=open') }}>
               <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Open Work Orders</div>
               <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:'var(--n950)',lineHeight:1,marginBottom:8}}>
                 {stats ? w.open : '—'}
@@ -167,7 +181,7 @@ export default function Dashboard({ dark, toggleDark }) {
                 {stats ? `${w.overdue} overdue · ${w.critical} critical` : ''}
               </div>
             </div>
-            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/maintenance')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/maintenance') }}>
+            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/maintenance?filter=overdue')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/maintenance?filter=overdue') }}>
               <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Overdue PM</div>
               <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:stats?.overduePM>0?'var(--sat)':'var(--n950)',lineHeight:1,marginBottom:8}}>
                 {stats ? stats.overduePM : '—'}
@@ -176,7 +190,7 @@ export default function Dashboard({ dark, toggleDark }) {
                 {stats ? (stats.overduePM === 0 ? 'All tasks on schedule' : `task${stats.overduePM!==1?'s':''} past due date`) : ''}
               </div>
             </div>
-            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/compliance')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/compliance') }}>
+            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/compliance?filter=alerts')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/compliance?filter=alerts') }}>
               <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Compliance Alerts</div>
               <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:complianceCounts&&(complianceCounts.expiring+complianceCounts.expired)>0?'var(--srt)':'var(--n950)',lineHeight:1,marginBottom:8}}>
                 {complianceCounts ? complianceCounts.expiring + complianceCounts.expired : '—'}
@@ -199,17 +213,17 @@ export default function Dashboard({ dark, toggleDark }) {
                     <>
                       <circle cx="70" cy="70" r="54" fill="none" stroke="var(--sg)"
                         strokeWidth="14"
-                        strokeDasharray={`${opArc} ${C - opArc}`}
+                        strokeDasharray={`${goodArc} ${C - goodArc}`}
                         strokeLinecap="round" transform="rotate(-90 70 70)"/>
                       <circle cx="70" cy="70" r="54" fill="none" stroke="var(--sa)"
                         strokeWidth="14"
                         strokeDasharray={`${attArc} ${C - attArc}`}
-                        strokeDashoffset={-opArc}
+                        strokeDashoffset={-goodArc}
                         transform="rotate(-90 70 70)"/>
                       <circle cx="70" cy="70" r="54" fill="none" stroke="var(--sr)"
                         strokeWidth="14"
                         strokeDasharray={`${critArc} ${C - critArc}`}
-                        strokeDashoffset={-(opArc + attArc)}
+                        strokeDashoffset={-(goodArc + attArc)}
                         transform="rotate(-90 70 70)"/>
                     </>
                   )}
@@ -221,19 +235,21 @@ export default function Dashboard({ dark, toggleDark }) {
                   <span style={{fontSize:11,color:'var(--n500)'}}>Health Score</span>
                 </div>
               </div>
-              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              <div style={{display:'flex',flexDirection:'column',gap:2}}>
                 {[
-                  {c:'var(--sg)',cc:'var(--sgt)',l:'Operational',    v: a ? `${a.operational} · ${pct(a.operational, a.total)}` : '—'},
-                  {c:'var(--sa)',cc:'var(--sat)',l:'Attention Req.',  v: a ? `${a.attention} · ${pct(a.attention, a.total)}`    : '—'},
-                  {c:'var(--sr)',cc:'var(--srt)',l:'Critical',        v: a ? `${a.critical} · ${pct(a.critical, a.total)}`      : '—'},
-                  {c:'var(--n300)',cc:'var(--n500)',l:'Offline',      v: a ? `${a.offline} · ${pct(a.offline, a.total)}`        : '—'},
+                  {c:'var(--sg)',cc:'var(--sgt)',l:'Healthy',        n: hb?.good,       href:'/assets?health=good'},
+                  {c:'var(--sa)',cc:'var(--sat)',l:'Attention Req.', n: hb?.attention,  href:'/assets?health=attention'},
+                  {c:'var(--sr)',cc:'var(--srt)',l:'Critical',       n: hb?.critical,   href:'/assets?health=critical'},
+                  {c:'var(--n300)',cc:'var(--n500)',l:'Offline',     n: hb?.offline,    href:'/assets?status=offline'},
                 ].map(row => (
-                  <div key={row.l} style={{display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:12}}>
+                  <div key={row.l} role="button" tabIndex={0} onClick={() => nav(row.href)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav(row.href) }}
+                    style={{display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:12,padding:'4px 6px',margin:'0 -6px',borderRadius:4,cursor:'pointer'}}
+                    className="dash-legend-row">
                     <span style={{display:'flex',alignItems:'center',gap:6,color:row.cc}}>
                       <span style={{width:10,height:10,background:row.c,borderRadius:'50%',display:'inline-block',flexShrink:0}}/>
                       {row.l}
                     </span>
-                    <span style={{fontFamily:'var(--ff-m)',fontWeight:500}}>{row.v}</span>
+                    <span style={{fontFamily:'var(--ff-m)',fontWeight:500}}>{a ? `${row.n ?? 0} · ${pct(row.n ?? 0, a.total)}` : '—'}</span>
                   </div>
                 ))}
               </div>
@@ -259,8 +275,10 @@ export default function Dashboard({ dark, toggleDark }) {
                 <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
                   {alerts.map(al => {
                     const sev = ALERT_SEVERITY_STYLE[al.severity] || ALERT_SEVERITY_STYLE.low
+                    const href = ALERT_KIND_HREF[al.kind] || '/dashboard'
                     return (
-                      <div key={al.id} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 16px'}}>
+                      <div key={al.id} role="button" tabIndex={0} onClick={() => nav(href)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav(href) }} className="dash-alert-row"
+                        style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 16px',cursor:'pointer'}}>
                         <span style={{width:8,height:8,borderRadius:'50%',background:sev.c,marginTop:5,flexShrink:0}}/>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:12,color:'var(--n800)',fontWeight:500}}>{al.title}</div>
@@ -282,7 +300,7 @@ export default function Dashboard({ dark, toggleDark }) {
               <div style={{padding:'14px 20px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                 <div style={{fontSize:14,fontWeight:600,color:'var(--n800)'}}>Recent Work Orders</div>
                 <button style={{border:'none',background:'none',fontSize:13,color:'var(--b600)',fontWeight:500,cursor:'pointer',padding:0}}
-                  onClick={() => window.location.assign('/work-orders')}>View all →</button>
+                  onClick={() => nav('/work-orders')}>View all →</button>
               </div>
               <div style={{overflowX:'auto'}}>
                 {recentWOs.length === 0 ? (
@@ -333,7 +351,7 @@ export default function Dashboard({ dark, toggleDark }) {
               <div style={{padding:'14px 16px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
                 <div style={{fontSize:14,fontWeight:600,color:'var(--n800)'}}>Upcoming Maintenance</div>
                 <button style={{border:'none',background:'none',fontSize:13,color:'var(--b600)',fontWeight:500,cursor:'pointer',padding:0}}
-                  onClick={() => window.location.assign('/maintenance')}>Schedule →</button>
+                  onClick={() => nav('/maintenance')}>Schedule →</button>
               </div>
               {upcomingPM === null ? (
                 <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontSize:13,color:'var(--n400)'}}>Loading…</div>

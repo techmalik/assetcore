@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { listPMSchedules, createPMSchedule, softDeletePMSchedule } from '../lib/db/pmSchedules'
@@ -98,6 +99,8 @@ export default function Maintenance({ dark, toggleDark }) {
   const { roleKey } = useAuth()
   const canCreate = can(roleKey, 'wo:create')
 
+  const [searchParams] = useSearchParams()
+  const overdueOnly = searchParams.get('filter') === 'overdue'
   const [tab, setTab] = useState('pm')
   const [tasks, setTasks] = useState([])
   const [schedules, setSchedules] = useState([])
@@ -148,6 +151,7 @@ export default function Maintenance({ dark, toggleDark }) {
   }
 
   const overdue = tasks.filter(t => t.status === 'overdue').length
+  const visibleTasks = overdueOnly ? tasks.filter(t => t.status === 'overdue') : tasks
 
   return (
     <div className="app-shell">
@@ -195,6 +199,12 @@ export default function Maintenance({ dark, toggleDark }) {
             {tab === 'pm' && (
               <>
                 <div style={{flex:1,overflowY:'auto'}}>
+                  {overdueOnly && (
+                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 16px',background:'var(--srb)',borderBottom:'1px solid var(--srbr)',fontSize:12,color:'var(--srt)'}}>
+                      Showing overdue tasks only ({visibleTasks.length})
+                      <a href="/maintenance" style={{color:'var(--srt)',textDecoration:'underline',marginLeft:'auto'}}>Clear filter</a>
+                    </div>
+                  )}
                   {loading ? (
                     <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
                   ) : err ? (
@@ -206,12 +216,16 @@ export default function Maintenance({ dark, toggleDark }) {
                         <EmptyPM onSchedule={() => setShowModal(true)} canCreate={canCreate} />
                       )}
                     </div>
-                  ) : tasks.length === 0 && schedules.length === 0 ? (
+                  ) : visibleTasks.length === 0 && schedules.length === 0 ? (
                     <EmptyPM onSchedule={() => setShowModal(true)} canCreate={canCreate} />
-                  ) : tasks.length === 0 ? (
-                    <SchedulesView schedules={schedules} />
+                  ) : visibleTasks.length === 0 ? (
+                    overdueOnly ? (
+                      <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>No overdue tasks.</div>
+                    ) : (
+                      <SchedulesView schedules={schedules} />
+                    )
                   ) : (
-                    <TasksTable tasks={tasks} onComplete={setCompleting} />
+                    <TasksTable tasks={visibleTasks} onComplete={setCompleting} />
                   )}
                 </div>
 

@@ -18,7 +18,7 @@ import { listInspections } from '../lib/db/inspections'
 import { completeMaintenance } from '../lib/db/maintenanceEvents'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
-import { healthColor, healthLabel } from '../lib/health'
+import { healthColor, healthLabel, healthBand } from '../lib/health'
 import { api } from '../lib/apiClient'
 
 const STATUS_STYLE = {
@@ -837,6 +837,10 @@ export default function Assets({ dark, toggleDark }) {
   const [error, setError] = useState(null)
   const [searchParams] = useSearchParams()
   const [filter, setFilter] = useState(searchParams.get('status') || 'all')
+  // Health-band drill-down from the dashboard donut (?health=good|attention|critical).
+  // Client-side, unlike the status filter: health_score isn't indexed/filterable
+  // server-side today and the asset list is small enough per-org that this is fine.
+  const [healthFilter, setHealthFilter] = useState(searchParams.get('health') || '')
   const [archivedView, setArchivedView] = useState(false)
   const [selected, setSelected] = useState(null)
   const [modal, setModal] = useState(null)      // null | 'add' | asset (edit)
@@ -871,6 +875,8 @@ export default function Assets({ dark, toggleDark }) {
   }
 
   const linkBtn = { padding: '3px 8px', border: '1px solid var(--n200)', borderRadius: 3, background: 'var(--n0)', fontSize: 11, color: 'var(--n600)', cursor: 'pointer' }
+  const HEALTH_FILTER_LABEL = { good: 'Healthy', attention: 'Needs attention', critical: 'Critical' }
+  const visibleAssets = healthFilter ? assets.filter((a) => healthBand(a.health_score) === healthFilter) : assets
 
   return (
     <div className="app-shell">
@@ -884,9 +890,15 @@ export default function Assets({ dark, toggleDark }) {
             <div>
               <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Asset Registry</h1>
               <p style={{ fontSize: 12, color: 'var(--n500)' }}>
-                {loading ? 'Loading…' : `${assets.length} ${archivedView ? 'archived ' : ''}assets · ${locations.length} location${locations.length !== 1 ? 's' : ''} · ${sites.length} site${sites.length !== 1 ? 's' : ''}`}
+                {loading ? 'Loading…' : `${visibleAssets.length} ${archivedView ? 'archived ' : ''}assets · ${locations.length} location${locations.length !== 1 ? 's' : ''} · ${sites.length} site${sites.length !== 1 ? 's' : ''}`}
               </p>
             </div>
+            {healthFilter && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n50)', fontSize: 12, color: 'var(--n700)' }}>
+                Health: {HEALTH_FILTER_LABEL[healthFilter] || healthFilter}
+                <button onClick={() => setHealthFilter('')} title="Clear health filter" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n500)', padding: 0, lineHeight: 1 }}>✕</button>
+              </div>
+            )}
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', gap: 6 }}>
               {[['all', 'All'], ['operational', 'Operational'], ['attention', 'Attention'], ['critical', 'Critical']].map(([v, l]) => (
@@ -916,11 +928,11 @@ export default function Assets({ dark, toggleDark }) {
                   <p style={{ color: 'var(--srt)', fontSize: 13, marginBottom: 12 }}>{error}</p>
                   <button onClick={load} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Retry</button>
                 </div>
-              ) : assets.length === 0 ? (
+              ) : visibleAssets.length === 0 ? (
                 <div style={{ padding: 64, textAlign: 'center' }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>{archivedView ? 'No archived assets' : 'No assets yet'}</p>
-                  {!archivedView && <p style={{ fontSize: 13, color: 'var(--n400)', marginBottom: 20 }}>Add your first asset to start tracking your infrastructure.</p>}
-                  {canCreate && !archivedView && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Add first asset</button>}
+                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>{healthFilter ? 'No assets in this health band' : archivedView ? 'No archived assets' : 'No assets yet'}</p>
+                  {!archivedView && !healthFilter && <p style={{ fontSize: 13, color: 'var(--n400)', marginBottom: 20 }}>Add your first asset to start tracking your infrastructure.</p>}
+                  {canCreate && !archivedView && !healthFilter && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Add first asset</button>}
                 </div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -932,7 +944,7 @@ export default function Assets({ dark, toggleDark }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {assets.map((a) => (
+                    {visibleAssets.map((a) => (
                       <tr key={a.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selected?.id === a.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelected(a)}>
                         <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, fontWeight: 500, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{a.ain}</td>
                         <td style={{ padding: '11px 14px' }}>
