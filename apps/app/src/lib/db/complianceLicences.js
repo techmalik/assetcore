@@ -1,7 +1,8 @@
 import { api } from '../apiClient'
 
-export async function listComplianceLicences() {
-  const rows = await api.get('/compliance-licences')
+export async function listComplianceLicences({ locationId } = {}) {
+  const qs = locationId ? `?location_id=${encodeURIComponent(locationId)}` : ''
+  const rows = await api.get(`/compliance-licences${qs}`)
   return (rows || []).map(row => ({
     ...row,
     status: licenceStatus(row.expiry_date),

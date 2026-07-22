@@ -13,6 +13,7 @@ import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
+import { useLocationFilter } from '../lib/LocationFilterContext'
 
 const PRIORITY_STYLE = {
   critical: { bg: 'var(--srb)', c: 'var(--srt)', br: 'var(--srbr)' },
@@ -316,6 +317,8 @@ export default function WorkOrders({ dark, toggleDark }) {
   const { roleKey } = useAuth()
   const canCreate     = can(roleKey, 'wo:create')
   const canTransition = can(roleKey, 'wo:transition')
+  const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
+  const globalLocation = myLocations.find((l) => l.id === globalLocationId)
 
   const [searchParams] = useSearchParams()
   const [wos, setWos] = useState([])
@@ -335,14 +338,14 @@ export default function WorkOrders({ dark, toggleDark }) {
     setLoading(true); setError(null)
     try {
       const [w, s, a] = await Promise.all([
-        listWorkOrders({ status: (filterStatus === 'all' || filterStatus === 'open') ? undefined : filterStatus }),
+        listWorkOrders({ status: (filterStatus === 'all' || filterStatus === 'open') ? undefined : filterStatus, locationId: globalLocationId }),
         listSites(), listAssets(),
       ])
       setWos(filterStatus === 'open' ? w.filter(x => x.status !== 'closed') : w)
       setSites(s); setAssets(a)
     } catch (e) { setError(e.message || 'Failed to load work orders.') }
     finally { setLoading(false) }
-  }, [filterStatus])
+  }, [filterStatus, globalLocationId])
 
   useEffect(() => { load() }, [load])
 
@@ -389,9 +392,17 @@ export default function WorkOrders({ dark, toggleDark }) {
               </div>
             ) : wos.length === 0 ? (
               <div style={{ padding: 64, textAlign: 'center' }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>No work orders</p>
-                <p style={{ fontSize: 13, color: 'var(--n400)', marginBottom: 20 }}>Create a work order to start tracking maintenance activities.</p>
-                {canCreate && <button onClick={() => setShowNew(true)} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Create work order</button>}
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>
+                  {globalLocation ? `No work orders in ${globalLocation.name}` : 'No work orders'}
+                </p>
+                {globalLocation ? (
+                  <button onClick={() => setGlobalLocationId(null)} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Show all locations</button>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 13, color: 'var(--n400)', marginBottom: 20 }}>Create a work order to start tracking maintenance activities.</p>
+                    {canCreate && <button onClick={() => setShowNew(true)} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Create work order</button>}
+                  </>
+                )}
               </div>
             ) : view === 'kanban' ? (
               <div style={{ display: 'flex', gap: 0, height: '100%', overflowX: 'auto' }}>

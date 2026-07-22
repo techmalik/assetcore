@@ -21,6 +21,7 @@ import { can } from '../lib/rbac'
 import { healthColor, healthLabel, healthBand } from '../lib/health'
 import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
+import { useLocationFilter } from '../lib/LocationFilterContext'
 
 // operational/maintenance/standby/offline describe WHAT the asset is doing
 // right now (the new, David-demo-adopted model — TASK-4.2); attention/critical
@@ -998,6 +999,8 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Assets({ dark, toggleDark }) {
   const toast = useToast()
+  const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
+  const globalLocation = myLocations.find((l) => l.id === globalLocationId)
   const { roleKey, extraCaps } = useAuth()
   const canCreate = can(roleKey, 'asset:create', extraCaps)
   const canEdit = can(roleKey, 'asset:update', extraCaps)
@@ -1036,13 +1039,13 @@ export default function Assets({ dark, toggleDark }) {
     setLoading(true); setError(null)
     try {
       const [a, s, l, c, u] = await Promise.all([
-        listAssets({ status: filter, archived: archivedView }), listSites(), listLocations().catch(() => []), listCategories(), listOrgUsers().catch(() => []),
+        listAssets({ status: filter, archived: archivedView, locationId: globalLocationId }), listSites(), listLocations().catch(() => []), listCategories(), listOrgUsers().catch(() => []),
       ])
       setAssets(a); setSites(s); setLocations(l); setCategories(c); setOperators(u)
       setSelected((sel) => (sel ? a.find((x) => x.id === sel.id) || null : null))
     } catch (e) { setError(e.message || 'Failed to load assets.') }
     finally { setLoading(false) }
-  }, [filter, archivedView])
+  }, [filter, archivedView, globalLocationId])
 
   useEffect(() => { load() }, [load])
 
@@ -1069,7 +1072,7 @@ export default function Assets({ dark, toggleDark }) {
   const visibleAssets = assets.filter((a) => {
     if (healthFilter && healthBand(a.health_score) !== healthFilter) return false
     if (typeFilter && a.category_id !== typeFilter) return false
-    if (locationFilter && a.location?.id !== locationFilter) return false
+    if (!globalLocationId && locationFilter && a.location?.id !== locationFilter) return false
     if (debouncedSearch) {
       const haystack = [a.name, a.ain, a.specs?.manufacturer, a.specs?.model].filter(Boolean).join(' ').toLowerCase()
       if (!haystack.includes(debouncedSearch)) return false
@@ -1136,11 +1139,17 @@ export default function Assets({ dark, toggleDark }) {
               <option value="">All types</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
-              <option value="">All locations</option>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-            {(search || typeFilter || locationFilter) && (
+            {/* Subordinate to the topbar's global location switcher (EPIC-2)
+                — once a global location is active, this per-page picker
+                would be redundant (and could contradict it), so it's hidden
+                rather than shown alongside. */}
+            {!globalLocationId && (
+              <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
+                <option value="">All locations</option>
+                {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            )}
+            {(search || typeFilter || (locationFilter && !globalLocationId)) && (
               <button onClick={() => { setSearch(''); setTypeFilter(''); setLocationFilter('') }} style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', fontSize: 12, color: 'var(--n500)', cursor: 'pointer' }}>
                 Clear
               </button>
@@ -1159,8 +1168,11 @@ export default function Assets({ dark, toggleDark }) {
               ) : visibleAssets.length === 0 ? (
                 <div style={{ padding: 64, textAlign: 'center' }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>
-                    {healthFilter || debouncedSearch || typeFilter || locationFilter ? 'No assets match these filters' : archivedView ? 'No archived assets' : 'No assets yet'}
+                    {globalLocation ? `No assets in ${globalLocation.name}` : healthFilter || debouncedSearch || typeFilter || locationFilter ? 'No assets match these filters' : archivedView ? 'No archived assets' : 'No assets yet'}
                   </p>
+                  {globalLocation && (
+                    <button onClick={() => setGlobalLocationId(null)} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13, marginTop: 4 }}>Show all locations</button>
+                  )}
                   {!archivedView && !healthFilter && !debouncedSearch && !typeFilter && !locationFilter && <p style={{ fontSize: 13, color: 'var(--n400)', marginBottom: 20 }}>Add your first asset to start tracking your infrastructure.</p>}
                   {canCreate && !archivedView && !healthFilter && !debouncedSearch && !typeFilter && !locationFilter && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Add first asset</button>}
                 </div>

@@ -7,6 +7,7 @@ import { listPMTasks, updatePMTask, generatePMTasks, uploadMaintenanceReport } f
 import { api } from '../lib/apiClient'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
+import { useLocationFilter } from '../lib/LocationFilterContext'
 
 const TASK_STATUS = {
   pending:     { bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)', label:'Pending' },
@@ -98,6 +99,8 @@ const licStatus = {Active:{bg:'var(--sgb)',c:'var(--sgt)',br:'var(--sgbr)'},Expi
 export default function Maintenance({ dark, toggleDark }) {
   const { roleKey } = useAuth()
   const canCreate = can(roleKey, 'wo:create')
+  const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
+  const globalLocation = myLocations.find((l) => l.id === globalLocationId)
 
   const [searchParams] = useSearchParams()
   const overdueOnly = searchParams.get('filter') === 'overdue'
@@ -117,7 +120,7 @@ export default function Maintenance({ dark, toggleDark }) {
     setLoading(true); setErr(null)
     try {
       const [t, s] = await Promise.all([
-        listPMTasks({ statuses:['pending','in_progress','overdue'], dueBefore: addDays(today,30) }),
+        listPMTasks({ statuses:['pending','in_progress','overdue'], dueBefore: addDays(today,30), locationId: globalLocationId }),
         listPMSchedules(),
       ])
       setTasks(t)
@@ -125,7 +128,7 @@ export default function Maintenance({ dark, toggleDark }) {
     } catch(e) {
       setErr(e.message)
     } finally { setLoading(false) }
-  }, [tab, today])
+  }, [tab, today, globalLocationId])
 
   useEffect(() => { load() }, [load])
 
@@ -213,11 +216,11 @@ export default function Maintenance({ dark, toggleDark }) {
                         {err.includes('does not exist') ? 'PM tables not yet created. Run `node scripts/migrate.mjs` against the database.' : err}
                       </div>
                       {schedules.length === 0 && tasks.length === 0 && !err && (
-                        <EmptyPM onSchedule={() => setShowModal(true)} canCreate={canCreate} />
+                        <EmptyPM onSchedule={() => setShowModal(true)} canCreate={canCreate} locationName={globalLocation?.name} onShowAll={() => setGlobalLocationId(null)} />
                       )}
                     </div>
                   ) : visibleTasks.length === 0 && schedules.length === 0 ? (
-                    <EmptyPM onSchedule={() => setShowModal(true)} canCreate={canCreate} />
+                    <EmptyPM onSchedule={() => setShowModal(true)} canCreate={canCreate} locationName={globalLocation?.name} onShowAll={() => setGlobalLocationId(null)} />
                   ) : visibleTasks.length === 0 ? (
                     overdueOnly ? (
                       <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>No overdue tasks.</div>
@@ -452,15 +455,19 @@ function SchedulesView({ schedules }) {
   )
 }
 
-function EmptyPM({ onSchedule, canCreate }) {
+function EmptyPM({ onSchedule, canCreate, locationName, onShowAll }) {
   return (
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',gap:12,textAlign:'center'}}>
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round"/></svg>
-      <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>No PM tasks or schedules yet</div>
-      <div style={{fontSize:13,color:'var(--n500)',maxWidth:320}}>
-        Create a PM schedule to start generating preventive maintenance tasks. Tasks are generated automatically based on frequency.
-      </div>
-      {canCreate && (
+      <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>{locationName ? `No PM tasks in ${locationName}` : 'No PM tasks or schedules yet'}</div>
+      {!locationName && (
+        <div style={{fontSize:13,color:'var(--n500)',maxWidth:320}}>
+          Create a PM schedule to start generating preventive maintenance tasks. Tasks are generated automatically based on frequency.
+        </div>
+      )}
+      {locationName ? (
+        <button onClick={onShowAll} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>Show all locations</button>
+      ) : canCreate && (
         <button onClick={onSchedule} className="btn btn-primary" style={{marginTop:8,height:36,padding:'0 18px',fontSize:13}}>
           Create first schedule
         </button>

@@ -6,6 +6,7 @@ import { can } from '../lib/rbac'
 import { listInspections, createInspection, updateInspection, uploadInspectionReport } from '../lib/db/inspections'
 import { listSites } from '../lib/db/sites'
 import { api } from '../lib/apiClient'
+import { useLocationFilter } from '../lib/LocationFilterContext'
 
 const STATUS_META = {
   scheduled:   { label:'Scheduled',   bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)' },
@@ -154,6 +155,8 @@ function FindingsModal({ inspection, onClose, onSaved }) {
 export default function Inspections({ dark, toggleDark }) {
   const { roleKey } = useAuth()
   const canCreate = can(roleKey, 'wo:create')
+  const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
+  const globalLocation = myLocations.find((l) => l.id === globalLocationId)
   const [inspections, setInspections] = useState([])
   const [sites, setSites]             = useState([])
   const [loading, setLoading]         = useState(true)
@@ -164,12 +167,12 @@ export default function Inspections({ dark, toggleDark }) {
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
     try {
-      const [insp, siteList] = await Promise.all([listInspections(), listSites()])
+      const [insp, siteList] = await Promise.all([listInspections({ locationId: globalLocationId }), listSites()])
       setInspections(insp)
       setSites(siteList)
     } catch (e) { setErr(e.message) }
     finally { setLoading(false) }
-  }, [])
+  }, [globalLocationId])
 
   useEffect(() => { load() }, [load])
 
@@ -218,8 +221,12 @@ export default function Inspections({ dark, toggleDark }) {
             ) : shown.length === 0 ? (
               <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',gap:12,textAlign:'center'}}>
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="var(--n300)" strokeWidth="1.4"/><path d="M8 9h8M8 13h5" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round"/><path d="M16 16l1.5 1.5" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round"/><circle cx="15" cy="15" r="2" stroke="var(--n300)" strokeWidth="1.4"/></svg>
-                <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>{tab==='open' ? 'No open inspections' : 'No completed inspections'}</div>
-                {tab==='open' && canCreate && <button onClick={() => setModal('create')} className="btn btn-primary" style={{marginTop:8,height:34,padding:'0 16px',fontSize:13}}>Schedule first inspection</button>}
+                <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>
+                  {globalLocation ? `No ${tab==='open'?'open':'completed'} inspections in ${globalLocation.name}` : tab==='open' ? 'No open inspections' : 'No completed inspections'}
+                </div>
+                {globalLocation ? (
+                  <button onClick={() => setGlobalLocationId(null)} className="btn btn-secondary" style={{marginTop:8,height:34,padding:'0 16px',fontSize:13}}>Show all locations</button>
+                ) : tab==='open' && canCreate && <button onClick={() => setModal('create')} className="btn btn-primary" style={{marginTop:8,height:34,padding:'0 16px',fontSize:13}}>Schedule first inspection</button>}
               </div>
             ) : (
               <table style={{width:'100%',borderCollapse:'collapse'}}>

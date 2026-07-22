@@ -77,10 +77,14 @@ const assetInput = z.object({
 assetsRouter.get('/assets', async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : null
   const archived = req.query.archived === '1' || req.query.archived === 'true'
+  const locationId = typeof req.query.location_id === 'string' ? req.query.location_id : null
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [SELECT, archived ? 'where a.deleted_at is not null' : 'where a.deleted_at is null']
     const values: unknown[] = []
-    if (status && status !== 'all') { clauses.push(`and a.status = $1`); values.push(status) }
+    if (status && status !== 'all') { values.push(status); clauses.push(`and a.status = $${values.length}`) }
+    // EPIC-2 global location filter: same site_id-in-location-subquery
+    // translation used by every other list route the switcher applies to.
+    if (locationId) { values.push(locationId); clauses.push(`and a.site_id in (select id from public.sites where location_id = $${values.length})`) }
     clauses.push('order by a.created_at desc')
     return c.query(clauses.join(' '), values).then((r) => r.rows)
   })

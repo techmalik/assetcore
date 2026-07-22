@@ -43,9 +43,21 @@ const licenceInput = z.object({
 })
 
 complianceRouter.get('/compliance-licences', async (req, res) => {
-  const rows = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(`${SELECT} where cl.deleted_at is null order by cl.expiry_date asc`).then((r) => r.rows)
-  )
+  const locationId = typeof req.query.location_id === 'string' ? req.query.location_id : null
+  const rows = await withOrgContext(claimsFromReq(req), (c) => {
+    const values: unknown[] = []
+    const clauses = [SELECT, 'where cl.deleted_at is null']
+    if (locationId) {
+      values.push(locationId)
+      // site_id is null means "org-wide, not site-specific" (see the create
+      // form) — those still apply everywhere, so a location filter narrows
+      // to that location's site-specific licences PLUS the org-wide ones,
+      // not just an exact site_id match.
+      clauses.push(`and (cl.site_id is null or cl.site_id in (select id from public.sites where location_id = $${values.length}))`)
+    }
+    clauses.push('order by cl.expiry_date asc')
+    return c.query(clauses.join(' '), values).then((r) => r.rows)
+  })
   res.json(rows)
 })
 

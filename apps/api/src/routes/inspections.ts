@@ -47,7 +47,7 @@ const inspectionInput = z.object({
 })
 
 inspectionsRouter.get('/inspections', async (req, res) => {
-  const { statuses, limit, asset_id } = req.query
+  const { statuses, limit, asset_id, location_id } = req.query
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [SELECT, 'where 1=1']
     const values: unknown[] = []
@@ -56,6 +56,7 @@ inspectionsRouter.get('/inspections', async (req, res) => {
       clauses.push(`and i.status = any($${values.length})`)
     }
     if (typeof asset_id === 'string' && asset_id) { values.push(asset_id); clauses.push(`and i.asset_id = $${values.length}`) }
+    if (typeof location_id === 'string' && location_id) { values.push(location_id); clauses.push(`and i.site_id in (select id from public.sites where location_id = $${values.length})`) }
     clauses.push('order by i.scheduled_date desc')
     values.push(typeof limit === 'string' ? Number(limit) || 100 : 100)
     clauses.push(`limit $${values.length}`)

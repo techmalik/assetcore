@@ -16,6 +16,7 @@ import { listOrgUsers } from '../lib/db/orgMembers'
 import { listAssets } from '../lib/db/assets'
 import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
+import { useLocationFilter } from '../lib/LocationFilterContext'
 
 const STATUS_META = {
   active:   { label:'Active',        bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -452,6 +453,8 @@ function AuditsPanel({ canCreate }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Compliance({ dark, toggleDark }) {
   const toast = useToast()
+  const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
+  const globalLocation = myLocations.find((l) => l.id === globalLocationId)
   const { roleKey, extraCaps } = useAuth()
   const canCreate = can(roleKey, 'wo:create', extraCaps) // ops_manager+
   const canAudit = can(roleKey, 'compliance:create', extraCaps)
@@ -473,13 +476,13 @@ export default function Compliance({ dark, toggleDark }) {
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
     try {
-      const [lics, auths, siteList] = await Promise.all([listComplianceLicences(), listAuthorities(), listSites()])
+      const [lics, auths, siteList] = await Promise.all([listComplianceLicences({ locationId: globalLocationId }), listAuthorities(), listSites()])
       setLicences(lics)
       setAuthorities(auths)
       setSites(siteList)
     } catch (e) { setErr(e.message) }
     finally { setLoading(false) }
-  }, [])
+  }, [globalLocationId])
 
   useEffect(() => { load() }, [load])
 
@@ -581,7 +584,7 @@ export default function Compliance({ dark, toggleDark }) {
                   <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>{loadErrorMessage(err)}</div>
                 </div>
               ) : filtered.length === 0 ? (
-                <EmptyState canCreate={canCreate} onAdd={() => setModal('add')} />
+                <EmptyState canCreate={canCreate} onAdd={() => setModal('add')} locationName={globalLocation?.name} onShowAll={() => setGlobalLocationId(null)} />
               ) : (
                 <table style={{width:'100%',borderCollapse:'collapse'}}>
                   <thead style={{position:'sticky',top:0,zIndex:10}}>
@@ -652,13 +655,15 @@ export default function Compliance({ dark, toggleDark }) {
   )
 }
 
-function EmptyState({ canCreate, onAdd }) {
+function EmptyState({ canCreate, onAdd, locationName, onShowAll }) {
   return (
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',gap:12,textAlign:'center'}}>
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="var(--n300)" strokeWidth="1.4"/><path d="M12 8v4.5l2.5 1.5" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-      <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>No licences or certificates yet</div>
-      <div style={{fontSize:13,color:'var(--n500)',maxWidth:320}}>Track regulatory licences, certificates, and their renewal deadlines. Alerts fire at 90, 30, and 7 days before expiry.</div>
-      {canCreate && <button onClick={onAdd} className="btn btn-primary" style={{marginTop:8,height:36,padding:'0 18px',fontSize:13}}>Add first licence</button>}
+      <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>{locationName ? `No licences or certificates in ${locationName}` : 'No licences or certificates yet'}</div>
+      {!locationName && <div style={{fontSize:13,color:'var(--n500)',maxWidth:320}}>Track regulatory licences, certificates, and their renewal deadlines. Alerts fire at 90, 30, and 7 days before expiry.</div>}
+      {locationName ? (
+        <button onClick={onShowAll} className="btn btn-secondary" style={{marginTop:8,height:36,padding:'0 18px',fontSize:13}}>Show all locations</button>
+      ) : canCreate && <button onClick={onAdd} className="btn btn-primary" style={{marginTop:8,height:36,padding:'0 18px',fontSize:13}}>Add first licence</button>}
     </div>
   )
 }

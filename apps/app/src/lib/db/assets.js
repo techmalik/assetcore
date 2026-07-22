@@ -4,10 +4,11 @@ import { api } from '../apiClient'
 // (work orders, PM, inspections, compliance). Components call these helpers;
 // they never inline fetch calls.
 
-export async function listAssets({ status, archived } = {}) {
+export async function listAssets({ status, archived, locationId } = {}) {
   const qs = new URLSearchParams()
   if (status && status !== 'all') qs.set('status', status)
   if (archived) qs.set('archived', '1')
+  if (locationId) qs.set('location_id', locationId)
   const s = qs.toString()
   return api.get(`/assets${s ? `?${s}` : ''}`)
 }
