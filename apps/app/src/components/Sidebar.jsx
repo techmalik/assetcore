@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { can, ROLE_LABELS, ADMIN_ENTRY_CAPS } from '../lib/rbac'
 import { useSidebar } from '../lib/SidebarContext'
+import { useNotifications } from '../lib/NotificationsContext'
+import { getDashboardStats } from '../lib/db/dashboard'
+
+// 99+ once a count exceeds two digits, so the pill never has to grow to fit.
+const capCount = (n) => (n > 99 ? '99+' : String(n))
 
 const icons = {
   dashboard: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/></svg>,
@@ -34,9 +39,21 @@ export default function Sidebar({ active }) {
   const nav = useNavigate()
   const { org, fullName, initials, roleKey } = useAuth()
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
+  const { unreadCount } = useNotifications()
   const canAdmin = ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c))
   const [orgMenu, setOrgMenu] = useState(false)
   const orgRef = useRef(null)
+  const [openWOCount, setOpenWOCount] = useState(0)
+
+  // Sidebar remounts on every page navigation (each page renders its own
+  // <Sidebar/>), so a mount-time fetch is already reasonably fresh without
+  // needing its own poll loop — unlike NotificationsContext, which is a
+  // single top-level provider that persists across navigation.
+  useEffect(() => {
+    let cancelled = false
+    getDashboardStats().then((s) => { if (!cancelled) setOpenWOCount(s?.wos?.open ?? 0) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     if (!orgMenu) return
@@ -50,9 +67,20 @@ export default function Sidebar({ active }) {
   const go = (path) => { nav(path); close() }
   const goMenu = (path) => { setOrgMenu(false); go(path) }
 
-  const NavItem = ({ item }) => (
+  const NavItem = ({ item, count, countColor }) => (
     <div className={`nav-item${active === item.key ? ' active' : ''}`} onClick={() => go(item.path)} title={item.label}>
       {item.icon}<span className="nav-label">{item.label}</span>
+      {count > 0 && (
+        <span className="nav-badge" style={{
+          marginLeft: 'auto', minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999,
+          background: countColor === 'red' ? 'var(--srb)' : 'var(--sab)',
+          color: countColor === 'red' ? 'var(--srt)' : 'var(--sat)',
+          border: `1px solid ${countColor === 'red' ? 'var(--srbr)' : 'var(--sabr)'}`,
+          fontSize: 10, fontWeight: 600, lineHeight: '14px', textAlign: 'center', flexShrink: 0,
+        }}>
+          {capCount(count)}
+        </span>
+      )}
     </div>
   )
   const orgMenuItem = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', background: 'none', border: 'none', fontFamily: 'var(--ff-u)', fontSize: 13, color: 'var(--n700)', cursor: 'pointer', textAlign: 'left' }
@@ -99,11 +127,13 @@ export default function Sidebar({ active }) {
       <nav style={{flex:1,padding:'8px 0',overflowY:'auto'}}>
         <div className="sidebar-section" style={{padding:'12px 16px 4px',fontSize:10,fontWeight:600,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--n400)',fontFamily:'var(--ff-m)'}}>Operations</div>
 
-        {OPERATIONS.map((item) => <NavItem key={item.key} item={item} />)}
+        {OPERATIONS.map((item) => (
+          <NavItem key={item.key} item={item} count={item.key === 'work-orders' ? openWOCount : undefined} countColor="amber" />
+        ))}
 
         <div style={{height:1,background:'var(--n200)',margin:'8px 16px'}}/>
 
-        <NavItem item={{ key: 'notifications', label: 'Notifications', path: '/notifications', icon: icons.notifications }} />
+        <NavItem item={{ key: 'notifications', label: 'Notifications', path: '/notifications', icon: icons.notifications }} count={unreadCount} countColor="red" />
         {canAdmin && <NavItem item={{ key: 'admin', label: 'Admin', path: '/admin', icon: icons.users }} />}
         <NavItem item={{ key: 'integrations', label: 'Integrations', path: '/integrations', icon: icons.integrations }} />
         <NavItem item={{ key: 'settings', label: 'Settings', path: '/settings', icon: icons.settings }} />

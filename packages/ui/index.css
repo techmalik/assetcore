@@ -116,6 +116,7 @@ a { text-decoration: none; color: inherit; }
 @media (min-width: 769px) {
   .sidebar.collapsed { width: 64px; }
   .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .nav-badge,
   .sidebar.collapsed .sidebar-section,
   .sidebar.collapsed .sidebar-orginfo,
   .sidebar.collapsed .sidebar-orgchevron,
