@@ -3,7 +3,10 @@ import { open as openFile, unlink } from 'node:fs/promises'
 import path from 'node:path'
 import multer from 'multer'
 import { Router, type RequestHandler } from 'express'
+import type { PoolClient } from 'pg'
 import { config } from './config.js'
+import { withOrgContext } from './db.js'
+import { claimsFromReq } from './claims.js'
 import { requireAuth } from './middleware/requireAuth.js'
 
 /** multer storage rooted at FILES_DIR/{org_id}/{subdir}/ — org_id comes from the
@@ -80,10 +83,36 @@ export async function validateUploadOrCleanup(filePath: string, allowed: readonl
 
 export const filesRouter = Router()
 
-// Streaming download, org-scoped: /api/files/reports/some-file.xlsx resolves to
-// FILES_DIR/{caller's org_id}/reports/some-file.xlsx. Same-origin API — no signed
-// URLs needed (Phase 6 wires the report/photo/attachment producers).
-filesRouter.get('/files/*filePath', requireAuth, (req, res) => {
+// Every upload surface's on-disk subdirectory, mapped to a check that a row
+// visible to the CALLER'S CURRENT SCOPE (run through withOrgContext, so RLS's
+// org + site-scope predicate applies exactly as it does for the owning
+// table's own queries) references this exact relative path. The directory
+// layout (FILES_DIR/{org_id}/{subdir}/...) already keeps files off-limits
+// across orgs; this closes the remaining gap where a site-scoped caller could
+// otherwise fetch another site's photo/document/report/attachment just by
+// knowing (or guessing) its path.
+type OwnershipCheck = (client: PoolClient, relPath: string) => Promise<boolean>
+const exists = (c: PoolClient, sql: string, params: unknown[]) => c.query(sql, params).then((r) => (r.rowCount ?? 0) > 0)
+
+const FILE_OWNERSHIP_CHECKS: Record<string, OwnershipCheck> = {
+  assets: (c, p) => exists(c, 'select 1 from public.assets where photos @> $1::jsonb limit 1', [JSON.stringify([p])]),
+  'asset-documents': (c, p) => exists(c, `select 1 from public.assets where exists (select 1 from jsonb_array_elements(documents) d where d->>'url' = $1) limit 1`, [p]),
+  // work_order_activity carries the attachment but has no site-scoped RLS of
+  // its own — joining through work_orders (which does) is what enforces scope.
+  attachments: (c, p) => exists(c, `select 1 from public.work_order_activity wa join public.work_orders w on w.id = wa.work_order_id where exists (select 1 from jsonb_array_elements(coalesce(wa.attachments, '[]'::jsonb)) att where att->>'url' = $1) limit 1`, [p]),
+  'inspection-reports': (c, p) => exists(c, 'select 1 from public.inspections where report_url = $1 limit 1', [p]),
+  'maintenance-reports': (c, p) => exists(c, 'select 1 from public.pm_tasks where report_url = $1 limit 1', [p]),
+  'compliance-documents': (c, p) => exists(c, `select 1 from public.compliance_licences where document_url = $1 or exists (select 1 from jsonb_array_elements(documents) d where d->>'url' = $1) limit 1`, [p]),
+  'compliance-audits': (c, p) => exists(c, 'select 1 from public.compliance_audits where document_url = $1 limit 1', [p]),
+  // Generated report exports are org-wide artifacts, not tied to a site.
+  reports: (c, p) => exists(c, 'select 1 from public.reports where storage_path = $1 limit 1', [p]),
+}
+
+// Streaming download, org- AND site-scoped: /api/files/reports/some-file.xlsx
+// resolves to FILES_DIR/{caller's org_id}/reports/some-file.xlsx, and — for
+// every known upload bucket — only streams if a row the caller's current
+// scope can see actually references that path.
+filesRouter.get('/files/*filePath', requireAuth, async (req, res) => {
   const orgId = req.claims?.org_id
   if (!orgId) return res.status(403).json({ error: 'no_org_context' })
 
@@ -93,6 +122,15 @@ filesRouter.get('/files/*filePath', requireAuth, (req, res) => {
 
   const fullPath = path.join(config.FILES_DIR, orgId, relPath)
   if (!existsSync(fullPath)) return res.status(404).json({ error: 'not_found' })
+
+  const subdir = segments[0]
+  const check = subdir ? FILE_OWNERSHIP_CHECKS[subdir] : undefined
+  // Unrecognized buckets default-deny — a new upload surface must add a
+  // resolver here before its files are downloadable.
+  if (!check) return res.status(404).json({ error: 'not_found' })
+
+  const visible = await withOrgContext(claimsFromReq(req), (c) => check(c, relPath))
+  if (!visible) return res.status(404).json({ error: 'not_found' })
 
   createReadStream(fullPath).pipe(res)
 })

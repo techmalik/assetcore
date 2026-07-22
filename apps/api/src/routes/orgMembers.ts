@@ -14,7 +14,14 @@ import { issueToken } from '../auth/tokens.js'
 import { sendMail } from '../auth/mailer.js'
 
 export const orgMembersRouter = Router()
-orgMembersRouter.use(requireAuth, requireOrg, requireActiveMembership, requireCap('user:manage'))
+// Path-scoped, unlike every other router's blanket `.use(requireAuth, ...)`:
+// this one also carries requireCap('user:manage'), and this router (like all
+// the others) is mounted at apiRouter's root with no prefix. An unscoped
+// `.use(mw)` here would run for ANY request that reaches this point in the
+// chain — including ones meant for routers mounted later (profile, licence,
+// files) — and requireCap's 403 stops the request dead before it ever gets
+// there. Scoping to '/org/members' keeps it to this router's own routes.
+orgMembersRouter.use('/org/members', requireAuth, requireOrg, requireActiveMembership, requireCap('user:manage'))
 
 const ROLE_KEYS = ['owner', 'ops_manager', 'maint_engineer', 'field_tech', 'hse_officer', 'auditor', 'viewer'] as const
 

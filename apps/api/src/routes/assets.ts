@@ -86,6 +86,13 @@ assetsRouter.get('/assets/:id', async (req, res) => {
 // (comments, alerts) UNION system events from audit_log (create/update/archive).
 assetsRouter.get('/assets/:id/activity', async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), async (c) => {
+    // asset_activity and audit_log are org-scoped only, not site-scoped — a
+    // caller who knows/guesses an out-of-scope asset's id could otherwise
+    // read its comments/history straight from this endpoint even though
+    // GET /assets/:id itself 404s for them. Confirm the asset (which DOES
+    // carry site-scoped RLS) is visible before running either query.
+    const { rows: assetRows } = await c.query('select 1 from public.assets where id = $1', [req.params.id])
+    if (!assetRows[0]) return null
     const { rows: acts } = await c.query(
       `select aa.id, aa.kind, aa.body, aa.attachments, aa.created_at, 'activity' as source,
          case when u.id is null then null else jsonb_build_object('id', u.id, 'full_name', u.full_name) end as actor
@@ -106,6 +113,7 @@ assetsRouter.get('/assets/:id/activity', async (req, res) => {
       (x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime()
     )
   })
+  if (rows === null) return res.status(404).json({ error: 'not_found' })
   res.json(rows)
 })
 
@@ -115,14 +123,21 @@ const commentInput = z.object({ body: z.string().min(1) })
 assetsRouter.post('/assets/:id/activity', async (req, res) => {
   const parsed = commentInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    // asset_activity's INSERT policy only checks org_id — without this,
+    // a site-scoped caller could log a comment against an asset outside
+    // their scope. Same fix as the GET above: confirm visibility first.
+    const { rows: assetRows } = await c.query('select 1 from public.assets where id = $1', [req.params.id])
+    if (!assetRows[0]) return null
+    const { rows } = await c.query(
       `insert into public.asset_activity (org_id, asset_id, user_id, kind, body)
        values (current_org_id(), $1, current_user_id(), 'comment', $2)
        returning *`,
       [req.params.id, parsed.data.body]
-    ).then((r) => r.rows[0])
-  )
+    )
+    return rows[0]
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
   res.status(201).json(row)
 })
 
