@@ -56,11 +56,16 @@ export function can(
   return false
 }
 
-/** Mount after requireAuth. 403s unless the caller's role or per-user grants
+/** Mount after requireAuth (and, on every router that has it, after
+ * requireActiveMembership — req.membership, when present, is read fresh
+ * from the DB this request and takes priority over the possibly-stale JWT
+ * claims; see TASK-2.6). 403s unless the caller's role or per-user grants
  * include `capability`. */
 export function requireCap(capability: string) {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!can(req.claims?.role_key, capability, req.claims?.extra_caps ?? [])) {
+    const roleKey = req.membership?.roleKey ?? req.claims?.role_key
+    const extraCaps = req.membership?.extraCaps ?? req.claims?.extra_caps ?? []
+    if (!can(roleKey, capability, extraCaps)) {
       return res.status(403).json({ error: 'forbidden', capability })
     }
     next()

@@ -26,7 +26,10 @@ const forgotLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHe
 
 // UUID that matches no real site — the encoding for "scoped, but to zero sites"
 // (so an empty scope denies rather than falling back to the null = all-sites case).
-const NO_SITE = '00000000-0000-0000-0000-000000000000'
+// Exported: requireActiveMembership.ts reuses this + resolveSiteIds below so a
+// live per-request scope check (TASK-2.6) uses the exact same resolution the
+// login/refresh path uses, rather than a second, driftable implementation.
+export const NO_SITE = '00000000-0000-0000-0000-000000000000'
 
 /** Resolves the active membership (org/role/scope/grants) for a user: earliest
  * active membership in a non-deleted org, or nulls for a platform admin with no
@@ -58,7 +61,7 @@ async function resolveOrgRole(userId: string): Promise<{
  * (= all sites, System Admin / senior staff). Otherwise the union of the
  * explicit sites and every site in the scoped locations; [] collapses to
  * [NO_SITE] so an empty scope denies. */
-async function resolveSiteIds(
+export async function resolveSiteIds(
   orgId: string | null, siteScope: string[] | null, locationScope: string[] | null
 ): Promise<string[] | null> {
   if (!orgId) return null
