@@ -68,6 +68,17 @@ function fmtDateTime(d) {
   return new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+// Next-maintenance cell color: red once past due, amber inside the next 14
+// days, default text color otherwise — mirrors the overdue/expiring color
+// convention already used on Maintenance and Compliance (var(--srt)/var(--sat)).
+function nextMaintColor(d) {
+  if (!d) return 'var(--n500)'
+  const days = Math.floor((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000)
+  if (days < 0) return 'var(--srt)'
+  if (days < 14) return 'var(--sat)'
+  return 'var(--n700)'
+}
+
 // Stable module-scope field wrapper — defining it inside the modal would remount
 // inputs on every keystroke and drop focus.
 function Field({ label, required, full, children }) {
@@ -842,6 +853,13 @@ export default function Assets({ dark, toggleDark }) {
   // server-side today and the asset list is small enough per-org that this is fine.
   const [healthFilter, setHealthFilter] = useState(searchParams.get('health') || '')
   const [archivedView, setArchivedView] = useState(false)
+  // On-page search/Type/Location filters compose with the server-side status
+  // filter above — all client-side over the already-loaded list, since a
+  // single org's asset count is bounded and this avoids new API round trips.
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [locationFilter, setLocationFilter] = useState('')
   const [selected, setSelected] = useState(null)
   const [modal, setModal] = useState(null)      // null | 'add' | asset (edit)
   const [woAsset, setWoAsset] = useState(null)  // asset for Raise WO
@@ -863,6 +881,11 @@ export default function Assets({ dark, toggleDark }) {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim().toLowerCase()), 250)
+    return () => clearTimeout(t)
+  }, [search])
+
   const afterSave = async () => { setModal(null); await load() }
 
   async function archiveAsset(id) {
@@ -876,7 +899,16 @@ export default function Assets({ dark, toggleDark }) {
 
   const linkBtn = { padding: '3px 8px', border: '1px solid var(--n200)', borderRadius: 3, background: 'var(--n0)', fontSize: 11, color: 'var(--n600)', cursor: 'pointer' }
   const HEALTH_FILTER_LABEL = { good: 'Healthy', attention: 'Needs attention', critical: 'Critical' }
-  const visibleAssets = healthFilter ? assets.filter((a) => healthBand(a.health_score) === healthFilter) : assets
+  const visibleAssets = assets.filter((a) => {
+    if (healthFilter && healthBand(a.health_score) !== healthFilter) return false
+    if (typeFilter && a.category_id !== typeFilter) return false
+    if (locationFilter && a.location?.id !== locationFilter) return false
+    if (debouncedSearch) {
+      const haystack = [a.name, a.ain, a.specs?.manufacturer, a.specs?.model].filter(Boolean).join(' ').toLowerCase()
+      if (!haystack.includes(debouncedSearch)) return false
+    }
+    return true
+  })
 
   return (
     <div className="app-shell">
@@ -890,7 +922,7 @@ export default function Assets({ dark, toggleDark }) {
             <div>
               <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Asset Registry</h1>
               <p style={{ fontSize: 12, color: 'var(--n500)' }}>
-                {loading ? 'Loading…' : `${visibleAssets.length} ${archivedView ? 'archived ' : ''}assets · ${locations.length} location${locations.length !== 1 ? 's' : ''} · ${sites.length} site${sites.length !== 1 ? 's' : ''}`}
+                {loading ? 'Loading…' : `${visibleAssets.length} ${archivedView ? 'archived ' : ''}asset${visibleAssets.length !== 1 ? 's' : ''} · ${locations.length} location${locations.length !== 1 ? 's' : ''} · ${sites.length} site${sites.length !== 1 ? 's' : ''}`}
               </p>
             </div>
             {healthFilter && (
@@ -919,8 +951,37 @@ export default function Assets({ dark, toggleDark }) {
             )}
           </div>
 
+          {/* Search + Type/Location filter bar */}
+          <div style={{ padding: '10px 24px', borderBottom: 'var(--bdr)', background: 'var(--n0)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 240px', maxWidth: 320 }}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <circle cx="6" cy="6" r="5" stroke="var(--n400)" strokeWidth="1.4" />
+                <path d="M9.8 9.8L13 13" stroke="var(--n400)" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, AIN, manufacturer, model…"
+                style={{ height: 30, width: '100%', padding: '0 10px 0 30px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n900)', outline: 'none' }}
+              />
+            </div>
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
+              <option value="">All types</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
+              <option value="">All locations</option>
+              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+            {(search || typeFilter || locationFilter) && (
+              <button onClick={() => { setSearch(''); setTypeFilter(''); setLocationFilter('') }} style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', fontSize: 12, color: 'var(--n500)', cursor: 'pointer' }}>
+                Clear
+              </button>
+            )}
+          </div>
+
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-            <div style={{ flex: 1, overflowY: 'auto' }}>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
               {loading ? (
                 <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>Loading assets…</div>
               ) : error ? (
@@ -930,15 +991,17 @@ export default function Assets({ dark, toggleDark }) {
                 </div>
               ) : visibleAssets.length === 0 ? (
                 <div style={{ padding: 64, textAlign: 'center' }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>{healthFilter ? 'No assets in this health band' : archivedView ? 'No archived assets' : 'No assets yet'}</p>
-                  {!archivedView && !healthFilter && <p style={{ fontSize: 13, color: 'var(--n400)', marginBottom: 20 }}>Add your first asset to start tracking your infrastructure.</p>}
-                  {canCreate && !archivedView && !healthFilter && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Add first asset</button>}
+                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>
+                    {healthFilter || debouncedSearch || typeFilter || locationFilter ? 'No assets match these filters' : archivedView ? 'No archived assets' : 'No assets yet'}
+                  </p>
+                  {!archivedView && !healthFilter && !debouncedSearch && !typeFilter && !locationFilter && <p style={{ fontSize: 13, color: 'var(--n400)', marginBottom: 20 }}>Add your first asset to start tracking your infrastructure.</p>}
+                  {canCreate && !archivedView && !healthFilter && !debouncedSearch && !typeFilter && !locationFilter && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Add first asset</button>}
                 </div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
-                      {['AIN', 'Name & Model', 'Type', 'Location', 'Site', 'Status', 'Health', 'Operator', 'Actions'].map((h) => (
+                      {['AIN', 'Name & Model', 'Type', 'Location', 'Site', 'Status', 'Health', 'Next Maint.', 'Operator', 'Actions'].map((h) => (
                         <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
                       ))}
                     </tr>
@@ -956,6 +1019,7 @@ export default function Assets({ dark, toggleDark }) {
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.site?.name || '—'}</td>
                         <td style={{ padding: '11px 14px' }}><StatusBadge status={a.status} /></td>
                         <td style={{ padding: '11px 14px' }}><HealthBar score={a.health_score ?? 0} /></td>
+                        <td style={{ padding: '11px 14px', fontSize: 12, whiteSpace: 'nowrap', color: nextMaintColor(a.next_maintenance_at) }}>{fmtDate(a.next_maintenance_at)}</td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.operator?.full_name || '—'}</td>
                         <td style={{ padding: '11px 14px' }} onClick={(e) => e.stopPropagation()}>
                           {archivedView ? (
