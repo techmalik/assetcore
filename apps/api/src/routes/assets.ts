@@ -8,20 +8,24 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
-import { uploadTo } from '../files.js'
+import { uploadTo, guardedSingle, validateUploadOrCleanup, IMAGE_MIME_TYPES, DOCUMENT_MIME_TYPES } from '../files.js'
 
 export const assetsRouter = Router()
 assetsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
-const photoUpload = uploadTo('assets')
-const documentUpload = uploadTo('asset-documents')
+const photoUpload = uploadTo('assets', { maxSizeBytes: 10 * 1024 * 1024 })
+const documentUpload = uploadTo('asset-documents', { maxSizeBytes: 25 * 1024 * 1024 })
 
 const MAX_PHOTOS = 5
 
+// photos/documents are intentionally NOT in this list — they may only change
+// via the dedicated upload/remove endpoints below, which validate file
+// content and enforce the photo cap server-side. Accepting them here would
+// let a client PATCH in arbitrary URLs, bypassing both checks entirely.
 const ALLOWED = [
   'site_id', 'ain', 'name', 'category_id', 'status', 'health_score', 'lat', 'lng',
-  'specs', 'purchase_value_cents', 'nbv_cents', 'parent_asset_id', 'photos',
-  'assigned_operator_id', 'last_maintenance_at', 'next_maintenance_at', 'documents',
+  'specs', 'purchase_value_cents', 'nbv_cents', 'parent_asset_id',
+  'assigned_operator_id', 'last_maintenance_at', 'next_maintenance_at',
 ]
 
 // An asset's location is derived from its site (site -> location), so the two
@@ -52,11 +56,9 @@ const assetInput = z.object({
   purchase_value_cents: z.number().int().nullable().optional(),
   nbv_cents: z.number().int().nullable().optional(),
   parent_asset_id: z.string().uuid().nullable().optional(),
-  photos: z.array(z.unknown()).optional(),
   assigned_operator_id: z.string().uuid().nullable().optional(),
   last_maintenance_at: z.string().nullable().optional(),
   next_maintenance_at: z.string().nullable().optional(),
-  documents: z.array(z.unknown()).optional(),
 })
 
 assetsRouter.get('/assets', async (req, res) => {
@@ -247,8 +249,11 @@ assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) =
   res.json(row)
 })
 
-assetsRouter.post('/assets/:id/photos', requireCap('asset:update'), photoUpload.single('photo'), async (req, res) => {
+assetsRouter.post('/assets/:id/photos', requireCap('asset:update'), guardedSingle(photoUpload.single('photo')), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'missing_file' })
+  if (!(await validateUploadOrCleanup(req.file.path, IMAGE_MIME_TYPES))) {
+    return res.status(400).json({ error: 'unsupported_type' })
+  }
   const url = `assets/${req.file.filename}`
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
@@ -266,8 +271,29 @@ assetsRouter.post('/assets/:id/photos', requireCap('asset:update'), photoUpload.
   res.status(201).json(result.data)
 })
 
-assetsRouter.post('/assets/:id/documents', requireCap('asset:update'), documentUpload.single('document'), async (req, res) => {
+assetsRouter.delete('/assets/:id/photos', requireCap('asset:update'), async (req, res) => {
+  const url = typeof req.query.url === 'string' ? req.query.url : null
+  if (!url) return res.status(400).json({ error: 'invalid_request' })
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query(
+      `update public.assets
+       set photos = coalesce((select jsonb_agg(p) from jsonb_array_elements(photos) p where p <> to_jsonb($2::text)), '[]'::jsonb)
+       where id = $1 returning id`,
+      [req.params.id, url]
+    )
+    if (!rows[0]) return null
+    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
+    return full[0]
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
+  res.json(row)
+})
+
+assetsRouter.post('/assets/:id/documents', requireCap('asset:update'), guardedSingle(documentUpload.single('document')), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'missing_file' })
+  if (!(await validateUploadOrCleanup(req.file.path, DOCUMENT_MIME_TYPES))) {
+    return res.status(400).json({ error: 'unsupported_type' })
+  }
   const doc = { url: `asset-documents/${req.file.filename}`, name: req.file.originalname, size: req.file.size }
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {

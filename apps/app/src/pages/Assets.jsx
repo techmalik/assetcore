@@ -6,7 +6,7 @@ import AuthImage from '../components/AuthImage.jsx'
 import ImageLightbox from '../components/ImageLightbox.jsx'
 import {
   listAssets, createAsset, updateAsset, softDeleteAsset, restoreAsset, importAssets,
-  uploadAssetPhoto, uploadAssetDocument, deleteAssetDocument, listAssetActivity, addAssetComment,
+  uploadAssetPhoto, deleteAssetPhoto, uploadAssetDocument, deleteAssetDocument, listAssetActivity, addAssetComment,
 } from '../lib/db/assets'
 import { listSites } from '../lib/db/sites'
 import { listLocations } from '../lib/db/locations'
@@ -244,6 +244,13 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
     finally { setBusyFile(false) }
   }
 
+  async function removePhoto(url) {
+    setBusyFile(true)
+    try { const up = await deleteAssetPhoto(asset.id, url); setPhotos(up.photos || []) }
+    catch (ex) { setErr(ex.message) }
+    finally { setBusyFile(false) }
+  }
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
@@ -331,9 +338,17 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 6 }}>Images ({photoCount}/{MAX_PHOTOS}){photos.length > 0 && <span style={{ fontWeight: 400, color: 'var(--n400)' }}> · click to enlarge</span>}</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
             {photos.map((p, i) => (
-              <button type="button" key={`p${i}`} onClick={() => setLightbox({ images: photos, index: i })} title="Click to enlarge" style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', borderRadius: 4, lineHeight: 0 }}>
-                <AuthImage relPath={p} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--n200)', display: 'block' }} />
-              </button>
+              <div key={`p${i}`} style={{ position: 'relative', width: 56, height: 56 }}>
+                <button type="button" onClick={() => setLightbox({ images: photos, index: i })} title="Click to enlarge" style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', borderRadius: 4, lineHeight: 0 }}>
+                  <AuthImage relPath={p} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--n200)', display: 'block' }} />
+                </button>
+                {editing && (
+                  <button type="button" onClick={() => removePhoto(p)} disabled={busyFile} title="Remove image"
+                    style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', border: '1px solid var(--n200)', background: 'var(--n0)', color: 'var(--srt)', fontSize: 11, lineHeight: '16px', cursor: 'pointer', padding: 0 }}>
+                    ✕
+                  </button>
+                )}
+              </div>
             ))}
             {pendingPhotos.map((f, i) => (
               <div key={`pp${i}`} style={{ width: 56, height: 56, borderRadius: 4, border: '1px dashed var(--n300)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'var(--n500)', textAlign: 'center', padding: 2, overflow: 'hidden' }}>{f.name.slice(0, 14)}</div>

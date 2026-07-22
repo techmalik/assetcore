@@ -42,6 +42,10 @@ export async function uploadAssetPhoto(id, file) {
   return api.upload(`/assets/${id}/photos`, form)
 }
 
+export async function deleteAssetPhoto(id, url) {
+  return api.del(`/assets/${id}/photos?url=${encodeURIComponent(url)}`)
+}
+
 export async function uploadAssetDocument(id, file) {
   const form = new FormData()
   form.append('document', file)
