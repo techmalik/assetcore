@@ -3,7 +3,65 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useNotifications } from '../lib/NotificationsContext'
 import { useSidebar } from '../lib/SidebarContext'
+import { useLocationFilter } from '../lib/LocationFilterContext'
 import { ROLE_LABELS } from '../lib/rbac'
+
+function LocationSwitcher() {
+  const { locationId, setLocationId, locations, loading } = useLocationFilter()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [open])
+
+  // Nothing to switch between — a single-location (or no-location) user sees
+  // a static label instead of a dropdown, per the design.
+  if (loading || locations.length === 0) return null
+  const current = locations.find((l) => l.id === locationId)
+
+  if (locations.length === 1) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 10px', fontSize: 12, color: 'var(--n600)' }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sg)', flexShrink: 0 }} />
+        {locations[0].name}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ position: 'relative' }} ref={ref}>
+      <button onClick={() => setOpen((o) => !o)} title="Location filter" aria-haspopup="menu" aria-expanded={open}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 6, background: 'var(--n0)', cursor: 'pointer', fontSize: 12, color: 'var(--n700)' }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: current ? 'var(--sg)' : 'var(--n300)', flexShrink: 0 }} />
+        {current ? current.name : 'All my locations'}
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ transition: 'transform .15s', transform: open ? 'rotate(180deg)' : 'none' }}><path d="M3 4.5l3 3 3-3" stroke="var(--n500)" strokeWidth="1.3" strokeLinecap="round" /></svg>
+      </button>
+      {open && (
+        <div role="menu" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, minWidth: 200, background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, boxShadow: 'var(--sh-lg)', zIndex: 60, overflow: 'hidden', padding: '4px 0' }}>
+          <button role="menuitem" onClick={() => { setLocationId(null); setOpen(false) }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 14px', background: !locationId ? 'var(--n50)' : 'none', border: 'none', fontFamily: 'var(--ff-u)', fontSize: 13, color: 'var(--n800)', cursor: 'pointer', textAlign: 'left', fontWeight: !locationId ? 600 : 400 }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--n50)'} onMouseLeave={(e) => e.currentTarget.style.background = !locationId ? 'var(--n50)' : 'none'}>
+            All my locations
+          </button>
+          <div style={{ height: 1, background: 'var(--n200)', margin: '4px 0' }} />
+          {locations.map((l) => (
+            <button key={l.id} role="menuitem" onClick={() => { setLocationId(l.id); setOpen(false) }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 14px', background: locationId === l.id ? 'var(--n50)' : 'none', border: 'none', fontFamily: 'var(--ff-u)', fontSize: 13, color: 'var(--n800)', cursor: 'pointer', textAlign: 'left', fontWeight: locationId === l.id ? 600 : 400 }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--n50)'} onMouseLeave={(e) => e.currentTarget.style.background = locationId === l.id ? 'var(--n50)' : 'none'}>
+              {l.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
   const nav = useNavigate()
@@ -37,6 +95,8 @@ export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
           <span style={{color:'var(--n300)',margin:'0 2px'}}>/</span>
           <span style={{color:'var(--n900)',fontWeight:500}}>{breadcrumb}</span>
         </nav>
+
+        <LocationSwitcher />
 
         <div style={{position:'relative',width:260}}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{position:'absolute',left:9,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}>

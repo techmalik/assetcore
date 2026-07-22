@@ -29,6 +29,32 @@ locationsRouter.get('/locations', async (req, res) => {
   res.json(rows)
 })
 
+// Locations the CALLER's own site scope actually reaches — unlike GET
+// /locations above (an admin-management listing, intentionally org-wide so
+// e.g. an unscoped ops_manager can still administer every location), this
+// backs the topbar location-filter switcher (EPIC-2), where offering a
+// site-scoped user a location none of their sites belong to would be
+// pointless and confusing. current_site_ids() is null for unscoped callers
+// (see everything), else the same effective site-id array RLS itself uses.
+locationsRouter.get('/locations/mine', async (req, res) => {
+  const rows = await withOrgContext(claimsFromReq(req), (c) =>
+    c.query(
+      `select l.id, l.name, l.code
+       from public.locations l
+       where l.deleted_at is null
+         and (
+           current_site_ids() is null
+           or exists (
+             select 1 from public.sites s
+             where s.location_id = l.id and s.deleted_at is null and s.id = any(current_site_ids())
+           )
+         )
+       order by l.name`
+    ).then((r) => r.rows)
+  )
+  res.json(rows)
+})
+
 locationsRouter.post('/locations', requireCap('org:manage'), async (req, res) => {
   const parsed = locationInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
