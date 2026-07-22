@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
+import StatusBadge from '../components/StatusBadge.jsx'
 import {
   listWorkOrders, getWorkOrder, createWorkOrder, transitionWorkOrder, addWorkOrderComment,
   uploadWorkOrderAttachment,
-  WO_TRANSITIONS, WO_STATUS_LABEL, WO_PRIORITY_LABEL, WO_TYPE_LABEL,
+  WO_TRANSITIONS, WO_STATUS_LABEL, WO_PRIORITY_LABEL, WO_TYPE_LABEL, WO_PRIORITY_STYLE, WO_STATUS_STYLE,
 } from '../lib/db/workOrders'
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
@@ -15,18 +16,11 @@ import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 
-const PRIORITY_STYLE = {
-  critical: { bg: 'var(--srb)', c: 'var(--srt)', br: 'var(--srbr)' },
-  high:     { bg: 'var(--sab)', c: 'var(--sat)', br: 'var(--sabr)' },
-  medium:   { bg: 'var(--b50)',  c: 'var(--b700)', br: 'var(--b200)' },
-  low:      { bg: 'var(--n100)', c: 'var(--n600)', br: 'var(--n300)' },
-}
-
 const STATUS_COL_ORDER = ['new', 'assigned', 'in_progress', 'awaiting_parts', 'inspection', 'closed']
 
 function PriorityBadge({ p }) {
-  const s = PRIORITY_STYLE[p] || PRIORITY_STYLE.low
-  return <span style={{ display: 'inline-flex', padding: '1px 6px', borderRadius: 2, fontSize: 10, fontWeight: 600, background: s.bg, color: s.c, border: `1px solid ${s.br}`, textTransform: 'uppercase', letterSpacing: '.04em' }}>{WO_PRIORITY_LABEL[p]}</span>
+  const s = WO_PRIORITY_STYLE[p] || WO_PRIORITY_STYLE.low
+  return <StatusBadge tone={s} label={WO_PRIORITY_LABEL[p]} weight={600} uppercase style={{ padding: '1px 6px' }} />
 }
 
 function TypeBadge({ t }) {
@@ -228,7 +222,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ padding: '2px 8px', borderRadius: 3, fontSize: 11, fontWeight: 600, background: 'var(--b50)', color: 'var(--b700)', border: '1px solid var(--b200)' }}>{WO_STATUS_LABEL[wo.status]}</span>
+          <StatusBadge tone={WO_STATUS_STYLE} label={WO_STATUS_LABEL[wo.status]} size="md" weight={600} style={{ borderRadius: 3 }} />
           <PriorityBadge p={wo.priority} />
           <TypeBadge t={wo.type} />
         </div>
@@ -452,7 +446,7 @@ export default function WorkOrders({ dark, toggleDark }) {
                       <td style={{ padding: '10px 14px' }}><TypeBadge t={w.type} /></td>
                       <td style={{ padding: '10px 14px' }}><PriorityBadge p={w.priority} /></td>
                       <td style={{ padding: '10px 14px' }}>
-                        <span style={{ padding: '2px 8px', borderRadius: 3, fontSize: 11, fontWeight: 500, background: 'var(--b50)', color: 'var(--b700)', border: '1px solid var(--b200)' }}>{WO_STATUS_LABEL[w.status]}</span>
+                        <StatusBadge tone={WO_STATUS_STYLE} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
                       </td>
                       <td style={{ padding: '10px 14px' }}><SlaDue date={w.sla_due} /></td>
                       <td style={{ padding: '10px 14px' }}>

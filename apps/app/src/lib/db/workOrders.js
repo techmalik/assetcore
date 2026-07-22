@@ -22,6 +22,20 @@ export const WO_STATUS_LABEL = {
 export const WO_PRIORITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' }
 export const WO_TYPE_LABEL = { corrective: 'Corrective', preventive: 'Preventive', inspection: 'Inspection', emergency: 'Emergency' }
 
+// Shared priority tone map — used by both the Work Orders page and the
+// Dashboard's recent-WO widget so the same priority renders identically
+// in both places.
+export const WO_PRIORITY_STYLE = {
+  critical: { bg: 'var(--srb)', c: 'var(--srt)', br: 'var(--srbr)' },
+  high:     { bg: 'var(--sab)', c: 'var(--sat)', br: 'var(--sabr)' },
+  medium:   { bg: 'var(--b50)',  c: 'var(--b700)', br: 'var(--b200)' },
+  low:      { bg: 'var(--n100)', c: 'var(--n600)', br: 'var(--n300)' },
+}
+
+// WO status badges are intentionally neutral-blue everywhere (not
+// tone-per-status) - status progression is shown by position/label, not color.
+export const WO_STATUS_STYLE = { bg: 'var(--b50)', c: 'var(--b700)', br: 'var(--b200)' }
+
 export async function listWorkOrders({ status, priority, asset_id, locationId } = {}) {
   const params = new URLSearchParams()
   if (status) params.set('status', status)

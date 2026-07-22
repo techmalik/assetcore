@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
+import StatusBadge from '../components/StatusBadge.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 import {
@@ -188,7 +189,7 @@ function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded })
         <button onClick={onClose} style={{width:24,height:24,border:'none',background:'none',cursor:'pointer',color:'var(--n400)',fontSize:18,lineHeight:1}}>×</button>
       </div>
       <div style={{flex:1,overflowY:'auto',padding:'16px'}}>
-        <span style={{display:'inline-flex',padding:'2px 8px',borderRadius:2,border:`1px solid ${meta.br}`,fontSize:11,fontWeight:600,background:meta.bg,color:meta.c,marginBottom:12}}>{meta.label}</span>
+        <StatusBadge tone={meta} size="md" weight={600} style={{marginBottom:12}} />
         <h3 style={{fontFamily:'var(--ff-d)',fontSize:16,fontWeight:700,color:'var(--n950)',marginBottom:4,lineHeight:1.3}}>{lic.name}</h3>
         {lic.licence_number && <div style={{fontFamily:'var(--ff-m)',fontSize:11,color:'var(--n400)',marginBottom:16}}>{lic.licence_number}</div>}
 
@@ -613,7 +614,7 @@ export default function Compliance({ dark, toggleDark }) {
                           <td style={{padding:'11px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:lic.status==='expired'?'var(--srt)':lic.status==='expiring'?'var(--sat)':'var(--n600)',whiteSpace:'nowrap'}}>{fmtDate(lic.expiry_date)}</td>
                           <td style={{padding:'11px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:lic.status==='expired'?'var(--srt)':lic.status==='expiring'||lic.status==='due_soon'?'var(--sat)':'var(--n600)',whiteSpace:'nowrap',fontWeight:lic.status!=='active'?600:400}}>{daysLabel(lic.expiry_date)}</td>
                           <td style={{padding:'11px 14px'}}>
-                            <span style={{display:'inline-flex',padding:'2px 7px',borderRadius:2,border:`1px solid ${meta.br}`,fontSize:10,fontWeight:500,background:meta.bg,color:meta.c}}>{meta.label}</span>
+                            <StatusBadge tone={meta} />
                           </td>
                           <td style={{padding:'11px 14px'}}>
                             <button onClick={e => { e.stopPropagation(); setModal(lic) }} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Edit</button>

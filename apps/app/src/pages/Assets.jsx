@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import AuthImage from '../components/AuthImage.jsx'
 import ImageLightbox from '../components/ImageLightbox.jsx'
+import StatusBadge from '../components/StatusBadge.jsx'
 import {
   listAssets, createAsset, updateAsset, softDeleteAsset, restoreAsset, importAssets,
   uploadAssetPhoto, deleteAssetPhoto, uploadAssetDocument, deleteAssetDocument, listAssetActivity, addAssetComment,
@@ -47,13 +48,9 @@ const STATUS_PICKER_KEYS = ['operational', 'maintenance', 'standby', 'offline']
 
 const MAX_PHOTOS = 5
 
-function StatusBadge({ status }) {
+function AssetStatusBadge({ status }) {
   const s = STATUS_STYLE[status] || STATUS_STYLE.offline
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 2, padding: '2px 7px', fontSize: 11, fontWeight: 500, border: '1px solid', background: s.bg, color: s.c, borderColor: s.br, whiteSpace: 'nowrap' }}>
-      {s.label}
-    </span>
-  )
+  return <StatusBadge tone={s} size="md" />
 }
 
 function HealthBar({ score }) {
@@ -781,7 +778,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <StatusBadge status={asset.status} />
+          <AssetStatusBadge status={asset.status} />
           {asset.category && <span className="badge badge-n">{asset.category.name}</span>}
           {asset.location && <span className="badge badge-n">📍 {asset.location.name}</span>}
           {asset.site && <span className="badge badge-n">{asset.site.name}</span>}
@@ -1196,7 +1193,7 @@ export default function Assets({ dark, toggleDark }) {
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{a.category?.name || '—'}</td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.location?.name || '—'}</td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.site?.name || '—'}</td>
-                        <td style={{ padding: '11px 14px' }}><StatusBadge status={a.status} /></td>
+                        <td style={{ padding: '11px 14px' }}><AssetStatusBadge status={a.status} /></td>
                         <td style={{ padding: '11px 14px' }}><HealthBar score={a.health_score ?? 0} /></td>
                         <td style={{ padding: '11px 14px', fontSize: 12, whiteSpace: 'nowrap', color: nextMaintColor(a.next_maintenance_at) }}>{fmtDate(a.next_maintenance_at)}</td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.operator?.full_name || '—'}</td>

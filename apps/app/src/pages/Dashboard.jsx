@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
+import StatusBadge from '../components/StatusBadge.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { getDashboardStats, getRecentWorkOrders, getDashboardAlerts } from '../lib/db/dashboard.js'
 import { getComplianceLicenceCounts, getPmCompliance } from '../lib/db/complianceLicences.js'
 import { listPMTasks } from '../lib/db/pmTasks.js'
+import { WO_STATUS_LABEL, WO_PRIORITY_LABEL, WO_STATUS_STYLE, WO_PRIORITY_STYLE } from '../lib/db/workOrders.js'
 
 const ALERT_SEVERITY_STYLE = {
   critical: { c: 'var(--srt)', bg: 'var(--srb)' },
@@ -35,12 +37,6 @@ function pmDueLabel(due_date) {
   return { text: `in ${diff}d`, color: 'var(--n500)' }
 }
 
-const WO_STATUS_LABEL = {
-  new: 'New', assigned: 'Assigned', in_progress: 'In Progress',
-  awaiting_parts: 'Awaiting Parts', inspection: 'Inspection', closed: 'Closed',
-}
-const WO_PRIORITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' }
-
 function pct(n, total) {
   return total === 0 ? '0%' : `${Math.round((n / total) * 100)}%`
 }
@@ -53,15 +49,6 @@ function slaDueLabel(sla_due) {
   if (days === 0) return { text: 'Today', color: 'var(--sat)' }
   if (days <= 2) return { text: `${days}d left`, color: 'var(--sat)' }
   return { text: new Date(sla_due).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), color: 'var(--n500)' }
-}
-
-function woStatusBadge(status) {
-  const map = { new: 'n', assigned: 'b', in_progress: 'ip', awaiting_parts: 'b', inspection: 'b', closed: 'g' }
-  return map[status] || 'n'
-}
-
-function woPrioBadge(priority) {
-  return { low: 'b', medium: 'b', high: 'a', critical: 'r' }[priority] || 'b'
 }
 
 function initialsOf(name) {
@@ -335,8 +322,8 @@ export default function Dashboard({ dark, toggleDark }) {
                                 </div>
                               ) : <span style={{fontSize:12,color:'var(--n400)'}}>Unassigned</span>}
                             </td>
-                            <td style={{padding:'10px 12px'}}><span className={`badge badge-${woStatusBadge(wo.status)}`}>{WO_STATUS_LABEL[wo.status]}</span></td>
-                            <td style={{padding:'10px 12px'}}><span className={`badge badge-${woPrioBadge(wo.priority)}`}>{WO_PRIORITY_LABEL[wo.priority]}</span></td>
+                            <td style={{padding:'10px 12px'}}><StatusBadge tone={WO_STATUS_STYLE} label={WO_STATUS_LABEL[wo.status]} size="md" /></td>
+                            <td style={{padding:'10px 12px'}}><StatusBadge tone={WO_PRIORITY_STYLE[wo.priority] || WO_PRIORITY_STYLE.low} label={WO_PRIORITY_LABEL[wo.priority]} size="md" /></td>
                             <td style={{padding:'10px 12px',textAlign:'right',fontFamily:'var(--ff-m)',fontSize:11,color:due.color,whiteSpace:'nowrap'}}>{due.text}</td>
                           </tr>
                         )

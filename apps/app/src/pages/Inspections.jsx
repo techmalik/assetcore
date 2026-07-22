@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
+import StatusBadge from '../components/StatusBadge.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 import { listInspections, createInspection, updateInspection, uploadInspectionReport } from '../lib/db/inspections'
@@ -257,7 +258,7 @@ export default function Inspections({ dark, toggleDark }) {
                         </td>
                         <td style={{padding:'11px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>{ins.inspector?.full_name || '—'}</td>
                         <td style={{padding:'11px 14px'}}>
-                          <span style={{display:'inline-flex',padding:'2px 7px',borderRadius:2,border:`1px solid ${sm.br}`,fontSize:10,fontWeight:500,background:sm.bg,color:sm.c}}>{sm.label}</span>
+                          <StatusBadge tone={sm} />
                         </td>
                         <td style={{padding:'11px 14px'}}>
                           {ins.status !== 'completed' && (

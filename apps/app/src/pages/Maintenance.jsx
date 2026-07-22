@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
+import StatusBadge from '../components/StatusBadge.jsx'
 import { listPMSchedules, createPMSchedule, softDeletePMSchedule } from '../lib/db/pmSchedules'
 import { listPMTasks, updatePMTask, generatePMTasks, uploadMaintenanceReport } from '../lib/db/pmTasks'
 import { api } from '../lib/apiClient'
@@ -409,7 +410,7 @@ function TasksTable({ tasks, onComplete }) {
               <td style={{padding:'10px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:t.status==='overdue'?'var(--srt)':'var(--n600)',whiteSpace:'nowrap'}}>{fmtDate(t.due_date)}</td>
               <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>{t.assignee?.full_name||'—'}</td>
               <td style={{padding:'10px 14px'}}>
-                <span style={{display:'inline-flex',padding:'2px 7px',borderRadius:2,border:`1px solid ${sc.br}`,fontSize:10,fontWeight:500,background:sc.bg,color:sc.c}}>{sc.label}</span>
+                <StatusBadge tone={sc} />
               </td>
               <td style={{padding:'10px 14px'}}>
                 {t.status !== 'completed' && t.status !== 'skipped' && (

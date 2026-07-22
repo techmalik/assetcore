@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { listReports, requestReport, generateReport, downloadReport, getLocationAnalytics, REPORT_KINDS } from '../lib/db/reports'
+import { healthColor } from '../lib/health'
 
 const KIND_META = {
   asset_register:      { icon:'A', bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -208,7 +209,7 @@ export default function Reports({ dark, toggleDark }) {
                           </div>
                           <div style={{marginBottom:8}}>
                             <div style={{width:'100%',height:5,background:'var(--n200)',borderRadius:99,overflow:'hidden'}}>
-                              <div style={{width:`${loc.avg_health ?? 0}%`,height:'100%',background:loc.avg_health >= 70 ? 'var(--sg)' : loc.avg_health >= 40 ? 'var(--sa)' : 'var(--sr)',borderRadius:99}}/>
+                              <div style={{width:`${loc.avg_health ?? 0}%`,height:'100%',background:healthColor(loc.avg_health),borderRadius:99}}/>
                             </div>
                             <div style={{fontSize:10,color:'var(--n500)',marginTop:2}}>Avg health: {loc.avg_health ?? '—'}</div>
                           </div>
@@ -249,7 +250,7 @@ export default function Reports({ dark, toggleDark }) {
                     const m = KIND_META[t.key]
                     const active = selectedKind === t.key
                     return (
-                      <div key={t.key} onClick={() => setKind(t.key)} style={{background:'var(--n0)',border:`1px solid ${active?'var(--b400)':'var(--n200)'}`,borderRadius:6,padding:'14px 16px',cursor:'pointer',background:active?'var(--b50)':'var(--n0)'}}>
+                      <div key={t.key} onClick={() => setKind(t.key)} style={{background:active?'var(--b50)':'var(--n0)',border:`1px solid ${active?'var(--b400)':'var(--n200)'}`,borderRadius:6,padding:'14px 16px',cursor:'pointer'}}>
                         <div style={{width:32,height:32,borderRadius:6,background:active?'var(--b100)':'var(--n100)',border:`1px solid ${active?'var(--b200)':'var(--n200)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:active?'var(--b700)':'var(--n600)',fontFamily:'var(--ff-m)',marginBottom:10}}>{m.icon}</div>
                         <div style={{fontSize:13,fontWeight:600,color:active?'var(--b800)':'var(--n900)',marginBottom:3}}>{t.label}</div>
                         <div style={{fontSize:11,color:'var(--n500)',lineHeight:1.5}}>{t.desc}</div>
