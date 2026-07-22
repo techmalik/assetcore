@@ -9,6 +9,7 @@ import { listOrgMembers, inviteOrgMember, updateOrgMemberRole, updateOrgMemberAc
 import { getOrg, updateOrgSettings } from '../lib/db/org.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac.js'
+import { useToast } from '../lib/ToastContext'
 
 // Capabilities an admin can grant per-user on top of the role baseline
 // (mirrors GRANTABLE_CAPS in apps/api/src/routes/orgMembers.ts).
@@ -468,6 +469,7 @@ function initials(name) {
 }
 
 function InviteModal({ locations, sites, onClose, onInvited }) {
+  const toast = useToast()
   const [form, setForm] = useState({ email: '', full_name: '', role_key: 'field_tech' })
   const [scope, setScope] = useState({ location_scope: [], site_scope: [], extra_caps: [] })
   const [busy, setBusy] = useState(false)
@@ -486,7 +488,7 @@ function InviteModal({ locations, sites, onClose, onInvited }) {
         extra_caps: scope.extra_caps,
       })
       if (invite_link) setLink(invite_link)
-      else { onInvited(); onClose() }
+      else { toast.success(`Invite sent to ${form.email}.`); onInvited(); onClose() }
     } catch (ex) { setErr(ex.message) } finally { setBusy(false) }
   }
 
@@ -540,6 +542,7 @@ function InviteModal({ locations, sites, onClose, onInvited }) {
 }
 
 function AccessModal({ member, locations, sites, onClose, onSaved }) {
+  const toast = useToast()
   const [scope, setScope] = useState({
     location_scope: member.location_scope || [],
     site_scope: member.site_scope || [],
@@ -556,6 +559,7 @@ function AccessModal({ member, locations, sites, onClose, onSaved }) {
         site_scope: scope.site_scope.length ? scope.site_scope : null,
         extra_caps: scope.extra_caps,
       })
+      toast.success('Access updated.')
       onSaved()
     } catch (e) { setErr(e.message); setSaving(false) }
   }
@@ -577,6 +581,7 @@ function AccessModal({ member, locations, sites, onClose, onSaved }) {
 }
 
 function UsersTab() {
+  const toast = useToast()
   const [subtab, setSubtab] = useState('members')
   const [inviteOpen, setInviteOpen] = useState(false)
   const [members, setMembers] = useState([])
@@ -598,20 +603,23 @@ function UsersTab() {
   useEffect(() => { load() }, [])
 
   async function changeRole(m, role_key) {
-    try { await updateOrgMemberRole(m.id, role_key); load() } catch (e) { alert(e.message) }
+    try { await updateOrgMemberRole(m.id, role_key); load(); toast.success('Role updated.') }
+    catch (e) { toast.error(e.message || 'Failed to update role.') }
   }
 
   async function toggleStatus(m) {
     const enable = m.status === 'disabled'
     if (!enable && !confirm(`Disable ${m.full_name || m.email}? They will lose access immediately.`)) return
-    try { await setOrgMemberStatus(m.id, enable); load() } catch (e) { alert(e.message) }
+    try { await setOrgMemberStatus(m.id, enable); load(); toast.success(enable ? 'Member enabled.' : 'Member disabled.') }
+    catch (e) { toast.error(e.message || 'Failed to update member status.') }
   }
 
   async function sendReset(m) {
     try {
       const { action_link } = await resetOrgMemberPassword(m.id)
       setResetLink(action_link || 'Link generated (check email delivery settings).')
-    } catch (e) { alert(e.message) }
+      toast.success('Password reset link generated.')
+    } catch (e) { toast.error(e.message || 'Failed to generate reset link.') }
   }
 
   return (

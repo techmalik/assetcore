@@ -20,6 +20,7 @@ import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { healthColor, healthLabel, healthBand } from '../lib/health'
 import { api } from '../lib/apiClient'
+import { useToast } from '../lib/ToastContext'
 
 // operational/maintenance/standby/offline describe WHAT the asset is doing
 // right now (the new, David-demo-adopted model — TASK-4.2); attention/critical
@@ -154,6 +155,7 @@ function parseCSV(text) {
 
 // ── Add / Edit Asset Modal ────────────────────────────────────────────────────
 function AssetModal({ asset, sites, locations, categories, operators, onClose, onSave }) {
+  const toast = useToast()
   const editing = Boolean(asset)
   const s0 = asset?.specs || {}
   // An asset stores only its site; its location is the site's location. Seed the
@@ -235,6 +237,7 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
         for (const f of pendingPhotos) { try { await uploadAssetPhoto(created.id, f) } catch { /* keep going */ } }
         for (const f of pendingDocs) { try { await uploadAssetDocument(created.id, f) } catch { /* keep going */ } }
       }
+      toast.success(editing ? 'Asset updated.' : 'Asset created.')
       onSave()
     } catch (ex) { setErr(ex.message || 'Save failed.'); setSaving(false) }
   }
@@ -419,6 +422,7 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
 
 // ── Raise Work Order Modal ─────────────────────────────────────────────────────
 function RaiseWOModal({ asset, onClose, onCreated }) {
+  const toast = useToast()
   const [form, setForm] = useState({ title: `Work order — ${asset.name}`, description: '', type: 'corrective', priority: 'medium' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -430,7 +434,8 @@ function RaiseWOModal({ asset, onClose, onCreated }) {
     if (!form.title.trim()) { setErr('Title is required.'); return }
     setSaving(true); setErr('')
     try {
-      await createWorkOrder({ title: form.title.trim(), description: form.description || null, type: form.type, priority: form.priority, asset_id: asset.id, site_id: asset.site_id || null, status: 'new' })
+      const wo = await createWorkOrder({ title: form.title.trim(), description: form.description || null, type: form.type, priority: form.priority, asset_id: asset.id, site_id: asset.site_id || null, status: 'new' })
+      toast.success(`Work order ${wo.ref} created.`)
       onCreated()
     } catch (ex) { setErr(ex.message || 'Failed to raise work order.'); setSaving(false) }
   }
@@ -479,6 +484,7 @@ function localDateStr(offsetDays = 0) {
 }
 
 function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
+  const toast = useToast()
   const [pmTasks, setPMTasks] = useState([])
   const [workOrders, setWorkOrders] = useState([])
   const [form, setForm] = useState({
@@ -515,6 +521,7 @@ function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
         notes: form.notes.trim() || null,
         report: report || undefined,
       })
+      toast.success('Maintenance completed — health reset to 100%.')
       onCompleted()
     } catch (ex) { setErr(ex.message || 'Failed to record maintenance completion.'); setSaving(false) }
   }
@@ -566,6 +573,7 @@ function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
 // a task could be marked completed (resetting the asset's health via
 // apply_asset_health) with no record of what was done or a report attached.
 function PMTaskCompleteModal({ task, onClose, onCompleted }) {
+  const toast = useToast()
   const [completedAt, setCompletedAt] = useState(localDateStr(0))
   const [notes, setNotes] = useState('')
   const [report, setReport] = useState(null)
@@ -578,6 +586,7 @@ function PMTaskCompleteModal({ task, onClose, onCompleted }) {
     try {
       await updatePMTask(task.id, { status: 'completed', completed_at: completedAt, notes: notes.trim() || null })
       if (report) await uploadMaintenanceReport(task.id, report)
+      toast.success('PM task completed — health reset to 100%.')
       onCompleted()
     } catch (ex) { setErr(ex.message || 'Failed to complete task.'); setSaving(false) }
   }
@@ -611,6 +620,7 @@ function PMTaskCompleteModal({ task, onClose, onCompleted }) {
 
 // ── CSV Import Modal ───────────────────────────────────────────────────────────
 function ImportModal({ onClose, onDone }) {
+  const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
   const [err, setErr] = useState('')
@@ -623,7 +633,11 @@ function ImportModal({ onClose, onDone }) {
       const text = await file.text()
       const rows = parseCSV(text)
       if (!rows.length) { setErr('No data rows found. Make sure the first line is the header row.'); setBusy(false); return }
-      setResult(await importAssets(rows))
+      const imported = await importAssets(rows)
+      setResult(imported)
+      const { created, skipped, errors } = imported.summary
+      if (errors > 0) toast.error(`Import finished with ${errors} error${errors !== 1 ? 's' : ''} — ${created} created, ${skipped} skipped.`)
+      else toast.success(`Import complete — ${created} created, ${skipped} skipped.`)
     } catch (ex) { setErr(ex.message || 'Import failed.') }
     finally { setBusy(false); if (fileRef.current) fileRef.current.value = '' }
   }
@@ -678,6 +692,7 @@ const ACTIVITY_DOT_C = { maintenance: 'var(--sgt)', alert: 'var(--srt)', inspect
 
 function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdit, onArchive, onRestore, onRaiseWO, onCompleteMaintenance, onClose, refreshToken }) {
   const nav = useNavigate()
+  const toast = useToast()
   const { roleKey, extraCaps } = useAuth()
   const canUpdatePM = can(roleKey, 'pm:update', extraCaps)
   const canUpdateInspection = can(roleKey, 'inspection:update', extraCaps)
@@ -719,24 +734,24 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
 
   async function changePMStatus(task, newStatus) {
     if (newStatus === 'completed') { setCompletingTask(task); return }
-    try { await updatePMTask(task.id, { status: newStatus }); loadPMTasks() }
-    catch (ex) { alert(ex.message) }
+    try { await updatePMTask(task.id, { status: newStatus }); loadPMTasks(); toast.success('PM task status updated.') }
+    catch (ex) { toast.error(ex.message || 'Failed to update PM task status.') }
   }
 
   async function changeInspectionStatus(inspection, newStatus) {
-    try { await updateInspection(inspection.id, { status: newStatus }); loadInspections() }
-    catch (ex) { alert(ex.message) }
+    try { await updateInspection(inspection.id, { status: newStatus }); loadInspections(); toast.success('Inspection status updated.') }
+    catch (ex) { toast.error(ex.message || 'Failed to update inspection status.') }
   }
 
   async function postComment() {
     if (!comment.trim()) return
     setPosting(true)
     try { await addAssetComment(asset.id, comment.trim()); setComment(''); loadActivity() }
-    catch (ex) { alert(ex.message) } finally { setPosting(false) }
+    catch (ex) { toast.error(ex.message || 'Failed to post comment.') } finally { setPosting(false) }
   }
 
   async function viewDoc(doc) {
-    try { await api.download(`/files/${doc.url}`, doc.name) } catch (ex) { alert(ex.message) }
+    try { await api.download(`/files/${doc.url}`, doc.name) } catch (ex) { toast.error(ex.message || 'Failed to download file.') }
   }
 
   const section = { fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)', marginBottom: 8 }
@@ -969,6 +984,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Assets({ dark, toggleDark }) {
+  const toast = useToast()
   const { roleKey, extraCaps } = useAuth()
   const canCreate = can(roleKey, 'asset:create', extraCaps)
   const canEdit = can(roleKey, 'asset:update', extraCaps)
@@ -1026,11 +1042,13 @@ export default function Assets({ dark, toggleDark }) {
 
   async function archiveAsset(id) {
     if (!confirm('Archive this asset? It will be hidden from the registry but not deleted, and can be restored.')) return
-    try { await softDeleteAsset(id); setSelected(null); load() } catch (e) { alert(e.message) }
+    try { await softDeleteAsset(id); setSelected(null); load(); toast.success('Asset archived.') }
+    catch (e) { toast.error(e.message || 'Failed to archive asset.') }
   }
 
   async function doRestore(id) {
-    try { await restoreAsset(id); load() } catch (e) { alert(e.message) }
+    try { await restoreAsset(id); load(); toast.success('Asset restored.') }
+    catch (e) { toast.error(e.message || 'Failed to restore asset.') }
   }
 
   const linkBtn = { padding: '3px 8px', border: '1px solid var(--n200)', borderRadius: 3, background: 'var(--n0)', fontSize: 11, color: 'var(--n600)', cursor: 'pointer' }

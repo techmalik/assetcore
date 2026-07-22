@@ -4,6 +4,7 @@ import { isConfigured } from './lib/apiClient'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { NotificationsProvider } from './lib/NotificationsContext'
 import { SidebarProvider } from './lib/SidebarContext'
+import { ToastProvider } from './lib/ToastContext'
 import { can, ADMIN_ENTRY_CAPS } from './lib/rbac'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
@@ -106,9 +107,11 @@ export default function App() {
       <AuthProvider>
         <NotificationsProvider>
           <SidebarProvider>
-            <Routed />
-            <OfflineBanner />
-            <LicenceBanner />
+            <ToastProvider>
+              <Routed />
+              <OfflineBanner />
+              <LicenceBanner />
+            </ToastProvider>
           </SidebarProvider>
         </NotificationsProvider>
       </AuthProvider>

@@ -15,6 +15,7 @@ import { listSites } from '../lib/db/sites'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { listAssets } from '../lib/db/assets'
 import { api } from '../lib/apiClient'
+import { useToast } from '../lib/ToastContext'
 
 const STATUS_META = {
   active:   { label:'Active',        bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -50,6 +51,7 @@ function daysLabel(expiryDate) {
 
 // ── Licence Modal (add / edit) ────────────────────────────────────────────────
 function LicenceModal({ licence, authorities, sites, onClose, onSaved }) {
+  const toast = useToast()
   const editing = Boolean(licence)
   const [form, setForm] = useState({
     name:           licence?.name           || '',
@@ -84,6 +86,7 @@ function LicenceModal({ licence, authorities, sites, onClose, onSaved }) {
       }
       if (editing) await updateComplianceLicence(licence.id, payload)
       else         await createComplianceLicence(payload)
+      toast.success(editing ? 'Licence updated.' : 'Licence added.')
       onSaved()
     } catch (e) { setErr(e.message) }
     finally { setSaving(false) }
@@ -150,6 +153,7 @@ function LicenceModal({ licence, authorities, sites, onClose, onSaved }) {
 
 // ── Detail Panel ─────────────────────────────────────────────────────────────
 function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded }) {
+  const toast = useToast()
   const meta = STATUS_META[lic.status] || STATUS_META.active
   const days = daysUntilExpiry(lic.expiry_date)
   const [uploading, setUploading] = useState(false)
@@ -157,20 +161,21 @@ function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded })
 
   async function viewDocument() {
     try { await api.download(`/files/${lic.document_url}`, lic.document_url.split('/').pop()) }
-    catch (ex) { alert(ex.message) }
+    catch (ex) { toast.error(ex.message || 'Failed to download document.') }
   }
 
   async function handleDocPick(e) {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    try { onDocUploaded(await uploadComplianceDocument(lic.id, file)) }
-    catch (ex) { alert(ex.message) }
+    try { onDocUploaded(await uploadComplianceDocument(lic.id, file)); toast.success('Document uploaded.') }
+    catch (ex) { toast.error(ex.message || 'Failed to upload document.') }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
   }
 
   async function removeDoc(url) {
-    try { onDocUploaded(await deleteComplianceDocument(lic.id, url)) } catch (ex) { alert(ex.message) }
+    try { onDocUploaded(await deleteComplianceDocument(lic.id, url)); toast.success('Document removed.') }
+    catch (ex) { toast.error(ex.message || 'Failed to remove document.') }
   }
 
   const docList = lic.documents?.length ? lic.documents : (lic.document_url ? [{ url: lic.document_url, name: lic.document_url.split('/').pop() }] : [])
@@ -245,6 +250,7 @@ function YesNo({ value, onChange }) {
 }
 
 function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
+  const toast = useToast()
   const editing = Boolean(audit)
   const today = new Date().toISOString().slice(0, 10)
   const [form, setForm] = useState({
@@ -273,6 +279,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
       }
       const saved = editing ? await updateComplianceAudit(audit.id, payload) : await createComplianceAudit(payload)
       if (reportFile) await uploadAuditDocument(saved?.id || audit.id, reportFile)
+      toast.success(editing ? 'Audit updated.' : 'Audit recorded.')
       onSaved()
     } catch (e) { setErr(e.message); setSaving(false) }
   }
@@ -354,6 +361,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
 }
 
 function AuditsPanel({ canCreate }) {
+  const toast = useToast()
   const [audits, setAudits] = useState([])
   const [sites, setSites] = useState([])
   const [users, setUsers] = useState([])
@@ -377,7 +385,7 @@ function AuditsPanel({ canCreate }) {
 
   async function remove(id) {
     if (!confirm('Archive this audit record?')) return
-    try { await softDeleteComplianceAudit(id); load() } catch (e) { alert(e.message) }
+    try { await softDeleteComplianceAudit(id); load(); toast.success('Audit archived.') } catch (e) { toast.error(e.message || 'Failed to archive audit.') }
   }
   const yn = (v) => v === true ? <span style={{ color: 'var(--sgt)' }}>Yes</span> : v === false ? <span style={{ color: 'var(--srt)' }}>No</span> : <span style={{ color: 'var(--n400)' }}>—</span>
 
@@ -443,6 +451,7 @@ function AuditsPanel({ canCreate }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Compliance({ dark, toggleDark }) {
+  const toast = useToast()
   const { roleKey, extraCaps } = useAuth()
   const canCreate = can(roleKey, 'wo:create', extraCaps) // ops_manager+
   const canAudit = can(roleKey, 'compliance:create', extraCaps)
@@ -486,13 +495,15 @@ export default function Compliance({ dark, toggleDark }) {
   for (const l of licences) counts[l.status] = (counts[l.status] || 0) + 1
 
   const handleDelete = async (id) => {
-    await softDeleteComplianceLicence(id)
-    setSelected(null)
-    load()
+    try { await softDeleteComplianceLicence(id); setSelected(null); load(); toast.success('Licence archived.') }
+    catch (e) { toast.error(e.message || 'Failed to archive licence.') }
   }
 
   const handleRunExpiry = async () => {
-    try { await checkLicenceExpiry() } catch { /* non-fatal */ }
+    try {
+      const count = await checkLicenceExpiry()
+      toast.success(count ? `Expiry check complete — ${count} notification${count !== 1 ? 's' : ''} sent.` : 'Expiry check complete — nothing due.')
+    } catch (e) { toast.error(e.message || 'Expiry check failed.') }
   }
 
   return (

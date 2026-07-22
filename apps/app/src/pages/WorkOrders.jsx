@@ -12,6 +12,7 @@ import { listAssets } from '../lib/db/assets'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { api } from '../lib/apiClient'
+import { useToast } from '../lib/ToastContext'
 
 const PRIORITY_STYLE = {
   critical: { bg: 'var(--srb)', c: 'var(--srt)', br: 'var(--srbr)' },
@@ -43,6 +44,7 @@ function SlaDue({ date }) {
 
 // ── New WO Modal ──────────────────────────────────────────────────────────────
 function NewWOModal({ sites, assets, onClose, onSave }) {
+  const toast = useToast()
   const [form, setForm] = useState({ title: '', description: '', type: 'corrective', priority: 'medium', site_id: '', asset_id: '', sla_due: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -53,7 +55,8 @@ function NewWOModal({ sites, assets, onClose, onSave }) {
     e.preventDefault(); setErr(''); setSaving(true)
     try {
       if (!form.title.trim()) { setErr('Title is required.'); setSaving(false); return }
-      await createWorkOrder({ ...form, site_id: form.site_id || null, asset_id: form.asset_id || null, sla_due: form.sla_due || null, status: 'new' })
+      const wo = await createWorkOrder({ ...form, site_id: form.site_id || null, asset_id: form.asset_id || null, sla_due: form.sla_due || null, status: 'new' })
+      toast.success(`Work order ${wo.ref} created.`)
       onSave()
     } catch (ex) { setErr(ex.message || 'Create failed.'); setSaving(false) }
   }
@@ -124,6 +127,7 @@ function NewWOModal({ sites, assets, onClose, onSave }) {
 
 // ── WO Detail panel ───────────────────────────────────────────────────────────
 function WODetail({ woId, onClose, onUpdate, canTransition }) {
+  const toast = useToast()
   const [wo, setWo] = useState(null)
   const [loading, setLoading] = useState(true)
   const [comment, setComment] = useState('')
@@ -146,7 +150,8 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
       const fresh = await getWorkOrder(wo.id)
       setWo(fresh)
       onUpdate()
-    } catch (e) { alert(e.message) }
+      toast.success(`Work order moved to ${WO_STATUS_LABEL[newStatus] || newStatus}.`)
+    } catch (e) { toast.error(e.message || 'Failed to update work order status.') }
     finally { setTransitioning(false) }
   }
 
@@ -158,7 +163,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
       setComment('')
       const fresh = await getWorkOrder(wo.id)
       setWo(fresh)
-    } catch (ex) { alert(ex.message) }
+    } catch (ex) { toast.error(ex.message || 'Failed to post comment.') }
     finally { setPosting(false) }
   }
 
@@ -170,13 +175,14 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
       await uploadWorkOrderAttachment(wo.id, file)
       const fresh = await getWorkOrder(wo.id)
       setWo(fresh)
-    } catch (ex) { alert(ex.message) }
+      toast.success('Attachment uploaded.')
+    } catch (ex) { toast.error(ex.message || 'Failed to upload attachment.') }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
   }
 
   async function downloadAttachment(att) {
     try { await api.download(`/files/${att.url}`, att.name) }
-    catch (ex) { alert(ex.message) }
+    catch (ex) { toast.error(ex.message || 'Failed to download file.') }
   }
 
   if (loading) return (
