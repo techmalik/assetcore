@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { getDashboardStats, getRecentWorkOrders, getDashboardAlerts } from '../lib/db/dashboard.js'
-import { getComplianceLicenceCounts } from '../lib/db/complianceLicences.js'
+import { getComplianceLicenceCounts, getPmCompliance } from '../lib/db/complianceLicences.js'
 import { listPMTasks } from '../lib/db/pmTasks.js'
 
 const ALERT_SEVERITY_STYLE = {
@@ -81,12 +81,14 @@ export default function Dashboard({ dark, toggleDark }) {
   const [complianceCounts, setComplianceCounts] = useState(null)
   const [alerts, setAlerts] = useState(null)
   const [upcomingPM, setUpcomingPM] = useState(null)
+  const [pmCompliance, setPmCompliance] = useState(null)
 
   useEffect(() => {
     Promise.all([getDashboardStats(), getRecentWorkOrders()])
       .then(([s, wos]) => { setStats(s); setRecentWOs(wos) })
       .catch(e => setStatsErr(e.message))
     getComplianceLicenceCounts().then(setComplianceCounts).catch(() => {})
+    getPmCompliance().then(setPmCompliance).catch(() => {})
     getDashboardAlerts().then(setAlerts).catch(() => setAlerts([]))
     const today = new Date().toISOString().slice(0, 10)
     const in14 = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
@@ -253,6 +255,16 @@ export default function Dashboard({ dark, toggleDark }) {
                   </div>
                 ))}
               </div>
+              {pmCompliance && pmCompliance.rate != null && (
+                <div role="button" tabIndex={0} onClick={() => nav('/compliance?view=audits')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/compliance?view=audits') }}
+                  className="dash-legend-row"
+                  style={{display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:12,padding:'8px 6px 4px',margin:'6px -6px 0',borderTop:'var(--bdr)',cursor:'pointer'}}>
+                  <span style={{color:'var(--n600)'}}>PM Compliance (12mo)</span>
+                  <span style={{fontFamily:'var(--ff-m)',fontWeight:600,color:pmCompliance.rate>=80?'var(--sgt)':pmCompliance.rate>=50?'var(--sat)':'var(--srt)'}}>
+                    {pmCompliance.rate}% on-time
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Active Alerts — live merge of overdue PM, expiring licences, critical WOs, offline devices */}

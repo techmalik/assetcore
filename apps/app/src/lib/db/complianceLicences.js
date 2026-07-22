@@ -62,6 +62,18 @@ export async function checkLicenceExpiry() {
   return count
 }
 
+// { total, completed, onTime, rate } over pm_tasks due in the window
+// (defaults to the trailing 12 months) — the objective counterpart to the
+// audit form's self-reported routine-maintenance Yes/No.
+export async function getPmCompliance({ from, to, siteId } = {}) {
+  const params = new URLSearchParams()
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
+  if (siteId) params.set('site_id', siteId)
+  const qs = params.toString()
+  return api.get(`/compliance/pm-compliance${qs ? `?${qs}` : ''}`)
+}
+
 // Client-side status helper (mirrors the DB function)
 export function licenceStatus(expiryDate) {
   const exp = new Date(expiryDate); exp.setHours(0,0,0,0)

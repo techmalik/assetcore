@@ -291,3 +291,41 @@ complianceRouter.post('/compliance/check-expiry', requireCap('compliance:read'),
   )
   res.json({ count })
 })
+
+// Computed counterpart to the audit form's self-reported "did you comply with
+// routine maintenance?" Yes/No — an objective on-time-completion rate over
+// pm_tasks due in the window, so the subjective attestation sits next to a
+// real number instead of standing alone. Defaults to the trailing 12 months;
+// RLS already scopes to the caller's sites, so no separate site_id filter is
+// needed beyond what the query params allow.
+complianceRouter.get('/compliance/pm-compliance', requireCap('compliance:read'), async (req, res) => {
+  const from = typeof req.query.from === 'string' ? req.query.from : null
+  const to = typeof req.query.to === 'string' ? req.query.to : null
+  const siteId = typeof req.query.site_id === 'string' ? req.query.site_id : null
+
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const clauses = ["where due_date >= coalesce($1::date, current_date - interval '12 months')", 'and due_date <= coalesce($2::date, current_date)']
+    const values: unknown[] = [from, to]
+    if (siteId) { values.push(siteId); clauses.push(`and site_id = $${values.length}`) }
+    const { rows } = await c.query(
+      `select
+         count(*) as total,
+         count(*) filter (where status = 'completed') as completed,
+         count(*) filter (where status = 'completed' and completed_at::date <= due_date) as on_time
+       from public.pm_tasks
+       ${clauses.join(' ')}`,
+      values
+    )
+    return rows[0]
+  })
+
+  const total = Number(row.total)
+  const completed = Number(row.completed)
+  const onTime = Number(row.on_time)
+  // Rate is on-time completions out of ALL tasks due in the window, not just
+  // completed ones — a late-or-overdue task should pull the rate down, same
+  // as the seeded-fixture example in the implementation plan (2 on-time / 4
+  // total => 50%, not 2 on-time / 3 completed => 67%).
+  const rate = total > 0 ? Math.round((onTime / total) * 100) : null
+  res.json({ total, completed, onTime, rate })
+})

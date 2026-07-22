@@ -9,9 +9,11 @@ import {
   softDeleteComplianceLicence, listAuthorities, checkLicenceExpiry,
   licenceStatus, daysUntilExpiry, uploadComplianceDocument, deleteComplianceDocument,
   listComplianceAudits, createComplianceAudit, updateComplianceAudit, softDeleteComplianceAudit, uploadAuditDocument,
+  getPmCompliance,
 } from '../lib/db/complianceLicences'
 import { listSites } from '../lib/db/sites'
 import { listOrgUsers } from '../lib/db/orgMembers'
+import { listAssets } from '../lib/db/assets'
 import { api } from '../lib/apiClient'
 
 const STATUS_META = {
@@ -242,12 +244,13 @@ function YesNo({ value, onChange }) {
   )
 }
 
-function AuditModal({ audit, sites, users, onClose, onSaved }) {
+function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
   const editing = Boolean(audit)
   const today = new Date().toISOString().slice(0, 10)
   const [form, setForm] = useState({
     title: audit?.title || '', standard: audit?.standard || '', iso_reference: audit?.iso_reference || '',
     audit_date: audit?.audit_date || today, site_id: audit?.site_id || '', auditor_id: audit?.auditor_id || '',
+    asset_id: audit?.asset_id || '',
     routine_maintenance_complied: audit?.routine_maintenance_complied ?? null,
     iso_audit_conducted: audit?.iso_audit_conducted ?? null,
     notes: audit?.notes || '',
@@ -265,6 +268,7 @@ function AuditModal({ audit, sites, users, onClose, onSaved }) {
       const payload = {
         title: form.title.trim(), standard: form.standard || null, iso_reference: form.iso_reference || null,
         audit_date: form.audit_date, site_id: form.site_id || null, auditor_id: form.auditor_id || null,
+        asset_id: form.asset_id || null,
         routine_maintenance_complied: form.routine_maintenance_complied, iso_audit_conducted: form.iso_audit_conducted, notes: form.notes || null,
       }
       const saved = editing ? await updateComplianceAudit(audit.id, payload) : await createComplianceAudit(payload)
@@ -308,12 +312,20 @@ function AuditModal({ audit, sites, users, onClose, onSaved }) {
               </select>
             </label>
           </div>
-          <label style={labelStyle}>Auditor
-            <select value={form.auditor_id} onChange={(e) => set('auditor_id', e.target.value)} style={selectStyle}>
-              <option value="">— Select —</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
-            </select>
-          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <label style={labelStyle}>Auditor
+              <select value={form.auditor_id} onChange={(e) => set('auditor_id', e.target.value)} style={selectStyle}>
+                <option value="">— Select —</option>
+                {users.map((u) => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+              </select>
+            </label>
+            <label style={labelStyle}>Asset
+              <select value={form.asset_id} onChange={(e) => set('asset_id', e.target.value)} style={selectStyle}>
+                <option value="">— Not asset-specific —</option>
+                {(assets || []).map((a) => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
+              </select>
+            </label>
+          </div>
           <div style={{ background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 6, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <div style={{ fontSize: 12, color: 'var(--n800)', marginBottom: 6 }}>Did you comply with routine maintenance?</div>
@@ -345,6 +357,8 @@ function AuditsPanel({ canCreate }) {
   const [audits, setAudits] = useState([])
   const [sites, setSites] = useState([])
   const [users, setUsers] = useState([])
+  const [assets, setAssets] = useState([])
+  const [pmCompliance, setPmCompliance] = useState(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(null)
   const [modal, setModal] = useState(null)
@@ -352,8 +366,11 @@ function AuditsPanel({ canCreate }) {
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
     try {
-      const [a, s, u] = await Promise.all([listComplianceAudits(), listSites(), listOrgUsers().catch(() => [])])
-      setAudits(a); setSites(s); setUsers(u)
+      const [a, s, u, as, pm] = await Promise.all([
+        listComplianceAudits(), listSites(), listOrgUsers().catch(() => []),
+        listAssets().catch(() => []), getPmCompliance().catch(() => null),
+      ])
+      setAudits(a); setSites(s); setUsers(u); setAssets(as); setPmCompliance(pm)
     } catch (e) { setErr(e.message) } finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -369,6 +386,15 @@ function AuditsPanel({ canCreate }) {
       <div style={{ padding: '12px 24px', display: 'flex', alignItems: 'center' }}>
         <div style={{ fontSize: 13, color: 'var(--n600)' }}>Routine-maintenance & ISO audit attestations</div>
         <div style={{ flex: 1 }} />
+        {pmCompliance && (
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginRight: 16, padding: '4px 12px', background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 4 }}>
+            <span style={{ fontSize: 11, color: 'var(--n600)' }}>PM compliance (12 mo):</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: pmCompliance.rate == null ? 'var(--n400)' : pmCompliance.rate >= 80 ? 'var(--sgt)' : pmCompliance.rate >= 50 ? 'var(--sat)' : 'var(--srt)' }}>
+              {pmCompliance.rate == null ? '—' : `${pmCompliance.rate}%`}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--n500)' }}>on-time ({pmCompliance.onTime}/{pmCompliance.total})</span>
+          </div>
+        )}
         {canCreate && <button onClick={() => setModal('new')} className="btn btn-primary" style={{ height: 30, padding: '0 12px', fontSize: 12 }}>+ New Audit</button>}
       </div>
       {loading ? (
@@ -383,7 +409,7 @@ function AuditsPanel({ canCreate }) {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
-              {['Audit', 'Standard / Ref', 'Date', 'Routine maint.', 'ISO audit', 'Site', 'Doc', ''].map((h) => (
+              {['Audit', 'Standard / Ref', 'Date', 'Routine maint.', 'ISO audit', 'Site', 'Asset', 'Doc', ''].map((h) => (
                 <th key={h} style={{ padding: '8px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
               ))}
             </tr>
@@ -397,6 +423,7 @@ function AuditsPanel({ canCreate }) {
                 <td style={{ padding: '10px 14px', fontSize: 12 }}>{yn(a.routine_maintenance_complied)}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12 }}>{yn(a.iso_audit_conducted)}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)' }}>{a.site?.name || '—'}</td>
+                <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)' }}>{a.asset?.name || '—'}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12 }}>{a.document_url ? <button onClick={() => api.download(`/files/${a.document_url}`, a.document_url.split('/').pop())} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 12, padding: 0 }}>view</button> : '—'}</td>
                 <td style={{ padding: '10px 14px' }}>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -409,7 +436,7 @@ function AuditsPanel({ canCreate }) {
           </tbody>
         </table>
       )}
-      {modal && <AuditModal audit={modal === 'new' ? null : modal} sites={sites} users={users} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />}
+      {modal && <AuditModal audit={modal === 'new' ? null : modal} sites={sites} users={users} assets={assets} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />}
     </div>
   )
 }
@@ -420,7 +447,8 @@ export default function Compliance({ dark, toggleDark }) {
   const canCreate = can(roleKey, 'wo:create', extraCaps) // ops_manager+
   const canAudit = can(roleKey, 'compliance:create', extraCaps)
   const canEditDoc = can(roleKey, 'compliance:update', extraCaps)
-  const [view, setView] = useState('licences') // 'licences' | 'audits'
+  const [searchParams] = useSearchParams()
+  const [view, setView] = useState(searchParams.get('view') === 'audits' ? 'audits' : 'licences') // 'licences' | 'audits'
   const [licences, setLicences]       = useState([])
   const [authorities, setAuthorities] = useState([])
   const [sites, setSites]             = useState([])
@@ -428,7 +456,6 @@ export default function Compliance({ dark, toggleDark }) {
   const [err, setErr]                 = useState(null)
   const [selected, setSelected]       = useState(null)
   const [modal, setModal]             = useState(null) // null | 'add' | licence-obj (edit)
-  const [searchParams] = useSearchParams()
   // 'alerts' is a client-side pseudo-filter (expiring + due_soon + expired
   // combined) matching the dashboard's "Compliance Alerts" KPI definition.
   const [filter, setFilter]           = useState(searchParams.get('filter') || 'all') // all|active|expiring|expired|alerts
