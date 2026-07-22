@@ -102,6 +102,7 @@ const FILE_OWNERSHIP_CHECKS: Record<string, OwnershipCheck> = {
   attachments: (c, p) => exists(c, `select 1 from public.work_order_activity wa join public.work_orders w on w.id = wa.work_order_id where exists (select 1 from jsonb_array_elements(coalesce(wa.attachments, '[]'::jsonb)) att where att->>'url' = $1) limit 1`, [p]),
   'inspection-reports': (c, p) => exists(c, 'select 1 from public.inspections where report_url = $1 limit 1', [p]),
   'maintenance-reports': (c, p) => exists(c, 'select 1 from public.pm_tasks where report_url = $1 limit 1', [p]),
+  'maintenance-completions': (c, p) => exists(c, 'select 1 from public.maintenance_events where report_url = $1 limit 1', [p]),
   'compliance-documents': (c, p) => exists(c, `select 1 from public.compliance_licences where document_url = $1 or exists (select 1 from jsonb_array_elements(documents) d where d->>'url' = $1) limit 1`, [p]),
   'compliance-audits': (c, p) => exists(c, 'select 1 from public.compliance_audits where document_url = $1 limit 1', [p]),
   // Generated report exports are org-wide artifacts, not tied to a site.

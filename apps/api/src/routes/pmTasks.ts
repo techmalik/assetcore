@@ -73,19 +73,32 @@ pmTasksRouter.patch('/pm-tasks/:id', requireCap('pm:update'), async (req, res) =
     const { rows: full } = await c.query(`${SELECT} where t.id = $1`, [req.params.id])
     const task = full[0]
     if (patch.status === 'completed') {
-      // Completing maintenance resets the asset to full health and (re)sets the
-      // maintenance dates that the daily health-decay job reads from.
+      // Completing a PM task is one of the ways an asset's maintenance gets
+      // recorded — routed through the same maintenance_events table and
+      // apply_asset_health() function the explicit "Complete Maintenance"
+      // action (maintenanceEvents.ts) uses, so there's exactly one code path
+      // that resets health and one that decides the next maintenance date.
       if (task.asset_id) {
-        await c.query(
-          `update public.assets
-           set health_score = 100, last_maintenance_at = current_date,
-               next_maintenance_at = coalesce(
-                 (select s.next_due from public.pm_schedules s where s.id = $2),
-                 current_date + interval '90 days'
-               )
-           where id = $1`,
-          [task.asset_id, task.schedule_id]
+        // greatest(..., current_date + 1) is the dead-zone fix from
+        // 0007_health_lifecycle_fixes: a schedule whose next_due is today or
+        // in the past would otherwise leave next_maintenance_at <=
+        // last_maintenance_at, permanently excluding the asset from decay.
+        const { rows: nextRows } = await c.query(
+          `select greatest(coalesce((select s.next_due from public.pm_schedules s where s.id = $1), current_date + 90), current_date + 1) as next_due`,
+          [task.schedule_id]
         )
+        const nextMaintenance = nextRows[0].next_due
+
+        await c.query(
+          `insert into public.maintenance_events (org_id, site_id, asset_id, source, pm_task_id, completed_at, next_maintenance_at, notes, performed_by)
+           values (current_org_id(), $1, $2, 'pm_task', $3, current_date, $4, $5, current_user_id())`,
+          [task.site_id, task.asset_id, task.id, nextMaintenance, `Completed PM task: ${task.title}`]
+        )
+        await c.query(
+          'update public.assets set last_maintenance_at = current_date, next_maintenance_at = $2 where id = $1',
+          [task.asset_id, nextMaintenance]
+        )
+        await c.query('select public.apply_asset_health($1, 100, $2)', [task.asset_id, req.claims!.sub])
         await c.query(
           `insert into public.asset_activity (org_id, asset_id, user_id, kind, body)
            values (current_org_id(), $1, current_user_id(), 'maintenance', $2)`,

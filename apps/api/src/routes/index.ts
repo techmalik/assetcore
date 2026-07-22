@@ -8,6 +8,7 @@ import { assetsRouter } from './assets.js'
 import { workOrdersRouter } from './workOrders.js'
 import { pmSchedulesRouter } from './pmSchedules.js'
 import { pmTasksRouter } from './pmTasks.js'
+import { maintenanceEventsRouter } from './maintenanceEvents.js'
 import { complianceRouter } from './compliance.js'
 import { inspectionsRouter } from './inspections.js'
 import { devicesRouter } from './devices.js'
@@ -34,6 +35,7 @@ apiRouter.use(assetsRouter)
 apiRouter.use(workOrdersRouter)
 apiRouter.use(pmSchedulesRouter)
 apiRouter.use(pmTasksRouter)
+apiRouter.use(maintenanceEventsRouter)
 apiRouter.use(complianceRouter)
 apiRouter.use(inspectionsRouter)
 apiRouter.use(devicesRouter)
