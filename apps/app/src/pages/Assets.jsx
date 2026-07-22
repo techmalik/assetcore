@@ -12,9 +12,10 @@ import { listSites } from '../lib/db/sites'
 import { listLocations } from '../lib/db/locations'
 import { listCategories } from '../lib/db/categories'
 import { listOrgUsers } from '../lib/db/orgMembers'
-import { createWorkOrder, WO_TYPE_LABEL, WO_PRIORITY_LABEL } from '../lib/db/workOrders'
+import { createWorkOrder, listWorkOrders, WO_TYPE_LABEL, WO_PRIORITY_LABEL } from '../lib/db/workOrders'
 import { listPMTasks } from '../lib/db/pmTasks'
 import { listInspections } from '../lib/db/inspections'
+import { completeMaintenance } from '../lib/db/maintenanceEvents'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { healthColor, healthLabel } from '../lib/health'
@@ -442,6 +443,95 @@ function RaiseWOModal({ asset, onClose, onCreated }) {
   )
 }
 
+// ── Complete Maintenance Modal ───────────────────────────────────────────────────
+function localDateStr(offsetDays = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  return d.toLocaleDateString('en-CA') // YYYY-MM-DD in the browser's local timezone
+}
+
+function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
+  const [pmTasks, setPMTasks] = useState([])
+  const [workOrders, setWorkOrders] = useState([])
+  const [form, setForm] = useState({
+    link: '', // '' | `pm:<id>` | `wo:<id>`
+    completed_at: localDateStr(0),
+    next_maintenance_at: localDateStr(90),
+    notes: '',
+  })
+  const [report, setReport] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
+  const inputProps = { className: 'input', style: { width: '100%' } }
+
+  useEffect(() => {
+    let cancelled = false
+    listPMTasks({ asset_id: asset.id, statuses: ['pending', 'in_progress'], limit: 20 }).then((t) => !cancelled && setPMTasks(t)).catch(() => {})
+    listWorkOrders({}).then((w) => !cancelled && setWorkOrders(w.filter((x) => x.asset_id === asset.id && x.status !== 'closed'))).catch(() => {})
+    return () => { cancelled = true }
+  }, [asset.id])
+
+  async function submit(e) {
+    e.preventDefault()
+    if (form.next_maintenance_at <= form.completed_at) { setErr('Next maintenance date must be after the completion date.'); return }
+    setSaving(true); setErr('')
+    try {
+      const [linkKind, linkId] = form.link ? form.link.split(':') : [null, null]
+      await completeMaintenance(asset.id, {
+        source: linkKind === 'pm' ? 'pm_task' : linkKind === 'wo' ? 'work_order' : 'manual',
+        pm_task_id: linkKind === 'pm' ? linkId : null,
+        work_order_id: linkKind === 'wo' ? linkId : null,
+        completed_at: form.completed_at,
+        next_maintenance_at: form.next_maintenance_at,
+        notes: form.notes.trim() || null,
+        report: report || undefined,
+      })
+      onCompleted()
+    } catch (ex) { setErr(ex.message || 'Failed to record maintenance completion.'); setSaving(false) }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
+      <form onSubmit={submit} style={{ position: 'relative', width: 460, maxWidth: '92vw', background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 24, zIndex: 1 }}>
+        <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)', marginBottom: 4 }}>Complete Maintenance</h3>
+        <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16 }}>{asset.ain} · {asset.name} — resets health to 100% and schedules the next maintenance date.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {(pmTasks.length > 0 || workOrders.length > 0) && (
+            <Field label="Linked to (optional)">
+              <select {...inputProps} value={form.link} onChange={(e) => set('link', e.target.value)}>
+                <option value="">None — manual completion</option>
+                {pmTasks.map((t) => <option key={`pm:${t.id}`} value={`pm:${t.id}`}>PM task: {t.title}</option>)}
+                {workOrders.map((w) => <option key={`wo:${w.id}`} value={`wo:${w.id}`}>Work order: {w.ref} — {w.title}</option>)}
+              </select>
+            </Field>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Completed on" required>
+              <input {...inputProps} type="date" max={localDateStr(0)} value={form.completed_at} onChange={(e) => set('completed_at', e.target.value)} />
+            </Field>
+            <Field label="Next maintenance due" required>
+              <input {...inputProps} type="date" min={form.completed_at} value={form.next_maintenance_at} onChange={(e) => set('next_maintenance_at', e.target.value)} />
+            </Field>
+          </div>
+          <Field label="Notes">
+            <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={3} className="input" style={{ width: '100%', height: 'auto', padding: '8px 10px', resize: 'vertical' }} placeholder="What was done…" />
+          </Field>
+          <Field label="Report (optional)">
+            <input type="file" onChange={(e) => setReport(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
+          </Field>
+        </div>
+        {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12 }}>{err}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
+          <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{saving ? 'Saving…' : 'Complete maintenance'}</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 // ── CSV Import Modal ───────────────────────────────────────────────────────────
 function ImportModal({ onClose, onDone }) {
   const [busy, setBusy] = useState(false)
@@ -505,7 +595,7 @@ function ImportModal({ onClose, onDone }) {
 const PM_STATUS_C = { pending: 'var(--slt)', in_progress: 'var(--sat)', completed: 'var(--sgt)', overdue: 'var(--srt)', skipped: 'var(--n500)' }
 const INSP_STATUS_C = { scheduled: 'var(--slt)', due: 'var(--sat)', in_progress: 'var(--sat)', completed: 'var(--sgt)', overdue: 'var(--srt)' }
 
-function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore, onRaiseWO, onClose }) {
+function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdit, onArchive, onRestore, onRaiseWO, onCompleteMaintenance, onClose, refreshToken }) {
   const [activity, setActivity] = useState(null)
   const [pmTasks, setPMTasks] = useState(null)
   const [inspections, setInspections] = useState(null)
@@ -526,7 +616,10 @@ function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore,
     listPMTasks({ asset_id: asset.id, limit: 20 }).then((t) => !cancelled && setPMTasks(t)).catch(() => !cancelled && setPMTasks([]))
     listInspections({ asset_id: asset.id, limit: 20 }).then((i) => !cancelled && setInspections(i)).catch(() => !cancelled && setInspections([]))
     return () => { cancelled = true }
-  }, [asset.id])
+    // refreshToken bumps after actions taken elsewhere (e.g. Complete
+    // Maintenance) that change this asset's PM tasks/activity but don't
+    // change asset.id, so the effect wouldn't otherwise refire.
+  }, [asset.id, refreshToken])
 
   async function postComment() {
     if (!comment.trim()) return
@@ -700,7 +793,8 @@ function AssetDetailPanel({ asset, canEdit, canWO, onEdit, onArchive, onRestore,
             canEdit && <button onClick={onRestore} className="btn btn-primary" style={{ width: '100%', height: 36, fontSize: 13 }}>Restore asset</button>
           ) : (
             <>
-              {canWO && <button onClick={onRaiseWO} className="btn btn-primary" style={{ width: '100%', height: 36, fontSize: 13 }}>Raise Work Order</button>}
+              {canCompleteMaintenance && <button onClick={onCompleteMaintenance} className="btn btn-primary" style={{ width: '100%', height: 36, fontSize: 13 }}>Complete Maintenance</button>}
+              {canWO && <button onClick={onRaiseWO} className="btn btn-secondary" style={{ width: '100%', height: 36, fontSize: 13 }}>Raise Work Order</button>}
               {canEdit && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <button onClick={onEdit} className="btn btn-secondary" style={{ height: 34, fontSize: 13 }}>Edit Asset</button>
@@ -722,6 +816,7 @@ export default function Assets({ dark, toggleDark }) {
   const canCreate = can(roleKey, 'asset:create', extraCaps)
   const canEdit = can(roleKey, 'asset:update', extraCaps)
   const canWO = can(roleKey, 'wo:create', extraCaps)
+  const canCompleteMaintenance = can(roleKey, 'maintenance:complete', extraCaps)
 
   const [assets, setAssets] = useState([])
   const [sites, setSites] = useState([])
@@ -736,6 +831,8 @@ export default function Assets({ dark, toggleDark }) {
   const [selected, setSelected] = useState(null)
   const [modal, setModal] = useState(null)      // null | 'add' | asset (edit)
   const [woAsset, setWoAsset] = useState(null)  // asset for Raise WO
+  const [completingAsset, setCompletingAsset] = useState(null)  // asset for Complete Maintenance
+  const [detailRefreshToken, setDetailRefreshToken] = useState(0)  // bump to force the open detail panel's activity/PM/inspection lists to refetch
   const [importing, setImporting] = useState(false)
 
   const load = useCallback(async () => {
@@ -861,11 +958,14 @@ export default function Assets({ dark, toggleDark }) {
                 asset={selected}
                 canEdit={canEdit}
                 canWO={canWO}
+                canCompleteMaintenance={canCompleteMaintenance}
                 onEdit={() => setModal(selected)}
                 onArchive={() => archiveAsset(selected.id)}
                 onRestore={() => doRestore(selected.id)}
                 onRaiseWO={() => setWoAsset(selected)}
+                onCompleteMaintenance={() => setCompletingAsset(selected)}
                 onClose={() => setSelected(null)}
+                refreshToken={detailRefreshToken}
               />
             )}
           </div>
@@ -888,6 +988,13 @@ export default function Assets({ dark, toggleDark }) {
           asset={woAsset}
           onClose={() => setWoAsset(null)}
           onCreated={() => { setWoAsset(null); load() }}
+        />
+      )}
+      {completingAsset && (
+        <CompleteMaintenanceModal
+          asset={completingAsset}
+          onClose={() => setCompletingAsset(null)}
+          onCompleted={() => { setCompletingAsset(null); setDetailRefreshToken((n) => n + 1); load() }}
         />
       )}
       {importing && (
