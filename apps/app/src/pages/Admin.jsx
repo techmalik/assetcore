@@ -6,7 +6,7 @@ import { listLocations, createLocation, updateLocation, softDeleteLocation } fro
 import { listCategories, createCategory, updateCategory, deleteCategory } from '../lib/db/categories.js'
 import { listAuditLog } from '../lib/db/audit.js'
 import { listOrgMembers, inviteOrgMember, updateOrgMemberRole, updateOrgMemberAccess, setOrgMemberStatus, resetOrgMemberPassword } from '../lib/db/orgMembers.js'
-import { getOrg, updateOrg } from '../lib/db/org.js'
+import { getOrg, updateOrgSettings } from '../lib/db/org.js'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac.js'
 
@@ -837,7 +837,7 @@ function ConfigTab() {
     try {
       const t = Math.max(1, Math.min(99, Number(threshold) || 50))
       const settings = { ...(org?.settings || {}), health: { ...(org?.settings?.health || {}), inspectionThreshold: t } }
-      const updated = await updateOrg({ settings })
+      const updated = await updateOrgSettings(settings)
       setOrg(updated); setThreshold(t); setMsg('Saved.')
     } catch (e) { setMsg(e.message) } finally { setSaving(false) }
   }
@@ -859,7 +859,7 @@ function ConfigTab() {
               style={{width:80,height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,background:canEdit?'var(--n0)':'var(--n50)',color:'var(--n900)'}}/>
             % health
           </label>
-          {!canEdit && <div style={{fontSize:11,color:'var(--n400)',marginTop:8}}>Only a System Admin can change this.</div>}
+          {!canEdit && <div style={{fontSize:11,color:'var(--n400)',marginTop:8}}>Only a System Admin or Operations Manager can change this.</div>}
           {msg && <div style={{fontSize:12,color:msg==='Saved.'?'var(--sgt)':'var(--srt)',marginTop:10}}>{msg}</div>}
           {canEdit && (
             <div style={{marginTop:16}}>

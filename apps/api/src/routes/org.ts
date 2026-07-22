@@ -1,10 +1,11 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { withOrgContext } from '../db.js'
+import { withOrgContext, ownerPool } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
+import { requireCap } from '../middleware/rbac.js'
 import { buildSet } from '../sqlUtil.js'
 
 export const orgRouter = Router()
@@ -60,4 +61,31 @@ orgRouter.patch('/org', async (req, res) => {
   )
   if (!row) return res.status(403).json({ error: 'forbidden' })
   res.json(row)
+})
+
+const settingsPatch = z.object({ settings: z.record(z.unknown()) })
+
+// org_update RLS (see the PATCH /org comment above) restricts direct writes
+// on this table to role_key='owner' — but org:manage is deliberately also
+// granted to ops_manager (see rbac.ts) so operations managers can maintain
+// things like the health-inspection threshold without full admin rights.
+// The Configuration tab's UI already reflected that (gated on org:manage),
+// but every save silently 403'd for anyone who wasn't literally the owner
+// role, because it went through PATCH /org above. This is the fix: a
+// narrowly-scoped route, gated by the capability rather than the DB role,
+// that goes through the elevated (RLS-bypassing) pool for exactly one
+// column - settings - explicitly scoped to the caller's own org since
+// ownerPool has no org-context GUC to rely on. Name/branding changes stay
+// owner-only via PATCH /org; this route cannot touch them.
+orgRouter.patch('/org/settings', requireCap('org:manage'), async (req, res) => {
+  const parsed = settingsPatch.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const orgId = req.claims!.org_id!
+  const { rows } = await ownerPool.query(
+    `update public.organizations set settings = $2::jsonb where id = $1
+     returning id, name, short_name, region, plan, settings`,
+    [orgId, JSON.stringify(parsed.data.settings)]
+  )
+  if (!rows[0]) return res.status(404).json({ error: 'not_found' })
+  res.json(rows[0])
 })
