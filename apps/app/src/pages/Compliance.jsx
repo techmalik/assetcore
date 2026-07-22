@@ -468,6 +468,7 @@ export default function Compliance({ dark, toggleDark }) {
   // 'alerts' is a client-side pseudo-filter (expiring + due_soon + expired
   // combined) matching the dashboard's "Compliance Alerts" KPI definition.
   const [filter, setFilter]           = useState(searchParams.get('filter') || 'all') // all|active|expiring|expired|alerts
+  const [kindFilter, setKindFilter]   = useState('') // '' | licence|permit|certificate|iso_certificate — composes with filter
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
@@ -483,6 +484,7 @@ export default function Compliance({ dark, toggleDark }) {
   useEffect(() => { load() }, [load])
 
   const filtered = licences.filter(l => {
+    if (kindFilter && l.kind !== kindFilter) return false
     if (filter === 'all') return true
     if (filter === 'active') return l.status === 'active' || l.status === 'due_soon'
     if (filter === 'expiring') return l.status === 'expiring' || l.status === 'due_soon'
@@ -545,7 +547,7 @@ export default function Compliance({ dark, toggleDark }) {
 
             {/* Summary strip */}
             {view === 'licences' && (
-              <div style={{display:'flex',gap:8}}>
+              <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
                 {[
                   { key:'all',      label:`All (${counts.total})`,          c:'var(--n700)',  bg:'var(--n100)', br:'var(--n200)' },
                   { key:'active',   label:`Active (${counts.active + counts.due_soon})`, c:'var(--sgt)', bg:'var(--sgb)', br:'var(--sgbr)' },
@@ -557,6 +559,13 @@ export default function Compliance({ dark, toggleDark }) {
                     {s.label}
                   </button>
                 ))}
+                <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} style={{height:28,padding:'0 8px',border:'1px solid var(--n200)',borderRadius:4,fontSize:12,color:'var(--n700)',background:'var(--n0)',marginLeft:4}}>
+                  <option value="">All kinds</option>
+                  {Object.entries(KIND_LABEL).map(([k,l]) => <option key={k} value={k}>{l}</option>)}
+                </select>
+                {kindFilter && (
+                  <span style={{fontSize:12,color:'var(--n500)'}}>{filtered.length} {KIND_LABEL[kindFilter].toLowerCase()}{filtered.length !== 1 ? 's' : ''}</span>
+                )}
               </div>
             )}
           </div>
