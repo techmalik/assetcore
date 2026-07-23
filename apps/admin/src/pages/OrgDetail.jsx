@@ -33,21 +33,23 @@ function UsersTab({ orgId }) {
   const rows = data?.users ?? []
   return (
     <DataState loading={loading} error={error} onRetry={reload} empty={rows.length === 0} emptyLabel="No members.">
-      <Table>
-        <Table.Thead>
-          <Table.Tr><Table.Th>Name</Table.Th><Table.Th>Email</Table.Th><Table.Th>Role</Table.Th><Table.Th>Status</Table.Th></Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {rows.map((m) => (
-            <Table.Tr key={m.id}>
-              <Table.Td>{m.profiles?.full_name || '—'}</Table.Td>
-              <Table.Td>{m.profiles?.email || '—'}</Table.Td>
-              <Table.Td><Badge variant="light" color="gray">{m.role_key}</Badge></Table.Td>
-              <Table.Td><StatusBadge value={m.status} /></Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+      <Table.ScrollContainer minWidth={560}>
+        <Table>
+          <Table.Thead>
+            <Table.Tr><Table.Th>Name</Table.Th><Table.Th>Email</Table.Th><Table.Th>Role</Table.Th><Table.Th>Status</Table.Th></Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.map((m) => (
+              <Table.Tr key={m.id}>
+                <Table.Td>{m.profiles?.full_name || '—'}</Table.Td>
+                <Table.Td>{m.profiles?.email || '—'}</Table.Td>
+                <Table.Td><Badge variant="light" color="gray">{m.role_key}</Badge></Table.Td>
+                <Table.Td><StatusBadge value={m.status} /></Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
     </DataState>
   )
 }
@@ -87,20 +89,22 @@ function AuditTab({ orgId }) {
   const rows = data?.entries ?? []
   return (
     <DataState loading={loading} error={error} onRetry={reload} empty={rows.length === 0} emptyLabel="No client instance audit activity.">
-      <Table>
-        <Table.Thead>
-          <Table.Tr><Table.Th>When</Table.Th><Table.Th>Action</Table.Th><Table.Th>Entity</Table.Th></Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {rows.map((e) => (
-            <Table.Tr key={e.id}>
-              <Table.Td><Text size="sm" c="dimmed">{dateTime(e.created_at)}</Text></Table.Td>
-              <Table.Td><Badge variant="light" color="gray">{e.action}</Badge></Table.Td>
-              <Table.Td><Text size="sm">{e.entity_type}</Text></Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+      <Table.ScrollContainer minWidth={560}>
+        <Table>
+          <Table.Thead>
+            <Table.Tr><Table.Th>When</Table.Th><Table.Th>Action</Table.Th><Table.Th>Entity</Table.Th></Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.map((e) => (
+              <Table.Tr key={e.id}>
+                <Table.Td><Text size="sm" c="dimmed">{dateTime(e.created_at)}</Text></Table.Td>
+                <Table.Td><Badge variant="light" color="gray">{e.action}</Badge></Table.Td>
+                <Table.Td><Text size="sm">{e.entity_type}</Text></Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
     </DataState>
   )
 }
@@ -110,21 +114,23 @@ function BillingTab({ orgId }) {
   const rows = data?.invoices ?? []
   return (
     <DataState loading={loading} error={error} onRetry={reload} empty={rows.length === 0} emptyLabel="No invoices for this org.">
-      <Table>
-        <Table.Thead>
-          <Table.Tr><Table.Th>Number</Table.Th><Table.Th>Amount</Table.Th><Table.Th>Status</Table.Th><Table.Th>Due</Table.Th></Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {rows.map((i) => (
-            <Table.Tr key={i.id}>
-              <Table.Td><Text fw={600} size="sm">{i.number}</Text>{i.po_number && <Text size="xs" c="dimmed">PO {i.po_number}</Text>}</Table.Td>
-              <Table.Td>{money(i.amount_cents, i.currency)}</Table.Td>
-              <Table.Td><StatusBadge value={i.status} /></Table.Td>
-              <Table.Td><Text size="sm" c="dimmed">{date(i.due_at)}</Text></Table.Td>
-            </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+      <Table.ScrollContainer minWidth={560}>
+        <Table>
+          <Table.Thead>
+            <Table.Tr><Table.Th>Number</Table.Th><Table.Th>Amount</Table.Th><Table.Th>Status</Table.Th><Table.Th>Due</Table.Th></Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.map((i) => (
+              <Table.Tr key={i.id}>
+                <Table.Td><Text fw={600} size="sm">{i.number}</Text>{i.po_number && <Text size="xs" c="dimmed">PO {i.po_number}</Text>}</Table.Td>
+                <Table.Td>{money(i.amount_cents, i.currency)}</Table.Td>
+                <Table.Td><StatusBadge value={i.status} /></Table.Td>
+                <Table.Td><Text size="sm" c="dimmed">{date(i.due_at)}</Text></Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
     </DataState>
   )
 }
@@ -263,10 +269,10 @@ export default function OrgDetail() {
         <form onSubmit={form.onSubmit(saveEdit)}>
           <Stack gap="sm">
             <TextInput label="Name" withAsterisk {...form.getInputProps('name')} />
-            <Group grow>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <TextInput label="Short name" {...form.getInputProps('short_name')} />
               <TextInput label="Region" {...form.getInputProps('region')} />
-            </Group>
+            </SimpleGrid>
             <TextInput label="Industry" {...form.getInputProps('industry')} />
             <Group justify="flex-end" mt="xs">
               <Button variant="default" onClick={() => setEditOpen(false)}>Cancel</Button>

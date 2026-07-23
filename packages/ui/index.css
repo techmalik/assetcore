@@ -85,6 +85,7 @@ a { text-decoration: none; color: inherit; }
 .app-shell {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: var(--n100);
 }
@@ -316,9 +317,137 @@ a { text-decoration: none; color: inherit; }
   }
   /* Collapse is a desktop affordance; the mobile drawer is always full-width. */
   .sidebar-collapse-btn { display: none; }
-  /* Tables scroll horizontally on small screens */
-  table { min-width: 560px; }
-  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* Tables force a minimum width on small screens so they scroll instead of squishing */
+  .table-scroll table { min-width: 560px; }
+
+  /* Fixed-width detail/aside panels become full-screen overlays / stack below content */
+  .detail-panel {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    z-index: 150;
+    border-left: none;
+  }
+  .split-with-aside { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+  .split-primary { flex: 1 1 auto; min-height: 320px; }
+  .aside-panel {
+    width: 100%;
+    flex: none;
+    height: auto;
+    max-height: 340px;
+    border-left: none;
+    border-top: var(--bdr);
+  }
+
+  /* Two-column form grids collapse to a single column */
+  .form-grid { grid-template-columns: 1fr; }
+
+  /* Tab strips scroll horizontally instead of clipping */
+  .tab-strip { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+
+  /* Header rows wrap instead of overflowing */
+  .page-header { flex-wrap: wrap; }
+
+  /* Topbar collapses to icons on mobile; search moves behind a toggle */
+  .topbar-search { display: none; }
+  .topbar-breadcrumb,
+  .locswitch-label { display: none; }
+
+  /* Notifications: single-pane swap between list and detail/preferences */
+  .notif-list { width: 100%; }
+  .notif-content { display: none; width: 100%; }
+  .notif-row--content .notif-list { display: none; }
+  .notif-row--content .notif-content { display: flex; flex-direction: column; }
+  .notif-back-btn { display: flex !important; }
+}
+
+.topbar-mobile-search-btn { display: none; }
+@media (max-width: 768px) {
+  .topbar-mobile-search-btn { display: flex; }
+}
+
+/* Modal overlay/card — width caps at 92vw so no modal can overflow a phone screen */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-card {
+  width: min(var(--modal-w, 520px), 92vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--n0);
+  border-radius: 10px;
+}
+
+/* Two-column form grid — collapses to one column at 600px regardless of the 768px shell breakpoint */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+/* Detail/aside panel — desktop width set per-instance via --panel-w */
+.detail-panel {
+  width: var(--panel-w, 360px);
+  flex-shrink: 0;
+  border-left: var(--bdr);
+  background: var(--n0);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Card list — hidden on desktop, shown on mobile in place of a data table */
+.card-list { display: none; }
+.list-card {
+  background: var(--n0);
+  border: var(--bdr);
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+}
+.list-card:hover { border-color: var(--b300); }
+@media (max-width: 768px) {
+  .card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    overflow-y: auto;
+  }
+  .table-view-desktop { display: none; }
+}
+
+/* Tab strip — horizontal on desktop, swipe-scrollable on mobile (no wrap: see media query above) */
+.tab-strip { display: flex; }
+
+/* Horizontal scroll wrapper for data tables — active at every width; the
+   ≤768px block above additionally forces a minimum table width so narrow
+   tables still scroll instead of squishing their columns unreadably. */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Dashboard grids — fixed desktop columns, single column on mobile */
+.dash-main-grid { grid-template-columns: 280px 1fr; }
+.dash-bottom-grid { grid-template-columns: 1fr 360px; }
+@media (max-width: 768px) {
+  .dash-main-grid,
+  .dash-bottom-grid { grid-template-columns: 1fr; }
+}
+
+/* Page header row */
+.page-header { display: flex; align-items: center; gap: 12px; }
+
+/* Small-screen-only visibility helper (StepBar labels, etc.) */
+@media (max-width: 480px) {
+  .hide-tiny { display: none; }
 }
 
 /* Field usability — on touch devices (technicians in the field, often with
@@ -327,6 +456,28 @@ a { text-decoration: none; color: inherit; }
   .btn { min-height: 44px; }
   .input { min-height: 44px; }
   .tab-btn { min-height: 44px; }
+  .filter-pill { min-height: 44px; }
+  .row-action { min-height: 44px; padding-left: 10px; padding-right: 10px; }
+  .select { min-height: 44px; }
   .nav-item { padding-top: 11px; padding-bottom: 11px; }
   .topbar-back, .sidebar-hamburger { min-width: 44px; min-height: 44px; }
+}
+
+/* Base styles for touch-target classes — minimal, so pages keep their inline
+   colors/sizing and only pick up the coarse-pointer min-height above. */
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.select {
+  font-family: var(--ff-u);
 }

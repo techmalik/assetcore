@@ -32,8 +32,8 @@ export default function Login() {
   }
 
   return (
-    <Center mih="100vh" bg="var(--mantine-color-gray-1)">
-      <Paper withBorder radius="md" p="xl" w={400} shadow="sm">
+    <Center mih="100vh" bg="var(--mantine-color-gray-1)" px="md">
+      <Paper withBorder radius="md" p="xl" w="100%" maw={400} shadow="sm">
         <Stack gap="lg">
           <Group gap={10}>
             <Box w={28} h={28} style={{ background: NAV_BG, borderRadius: 7, display: 'grid', placeItems: 'center' }}>

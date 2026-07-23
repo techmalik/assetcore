@@ -74,7 +74,7 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
-      <form onSubmit={submit} style={{ position: 'relative', width: 520, background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 28, zIndex: 1, maxHeight: '90vh', overflowY: 'auto' }}>
+      <form onSubmit={submit} style={{ position: 'relative', width: 520, maxWidth: '92vw', background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 28, zIndex: 1, maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 18, fontWeight: 700, color: 'var(--n950)' }}>New Work Order</h3>
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)' }}>
@@ -89,7 +89,7 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Description</label>
           <textarea className="input" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Detailed description, symptoms, observations…" rows={3} style={{ width: '100%', resize: 'vertical' }} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div className="form-grid" style={{ gap: 12, marginBottom: 12 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Type</label>
             <select className="input" value={form.type} onChange={e => set('type', e.target.value)} style={{ width: '100%' }}>
@@ -103,7 +103,7 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
             </select>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div className="form-grid" style={{ gap: 12, marginBottom: 12 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Site</label>
             <select className="input" value={form.site_id} onChange={e => { set('site_id', e.target.value); set('asset_id', '') }} style={{ width: '100%' }}>
@@ -119,7 +119,7 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
             </select>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div className="form-grid" style={{ gap: 12, marginBottom: 12 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>SLA due date</label>
             <input className="input" type="datetime-local" value={form.sla_due} onChange={e => set('sla_due', e.target.value)} style={{ width: '100%' }} />
@@ -317,7 +317,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
   }
 
   if (loading) return (
-    <div style={{ width: 400, flexShrink: 0, borderLeft: 'var(--bdr)', background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="detail-panel" style={{ '--panel-w': '400px', background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <span style={{ fontSize: 13, color: 'var(--n400)' }}>Loading…</span>
     </div>
   )
@@ -326,7 +326,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
   const nextStatuses = WO_TRANSITIONS[wo.status] || []
 
   return (
-    <div style={{ width: 400, flexShrink: 0, borderLeft: 'var(--bdr)', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="detail-panel" style={{ '--panel-w': '400px', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '14px 18px', borderBottom: 'var(--bdr)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b600)', marginBottom: 3 }}>{wo.ref}</div>
@@ -334,11 +334,11 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           {canEdit && (
-            <button onClick={() => setEditing(true)} title="Edit work order" style={{ height: 26, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', fontSize: 11, fontWeight: 500, color: 'var(--n600)', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button onClick={() => setEditing(true)} title="Edit work order" className="row-action" style={{ height: 40, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', fontSize: 11, fontWeight: 500, color: 'var(--n600)', fontFamily: 'inherit' }}>
               Edit
             </button>
           )}
-          <button onClick={onClose} style={{ flexShrink: 0, width: 26, height: 26, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--n500)' }}>
+          <button onClick={onClose} className="row-action" style={{ flexShrink: 0, width: 40, height: 40, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', color: 'var(--n500)' }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
           </button>
         </div>
@@ -385,7 +385,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {nextStatuses.map(s => (
-                <button key={s} onClick={() => transition(s)} disabled={transitioning}
+                <button key={s} onClick={() => transition(s)} disabled={transitioning} className="filter-pill"
                   style={{ height: 30, padding: '0 12px', fontSize: 12, fontWeight: 500, border: '1px solid var(--b200)', borderRadius: 4, background: s === 'closed' ? 'var(--sgb)' : 'var(--b50)', color: s === 'closed' ? 'var(--sgt)' : 'var(--b700)', cursor: transitioning ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: transitioning ? .6 : 1 }}>
                   {wo.status === 'draft' ? (s === 'new' ? 'Approve' : 'Dismiss') : WO_STATUS_LABEL[s]}
                 </button>
@@ -512,12 +512,12 @@ export default function WorkOrders({ dark, toggleDark }) {
           </button>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {[['all', 'All'], ['open', 'Open'], ...Object.entries(WO_STATUS_LABEL)].map(([v, l]) => (
-              <button key={v} onClick={() => setFilterStatus(v)} style={{ height: 28, padding: '0 10px', border: `1px solid ${filterStatus === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filterStatus === v ? 'var(--b50)' : 'var(--n0)', fontSize: 11, color: filterStatus === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filterStatus === v ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>{l}</button>
+              <button key={v} onClick={() => setFilterStatus(v)} className="filter-pill" style={{ height: 28, padding: '0 10px', border: `1px solid ${filterStatus === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filterStatus === v ? 'var(--b50)' : 'var(--n0)', fontSize: 11, color: filterStatus === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filterStatus === v ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>{l}</button>
             ))}
           </div>
           <div style={{ display: 'flex', border: '1px solid var(--n200)', borderRadius: 4, overflow: 'hidden' }}>
             {[['list', 'List'], ['kanban', 'Board']].map(([v, l]) => (
-              <button key={v} onClick={() => setView(v)} style={{ height: 28, padding: '0 12px', border: 'none', borderRight: v === 'list' ? '1px solid var(--n200)' : 'none', background: view === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: view === v ? 'var(--b700)' : 'var(--n600)', fontWeight: view === v ? 500 : 400, cursor: 'pointer', fontFamily: 'inherit' }}>{l}</button>
+              <button key={v} onClick={() => setView(v)} className="filter-pill" style={{ height: 28, padding: '0 12px', border: 'none', borderRight: v === 'list' ? '1px solid var(--n200)' : 'none', background: view === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: view === v ? 'var(--b700)' : 'var(--n600)', fontWeight: view === v ? 500 : 400, cursor: 'pointer', fontFamily: 'inherit' }}>{l}</button>
             ))}
           </div>
           {canCreate && (
@@ -529,7 +529,7 @@ export default function WorkOrders({ dark, toggleDark }) {
         </div>
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-          <div style={{ flex: 1, overflow: 'auto' }}>
+          <div className="table-scroll" style={{ flex: 1, overflowY: 'auto' }}>
             {loading ? (
               <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>Loading work orders…</div>
             ) : error ? (
@@ -581,39 +581,61 @@ export default function WorkOrders({ dark, toggleDark }) {
                 ))}
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                  <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
-                    {['Ref', 'Title', 'Site', 'Asset', 'Assignee', 'Type', 'Priority', 'Status', 'SLA', ''].map(h => (
-                      <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleWos.map(w => (
-                    <tr key={w.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selectedId === w.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelectedId(w.id)}>
-                      <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{w.ref}</td>
-                      <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: 'var(--n900)', maxWidth: 260 }}>
-                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</div>
-                      </td>
-                      <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{w.site?.name || '—'}</td>
-                      <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{w.asset?.ain || '—'}</td>
-                      <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{w.assignee?.full_name || '—'}</td>
-                      <td style={{ padding: '10px 14px' }}><TypeBadge t={w.type} /></td>
-                      <td style={{ padding: '10px 14px' }}><PriorityBadge p={w.priority} /></td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <StatusBadge tone={woStatusStyle(w.status)} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
-                      </td>
-                      <td style={{ padding: '10px 14px' }}><SlaDue date={w.sla_due} /></td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <button onClick={e => { e.stopPropagation(); setSelectedId(w.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)', padding: 4 }}>
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="3" r="1" fill="currentColor"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="11" r="1" fill="currentColor"/></svg>
-                        </button>
-                      </td>
+              <>
+                <table className="table-view-desktop" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                    <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
+                      {['Ref', 'Title', 'Site', 'Asset', 'Assignee', 'Type', 'Priority', 'Status', 'SLA', ''].map(h => (
+                        <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
+                      ))}
                     </tr>
+                  </thead>
+                  <tbody>
+                    {visibleWos.map(w => (
+                      <tr key={w.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selectedId === w.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelectedId(w.id)}>
+                        <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{w.ref}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: 'var(--n900)', maxWidth: 260 }}>
+                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</div>
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{w.site?.name || '—'}</td>
+                        <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{w.asset?.ain || '—'}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{w.assignee?.full_name || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}><TypeBadge t={w.type} /></td>
+                        <td style={{ padding: '10px 14px' }}><PriorityBadge p={w.priority} /></td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <StatusBadge tone={woStatusStyle(w.status)} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
+                        </td>
+                        <td style={{ padding: '10px 14px' }}><SlaDue date={w.sla_due} /></td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <button onClick={e => { e.stopPropagation(); setSelectedId(w.id) }} className="row-action" style={{ color: 'var(--n400)', padding: 4 }}>
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="3" r="1" fill="currentColor"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="11" r="1" fill="currentColor"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Mobile card list — same data, tap opens the full-screen detail panel */}
+                <div className="card-list">
+                  {visibleWos.map(w => (
+                    <div key={w.id} className="list-card" onClick={() => setSelectedId(w.id)}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)' }}>{w.ref}</span>
+                        <StatusBadge tone={woStatusStyle(w.status)} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--n900)', marginBottom: 6, lineHeight: 1.4 }}>{w.title}</div>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                        <PriorityBadge p={w.priority} /><TypeBadge t={w.type} />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ fontSize: 11, color: 'var(--n500)' }}>{w.asset?.ain || w.site?.name || '—'}{w.assignee ? ` · ${w.assignee.full_name}` : ''}</span>
+                        {w.sla_due && <SlaDue date={w.sla_due} />}
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             )}
           </div>
 

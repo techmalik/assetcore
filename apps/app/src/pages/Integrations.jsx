@@ -157,9 +157,8 @@ function IntegrationCard({ def, row, canEdit, onSaved }) {
       {expanded && !def.comingSoon && (
         <div style={{ borderTop: 'var(--bdr)', padding: '18px 20px', background: 'var(--n50)' }}>
           {def.hasToggle && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, cursor: 'pointer' }}>
+            <label onClick={() => set('enabled', !form.enabled)} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, cursor: 'pointer', minHeight: 44 }}>
               <div
-                onClick={() => set('enabled', !form.enabled)}
                 style={{ width: 36, height: 20, borderRadius: 10, background: form.enabled ? 'var(--b500)' : 'var(--n300)', transition: 'background .2s', position: 'relative', flexShrink: 0, cursor: 'pointer' }}
               >
                 <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: form.enabled ? 18 : 2, transition: 'left .2s' }} />

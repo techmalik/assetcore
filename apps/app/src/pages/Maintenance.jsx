@@ -71,7 +71,7 @@ function ScheduleModal({ onClose, onSaved, users }) {
           <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Description
             <textarea value={form.description||''} onChange={e=>set('description',e.target.value)} rows={2} style={{marginTop:4,width:'100%',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',resize:'vertical',boxSizing:'border-box'}}/>
           </label>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div className="form-grid" style={{ gap:10 }}>
             <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Frequency *
               <select value={form.frequency} onChange={e=>set('frequency',e.target.value)} style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 8px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',background:'var(--n0)'}}>
                 {Object.entries(FREQ_LABEL).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
@@ -200,15 +200,15 @@ export default function Maintenance({ dark, toggleDark }) {
               <div style={{flex:1}}/>
               {tab === 'pm' && (
                 <>
-                  <button onClick={() => setMineOnly(m => !m)}
+                  <button onClick={() => setMineOnly(m => !m)} className="filter-pill"
                     style={{height:32,padding:'0 12px',border:`1px solid ${mineOnly?'var(--b300)':'var(--n200)'}`,borderRadius:99,background:mineOnly?'var(--b50)':'var(--n0)',fontSize:12,fontWeight:mineOnly?600:400,color:mineOnly?'var(--b700)':'var(--n600)',cursor:'pointer'}}>
                     Assigned to me
                   </button>
-                  <button onClick={handleGenerate} disabled={generating} style={{height:32,padding:'0 14px',background:'var(--n0)',color:'var(--n700)',border:'1px solid var(--n200)',borderRadius:4,fontSize:13,cursor:'pointer'}}>
+                  <button onClick={handleGenerate} disabled={generating} className="row-action" style={{height:32,padding:'0 14px',background:'var(--n0)',color:'var(--n700)',border:'1px solid var(--n200)',borderRadius:4,fontSize:13}}>
                     {generating?'Generating…':'Generate Tasks'}
                   </button>
                   {canCreate && (
-                    <button onClick={() => setShowModal(true)} style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',border:'none',borderRadius:4,fontSize:13,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+                    <button onClick={() => setShowModal(true)} className="row-action" style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',borderRadius:4,fontSize:13,fontWeight:500,gap:6}}>
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
                       Schedule PM
                     </button>
@@ -230,10 +230,10 @@ export default function Maintenance({ dark, toggleDark }) {
             </div>
           </div>
 
-          <div style={{flex:1,overflow:'hidden',display:'flex'}}>
+          <div className="split-with-aside" style={{flex:1,overflow:'hidden',display:'flex'}}>
             {tab === 'pm' && (
               <>
-                <div style={{flex:1,overflowY:'auto'}}>
+                <div className="split-primary" style={{flex:1,overflowY:'auto'}}>
                   {overdueOnly && (
                     <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 16px',background:'var(--srb)',borderBottom:'1px solid var(--srbr)',fontSize:12,color:'var(--srt)'}}>
                       Showing overdue tasks only ({visibleTasks.length})
@@ -264,7 +264,7 @@ export default function Maintenance({ dark, toggleDark }) {
                   )}
                 </div>
 
-                <div style={{width:300,flexShrink:0,borderLeft:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+                <div className="aside-panel" style={{width:300,flexShrink:0,borderLeft:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
                   <div style={{padding:'14px 16px',borderBottom:'var(--bdr)'}}>
                     <div style={{fontSize:13,fontWeight:600,color:'var(--n900)'}}>
                       {new Date(weekStart).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – {new Date(weekEnd).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
@@ -312,7 +312,7 @@ export default function Maintenance({ dark, toggleDark }) {
 
             {tab === 'compliance' && (
               <div style={{flex:1,overflowY:'auto'}}>
-                <div style={{padding:'14px 24px',borderBottom:'var(--bdr)',background:'var(--n0)',display:'flex',gap:20}}>
+                <div style={{padding:'14px 24px',borderBottom:'var(--bdr)',background:'var(--n0)',display:'flex',gap:20,flexWrap:'wrap'}}>
                   {[
                     {label:'Active',count:5,c:'var(--sgt)',bg:'var(--sgb)',br:'var(--sgbr)'},
                     {label:'Expiring Soon',count:1,c:'var(--sat)',bg:'var(--sab)',br:'var(--sabr)'},
@@ -325,7 +325,7 @@ export default function Maintenance({ dark, toggleDark }) {
                   ))}
                   <div style={{marginLeft:'auto',fontSize:11,color:'var(--n400)',display:'flex',alignItems:'center'}}>Phase 3: live licence register coming soon</div>
                 </div>
-                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
                   <thead style={{position:'sticky',top:0,zIndex:10}}>
                     <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
                       {['ID','Certificate / Licence','Issuer','Site','Issued','Expires','Days','Status',''].map(h => (
@@ -346,11 +346,11 @@ export default function Maintenance({ dark, toggleDark }) {
                         <td style={{padding:'11px 14px'}}>
                           <span style={{display:'inline-flex',padding:'2px 7px',borderRadius:2,border:'1px solid',fontSize:10,fontWeight:500,...licStatus[lic.status]}}>{lic.status}</span>
                         </td>
-                        <td style={{padding:'11px 14px'}}><button style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Renew</button></td>
+                        <td style={{padding:'11px 14px'}}><button className="row-action" style={{fontSize:11,color:'var(--b600)'}}>Renew</button></td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             )}
           </div>
@@ -414,56 +414,89 @@ function CompleteTaskModal({ task, onClose, onDone }) {
 
 function TasksTable({ tasks, onComplete, onAssign }) {
   return (
-    <table style={{width:'100%',borderCollapse:'collapse'}}>
-      <thead style={{position:'sticky',top:0,zIndex:10}}>
-        <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
-          {['Task','Schedule','Asset','Site','Due','Assignee','Status',''].map(h => (
-            <th key={h} style={{padding:'8px 14px',textAlign:'left',fontSize:10,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--n500)',whiteSpace:'nowrap',borderBottom:'var(--bdr)'}}>{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
+    <>
+      <table className="table-view-desktop" style={{width:'100%',borderCollapse:'collapse'}}>
+        <thead style={{position:'sticky',top:0,zIndex:10}}>
+          <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
+            {['Task','Schedule','Asset','Site','Due','Assignee','Status',''].map(h => (
+              <th key={h} style={{padding:'8px 14px',textAlign:'left',fontSize:10,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--n500)',whiteSpace:'nowrap',borderBottom:'var(--bdr)'}}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.map(t => {
+            const sc = TASK_STATUS[t.status] || TASK_STATUS.pending
+            return (
+              <tr key={t.id} className="row-hover" style={{borderBottom:'var(--bdr)'}}>
+                <td style={{padding:'10px 14px'}}>
+                  <div style={{fontSize:12,fontWeight:500,color:'var(--n900)',whiteSpace:'nowrap',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis'}}>{t.title}</div>
+                </td>
+                <td style={{padding:'10px 14px',fontSize:11,color:'var(--n600)',whiteSpace:'nowrap'}}>
+                  {t.schedule?.frequency ? FREQ_LABEL[t.schedule.frequency] : '—'}
+                </td>
+                <td style={{padding:'10px 14px'}}>
+                  {t.asset ? (
+                    <>
+                      <div style={{fontSize:12,fontWeight:500,color:'var(--n900)',whiteSpace:'nowrap',maxWidth:160,overflow:'hidden',textOverflow:'ellipsis'}}>{t.asset.name}</div>
+                      <div style={{fontFamily:'var(--ff-m)',fontSize:10,color:'var(--n400)'}}>{t.asset.ain}</div>
+                    </>
+                  ) : <span style={{fontSize:12,color:'var(--n400)'}}>—</span>}
+                </td>
+                <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>{t.site?.name||'—'}</td>
+                <td style={{padding:'10px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:t.status==='overdue'?'var(--srt)':'var(--n600)',whiteSpace:'nowrap'}}>{fmtDate(t.due_date)}</td>
+                <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>{t.assignee?.full_name||'—'}</td>
+                <td style={{padding:'10px 14px'}}>
+                  <StatusBadge tone={sc} />
+                </td>
+                <td style={{padding:'10px 14px'}}>
+                  <div style={{display:'flex',gap:10,whiteSpace:'nowrap'}}>
+                    {t.status !== 'completed' && t.status !== 'skipped' && (
+                      <button onClick={() => onComplete(t)} className="row-action" style={{fontSize:11,color:'var(--b600)'}}>Mark done</button>
+                    )}
+                    {onAssign && t.status !== 'completed' && t.status !== 'skipped' && (
+                      <button onClick={() => onAssign(t)} className="row-action" style={{fontSize:11,color:'var(--n500)'}}>
+                        {t.assignee ? 'Reassign' : 'Assign'}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+
+      {/* Mobile card list — same data, with real tappable Mark-done/Assign buttons */}
+      <div className="card-list">
         {tasks.map(t => {
           const sc = TASK_STATUS[t.status] || TASK_STATUS.pending
           return (
-            <tr key={t.id} className="row-hover" style={{borderBottom:'var(--bdr)'}}>
-              <td style={{padding:'10px 14px'}}>
-                <div style={{fontSize:12,fontWeight:500,color:'var(--n900)',whiteSpace:'nowrap',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis'}}>{t.title}</div>
-              </td>
-              <td style={{padding:'10px 14px',fontSize:11,color:'var(--n600)',whiteSpace:'nowrap'}}>
-                {t.schedule?.frequency ? FREQ_LABEL[t.schedule.frequency] : '—'}
-              </td>
-              <td style={{padding:'10px 14px'}}>
-                {t.asset ? (
-                  <>
-                    <div style={{fontSize:12,fontWeight:500,color:'var(--n900)',whiteSpace:'nowrap',maxWidth:160,overflow:'hidden',textOverflow:'ellipsis'}}>{t.asset.name}</div>
-                    <div style={{fontFamily:'var(--ff-m)',fontSize:10,color:'var(--n400)'}}>{t.asset.ain}</div>
-                  </>
-                ) : <span style={{fontSize:12,color:'var(--n400)'}}>—</span>}
-              </td>
-              <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>{t.site?.name||'—'}</td>
-              <td style={{padding:'10px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:t.status==='overdue'?'var(--srt)':'var(--n600)',whiteSpace:'nowrap'}}>{fmtDate(t.due_date)}</td>
-              <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>{t.assignee?.full_name||'—'}</td>
-              <td style={{padding:'10px 14px'}}>
+            <div key={t.id} className="list-card" style={{cursor:'default'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,marginBottom:6}}>
+                <div style={{fontSize:13,fontWeight:500,color:'var(--n900)'}}>{t.title}</div>
                 <StatusBadge tone={sc} />
-              </td>
-              <td style={{padding:'10px 14px'}}>
-                <div style={{display:'flex',gap:10,whiteSpace:'nowrap'}}>
-                  {t.status !== 'completed' && t.status !== 'skipped' && (
-                    <button onClick={() => onComplete(t)} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Mark done</button>
-                  )}
+              </div>
+              {t.asset && (
+                <div style={{fontSize:12,color:'var(--n600)',marginBottom:4}}>
+                  {t.asset.name} <span style={{fontFamily:'var(--ff-m)',fontSize:10,color:'var(--n400)'}}>{t.asset.ain}</span>
+                </div>
+              )}
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginTop:8,flexWrap:'wrap'}}>
+                <span style={{fontFamily:'var(--ff-m)',fontSize:11,color:t.status==='overdue'?'var(--srt)':'var(--n600)'}}>{fmtDate(t.due_date)}</span>
+                <div style={{display:'flex',gap:8}}>
                   {onAssign && t.status !== 'completed' && t.status !== 'skipped' && (
-                    <button onClick={() => onAssign(t)} style={{fontSize:11,color:'var(--n500)',background:'none',border:'none',cursor:'pointer',padding:0}}>
-                      {t.assignee ? 'Reassign' : 'Assign'}
-                    </button>
+                    <button onClick={() => onAssign(t)} className="btn btn-secondary" style={{height:36,padding:'0 14px',fontSize:12}}>{t.assignee ? 'Reassign' : 'Assign'}</button>
+                  )}
+                  {t.status !== 'completed' && t.status !== 'skipped' && (
+                    <button onClick={() => onComplete(t)} className="btn btn-secondary" style={{height:36,padding:'0 14px',fontSize:12}}>Mark done</button>
                   )}
                 </div>
-              </td>
-            </tr>
+              </div>
+            </div>
           )
         })}
-      </tbody>
-    </table>
+      </div>
+    </>
   )
 }
 
@@ -471,7 +504,7 @@ function SchedulesView({ schedules }) {
   return (
     <div style={{padding:20}}>
       <div style={{fontSize:12,color:'var(--n500)',marginBottom:14}}>No active tasks in the next 30 days. Showing {schedules.length} PM schedule{schedules.length!==1?'s':''}.</div>
-      <table style={{width:'100%',borderCollapse:'collapse'}}>
+      <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
         <thead>
           <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
             {['Schedule','Frequency','Asset','Site','Assignee','Next Due','Active'].map(h => (
@@ -494,7 +527,7 @@ function SchedulesView({ schedules }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </div>
   )
 }

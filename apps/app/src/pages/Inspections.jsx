@@ -74,7 +74,7 @@ function InspectionModal({ onClose, onSaved, sites, users }) {
           <label style={lbl}>Title *
             <input value={form.title} onChange={e=>set('title',e.target.value)} placeholder="e.g. Lagos DS-04 Safety Inspection" style={inp}/>
           </label>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div className="form-grid" style={{ gap:10 }}>
             <label style={lbl}>Type
               <select value={form.kind} onChange={e=>set('kind',e.target.value)} style={{...inp,appearance:'none'}}>
                 {Object.entries(KIND_META).map(([k,m]) => <option key={k} value={k}>{m.label}</option>)}
@@ -228,7 +228,7 @@ export default function Inspections({ dark, toggleDark }) {
               </div>
               <div style={{flex:1}}/>
               {canCreate && (
-                <button onClick={() => setModal('create')} style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',border:'none',borderRadius:4,fontSize:13,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+                <button onClick={() => setModal('create')} className="row-action" style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',borderRadius:4,fontSize:13,fontWeight:500,gap:6}}>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
                   New Inspection
                 </button>
@@ -268,7 +268,7 @@ export default function Inspections({ dark, toggleDark }) {
                 ) : tab==='open' && canCreate && <button onClick={() => setModal('create')} className="btn btn-primary" style={{marginTop:8,height:34,padding:'0 16px',fontSize:13}}>Schedule first inspection</button>}
               </div>
             ) : (
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead style={{position:'sticky',top:0,zIndex:10}}>
                   <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
                     {['Title','Type','Asset','Site','Date','Inspector','Status',''].map(h => (
@@ -314,7 +314,7 @@ export default function Inspections({ dark, toggleDark }) {
                     )
                   })}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         </div>

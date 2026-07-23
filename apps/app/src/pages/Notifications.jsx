@@ -74,6 +74,8 @@ export default function Notifications({ dark, toggleDark }) {
   const [panel, setPanel] = useState('detail')
   const [prefs, setPrefs] = useState([])
   const [prefsLoading, setPrefsLoading] = useState(false)
+  // Mobile only: which pane is showing (both panes render side-by-side on desktop regardless)
+  const [mobileView, setMobileView] = useState('list')
 
   const groups = groupByDate(notifications)
 
@@ -100,7 +102,13 @@ export default function Notifications({ dark, toggleDark }) {
   const handleSelect = (n) => {
     setSelected(n)
     setPanel('detail')
+    setMobileView('content')
     if (!n.read) markRead(n.id)
+  }
+
+  const openPrefs = () => {
+    setPanel('prefs')
+    setMobileView('content')
   }
 
   const togglePref = async (key, field) => {
@@ -118,16 +126,16 @@ export default function Notifications({ dark, toggleDark }) {
       <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
         <Topbar breadcrumb="Notifications" dark={dark} toggleDark={toggleDark}/>
 
-        <div style={{flex:1,overflow:'hidden',display:'flex'}}>
+        <div className={`notif-row${mobileView === 'content' ? ' notif-row--content' : ''}`} style={{flex:1,overflow:'hidden',display:'flex'}}>
           {/* List */}
-          <div style={{width:340,flexShrink:0,borderRight:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          <div className="notif-list" style={{width:340,flexShrink:0,borderRight:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
             <div style={{padding:'12px 16px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:8}}>
               <span style={{fontSize:13,fontWeight:600,color:'var(--n900)',flex:1}}>
                 Notifications
                 {unreadCount > 0 && <span style={{marginLeft:6,background:'var(--sr)',color:'#fff',borderRadius:10,fontSize:10,fontWeight:600,padding:'1px 6px'}}>{unreadCount}</span>}
               </span>
-              <button onClick={() => setPanel('prefs')} style={{height:26,padding:'0 8px',border:'1px solid var(--n200)',borderRadius:4,background:panel==='prefs'?'var(--b50)':'var(--n0)',fontSize:11,color:panel==='prefs'?'var(--b600)':'var(--n600)',cursor:'pointer'}}>Preferences</button>
-              <button onClick={markAllRead} style={{height:26,padding:'0 8px',border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',fontSize:11,color:'var(--n600)',cursor:'pointer'}}>Mark all read</button>
+              <button onClick={openPrefs} className="row-action" style={{height:26,padding:'0 8px',border:'1px solid var(--n200)',borderRadius:4,background:panel==='prefs'?'var(--b50)':'var(--n0)',fontSize:11,color:panel==='prefs'?'var(--b600)':'var(--n600)'}}>Preferences</button>
+              <button onClick={markAllRead} className="row-action" style={{height:26,padding:'0 8px',border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',fontSize:11,color:'var(--n600)'}}>Mark all read</button>
             </div>
 
             <div style={{flex:1,overflowY:'auto'}}>
@@ -162,7 +170,11 @@ export default function Notifications({ dark, toggleDark }) {
 
           {/* Detail */}
           {panel === 'detail' && (
-            <div style={{flex:1,overflowY:'auto',padding:'24px 28px',background:'var(--n50)'}}>
+            <div className="notif-content" style={{flex:1,overflowY:'auto',padding:'24px 28px',background:'var(--n50)'}}>
+              <button onClick={() => setMobileView('list')} className="notif-back-btn" style={{display:'none',alignItems:'center',gap:6,height:36,padding:'0 12px',marginBottom:16,border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',fontSize:13,color:'var(--n700)',cursor:'pointer'}}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2L3 6l4.5 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Back to notifications
+              </button>
               {selected ? (
                 <div style={{maxWidth:600}}>
                   <div style={{marginBottom:12}}>
@@ -193,7 +205,11 @@ export default function Notifications({ dark, toggleDark }) {
 
           {/* Preferences */}
           {panel === 'prefs' && (
-            <div style={{flex:1,overflowY:'auto',padding:'24px 28px',background:'var(--n50)'}}>
+            <div className="notif-content" style={{flex:1,overflowY:'auto',padding:'24px 28px',background:'var(--n50)'}}>
+              <button onClick={() => { setPanel('detail'); setMobileView('list') }} className="notif-back-btn" style={{display:'none',alignItems:'center',gap:6,height:36,padding:'0 12px',marginBottom:16,border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',fontSize:13,color:'var(--n700)',cursor:'pointer'}}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2L3 6l4.5 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Back to notifications
+              </button>
               <div style={{maxWidth:560}}>
                 <h2 style={{fontFamily:'var(--ff-d)',fontSize:22,fontWeight:700,color:'var(--n950)',letterSpacing:'-.3px',marginBottom:4}}>Notification Preferences</h2>
                 <p style={{fontSize:13,color:'var(--n500)',marginBottom:20}}>Choose which events generate notifications for your account.</p>
@@ -203,13 +219,13 @@ export default function Notifications({ dark, toggleDark }) {
                 ) : (
                   <>
                     <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:6,overflow:'hidden',marginBottom:16}}>
-                      <div style={{padding:'10px 16px',borderBottom:'var(--bdr)',display:'grid',gridTemplateColumns:'1fr 72px 56px',gap:8}}>
+                      <div style={{padding:'10px 16px',borderBottom:'var(--bdr)',display:'grid',gridTemplateColumns:'minmax(0,1fr) auto auto',gap:8}}>
                         <span style={{fontSize:10,fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--n500)',fontFamily:'var(--ff-m)'}}>Event</span>
                         <span style={{fontSize:10,fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--n500)',fontFamily:'var(--ff-m)',textAlign:'center'}}>In-app</span>
                         <span style={{fontSize:10,fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--n500)',fontFamily:'var(--ff-m)',textAlign:'center'}}>Email</span>
                       </div>
                       {prefs.map((p,i) => (
-                        <div key={p.key} style={{padding:'14px 16px',borderBottom:i<prefs.length-1?'var(--bdr)':'none',display:'grid',gridTemplateColumns:'1fr 72px 56px',gap:8,alignItems:'center'}}>
+                        <div key={p.key} style={{padding:'14px 16px',borderBottom:i<prefs.length-1?'var(--bdr)':'none',display:'grid',gridTemplateColumns:'minmax(0,1fr) auto auto',gap:8,alignItems:'center'}}>
                           <div>
                             <div style={{fontSize:13,fontWeight:500,color:'var(--n900)'}}>{p.label}</div>
                             <div style={{fontSize:12,color:'var(--n500)',marginTop:2}}>{p.desc}</div>
@@ -237,8 +253,10 @@ export default function Notifications({ dark, toggleDark }) {
 
 function Toggle({ on, onChange }) {
   return (
-    <div onClick={onChange} style={{width:36,height:20,borderRadius:10,background:on?'var(--b500)':'var(--n200)',position:'relative',cursor:'pointer',flexShrink:0,transition:'background .15s'}}>
-      <div style={{width:14,height:14,borderRadius:'50%',background:'#fff',position:'absolute',top:3,left:on?19:3,transition:'left .15s'}}/>
-    </div>
+    <button type="button" onClick={onChange} aria-pressed={on} style={{width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',cursor:'pointer',padding:0,flexShrink:0}}>
+      <span style={{width:36,height:20,borderRadius:10,background:on?'var(--b500)':'var(--n200)',position:'relative',transition:'background .15s'}}>
+        <span style={{width:14,height:14,borderRadius:'50%',background:'#fff',position:'absolute',top:3,left:on?19:3,transition:'left .15s'}}/>
+      </span>
+    </button>
   )
 }

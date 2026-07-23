@@ -128,18 +128,20 @@ export default function Support() {
                 </SimpleGrid>
                 <Card padding="lg">
                   <Text fw={600} fz="sm" mb="sm">Compliance licences ({snapshot.licences?.length || 0})</Text>
-                  <Table>
-                    <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Number</Table.Th><Table.Th>Expires</Table.Th></Table.Tr></Table.Thead>
-                    <Table.Tbody>
-                      {(snapshot.licences || []).map((l) => (
-                        <Table.Tr key={l.id}>
-                          <Table.Td><Text size="sm">{l.name}</Text></Table.Td>
-                          <Table.Td><Text size="xs" ff="monospace">{l.licence_number}</Text></Table.Td>
-                          <Table.Td><Text size="sm" c="dimmed">{date(l.expiry_date)}</Text></Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
+                  <Table.ScrollContainer minWidth={400}>
+                    <Table>
+                      <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Number</Table.Th><Table.Th>Expires</Table.Th></Table.Tr></Table.Thead>
+                      <Table.Tbody>
+                        {(snapshot.licences || []).map((l) => (
+                          <Table.Tr key={l.id}>
+                            <Table.Td><Text size="sm">{l.name}</Text></Table.Td>
+                            <Table.Td><Text size="xs" ff="monospace">{l.licence_number}</Text></Table.Td>
+                            <Table.Td><Text size="sm" c="dimmed">{date(l.expiry_date)}</Text></Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </Table.ScrollContainer>
                 </Card>
               </Stack>
             )}

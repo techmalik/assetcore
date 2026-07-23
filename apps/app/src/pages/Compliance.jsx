@@ -110,7 +110,7 @@ function LicenceModal({ licence, authorities, sites, onClose, onSaved }) {
           <label style={labelStyle}>Licence / Certificate name *
             <input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="e.g. Operating Licence — Lagos DS-04" style={inputStyle}/>
           </label>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div className="form-grid" style={{ gap:10 }}>
             <label style={labelStyle}>Type
               <select value={form.kind} onChange={e=>set('kind',e.target.value)} style={selectStyle}>
                 {Object.entries(KIND_LABEL).map(([k,l]) => <option key={k} value={k}>{l}</option>)}
@@ -132,7 +132,7 @@ function LicenceModal({ licence, authorities, sites, onClose, onSaved }) {
               {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </label>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div className="form-grid" style={{ gap:10 }}>
             <label style={labelStyle}>Issued date *
               <input type="date" value={form.issued_date} onChange={e=>set('issued_date',e.target.value)} style={inputStyle}/>
             </label>
@@ -183,10 +183,10 @@ function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded })
   const docList = lic.documents?.length ? lic.documents : (lic.document_url ? [{ url: lic.document_url, name: lic.document_url.split('/').pop() }] : [])
 
   return (
-    <div style={{width:320,flexShrink:0,borderLeft:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div className="detail-panel" style={{'--panel-w':'320px',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <div style={{padding:'14px 16px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:8}}>
         <span style={{fontSize:13,fontWeight:600,color:'var(--n900)',flex:1}}>Licence Detail</span>
-        <button onClick={onClose} style={{width:24,height:24,border:'none',background:'none',cursor:'pointer',color:'var(--n400)',fontSize:18,lineHeight:1}}>×</button>
+        <button onClick={onClose} className="row-action" style={{width:40,height:40,border:'none',background:'none',color:'var(--n400)',fontSize:18,lineHeight:1}}>×</button>
       </div>
       <div style={{flex:1,overflowY:'auto',padding:'16px'}}>
         <StatusBadge tone={meta} size="md" weight={600} style={{marginBottom:12}} />
@@ -302,7 +302,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
           <label style={labelStyle}>Title *
             <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Q2 ISO 9001 Internal Audit — Lagos DS-04" style={inputStyle} />
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="form-grid" style={{ gap: 10 }}>
             <label style={labelStyle}>Standard
               <input value={form.standard} onChange={(e) => set('standard', e.target.value)} placeholder="e.g. ISO 9001" style={inputStyle} />
             </label>
@@ -310,7 +310,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
               <input value={form.iso_reference} onChange={(e) => set('iso_reference', e.target.value)} placeholder="e.g. ISO-9001-2024-001" style={inputStyle} />
             </label>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="form-grid" style={{ gap: 10 }}>
             <label style={labelStyle}>Audit date *
               <input type="date" value={form.audit_date} onChange={(e) => set('audit_date', e.target.value)} style={inputStyle} />
             </label>
@@ -321,7 +321,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
               </select>
             </label>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="form-grid" style={{ gap: 10 }}>
             <label style={labelStyle}>Auditor
               <select value={form.auditor_id} onChange={(e) => set('auditor_id', e.target.value)} style={selectStyle}>
                 <option value="">— Select —</option>
@@ -393,7 +393,7 @@ function AuditsPanel({ canCreate }) {
 
   return (
     <div style={{ flex: 1, overflowY: 'auto' }}>
-      <div style={{ padding: '12px 24px', display: 'flex', alignItems: 'center' }}>
+      <div style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
         <div style={{ fontSize: 13, color: 'var(--n600)' }}>Routine-maintenance & ISO audit attestations</div>
         <div style={{ flex: 1 }} />
         {pmCompliance && (
@@ -416,7 +416,7 @@ function AuditsPanel({ canCreate }) {
       ) : audits.length === 0 ? (
         <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>No audits recorded yet.</div>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
               {['Audit', 'Standard / Ref', 'Date', 'Routine maint.', 'ISO audit', 'Site', 'Asset', 'Doc', ''].map((h) => (
@@ -434,17 +434,17 @@ function AuditsPanel({ canCreate }) {
                 <td style={{ padding: '10px 14px', fontSize: 12 }}>{yn(a.iso_audit_conducted)}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)' }}>{a.site?.name || '—'}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)' }}>{a.asset?.name || '—'}</td>
-                <td style={{ padding: '10px 14px', fontSize: 12 }}>{a.document_url ? <button onClick={() => api.download(`/files/${a.document_url}`, a.document_url.split('/').pop())} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 12, padding: 0 }}>view</button> : '—'}</td>
+                <td style={{ padding: '10px 14px', fontSize: 12 }}>{a.document_url ? <button onClick={() => api.download(`/files/${a.document_url}`, a.document_url.split('/').pop())} className="row-action" style={{ color: 'var(--b600)', fontSize: 12 }}>view</button> : '—'}</td>
                 <td style={{ padding: '10px 14px' }}>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setModal(a)} style={{ fontSize: 11, color: 'var(--b600)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Edit</button>
-                    <button onClick={() => remove(a.id)} style={{ fontSize: 11, color: 'var(--srt)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Archive</button>
+                    <button onClick={() => setModal(a)} className="row-action" style={{ fontSize: 11, color: 'var(--b600)' }}>Edit</button>
+                    <button onClick={() => remove(a.id)} className="row-action" style={{ fontSize: 11, color: 'var(--srt)' }}>Archive</button>
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
       {modal && <AuditModal audit={modal === 'new' ? null : modal} sites={sites} users={users} assets={assets} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />}
     </div>
@@ -529,11 +529,11 @@ export default function Compliance({ dark, toggleDark }) {
               <div style={{flex:1}}/>
               {view === 'licences' && (
                 <>
-                  <button onClick={handleRunExpiry} style={{height:32,padding:'0 14px',border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',fontSize:12,color:'var(--n600)',cursor:'pointer'}}>
+                  <button onClick={handleRunExpiry} className="row-action" style={{height:32,padding:'0 14px',border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',fontSize:12,color:'var(--n600)'}}>
                     Check Expiry Alerts
                   </button>
                   {canCreate && (
-                    <button onClick={() => setModal('add')} style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',border:'none',borderRadius:4,fontSize:13,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+                    <button onClick={() => setModal('add')} className="row-action" style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',borderRadius:4,fontSize:13,fontWeight:500,gap:6}}>
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
                       Add Licence
                     </button>
@@ -559,11 +559,11 @@ export default function Compliance({ dark, toggleDark }) {
                   { key:'expired',  label:`Expired (${counts.expired})`,    c:'var(--srt)',  bg:'var(--srb)', br:'var(--srbr)' },
                   { key:'alerts',   label:`Alerts (${counts.expiring + counts.due_soon + counts.expired})`, c:'var(--srt)', bg:'var(--srb)', br:'var(--srbr)' },
                 ].map(s => (
-                  <button key={s.key} onClick={() => setFilter(s.key)} style={{height:28,padding:'0 12px',border:`1px solid ${filter===s.key?s.br:'var(--n200)'}`,borderRadius:4,background:filter===s.key?s.bg:'var(--n0)',fontSize:12,fontWeight:filter===s.key?600:400,color:filter===s.key?s.c:'var(--n600)',cursor:'pointer'}}>
+                  <button key={s.key} onClick={() => setFilter(s.key)} className="filter-pill" style={{height:28,padding:'0 12px',border:`1px solid ${filter===s.key?s.br:'var(--n200)'}`,borderRadius:4,background:filter===s.key?s.bg:'var(--n0)',fontSize:12,fontWeight:filter===s.key?600:400,color:filter===s.key?s.c:'var(--n600)',cursor:'pointer'}}>
                     {s.label}
                   </button>
                 ))}
-                <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} style={{height:28,padding:'0 8px',border:'1px solid var(--n200)',borderRadius:4,fontSize:12,color:'var(--n700)',background:'var(--n0)',marginLeft:4}}>
+                <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} className="select" style={{height:28,padding:'0 8px',border:'1px solid var(--n200)',borderRadius:4,fontSize:12,color:'var(--n700)',background:'var(--n0)',marginLeft:4}}>
                   <option value="">All kinds</option>
                   {Object.entries(KIND_LABEL).map(([k,l]) => <option key={k} value={k}>{l}</option>)}
                 </select>
@@ -587,7 +587,7 @@ export default function Compliance({ dark, toggleDark }) {
               ) : filtered.length === 0 ? (
                 <EmptyState canCreate={canCreate} onAdd={() => setModal('add')} locationName={globalLocation?.name} onShowAll={() => setGlobalLocationId(null)} />
               ) : (
-                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
                   <thead style={{position:'sticky',top:0,zIndex:10}}>
                     <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
                       {['Licence / Certificate','Authority','Site','Issued','Expires','Days','Status',''].map(h => (
@@ -617,13 +617,13 @@ export default function Compliance({ dark, toggleDark }) {
                             <StatusBadge tone={meta} />
                           </td>
                           <td style={{padding:'11px 14px'}}>
-                            <button onClick={e => { e.stopPropagation(); setModal(lic) }} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Edit</button>
+                            <button onClick={e => { e.stopPropagation(); setModal(lic) }} className="row-action" style={{fontSize:11,color:'var(--b600)'}}>Edit</button>
                           </td>
                         </tr>
                       )
                     })}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </div>
 

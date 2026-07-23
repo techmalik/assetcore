@@ -105,12 +105,12 @@ export default function Reports({ dark, toggleDark }) {
                 <p style={{fontSize:12,color:'var(--n500)'}}>Generate and download operational reports</p>
               </div>
               <div style={{flex:1}}/>
-              <button onClick={() => setTab('generate')} style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',border:'none',borderRadius:4,fontSize:13,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+              <button onClick={() => setTab('generate')} className="row-action" style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',borderRadius:4,fontSize:13,fontWeight:500,gap:6}}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
                 Generate Report
               </button>
             </div>
-            <div style={{display:'flex',gap:0}}>
+            <div className="tab-strip" style={{gap:0}}>
               {[{k:'library',label:'Report Library'},{k:'analytics',label:'Analytics'},{k:'generate',label:'Generate Report'}].map(t => (
                 <button key={t.k} className={`tab-btn${tab===t.k?' active':''}`} onClick={() => setTab(t.k)}>{t.label}</button>
               ))}
@@ -135,6 +135,7 @@ export default function Reports({ dark, toggleDark }) {
                   </div>
                 ) : (
                   <div style={{padding:'20px 24px'}}>
+                    <div className="table-scroll">
                     <table style={{width:'100%',borderCollapse:'collapse',background:'var(--n0)',border:'var(--bdr)',borderRadius:6,overflow:'hidden'}}>
                       <thead>
                         <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
@@ -184,6 +185,7 @@ export default function Reports({ dark, toggleDark }) {
                         })}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 )}
               </>
@@ -245,7 +247,7 @@ export default function Reports({ dark, toggleDark }) {
             {tab === 'generate' && (
               <div style={{padding:'24px',maxWidth:800}}>
                 <div style={{fontSize:13,fontWeight:600,color:'var(--n700)',marginBottom:12}}>Select Report Template</div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10,marginBottom:24}}>
                   {TEMPLATES.map(t => {
                     const m = KIND_META[t.key]
                     const active = selectedKind === t.key
@@ -261,7 +263,7 @@ export default function Reports({ dark, toggleDark }) {
 
                 <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:6,padding:'18px 20px',marginBottom:20}}>
                   <div style={{fontSize:13,fontWeight:600,color:'var(--n700)',marginBottom:14}}>Parameters</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div className="form-grid" style={{ gap:12 }}>
                     <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Date range
                       <select value={dateRange} onChange={e=>setDateRange(e.target.value)} style={{height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',background:'var(--n0)',appearance:'none'}}>
                         <option value="last_7">Last 7 days</option>

@@ -303,7 +303,7 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="form-grid" style={{ gap: 12 }}>
           <Field label="Asset name" required full>
             <input {...inputProps} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Compressor Unit X-5" />
           </Field>
@@ -393,7 +393,7 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
                 </button>
                 {editing && (
                   <button type="button" onClick={() => removePhoto(p)} disabled={busyFile} title="Remove image"
-                    style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', border: '1px solid var(--n200)', background: 'var(--n0)', color: 'var(--srt)', fontSize: 11, lineHeight: '16px', cursor: 'pointer', padding: 0 }}>
+                    style={{ position: 'absolute', top: -8, right: -8, width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--n200)', background: 'var(--n0)', color: 'var(--srt)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
                     ✕
                   </button>
                 )}
@@ -470,7 +470,7 @@ function RaiseWOModal({ asset, onClose, onCreated }) {
           <Field label="Description">
             <textarea value={form.description} onChange={(e) => set('description', e.target.value)} rows={3} className="input" style={{ width: '100%', height: 'auto', padding: '8px 10px', resize: 'vertical' }} />
           </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-grid" style={{ gap: 12 }}>
             <Field label="Type">
               <select {...inputProps} value={form.type} onChange={(e) => set('type', e.target.value)}>
                 {Object.entries(WO_TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -559,7 +559,7 @@ function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
               </select>
             </Field>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-grid" style={{ gap: 12 }}>
             <Field label="Completed on" required>
               <input {...inputProps} type="date" max={localDateStr(0)} value={form.completed_at} onChange={(e) => set('completed_at', e.target.value)} />
             </Field>
@@ -774,13 +774,13 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
   const section = { fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)', marginBottom: 8 }
 
   return (
-    <div style={{ width: 360, flexShrink: 0, borderLeft: 'var(--bdr)', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="detail-panel" style={{ '--panel-w': '360px', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: 'var(--bdr)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b600)', marginBottom: 2 }}>{asset.ain}{archived && <span style={{ color: 'var(--n400)' }}> · archived</span>}</div>
           <div style={{ fontFamily: 'var(--ff-d)', fontSize: 16, fontWeight: 700, color: 'var(--n950)', letterSpacing: '-.2px' }}>{asset.name}</div>
         </div>
-        <button onClick={onClose} style={{ width: 26, height: 26, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--n500)' }}>
+        <button onClick={onClose} className="row-action" style={{ width: 40, height: 40, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', color: 'var(--n500)' }}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
         </button>
       </div>
@@ -857,7 +857,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
               <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                 {t.report_url && <button onClick={() => viewDoc({ url: t.report_url, name: t.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
                 {canUpdatePM && t.status !== 'completed' ? (
-                  <select value={t.status} onChange={(e) => changePMStatus(t, e.target.value)} style={{ fontSize: 11, fontWeight: 500, color: PM_STATUS_C[t.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
+                  <select value={t.status} onChange={(e) => changePMStatus(t, e.target.value)} className="select" style={{ fontSize: 11, fontWeight: 500, color: PM_STATUS_C[t.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
                     {Object.keys(PM_STATUS_C).map((k) => <option key={k} value={k}>{k}</option>)}
                   </select>
                 ) : (
@@ -880,7 +880,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
                 <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                   {i.report_url && <button onClick={() => viewDoc({ url: i.report_url, name: i.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
                   {canUpdateInspection ? (
-                    <select value={i.status} onChange={(e) => changeInspectionStatus(i, e.target.value)} style={{ fontSize: 11, fontWeight: 500, color: INSP_STATUS_C[i.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
+                    <select value={i.status} onChange={(e) => changeInspectionStatus(i, e.target.value)} className="select" style={{ fontSize: 11, fontWeight: 500, color: INSP_STATUS_C[i.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
                       {Object.keys(INSP_STATUS_C).map((k) => <option key={k} value={k}>{k}</option>)}
                     </select>
                   ) : (
@@ -980,7 +980,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
               {canCompleteMaintenance && <button onClick={onCompleteMaintenance} className="btn btn-primary" style={{ width: '100%', height: 36, fontSize: 13 }}>Complete Maintenance</button>}
               {canWO && <button onClick={onRaiseWO} className="btn btn-secondary" style={{ width: '100%', height: 36, fontSize: 13 }}>Raise Work Order</button>}
               {canEdit && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div className="form-grid" style={{ gap: 8 }}>
                   <button onClick={onEdit} className="btn btn-secondary" style={{ height: 34, fontSize: 13 }}>Edit Asset</button>
                   <button onClick={onArchive} className="btn btn-danger-soft" style={{ height: 34, fontSize: 13 }}>Archive</button>
                 </div>
@@ -1109,10 +1109,10 @@ export default function Assets({ dark, toggleDark }) {
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', gap: 6 }}>
               {[['all', 'All'], ['operational', 'Operational'], ['maintenance', 'Maintenance'], ['standby', 'Standby'], ['offline', 'Offline'], ['attention', 'Attention'], ['critical', 'Critical']].map(([v, l]) => (
-                <button key={v} onClick={() => setFilter(v)} style={{ height: 30, padding: '0 12px', border: `1px solid ${filter === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filter === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: filter === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filter === v ? 500 : 400, cursor: 'pointer' }}>{l}</button>
+                <button key={v} onClick={() => setFilter(v)} className="filter-pill" style={{ height: 30, padding: '0 12px', border: `1px solid ${filter === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filter === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: filter === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filter === v ? 500 : 400, cursor: 'pointer' }}>{l}</button>
               ))}
             </div>
-            <button onClick={() => { setArchivedView((v) => !v); setSelected(null) }} style={{ height: 30, padding: '0 12px', border: `1px solid ${archivedView ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: archivedView ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: archivedView ? 'var(--b700)' : 'var(--n600)', cursor: 'pointer' }}>
+            <button onClick={() => { setArchivedView((v) => !v); setSelected(null) }} className="filter-pill" style={{ height: 30, padding: '0 12px', border: `1px solid ${archivedView ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: archivedView ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: archivedView ? 'var(--b700)' : 'var(--n600)', cursor: 'pointer' }}>
               {archivedView ? '← Active' : 'Archived'}
             </button>
             {canCreate && !archivedView && (
@@ -1140,7 +1140,7 @@ export default function Assets({ dark, toggleDark }) {
                 style={{ height: 30, width: '100%', padding: '0 10px 0 30px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n900)', outline: 'none' }}
               />
             </div>
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="select" style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
               <option value="">All types</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -1149,7 +1149,7 @@ export default function Assets({ dark, toggleDark }) {
                 would be redundant (and could contradict it), so it's hidden
                 rather than shown alongside. */}
             {!globalLocationId && (
-              <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
+              <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} className="select" style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
                 <option value="">All locations</option>
                 {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
@@ -1162,7 +1162,7 @@ export default function Assets({ dark, toggleDark }) {
           </div>
 
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
+            <div className="table-scroll" style={{ flex: 1, overflowY: 'auto' }}>
               {loading ? (
                 <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>Loading assets…</div>
               ) : error ? (
@@ -1182,44 +1182,69 @@ export default function Assets({ dark, toggleDark }) {
                   {canCreate && !archivedView && !healthFilter && !debouncedSearch && !typeFilter && !locationFilter && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Add first asset</button>}
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                    <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
-                      {['AIN', 'Name & Model', 'Type', 'Location', 'Site', 'Status', 'Health', 'Next Maint.', 'Operator', 'Actions'].map((h) => (
-                        <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleAssets.map((a) => (
-                      <tr key={a.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selected?.id === a.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelected(a)}>
-                        <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, fontWeight: 500, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{a.ain}</td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--n900)' }}>{a.name}</div>
-                          {(a.specs?.manufacturer || a.specs?.model) && <div style={{ fontSize: 11, color: 'var(--n500)' }}>{[a.specs?.manufacturer, a.specs?.model].filter(Boolean).join(' / ')}</div>}
-                        </td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{a.category?.name || '—'}</td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.location?.name || '—'}</td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.site?.name || '—'}</td>
-                        <td style={{ padding: '11px 14px' }}><AssetStatusBadge status={a.status} /></td>
-                        <td style={{ padding: '11px 14px' }}><HealthBar score={a.health_score ?? 0} /></td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, whiteSpace: 'nowrap', color: nextMaintColor(a.next_maintenance_at) }}>{fmtDate(a.next_maintenance_at)}</td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.operator?.full_name || '—'}</td>
-                        <td style={{ padding: '11px 14px' }} onClick={(e) => e.stopPropagation()}>
-                          {archivedView ? (
-                            canEdit && <button onClick={() => doRestore(a.id)} style={linkBtn}>Restore</button>
-                          ) : (
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => setSelected(a)} style={linkBtn}>View</button>
-                              {canEdit && <button onClick={() => setModal(a)} style={linkBtn}>Edit</button>}
-                              {canWO && <button onClick={() => setWoAsset(a)} style={{ ...linkBtn, color: 'var(--b700)', borderColor: 'var(--b200)' }}>WO</button>}
-                            </div>
-                          )}
-                        </td>
+                <>
+                  <table className="table-view-desktop" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                      <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
+                        {['AIN', 'Name & Model', 'Type', 'Location', 'Site', 'Status', 'Health', 'Next Maint.', 'Operator', 'Actions'].map((h) => (
+                          <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
+                        ))}
                       </tr>
+                    </thead>
+                    <tbody>
+                      {visibleAssets.map((a) => (
+                        <tr key={a.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selected?.id === a.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelected(a)}>
+                          <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, fontWeight: 500, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{a.ain}</td>
+                          <td style={{ padding: '11px 14px' }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--n900)' }}>{a.name}</div>
+                            {(a.specs?.manufacturer || a.specs?.model) && <div style={{ fontSize: 11, color: 'var(--n500)' }}>{[a.specs?.manufacturer, a.specs?.model].filter(Boolean).join(' / ')}</div>}
+                          </td>
+                          <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{a.category?.name || '—'}</td>
+                          <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.location?.name || '—'}</td>
+                          <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.site?.name || '—'}</td>
+                          <td style={{ padding: '11px 14px' }}><AssetStatusBadge status={a.status} /></td>
+                          <td style={{ padding: '11px 14px' }}><HealthBar score={a.health_score ?? 0} /></td>
+                          <td style={{ padding: '11px 14px', fontSize: 12, whiteSpace: 'nowrap', color: nextMaintColor(a.next_maintenance_at) }}>{fmtDate(a.next_maintenance_at)}</td>
+                          <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.operator?.full_name || '—'}</td>
+                          <td style={{ padding: '11px 14px' }} onClick={(e) => e.stopPropagation()}>
+                            {archivedView ? (
+                              canEdit && <button onClick={() => doRestore(a.id)} className="row-action" style={linkBtn}>Restore</button>
+                            ) : (
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={() => setSelected(a)} className="row-action" style={linkBtn}>View</button>
+                                {canEdit && <button onClick={() => setModal(a)} className="row-action" style={linkBtn}>Edit</button>}
+                                {canWO && <button onClick={() => setWoAsset(a)} className="row-action" style={{ ...linkBtn, color: 'var(--b700)', borderColor: 'var(--b200)' }}>WO</button>}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Mobile card list — same data, tap opens the full-screen detail panel */}
+                  <div className="card-list">
+                    {visibleAssets.map((a) => (
+                      <div key={a.id} className="list-card" onClick={() => setSelected(a)}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--n900)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                          <AssetStatusBadge status={a.status} />
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--n500)', marginBottom: 8 }}>
+                          <span style={{ fontFamily: 'var(--ff-m)', color: 'var(--b700)' }}>{a.ain}</span>
+                          {a.category?.name && <> · {a.category.name}</>}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--n600)', marginBottom: 8 }}>
+                          {[a.location?.name, a.site?.name].filter(Boolean).join(' · ') || '—'}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <HealthBar score={a.health_score ?? 0} />
+                          <span style={{ fontSize: 11, whiteSpace: 'nowrap', color: nextMaintColor(a.next_maintenance_at) }}>{fmtDate(a.next_maintenance_at)}</span>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </>
               )}
             </div>
 
