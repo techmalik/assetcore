@@ -1174,44 +1174,69 @@ export default function Assets({ dark, toggleDark }) {
                   {canCreate && !archivedView && !healthFilter && !debouncedSearch && !typeFilter && !locationFilter && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Add first asset</button>}
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                    <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
-                      {['AIN', 'Name & Model', 'Type', 'Location', 'Site', 'Status', 'Health', 'Next Maint.', 'Operator', 'Actions'].map((h) => (
-                        <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleAssets.map((a) => (
-                      <tr key={a.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selected?.id === a.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelected(a)}>
-                        <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, fontWeight: 500, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{a.ain}</td>
-                        <td style={{ padding: '11px 14px' }}>
-                          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--n900)' }}>{a.name}</div>
-                          {(a.specs?.manufacturer || a.specs?.model) && <div style={{ fontSize: 11, color: 'var(--n500)' }}>{[a.specs?.manufacturer, a.specs?.model].filter(Boolean).join(' / ')}</div>}
-                        </td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{a.category?.name || '—'}</td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.location?.name || '—'}</td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.site?.name || '—'}</td>
-                        <td style={{ padding: '11px 14px' }}><AssetStatusBadge status={a.status} /></td>
-                        <td style={{ padding: '11px 14px' }}><HealthBar score={a.health_score ?? 0} /></td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, whiteSpace: 'nowrap', color: nextMaintColor(a.next_maintenance_at) }}>{fmtDate(a.next_maintenance_at)}</td>
-                        <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.operator?.full_name || '—'}</td>
-                        <td style={{ padding: '11px 14px' }} onClick={(e) => e.stopPropagation()}>
-                          {archivedView ? (
-                            canEdit && <button onClick={() => doRestore(a.id)} style={linkBtn}>Restore</button>
-                          ) : (
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => setSelected(a)} style={linkBtn}>View</button>
-                              {canEdit && <button onClick={() => setModal(a)} style={linkBtn}>Edit</button>}
-                              {canWO && <button onClick={() => setWoAsset(a)} style={{ ...linkBtn, color: 'var(--b700)', borderColor: 'var(--b200)' }}>WO</button>}
-                            </div>
-                          )}
-                        </td>
+                <>
+                  <table className="table-view-desktop" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                      <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
+                        {['AIN', 'Name & Model', 'Type', 'Location', 'Site', 'Status', 'Health', 'Next Maint.', 'Operator', 'Actions'].map((h) => (
+                          <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
+                        ))}
                       </tr>
+                    </thead>
+                    <tbody>
+                      {visibleAssets.map((a) => (
+                        <tr key={a.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selected?.id === a.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelected(a)}>
+                          <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, fontWeight: 500, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{a.ain}</td>
+                          <td style={{ padding: '11px 14px' }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--n900)' }}>{a.name}</div>
+                            {(a.specs?.manufacturer || a.specs?.model) && <div style={{ fontSize: 11, color: 'var(--n500)' }}>{[a.specs?.manufacturer, a.specs?.model].filter(Boolean).join(' / ')}</div>}
+                          </td>
+                          <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{a.category?.name || '—'}</td>
+                          <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.location?.name || '—'}</td>
+                          <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.site?.name || '—'}</td>
+                          <td style={{ padding: '11px 14px' }}><AssetStatusBadge status={a.status} /></td>
+                          <td style={{ padding: '11px 14px' }}><HealthBar score={a.health_score ?? 0} /></td>
+                          <td style={{ padding: '11px 14px', fontSize: 12, whiteSpace: 'nowrap', color: nextMaintColor(a.next_maintenance_at) }}>{fmtDate(a.next_maintenance_at)}</td>
+                          <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.operator?.full_name || '—'}</td>
+                          <td style={{ padding: '11px 14px' }} onClick={(e) => e.stopPropagation()}>
+                            {archivedView ? (
+                              canEdit && <button onClick={() => doRestore(a.id)} style={linkBtn}>Restore</button>
+                            ) : (
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={() => setSelected(a)} style={linkBtn}>View</button>
+                                {canEdit && <button onClick={() => setModal(a)} style={linkBtn}>Edit</button>}
+                                {canWO && <button onClick={() => setWoAsset(a)} style={{ ...linkBtn, color: 'var(--b700)', borderColor: 'var(--b200)' }}>WO</button>}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Mobile card list — same data, tap opens the full-screen detail panel */}
+                  <div className="card-list">
+                    {visibleAssets.map((a) => (
+                      <div key={a.id} className="list-card" onClick={() => setSelected(a)}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--n900)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                          <AssetStatusBadge status={a.status} />
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--n500)', marginBottom: 8 }}>
+                          <span style={{ fontFamily: 'var(--ff-m)', color: 'var(--b700)' }}>{a.ain}</span>
+                          {a.category?.name && <> · {a.category.name}</>}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--n600)', marginBottom: 8 }}>
+                          {[a.location?.name, a.site?.name].filter(Boolean).join(' · ') || '—'}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <HealthBar score={a.health_score ?? 0} />
+                          <span style={{ fontSize: 11, whiteSpace: 'nowrap', color: nextMaintColor(a.next_maintenance_at) }}>{fmtDate(a.next_maintenance_at)}</span>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </>
               )}
             </div>
 

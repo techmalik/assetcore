@@ -426,38 +426,60 @@ export default function WorkOrders({ dark, toggleDark }) {
                 ))}
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                  <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
-                    {['Ref', 'Title', 'Site', 'Asset', 'Type', 'Priority', 'Status', 'SLA', ''].map(h => (
-                      <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {wos.map(w => (
-                    <tr key={w.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selectedId === w.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelectedId(w.id)}>
-                      <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{w.ref}</td>
-                      <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: 'var(--n900)', maxWidth: 260 }}>
-                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</div>
-                      </td>
-                      <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{w.site?.name || '—'}</td>
-                      <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{w.asset?.ain || '—'}</td>
-                      <td style={{ padding: '10px 14px' }}><TypeBadge t={w.type} /></td>
-                      <td style={{ padding: '10px 14px' }}><PriorityBadge p={w.priority} /></td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <StatusBadge tone={WO_STATUS_STYLE} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
-                      </td>
-                      <td style={{ padding: '10px 14px' }}><SlaDue date={w.sla_due} /></td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <button onClick={e => { e.stopPropagation(); setSelectedId(w.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)', padding: 4 }}>
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="3" r="1" fill="currentColor"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="11" r="1" fill="currentColor"/></svg>
-                        </button>
-                      </td>
+              <>
+                <table className="table-view-desktop" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                    <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
+                      {['Ref', 'Title', 'Site', 'Asset', 'Type', 'Priority', 'Status', 'SLA', ''].map(h => (
+                        <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
+                      ))}
                     </tr>
+                  </thead>
+                  <tbody>
+                    {wos.map(w => (
+                      <tr key={w.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selectedId === w.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelectedId(w.id)}>
+                        <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{w.ref}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: 'var(--n900)', maxWidth: 260 }}>
+                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</div>
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{w.site?.name || '—'}</td>
+                        <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{w.asset?.ain || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}><TypeBadge t={w.type} /></td>
+                        <td style={{ padding: '10px 14px' }}><PriorityBadge p={w.priority} /></td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <StatusBadge tone={WO_STATUS_STYLE} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
+                        </td>
+                        <td style={{ padding: '10px 14px' }}><SlaDue date={w.sla_due} /></td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <button onClick={e => { e.stopPropagation(); setSelectedId(w.id) }} className="row-action" style={{ color: 'var(--n400)', padding: 4 }}>
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="3" r="1" fill="currentColor"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="11" r="1" fill="currentColor"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Mobile card list — same data, tap opens the full-screen detail panel */}
+                <div className="card-list">
+                  {wos.map(w => (
+                    <div key={w.id} className="list-card" onClick={() => setSelectedId(w.id)}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)' }}>{w.ref}</span>
+                        <StatusBadge tone={WO_STATUS_STYLE} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--n900)', marginBottom: 6, lineHeight: 1.4 }}>{w.title}</div>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                        <PriorityBadge p={w.priority} /><TypeBadge t={w.type} />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ fontSize: 11, color: 'var(--n500)' }}>{w.asset?.ain || w.site?.name || '—'}</span>
+                        {w.sla_due && <SlaDue date={w.sla_due} />}
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             )}
           </div>
 
