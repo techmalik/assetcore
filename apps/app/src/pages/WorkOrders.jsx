@@ -451,7 +451,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function WorkOrders({ dark, toggleDark }) {
-  const { roleKey } = useAuth()
+  const { roleKey, user } = useAuth()
   const canCreate     = can(roleKey, 'wo:create')
   const canTransition = can(roleKey, 'wo:transition')
   const canEdit       = can(roleKey, 'wo:update')
@@ -470,6 +470,8 @@ export default function WorkOrders({ dark, toggleDark }) {
   // value on the backend means "open", so it fetches everything and filters
   // here, same as the dashboard's "Open Work Orders" KPI counts it.
   const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || 'all')
+  // Supports the Dashboard's "My Open Work" card linking in as ?assignee=me.
+  const [mineOnly, setMineOnly] = useState(searchParams.get('assignee') === 'me')
   const [view, setView] = useState('list')
   const [selectedId, setSelectedId] = useState(null)
   const [showNew, setShowNew] = useState(false)
@@ -489,7 +491,8 @@ export default function WorkOrders({ dark, toggleDark }) {
 
   useEffect(() => { load() }, [load])
 
-  const byStatus = STATUS_COL_ORDER.reduce((acc, s) => { acc[s] = wos.filter(w => w.status === s); return acc }, {})
+  const visibleWos = mineOnly ? wos.filter(w => w.assignee_id === user?.id) : wos
+  const byStatus = STATUS_COL_ORDER.reduce((acc, s) => { acc[s] = visibleWos.filter(w => w.status === s); return acc }, {})
 
   return (
     <div className="app-shell">
@@ -500,9 +503,13 @@ export default function WorkOrders({ dark, toggleDark }) {
         <div style={{ padding: '14px 24px', borderBottom: 'var(--bdr)', background: 'var(--n0)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Work Orders</h1>
-            <p style={{ fontSize: 12, color: 'var(--n500)' }}>{loading ? 'Loading…' : `${wos.length} orders`}</p>
+            <p style={{ fontSize: 12, color: 'var(--n500)' }}>{loading ? 'Loading…' : `${visibleWos.length} orders`}</p>
           </div>
           <div style={{ flex: 1 }} />
+          <button onClick={() => setMineOnly(m => !m)}
+            style={{ height: 28, padding: '0 10px', border: `1px solid ${mineOnly ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 99, background: mineOnly ? 'var(--b50)' : 'var(--n0)', fontSize: 11, fontWeight: mineOnly ? 600 : 400, color: mineOnly ? 'var(--b700)' : 'var(--n600)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+            Assigned to me
+          </button>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {[['all', 'All'], ['open', 'Open'], ...Object.entries(WO_STATUS_LABEL)].map(([v, l]) => (
               <button key={v} onClick={() => setFilterStatus(v)} style={{ height: 28, padding: '0 10px', border: `1px solid ${filterStatus === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filterStatus === v ? 'var(--b50)' : 'var(--n0)', fontSize: 11, color: filterStatus === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filterStatus === v ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>{l}</button>
@@ -530,13 +537,15 @@ export default function WorkOrders({ dark, toggleDark }) {
                 <p style={{ color: 'var(--srt)', fontSize: 13, marginBottom: 12 }}>{error}</p>
                 <button onClick={load} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Retry</button>
               </div>
-            ) : wos.length === 0 ? (
+            ) : visibleWos.length === 0 ? (
               <div style={{ padding: 64, textAlign: 'center' }}>
                 <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>
-                  {globalLocation ? `No work orders in ${globalLocation.name}` : 'No work orders'}
+                  {mineOnly ? 'No work orders assigned to you' : globalLocation ? `No work orders in ${globalLocation.name}` : 'No work orders'}
                 </p>
                 {globalLocation ? (
                   <button onClick={() => setGlobalLocationId(null)} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Show all locations</button>
+                ) : mineOnly ? (
+                  <button onClick={() => setMineOnly(false)} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Show all</button>
                 ) : (
                   <>
                     <p style={{ fontSize: 13, color: 'var(--n400)', marginBottom: 20 }}>Create a work order to start tracking maintenance activities.</p>
@@ -581,7 +590,7 @@ export default function WorkOrders({ dark, toggleDark }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {wos.map(w => (
+                  {visibleWos.map(w => (
                     <tr key={w.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selectedId === w.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelectedId(w.id)}>
                       <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{w.ref}</td>
                       <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: 'var(--n900)', maxWidth: 260 }}>

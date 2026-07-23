@@ -3,11 +3,14 @@ import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
+import AssignModal from '../components/AssignModal.jsx'
 import { listPMSchedules, createPMSchedule, softDeletePMSchedule } from '../lib/db/pmSchedules'
 import { listPMTasks, updatePMTask, generatePMTasks, uploadMaintenanceReport } from '../lib/db/pmTasks'
+import { listOrgUsers } from '../lib/db/orgMembers'
 import { api } from '../lib/apiClient'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
+import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 
 const TASK_STATUS = {
@@ -34,8 +37,8 @@ function weekDays(refDate) {
 }
 
 // ── Schedule Modal ────────────────────────────────────────────────────────────
-function ScheduleModal({ onClose, onSaved }) {
-  const [form, setForm] = useState({ title:'', frequency:'monthly', next_due:isoToday() })
+function ScheduleModal({ onClose, onSaved, users }) {
+  const [form, setForm] = useState({ title:'', frequency:'monthly', next_due:isoToday(), assignee_id:'' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
 
@@ -45,7 +48,10 @@ function ScheduleModal({ onClose, onSaved }) {
     if (!form.title.trim()) return setErr('Title is required.')
     setSaving(true); setErr(null)
     try {
-      await createPMSchedule({ title:form.title.trim(), frequency:form.frequency, next_due:form.next_due, description:form.description||null })
+      await createPMSchedule({
+        title:form.title.trim(), frequency:form.frequency, next_due:form.next_due,
+        description:form.description||null, assignee_id: form.assignee_id || null,
+      })
       onSaved()
     } catch(e) { setErr(e.message) } finally { setSaving(false) }
   }
@@ -75,6 +81,12 @@ function ScheduleModal({ onClose, onSaved }) {
               <input type="date" value={form.next_due} onChange={e=>set('next_due',e.target.value)} style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',boxSizing:'border-box'}}/>
             </label>
           </div>
+          <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Default assignee
+            <select value={form.assignee_id} onChange={e=>set('assignee_id',e.target.value)} style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 8px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',background:'var(--n0)'}}>
+              <option value="">Unassigned</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+            </select>
+          </label>
         </div>
         <div style={{display:'flex',gap:8,marginTop:20,justifyContent:'flex-end'}}>
           <button onClick={onClose} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>Cancel</button>
@@ -98,8 +110,10 @@ const compliance = [
 const licStatus = {Active:{bg:'var(--sgb)',c:'var(--sgt)',br:'var(--sgbr)'},Expiring:{bg:'var(--sab)',c:'var(--sat)',br:'var(--sabr)'},Expired:{bg:'var(--srb)',c:'var(--srt)',br:'var(--srbr)'}}
 
 export default function Maintenance({ dark, toggleDark }) {
-  const { roleKey } = useAuth()
+  const toast = useToast()
+  const { roleKey, user } = useAuth()
   const canCreate = can(roleKey, 'wo:create')
+  const canAssign = can(roleKey, 'pm:update')
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
 
@@ -108,10 +122,13 @@ export default function Maintenance({ dark, toggleDark }) {
   const [tab, setTab] = useState('pm')
   const [tasks, setTasks] = useState([])
   const [schedules, setSchedules] = useState([])
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [assigning, setAssigning] = useState(null) // task being (re)assigned
+  const [mineOnly, setMineOnly] = useState(false)
   const today = isoToday()
   const weekStart = weekDays(today)[0].toISOString().slice(0,10)
   const weekEnd   = weekDays(today)[6].toISOString().slice(0,10)
@@ -120,18 +137,27 @@ export default function Maintenance({ dark, toggleDark }) {
     if (tab !== 'pm') return
     setLoading(true); setErr(null)
     try {
-      const [t, s] = await Promise.all([
+      const [t, s, u] = await Promise.all([
         listPMTasks({ statuses:['pending','in_progress','overdue'], dueBefore: addDays(today,30), locationId: globalLocationId }),
         listPMSchedules(),
+        listOrgUsers().catch(() => []),
       ])
       setTasks(t)
       setSchedules(s)
+      setUsers(u)
     } catch(e) {
       setErr(e.message)
     } finally { setLoading(false) }
   }, [tab, today, globalLocationId])
 
   useEffect(() => { load() }, [load])
+
+  async function saveAssignment(taskId, assigneeId) {
+    await updatePMTask(taskId, { assignee_id: assigneeId })
+    setAssigning(null)
+    toast.success(assigneeId ? 'Task assigned.' : 'Task unassigned.')
+    load()
+  }
 
   const handleGenerate = async () => {
     setGenerating(true)
@@ -155,7 +181,8 @@ export default function Maintenance({ dark, toggleDark }) {
   }
 
   const overdue = tasks.filter(t => t.status === 'overdue').length
-  const visibleTasks = overdueOnly ? tasks.filter(t => t.status === 'overdue') : tasks
+  const mineFiltered = mineOnly ? tasks.filter(t => t.assignee_id === user?.id) : tasks
+  const visibleTasks = overdueOnly ? mineFiltered.filter(t => t.status === 'overdue') : mineFiltered
 
   return (
     <div className="app-shell">
@@ -173,6 +200,10 @@ export default function Maintenance({ dark, toggleDark }) {
               <div style={{flex:1}}/>
               {tab === 'pm' && (
                 <>
+                  <button onClick={() => setMineOnly(m => !m)}
+                    style={{height:32,padding:'0 12px',border:`1px solid ${mineOnly?'var(--b300)':'var(--n200)'}`,borderRadius:99,background:mineOnly?'var(--b50)':'var(--n0)',fontSize:12,fontWeight:mineOnly?600:400,color:mineOnly?'var(--b700)':'var(--n600)',cursor:'pointer'}}>
+                    Assigned to me
+                  </button>
                   <button onClick={handleGenerate} disabled={generating} style={{height:32,padding:'0 14px',background:'var(--n0)',color:'var(--n700)',border:'1px solid var(--n200)',borderRadius:4,fontSize:13,cursor:'pointer'}}>
                     {generating?'Generating…':'Generate Tasks'}
                   </button>
@@ -229,7 +260,7 @@ export default function Maintenance({ dark, toggleDark }) {
                       <SchedulesView schedules={schedules} />
                     )
                   ) : (
-                    <TasksTable tasks={visibleTasks} onComplete={setCompleting} />
+                    <TasksTable tasks={visibleTasks} onComplete={setCompleting} onAssign={canAssign ? setAssigning : null} />
                   )}
                 </div>
 
@@ -326,8 +357,12 @@ export default function Maintenance({ dark, toggleDark }) {
         </div>
       </div>
 
-      {showModal && <ScheduleModal onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load() }}/>}
+      {showModal && <ScheduleModal users={users} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load() }}/>}
       {completing && <CompleteTaskModal task={completing} onClose={() => setCompleting(null)} onDone={onTaskCompleted}/>}
+      {assigning && (
+        <AssignModal title="Assign task" subtitle={assigning.title} users={users} currentId={assigning.assignee_id}
+          onClose={() => setAssigning(null)} onSave={(userId) => saveAssignment(assigning.id, userId)}/>
+      )}
     </div>
   )
 }
@@ -377,7 +412,7 @@ function CompleteTaskModal({ task, onClose, onDone }) {
   )
 }
 
-function TasksTable({ tasks, onComplete }) {
+function TasksTable({ tasks, onComplete, onAssign }) {
   return (
     <table style={{width:'100%',borderCollapse:'collapse'}}>
       <thead style={{position:'sticky',top:0,zIndex:10}}>
@@ -413,9 +448,16 @@ function TasksTable({ tasks, onComplete }) {
                 <StatusBadge tone={sc} />
               </td>
               <td style={{padding:'10px 14px'}}>
-                {t.status !== 'completed' && t.status !== 'skipped' && (
-                  <button onClick={() => onComplete(t)} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0,whiteSpace:'nowrap'}}>Mark done</button>
-                )}
+                <div style={{display:'flex',gap:10,whiteSpace:'nowrap'}}>
+                  {t.status !== 'completed' && t.status !== 'skipped' && (
+                    <button onClick={() => onComplete(t)} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Mark done</button>
+                  )}
+                  {onAssign && t.status !== 'completed' && t.status !== 'skipped' && (
+                    <button onClick={() => onAssign(t)} style={{fontSize:11,color:'var(--n500)',background:'none',border:'none',cursor:'pointer',padding:0}}>
+                      {t.assignee ? 'Reassign' : 'Assign'}
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           )
@@ -432,7 +474,7 @@ function SchedulesView({ schedules }) {
       <table style={{width:'100%',borderCollapse:'collapse'}}>
         <thead>
           <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
-            {['Schedule','Frequency','Asset','Site','Next Due','Active'].map(h => (
+            {['Schedule','Frequency','Asset','Site','Assignee','Next Due','Active'].map(h => (
               <th key={h} style={{padding:'8px 14px',textAlign:'left',fontSize:10,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--n500)',whiteSpace:'nowrap',borderBottom:'var(--bdr)'}}>{h}</th>
             ))}
           </tr>
@@ -444,6 +486,7 @@ function SchedulesView({ schedules }) {
               <td style={{padding:'10px 14px',fontSize:12,color:'var(--n600)'}}>{FREQ_LABEL[s.frequency]||s.frequency}</td>
               <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)'}}>{s.asset?.name||'—'}</td>
               <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)'}}>{s.site?.name||'—'}</td>
+              <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)'}}>{s.assignee?.full_name||'—'}</td>
               <td style={{padding:'10px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:'var(--n600)'}}>{fmtDate(s.next_due)}</td>
               <td style={{padding:'10px 14px'}}>
                 <span style={{fontSize:11,fontWeight:500,color:s.active?'var(--sgt)':'var(--n400)'}}>{s.active?'Yes':'No'}</span>
