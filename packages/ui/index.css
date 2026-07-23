@@ -328,4 +328,5 @@ a { text-decoration: none; color: inherit; }
   .input { min-height: 44px; }
   .tab-btn { min-height: 44px; }
   .nav-item { padding-top: 11px; padding-bottom: 11px; }
+  .topbar-back, .sidebar-hamburger { min-width: 44px; min-height: 44px; }
 }
