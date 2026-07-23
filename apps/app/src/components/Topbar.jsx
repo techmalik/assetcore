@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useNotifications } from '../lib/NotificationsContext'
 import { useSidebar } from '../lib/SidebarContext'
@@ -65,6 +65,11 @@ function LocationSwitcher() {
 
 export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
   const nav = useNavigate()
+  // Subscribing to location re-evaluates history depth on every navigation.
+  // idx survives the auth flow's replace-redirects, so idx > 0 means there is
+  // genuinely an in-app page behind us — never the login screen or another site.
+  useLocation()
+  const canGoBack = window.history.state?.idx > 0
   const { org, initials, fullName, roleKey, user, signOut } = useAuth()
   const { unreadCount } = useNotifications()
   const { toggle } = useSidebar()
@@ -90,6 +95,12 @@ export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
         <button onClick={toggle} className="sidebar-hamburger" style={{display:'none',width:32,height:32,border:'1px solid var(--n200)',borderRadius:6,background:'var(--n0)',alignItems:'center',justifyContent:'center',color:'var(--n600)',flexShrink:0,cursor:'pointer'}}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
         </button>
+        {canGoBack && (
+          <button onClick={() => nav(-1)} className="topbar-back" title="Go back" aria-label="Go back"
+            style={{ ...iconBtn, flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3.5L5.5 8l4.5 4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        )}
         <nav style={{display:'flex',alignItems:'center',gap:4,fontSize:13,flex:1}}>
           <button onClick={() => nav('/dashboard')} title="Go to dashboard" style={{background:'none',border:'none',padding:0,fontFamily:'var(--ff-u)',fontSize:13,color:'var(--n400)',cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.color='var(--b600)'} onMouseLeave={(e)=>e.currentTarget.style.color='var(--n400)'}>{org?.short_name || org?.name || '—'}</button>
           <span style={{color:'var(--n300)',margin:'0 2px'}}>/</span>
