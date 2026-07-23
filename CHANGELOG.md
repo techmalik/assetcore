@@ -24,6 +24,19 @@ first licensed release shipped to a client (NGML).
   (`@assetcore/rbac`) consumed by both the app and the API — removes the
   hand-mirrored copies that had already drifted (the Admin UI offered only a
   subset of the capabilities the API accepted).
+- PM tasks/schedules and inspections can now be assigned/reassigned from the
+  UI (Maintenance and Inspections pages) — the `assignee_id`/`inspector_id`
+  columns and API support existed since day one, but nothing let a user set
+  them.
+- Assigning a work order, PM task, or inspection now notifies the assignee
+  (`wo_assigned`, `pm_assigned`, `inspection_assigned`); completing one, or
+  uploading its report, now notifies the assigner/creator and supervisors
+  (`work_completed`, `report_uploaded`) — previously nothing generated a
+  notification for any of this, and `wo_assigned` was a dead stub referenced
+  only in the notification-preferences UI.
+- "Assigned to me" filters on the Work Orders, Maintenance, and Inspections
+  lists, plus a "My Open Work" dashboard card, so it's visible at a glance
+  who is handling what.
 
 First licensed on-prem release. Supersedes the pre-1.0 Supabase-based SaaS
 prototype entirely — nothing before this line was ever deployed to a client.

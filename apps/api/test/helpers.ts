@@ -16,6 +16,7 @@ export async function apiAs(email: string) {
   return {
     get: (url: string) => auth(request(app).get(url)),
     post: (url: string) => auth(request(app).post(url)),
+    put: (url: string) => auth(request(app).put(url)),
     patch: (url: string) => auth(request(app).patch(url)),
     delete: (url: string) => auth(request(app).delete(url)),
     token,
