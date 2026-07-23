@@ -5,10 +5,11 @@ import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
-import { requireCap } from '../middleware/rbac.js'
+import { requireCap, hasCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadTo, cleanupOrphanedUpload } from '../files.js'
+import { notifyWorkOrderClosed } from '../notify.js'
 
 export const workOrdersRouter = Router()
 workOrdersRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -112,9 +113,33 @@ async function generateWoRef(c: import('pg').PoolClient): Promise<string> {
   return rows[0].ref
 }
 
+// Inserts a work_order_activity row of kind 'assignment' — trg_notify_wo_activity
+// (0014_activity_assignment_notifications.sql) reacts to it and fires wo_assigned
+// to the new assignee (self-assignment and null-assignee already no-op there).
+async function recordAssignment(c: import('pg').PoolClient, orgId: string, woId: string, actorId: string, assigneeId: string | null): Promise<void> {
+  let body: string
+  if (assigneeId) {
+    const { rows } = await c.query('select full_name from public.users where id = $1', [assigneeId])
+    body = `Assigned to ${rows[0]?.full_name || 'a team member'}.`
+  } else {
+    body = 'Assignee removed.'
+  }
+  await c.query(
+    `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body)
+     values ($1, $2, $3, 'assignment', $4)`,
+    [orgId, woId, actorId, body]
+  )
+}
+
 workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) => {
   const parsed = woInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  // Any wo:create holder may create a WO, but only wo:assign holders may hand
+  // it to someone at the same time — otherwise wo:create alone would let a
+  // caller route work to a colleague without the assignment capability.
+  if (parsed.data.assignee_id && !hasCap(req, 'wo:assign')) {
+    return res.status(403).json({ error: 'forbidden', capability: 'wo:assign' })
+  }
   const { ref: providedRef, ...rest } = parsed.data
   const { columns, placeholders, values } = buildInsert(rest, ALLOWED.filter((c) => c !== 'ref'), 1)
 
@@ -126,7 +151,11 @@ workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) 
        returning id`,
       [ref, ...values]
     )
-    const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [rows[0].id])
+    const woId = rows[0].id
+    if (parsed.data.assignee_id) {
+      await recordAssignment(c, req.claims!.org_id!, woId, req.claims!.sub, parsed.data.assignee_id)
+    }
+    const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [woId])
     const wo = full[0]
     await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.create', entityType: 'work_order', entityId: wo.id, after: wo })
     return wo
@@ -140,19 +169,37 @@ workOrdersRouter.patch('/work-orders/:id', requireCap('wo:update'), async (req, 
   const { setSql, values } = buildSet(parsed.data, ALLOWED)
   if (!setSql) return res.status(400).json({ error: 'empty_patch' })
 
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+  const result = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows: cur } = await c.query('select assignee_id from public.work_orders where id = $1', [req.params.id])
+    if (!cur[0]) return { error: 'not_found' as const }
+    const assigneeChanged = 'assignee_id' in parsed.data && parsed.data.assignee_id !== cur[0].assignee_id
+    // Any wo:update holder may PATCH a work order, but reassigning it is
+    // gated on wo:assign specifically — otherwise every wo:update holder
+    // (e.g. a field tech) could reroute work without that capability.
+    if (assigneeChanged && !hasCap(req, 'wo:assign')) {
+      return { error: 'forbidden' as const, capability: 'wo:assign' }
+    }
+
     const { rows } = await c.query(
       `update public.work_orders set ${setSql}, updated_at = now() where id = $1 returning id, org_id`,
       [req.params.id, ...values]
     )
-    if (!rows[0]) return null
+    if (!rows[0]) return { error: 'not_found' as const }
+    // Update the row before recording the assignment — trg_notify_wo_activity
+    // reads the WO's current assignee_id off the just-updated row.
+    if (assigneeChanged) {
+      await recordAssignment(c, rows[0].org_id, String(req.params.id), req.claims!.sub, parsed.data.assignee_id ?? null)
+    }
     const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [req.params.id])
     const wo = full[0]
     await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.update', entityType: 'work_order', entityId: wo.id, after: parsed.data })
-    return wo
+    return { data: wo }
   })
-  if (!row) return res.status(404).json({ error: 'not_found' })
-  res.json(row)
+  if ('error' in result) {
+    if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' })
+    return res.status(403).json({ error: 'forbidden', capability: result.capability })
+  }
+  res.json(result.data)
 })
 
 const transitionInput = z.object({ status: z.string().min(1), comment: z.string().optional() })
@@ -186,7 +233,21 @@ workOrdersRouter.post('/work-orders/:id/transition', requireCap('wo:transition')
     })
 
     const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [req.params.id])
-    return { data: full[0] }
+    const woFull = full[0]
+
+    // Closing a WO is the "done" signal — tell whoever created it and
+    // whoever most recently assigned it (they're the ones who were waiting on
+    // it, not the assignee who just did the work). Auto-drafted WOs that were
+    // never assigned to anyone yield an empty set here — nothing to notify
+    // (supervisors were already alerted when it was drafted).
+    if (newStatus === 'closed') {
+      await notifyWorkOrderClosed(c, {
+        orgId: woFull.org_id, woId: woFull.id, ref: woFull.ref, title: woFull.title,
+        actorId: req.claims!.sub,
+      })
+    }
+
+    return { data: woFull }
   })
 
   if ('error' in result) {

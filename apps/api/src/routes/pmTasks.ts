@@ -9,6 +9,7 @@ import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 import { uploadTo, cleanupOrphanedUpload } from '../files.js'
+import { notifyUsers, notifyRoleHolders } from '../notify.js'
 
 export const pmTasksRouter = Router()
 pmTasksRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -69,10 +70,23 @@ pmTasksRouter.patch('/pm-tasks/:id', requireCap('pm:update'), async (req, res) =
   if (!setSql) return res.status(400).json({ error: 'empty_patch' })
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows: before } = await c.query('select assignee_id from public.pm_tasks where id = $1', [req.params.id])
+    if (!before[0]) return null
+    const assigneeChanged = 'assignee_id' in patch && patch.assignee_id !== before[0].assignee_id
+
     const { rows } = await c.query(`update public.pm_tasks set ${setSql} where id = $1 returning id, org_id`, [req.params.id, ...values])
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${SELECT} where t.id = $1`, [req.params.id])
     const task = full[0]
+
+    if (assigneeChanged && patch.assignee_id) {
+      await notifyUsers(c, {
+        orgId: task.org_id, userIds: [patch.assignee_id], actorId: req.claims!.sub,
+        kind: 'pm_assigned', title: `PM task assigned to you: ${task.title}`,
+        body: `Due ${task.due_date}.`, entityType: 'pm_task', entityId: task.id,
+      })
+    }
+
     if (patch.status === 'completed') {
       // Completing a PM task is one of the ways an asset's maintenance gets
       // recorded — routed through the same maintenance_events table and
@@ -107,6 +121,18 @@ pmTasksRouter.patch('/pm-tasks/:id', requireCap('pm:update'), async (req, res) =
         )
       }
       await writeAuditLog(c, { orgId: task.org_id, actorId: req.claims!.sub, action: 'pm_task.complete', entityType: 'pm_task', entityId: task.id, after: task })
+
+      // PM tasks are system-generated (no human "creator" to notify) — tell
+      // the supervisors who'd otherwise only find out via the asset's
+      // activity feed, site-scoped the same way check_licence_expiry() is.
+      await notifyRoleHolders(c, {
+        orgId: task.org_id, siteId: task.site_id, roles: ['owner', 'ops_manager'],
+        actorId: req.claims!.sub, kind: 'work_completed',
+        title: `Maintenance completed: ${task.title}`,
+        body: task.notes ? String(task.notes).slice(0, 120) : 'Completed.',
+        entityType: 'pm_task', entityId: task.id,
+        dedupePrefix: `work_completed:pm_task:${task.id}`,
+      })
     }
     return task
   })
@@ -132,8 +158,16 @@ pmTasksRouter.post('/pm-tasks/:id/report', requireCap('pm:update'), reportUpload
         )
       }
       const { rows: full } = await c.query(`${SELECT} where t.id = $1`, [req.params.id])
+      const task = full[0]
       await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'pm_task.attachment.add', entityType: 'pm_task', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
-      return full[0]
+      await notifyRoleHolders(c, {
+        orgId: task.org_id, siteId: task.site_id, roles: ['owner', 'ops_manager'],
+        actorId: req.claims!.sub, kind: 'report_uploaded',
+        title: `Maintenance report uploaded: ${task.title}`,
+        body: req.file!.originalname, entityType: 'pm_task', entityId: task.id,
+        dedupePrefix: `report_uploaded:pm_task:${task.id}`,
+      })
+      return task
     })
   } catch (err) {
     await cleanupOrphanedUpload(req.file.path)
