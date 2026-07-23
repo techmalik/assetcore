@@ -7,7 +7,7 @@ import { config } from '../config.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
-import { requireCap } from '../middleware/rbac.js'
+import { requireCap, GRANTABLE_CAPS, ROLE_KEYS } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { hashPassword } from '../auth/passwords.js'
 import { issueToken } from '../auth/tokens.js'
@@ -23,19 +23,9 @@ export const orgMembersRouter = Router()
 // there. Scoping to '/org/members' keeps it to this router's own routes.
 orgMembersRouter.use('/org/members', requireAuth, requireOrg, requireActiveMembership, requireCap('user:manage'))
 
-const ROLE_KEYS = ['owner', 'ops_manager', 'maint_engineer', 'field_tech', 'hse_officer', 'auditor', 'viewer'] as const
-
-// Capabilities an admin may grant per-user on top of the role baseline. Kept to
-// operational edit rights — never wildcards or org/user/integration management,
-// which stay owner-only.
-const GRANTABLE_CAPS = [
-  'asset:create', 'asset:update',
-  'wo:create', 'wo:update', 'wo:assign', 'wo:transition',
-  'pm:create', 'pm:update', 'maintenance:complete',
-  'inspection:create', 'inspection:update',
-  'compliance:create', 'compliance:update',
-  'report:create', 'audit:read',
-] as const
+// ROLE_KEYS and GRANTABLE_CAPS come from @assetcore/rbac (via middleware/rbac)
+// — the same lists the app's Admin UI renders, so what the UI offers and what
+// the API accepts can no longer drift apart.
 
 const scopeSchema = z.object({
   site_scope: z.array(z.string().uuid()).nullable().optional(),
