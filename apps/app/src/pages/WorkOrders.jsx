@@ -4,19 +4,20 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import {
-  listWorkOrders, getWorkOrder, createWorkOrder, transitionWorkOrder, addWorkOrderComment,
+  listWorkOrders, getWorkOrder, createWorkOrder, updateWorkOrder, transitionWorkOrder, addWorkOrderComment,
   uploadWorkOrderAttachment,
-  WO_TRANSITIONS, WO_STATUS_LABEL, WO_PRIORITY_LABEL, WO_TYPE_LABEL, WO_PRIORITY_STYLE, WO_STATUS_STYLE,
+  WO_TRANSITIONS, WO_STATUS_LABEL, WO_PRIORITY_LABEL, WO_TYPE_LABEL, WO_PRIORITY_STYLE, woStatusStyle,
 } from '../lib/db/workOrders'
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
+import { listOrgUsers } from '../lib/db/orgMembers'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 
-const STATUS_COL_ORDER = ['new', 'assigned', 'in_progress', 'awaiting_parts', 'inspection', 'closed']
+const STATUS_COL_ORDER = ['draft', 'new', 'assigned', 'in_progress', 'awaiting_parts', 'inspection', 'closed']
 
 function PriorityBadge({ p }) {
   const s = WO_PRIORITY_STYLE[p] || WO_PRIORITY_STYLE.low
@@ -45,9 +46,9 @@ function SlaDue({ date }) {
 }
 
 // ── New WO Modal ──────────────────────────────────────────────────────────────
-function NewWOModal({ sites, assets, onClose, onSave }) {
+function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
   const toast = useToast()
-  const [form, setForm] = useState({ title: '', description: '', type: 'corrective', priority: 'medium', site_id: '', asset_id: '', sla_due: '', cost: '' })
+  const [form, setForm] = useState({ title: '', description: '', type: 'corrective', priority: 'medium', site_id: '', asset_id: '', assignee_id: '', sla_due: '', cost: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
@@ -58,11 +59,12 @@ function NewWOModal({ sites, assets, onClose, onSave }) {
     try {
       if (!form.title.trim()) { setErr('Title is required.'); setSaving(false); return }
       if (form.cost !== '' && isNaN(Number(form.cost))) { setErr('Cost must be a number.'); setSaving(false); return }
-      const { cost, ...rest } = form
+      const { cost, assignee_id, ...rest } = form
       const wo = await createWorkOrder({
         ...rest, site_id: form.site_id || null, asset_id: form.asset_id || null, sla_due: form.sla_due || null,
+        assignee_id: canAssign ? (assignee_id || null) : null,
         cost_cents: cost === '' ? null : Math.round(Number(cost) * 100),
-        status: 'new',
+        status: canAssign && assignee_id ? 'assigned' : 'new',
       })
       toast.success(`Work order ${wo.ref} created.`)
       onSave()
@@ -117,7 +119,7 @@ function NewWOModal({ sites, assets, onClose, onSave }) {
             </select>
           </div>
         </div>
-        <div className="form-grid" style={{ gap: 12, marginBottom: 20 }}>
+        <div className="form-grid" style={{ gap: 12, marginBottom: 12 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>SLA due date</label>
             <input className="input" type="datetime-local" value={form.sla_due} onChange={e => set('sla_due', e.target.value)} style={{ width: '100%' }} />
@@ -127,6 +129,15 @@ function NewWOModal({ sites, assets, onClose, onSave }) {
             <input className="input" type="number" min="0" step="1" value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="e.g. 45000" style={{ width: '100%' }} />
           </div>
         </div>
+        {canAssign && (
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Assign to</label>
+            <select className="input" value={form.assignee_id} onChange={e => set('assignee_id', e.target.value)} style={{ width: '100%' }}>
+              <option value="">Unassigned</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+            </select>
+          </div>
+        )}
         {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginBottom: 12 }}>{err}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
@@ -139,8 +150,113 @@ function NewWOModal({ sites, assets, onClose, onSave }) {
   )
 }
 
+// ── Edit WO Modal ─────────────────────────────────────────────────────────────
+// Backed by the (previously UI-orphaned) PATCH /work-orders/:id — title,
+// description, type, priority, SLA, cost, and (for wo:assign holders) assignee.
+function EditWOModal({ wo, users, canAssign, onClose, onSaved }) {
+  const toast = useToast()
+  // datetime-local wants "YYYY-MM-DDTHH:mm" in local time, not the stored ISO.
+  const toLocalInput = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (isNaN(d)) return ''
+    const pad = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+  const [form, setForm] = useState({
+    title: wo.title || '', description: wo.description || '',
+    type: wo.type || 'corrective', priority: wo.priority || 'medium',
+    assignee_id: wo.assignee?.id || '', sla_due: toLocalInput(wo.sla_due),
+    cost: wo.cost_cents != null ? String(wo.cost_cents / 100) : '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
+
+  async function submit(e) {
+    e.preventDefault(); setErr('')
+    if (!form.title.trim()) { setErr('Title is required.'); return }
+    if (form.cost !== '' && isNaN(Number(form.cost))) { setErr('Cost must be a number.'); return }
+    setSaving(true)
+    try {
+      const patch = {
+        title: form.title.trim(), description: form.description || null,
+        type: form.type, priority: form.priority,
+        sla_due: form.sla_due || null,
+        cost_cents: form.cost === '' ? null : Math.round(Number(form.cost) * 100),
+      }
+      if (canAssign) patch.assignee_id = form.assignee_id || null
+      await updateWorkOrder(wo.id, patch)
+      toast.success('Work order updated.')
+      onSaved()
+    } catch (ex) { setErr(ex.message || 'Save failed.'); setSaving(false) }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
+      <form onSubmit={submit} style={{ position: 'relative', width: 520, maxWidth: '94vw', background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 28, zIndex: 1, maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 18, fontWeight: 700, color: 'var(--n950)' }}>Edit {wo.ref}</h3>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)' }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Title *</label>
+          <input className="input" value={form.title} onChange={e => set('title', e.target.value)} style={{ width: '100%' }} />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Description</label>
+          <textarea className="input" value={form.description} onChange={e => set('description', e.target.value)} rows={3} style={{ width: '100%', resize: 'vertical' }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Type</label>
+            <select className="input" value={form.type} onChange={e => set('type', e.target.value)} style={{ width: '100%' }}>
+              {Object.entries(WO_TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Priority</label>
+            <select className="input" value={form.priority} onChange={e => set('priority', e.target.value)} style={{ width: '100%' }}>
+              {Object.entries(WO_PRIORITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>SLA due date</label>
+            <input className="input" type="datetime-local" value={form.sla_due} onChange={e => set('sla_due', e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Estimated cost (₦)</label>
+            <input className="input" type="number" min="0" step="1" value={form.cost} onChange={e => set('cost', e.target.value)} style={{ width: '100%' }} />
+          </div>
+        </div>
+        {canAssign && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Assign to</label>
+            <select className="input" value={form.assignee_id} onChange={e => set('assignee_id', e.target.value)} style={{ width: '100%' }}>
+              <option value="">Unassigned</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+            </select>
+          </div>
+        )}
+        {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginBottom: 12 }}>{err}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
+          <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13, opacity: saving ? .7 : 1 }}>
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 // ── WO Detail panel ───────────────────────────────────────────────────────────
-function WODetail({ woId, onClose, onUpdate, canTransition }) {
+function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, users }) {
   const toast = useToast()
   const [wo, setWo] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -148,6 +264,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
   const [posting, setPosting] = useState(false)
   const [transitioning, setTransitioning] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [editing, setEditing] = useState(false)
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -215,14 +332,26 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
           <div style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b600)', marginBottom: 3 }}>{wo.ref}</div>
           <div style={{ fontFamily: 'var(--ff-d)', fontSize: 15, fontWeight: 700, color: 'var(--n950)', letterSpacing: '-.2px', lineHeight: 1.3 }}>{wo.title}</div>
         </div>
-        <button onClick={onClose} className="row-action" style={{ flexShrink: 0, width: 40, height: 40, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', color: 'var(--n500)' }}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-        </button>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {canEdit && (
+            <button onClick={() => setEditing(true)} title="Edit work order" className="row-action" style={{ height: 40, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', fontSize: 11, fontWeight: 500, color: 'var(--n600)', fontFamily: 'inherit' }}>
+              Edit
+            </button>
+          )}
+          <button onClick={onClose} className="row-action" style={{ flexShrink: 0, width: 40, height: 40, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', color: 'var(--n500)' }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+          </button>
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {wo.status === 'draft' && (
+          <div style={{ background: 'var(--sab)', border: '1px solid var(--sabr)', borderRadius: 6, padding: '10px 12px', fontSize: 12, color: 'var(--sat)', lineHeight: 1.5 }}>
+            Auto-drafted by the health monitor — review and approve it into <strong>New</strong> below, or close it to dismiss.
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <StatusBadge tone={WO_STATUS_STYLE} label={WO_STATUS_LABEL[wo.status]} size="md" weight={600} style={{ borderRadius: 3 }} />
+          <StatusBadge tone={woStatusStyle(wo.status)} label={WO_STATUS_LABEL[wo.status]} size="md" weight={600} style={{ borderRadius: 3 }} />
           <PriorityBadge p={wo.priority} />
           <TypeBadge t={wo.type} />
         </div>
@@ -231,6 +360,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
           {[
             ['Site', wo.site?.name || '—'],
             ['Asset', wo.asset ? `${wo.asset.ain} — ${wo.asset.name}` : '—'],
+            ['Assignee', wo.assignee?.full_name || 'Unassigned'],
             ['SLA Due', wo.sla_due ? <SlaDue date={wo.sla_due} /> : '—'],
             ['Cost', fmtNaira(wo.cost_cents)],
           ].map(([k, v]) => (
@@ -250,12 +380,14 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
 
         {canTransition && nextStatuses.length > 0 && (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--n500)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8, fontFamily: 'var(--ff-m)' }}>Move to</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--n500)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8, fontFamily: 'var(--ff-m)' }}>
+              {wo.status === 'draft' ? 'Approve draft' : 'Move to'}
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {nextStatuses.map(s => (
                 <button key={s} onClick={() => transition(s)} disabled={transitioning} className="filter-pill"
                   style={{ height: 30, padding: '0 12px', fontSize: 12, fontWeight: 500, border: '1px solid var(--b200)', borderRadius: 4, background: s === 'closed' ? 'var(--sgb)' : 'var(--b50)', color: s === 'closed' ? 'var(--sgt)' : 'var(--b700)', cursor: transitioning ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: transitioning ? .6 : 1 }}>
-                  {WO_STATUS_LABEL[s]}
+                  {wo.status === 'draft' ? (s === 'new' ? 'Approve' : 'Dismiss') : WO_STATUS_LABEL[s]}
                 </button>
               ))}
             </div>
@@ -302,15 +434,28 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
         <input value={comment} onChange={e => setComment(e.target.value)} className="input" placeholder="Add a comment…" style={{ flex: 1, height: 34, fontSize: 13 }} />
         <button type="submit" disabled={posting || !comment.trim()} className="btn btn-primary" style={{ height: 34, padding: '0 14px', fontSize: 13, flexShrink: 0, opacity: !comment.trim() ? .5 : 1 }}>Post</button>
       </form>
+
+      {editing && (
+        <EditWOModal wo={wo} users={users} canAssign={canAssign}
+          onClose={() => setEditing(false)}
+          onSaved={async () => {
+            setEditing(false)
+            const fresh = await getWorkOrder(wo.id)
+            setWo(fresh)
+            onUpdate()
+          }} />
+      )}
     </div>
   )
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function WorkOrders({ dark, toggleDark }) {
-  const { roleKey } = useAuth()
+  const { roleKey, user } = useAuth()
   const canCreate     = can(roleKey, 'wo:create')
   const canTransition = can(roleKey, 'wo:transition')
+  const canEdit       = can(roleKey, 'wo:update')
+  const canAssign     = can(roleKey, 'wo:assign')
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
 
@@ -318,12 +463,15 @@ export default function WorkOrders({ dark, toggleDark }) {
   const [wos, setWos] = useState([])
   const [sites, setSites] = useState([])
   const [assets, setAssets] = useState([])
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   // 'open' is a client-side pseudo-status (not closed) — no single status
   // value on the backend means "open", so it fetches everything and filters
   // here, same as the dashboard's "Open Work Orders" KPI counts it.
   const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || 'all')
+  // Supports the Dashboard's "My Open Work" card linking in as ?assignee=me.
+  const [mineOnly, setMineOnly] = useState(searchParams.get('assignee') === 'me')
   const [view, setView] = useState('list')
   const [selectedId, setSelectedId] = useState(null)
   const [showNew, setShowNew] = useState(false)
@@ -331,19 +479,20 @@ export default function WorkOrders({ dark, toggleDark }) {
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const [w, s, a] = await Promise.all([
+      const [w, s, a, u] = await Promise.all([
         listWorkOrders({ status: (filterStatus === 'all' || filterStatus === 'open') ? undefined : filterStatus, locationId: globalLocationId }),
-        listSites(), listAssets(),
+        listSites(), listAssets(), listOrgUsers().catch(() => []),
       ])
       setWos(filterStatus === 'open' ? w.filter(x => x.status !== 'closed') : w)
-      setSites(s); setAssets(a)
+      setSites(s); setAssets(a); setUsers(u)
     } catch (e) { setError(e.message || 'Failed to load work orders.') }
     finally { setLoading(false) }
   }, [filterStatus, globalLocationId])
 
   useEffect(() => { load() }, [load])
 
-  const byStatus = STATUS_COL_ORDER.reduce((acc, s) => { acc[s] = wos.filter(w => w.status === s); return acc }, {})
+  const visibleWos = mineOnly ? wos.filter(w => w.assignee_id === user?.id) : wos
+  const byStatus = STATUS_COL_ORDER.reduce((acc, s) => { acc[s] = visibleWos.filter(w => w.status === s); return acc }, {})
 
   return (
     <div className="app-shell">
@@ -354,9 +503,13 @@ export default function WorkOrders({ dark, toggleDark }) {
         <div style={{ padding: '14px 24px', borderBottom: 'var(--bdr)', background: 'var(--n0)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Work Orders</h1>
-            <p style={{ fontSize: 12, color: 'var(--n500)' }}>{loading ? 'Loading…' : `${wos.length} orders`}</p>
+            <p style={{ fontSize: 12, color: 'var(--n500)' }}>{loading ? 'Loading…' : `${visibleWos.length} orders`}</p>
           </div>
           <div style={{ flex: 1 }} />
+          <button onClick={() => setMineOnly(m => !m)}
+            style={{ height: 28, padding: '0 10px', border: `1px solid ${mineOnly ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 99, background: mineOnly ? 'var(--b50)' : 'var(--n0)', fontSize: 11, fontWeight: mineOnly ? 600 : 400, color: mineOnly ? 'var(--b700)' : 'var(--n600)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+            Assigned to me
+          </button>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {[['all', 'All'], ['open', 'Open'], ...Object.entries(WO_STATUS_LABEL)].map(([v, l]) => (
               <button key={v} onClick={() => setFilterStatus(v)} className="filter-pill" style={{ height: 28, padding: '0 10px', border: `1px solid ${filterStatus === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filterStatus === v ? 'var(--b50)' : 'var(--n0)', fontSize: 11, color: filterStatus === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filterStatus === v ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>{l}</button>
@@ -384,13 +537,15 @@ export default function WorkOrders({ dark, toggleDark }) {
                 <p style={{ color: 'var(--srt)', fontSize: 13, marginBottom: 12 }}>{error}</p>
                 <button onClick={load} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Retry</button>
               </div>
-            ) : wos.length === 0 ? (
+            ) : visibleWos.length === 0 ? (
               <div style={{ padding: 64, textAlign: 'center' }}>
                 <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>
-                  {globalLocation ? `No work orders in ${globalLocation.name}` : 'No work orders'}
+                  {mineOnly ? 'No work orders assigned to you' : globalLocation ? `No work orders in ${globalLocation.name}` : 'No work orders'}
                 </p>
                 {globalLocation ? (
                   <button onClick={() => setGlobalLocationId(null)} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Show all locations</button>
+                ) : mineOnly ? (
+                  <button onClick={() => setMineOnly(false)} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Show all</button>
                 ) : (
                   <>
                     <p style={{ fontSize: 13, color: 'var(--n400)', marginBottom: 20 }}>Create a work order to start tracking maintenance activities.</p>
@@ -430,13 +585,13 @@ export default function WorkOrders({ dark, toggleDark }) {
                 <table className="table-view-desktop" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
-                      {['Ref', 'Title', 'Site', 'Asset', 'Type', 'Priority', 'Status', 'SLA', ''].map(h => (
+                      {['Ref', 'Title', 'Site', 'Asset', 'Assignee', 'Type', 'Priority', 'Status', 'SLA', ''].map(h => (
                         <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {wos.map(w => (
+                    {visibleWos.map(w => (
                       <tr key={w.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selectedId === w.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelectedId(w.id)}>
                         <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{w.ref}</td>
                         <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: 'var(--n900)', maxWidth: 260 }}>
@@ -444,10 +599,11 @@ export default function WorkOrders({ dark, toggleDark }) {
                         </td>
                         <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{w.site?.name || '—'}</td>
                         <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{w.asset?.ain || '—'}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{w.assignee?.full_name || '—'}</td>
                         <td style={{ padding: '10px 14px' }}><TypeBadge t={w.type} /></td>
                         <td style={{ padding: '10px 14px' }}><PriorityBadge p={w.priority} /></td>
                         <td style={{ padding: '10px 14px' }}>
-                          <StatusBadge tone={WO_STATUS_STYLE} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
+                          <StatusBadge tone={woStatusStyle(w.status)} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
                         </td>
                         <td style={{ padding: '10px 14px' }}><SlaDue date={w.sla_due} /></td>
                         <td style={{ padding: '10px 14px' }}>
@@ -462,18 +618,18 @@ export default function WorkOrders({ dark, toggleDark }) {
 
                 {/* Mobile card list — same data, tap opens the full-screen detail panel */}
                 <div className="card-list">
-                  {wos.map(w => (
+                  {visibleWos.map(w => (
                     <div key={w.id} className="list-card" onClick={() => setSelectedId(w.id)}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                         <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)' }}>{w.ref}</span>
-                        <StatusBadge tone={WO_STATUS_STYLE} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
+                        <StatusBadge tone={woStatusStyle(w.status)} label={WO_STATUS_LABEL[w.status]} size="md" style={{ borderRadius: 3 }} />
                       </div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--n900)', marginBottom: 6, lineHeight: 1.4 }}>{w.title}</div>
                       <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
                         <PriorityBadge p={w.priority} /><TypeBadge t={w.type} />
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <span style={{ fontSize: 11, color: 'var(--n500)' }}>{w.asset?.ain || w.site?.name || '—'}</span>
+                        <span style={{ fontSize: 11, color: 'var(--n500)' }}>{w.asset?.ain || w.site?.name || '—'}{w.assignee ? ` · ${w.assignee.full_name}` : ''}</span>
                         {w.sla_due && <SlaDue date={w.sla_due} />}
                       </div>
                     </div>
@@ -484,13 +640,13 @@ export default function WorkOrders({ dark, toggleDark }) {
           </div>
 
           {selectedId && (
-            <WODetail woId={selectedId} onClose={() => setSelectedId(null)} onUpdate={load} canTransition={canTransition} />
+            <WODetail woId={selectedId} onClose={() => setSelectedId(null)} onUpdate={load} canTransition={canTransition} canEdit={canEdit} canAssign={canAssign} users={users} />
           )}
         </div>
       </div>
 
       {showNew && (
-        <NewWOModal sites={sites} assets={assets} onClose={() => setShowNew(false)} onSave={() => { setShowNew(false); load() }} />
+        <NewWOModal sites={sites} assets={assets} users={users} canAssign={canAssign} onClose={() => setShowNew(false)} onSave={() => { setShowNew(false); load() }} />
       )}
     </div>
   )

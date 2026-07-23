@@ -2,11 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
+import AssignModal from '../components/AssignModal.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 import { listInspections, createInspection, updateInspection, uploadInspectionReport } from '../lib/db/inspections'
 import { listSites } from '../lib/db/sites'
+import { listOrgUsers } from '../lib/db/orgMembers'
 import { api } from '../lib/apiClient'
+import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 
 const STATUS_META = {
@@ -30,9 +33,9 @@ function fmtDate(d) {
 }
 
 // ── Create Modal ─────────────────────────────────────────────────────────────
-function InspectionModal({ onClose, onSaved, sites }) {
+function InspectionModal({ onClose, onSaved, sites, users }) {
   const today = new Date().toISOString().slice(0,10)
-  const [form, setForm] = useState({ title:'', kind:'condition', scheduled_date:today, site_id:'', notes:'' })
+  const [form, setForm] = useState({ title:'', kind:'condition', scheduled_date:today, site_id:'', inspector_id:'', notes:'' })
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState(null)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -47,6 +50,7 @@ function InspectionModal({ onClose, onSaved, sites }) {
         kind:           form.kind,
         scheduled_date: form.scheduled_date,
         site_id:        form.site_id || null,
+        inspector_id:   form.inspector_id || null,
         notes:          form.notes   || null,
         status:         'scheduled',
       })
@@ -80,12 +84,20 @@ function InspectionModal({ onClose, onSaved, sites }) {
               <input type="date" value={form.scheduled_date} onChange={e=>set('scheduled_date',e.target.value)} style={inp}/>
             </label>
           </div>
-          <label style={lbl}>Site
-            <select value={form.site_id} onChange={e=>set('site_id',e.target.value)} style={{...inp,appearance:'none'}}>
-              <option value="">— Not site-specific —</option>
-              {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </label>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            <label style={lbl}>Site
+              <select value={form.site_id} onChange={e=>set('site_id',e.target.value)} style={{...inp,appearance:'none'}}>
+                <option value="">— Not site-specific —</option>
+                {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </label>
+            <label style={lbl}>Inspector
+              <select value={form.inspector_id} onChange={e=>set('inspector_id',e.target.value)} style={{...inp,appearance:'none'}}>
+                <option value="">Unassigned</option>
+                {users.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+              </select>
+            </label>
+          </div>
           <label style={lbl}>Notes
             <textarea value={form.notes} onChange={e=>set('notes',e.target.value)} rows={2} style={{...inp,height:'auto',padding:'8px 10px',resize:'vertical'}}/>
           </label>
@@ -154,31 +166,51 @@ function FindingsModal({ inspection, onClose, onSaved }) {
 }
 
 export default function Inspections({ dark, toggleDark }) {
-  const { roleKey } = useAuth()
-  const canCreate = can(roleKey, 'wo:create')
+  const toast = useToast()
+  const { roleKey, user } = useAuth()
+  // Was 'wo:create' — the API's POST /inspections is gated on
+  // inspection:create, not wo:create; ops_manager holds the latter but not
+  // the former, so "New Inspection" was visible to roles whose create
+  // request would 403. Matches the actual route gate now.
+  const canCreate  = can(roleKey, 'inspection:create')
+  const canReassign = can(roleKey, 'inspection:update')
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
   const [inspections, setInspections] = useState([])
   const [sites, setSites]             = useState([])
+  const [users, setUsers]             = useState([])
   const [loading, setLoading]         = useState(true)
   const [err, setErr]                 = useState(null)
   const [modal, setModal]             = useState(null) // null|'create'|inspection-obj
+  const [assigning, setAssigning]     = useState(null) // inspection being (re)assigned
   const [tab, setTab]                 = useState('open')
+  const [mineOnly, setMineOnly]       = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
     try {
-      const [insp, siteList] = await Promise.all([listInspections({ locationId: globalLocationId }), listSites()])
+      const [insp, siteList, userList] = await Promise.all([
+        listInspections({ locationId: globalLocationId }), listSites(), listOrgUsers().catch(() => []),
+      ])
       setInspections(insp)
       setSites(siteList)
+      setUsers(userList)
     } catch (e) { setErr(e.message) }
     finally { setLoading(false) }
   }, [globalLocationId])
 
   useEffect(() => { load() }, [load])
 
-  const open   = inspections.filter(i => i.status !== 'completed')
-  const closed = inspections.filter(i => i.status === 'completed')
+  async function saveAssignment(inspectionId, inspectorId) {
+    await updateInspection(inspectionId, { inspector_id: inspectorId })
+    setAssigning(null)
+    toast.success(inspectorId ? 'Inspector assigned.' : 'Inspector unassigned.')
+    load()
+  }
+
+  const mineFiltered = mineOnly ? inspections.filter(i => i.inspector_id === user?.id) : inspections
+  const open   = mineFiltered.filter(i => i.status !== 'completed')
+  const closed = mineFiltered.filter(i => i.status === 'completed')
   const shown  = tab === 'open' ? open : closed
 
   return (
@@ -202,13 +234,19 @@ export default function Inspections({ dark, toggleDark }) {
                 </button>
               )}
             </div>
-            <div style={{display:'flex',gap:0}}>
-              {[
-                { k:'open',   label:`Open (${open.length})`     },
-                { k:'closed', label:`Completed (${closed.length})` },
-              ].map(t => (
-                <button key={t.k} className={`tab-btn${tab===t.k?' active':''}`} onClick={() => setTab(t.k)}>{t.label}</button>
-              ))}
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <div style={{display:'flex',gap:0}}>
+                {[
+                  { k:'open',   label:`Open (${open.length})`     },
+                  { k:'closed', label:`Completed (${closed.length})` },
+                ].map(t => (
+                  <button key={t.k} className={`tab-btn${tab===t.k?' active':''}`} onClick={() => setTab(t.k)}>{t.label}</button>
+                ))}
+              </div>
+              <button onClick={() => setMineOnly(m => !m)}
+                style={{height:26,padding:'0 10px',marginBottom:8,border:`1px solid ${mineOnly?'var(--b300)':'var(--n200)'}`,borderRadius:99,background:mineOnly?'var(--b50)':'var(--n0)',fontSize:11,fontWeight:mineOnly?600:400,color:mineOnly?'var(--b700)':'var(--n600)',cursor:'pointer'}}>
+                Assigned to me
+              </button>
             </div>
           </div>
 
@@ -261,9 +299,16 @@ export default function Inspections({ dark, toggleDark }) {
                           <StatusBadge tone={sm} />
                         </td>
                         <td style={{padding:'11px 14px'}}>
-                          {ins.status !== 'completed' && (
-                            <button onClick={() => setModal(ins)} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0,whiteSpace:'nowrap'}}>Complete</button>
-                          )}
+                          <div style={{display:'flex',gap:10,whiteSpace:'nowrap'}}>
+                            {ins.status !== 'completed' && (
+                              <button onClick={() => setModal(ins)} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Complete</button>
+                            )}
+                            {ins.status !== 'completed' && canReassign && (
+                              <button onClick={() => setAssigning(ins)} style={{fontSize:11,color:'var(--n500)',background:'none',border:'none',cursor:'pointer',padding:0}}>
+                                {ins.inspector ? 'Reassign' : 'Assign'}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -276,10 +321,14 @@ export default function Inspections({ dark, toggleDark }) {
       </div>
 
       {modal === 'create' && (
-        <InspectionModal sites={sites} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
+        <InspectionModal sites={sites} users={users} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
       )}
       {modal && modal !== 'create' && (
         <FindingsModal inspection={modal} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
+      )}
+      {assigning && (
+        <AssignModal title="Assign inspector" subtitle={assigning.title} users={users} currentId={assigning.inspector_id}
+          onClose={() => setAssigning(null)} onSave={(userId) => saveAssignment(assigning.id, userId)}/>
       )}
     </div>
   )

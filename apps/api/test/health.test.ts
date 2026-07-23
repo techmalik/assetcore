@@ -94,17 +94,47 @@ describe('threshold crossing: inspection (configurable, default 50%)', () => {
   })
 })
 
-describe('threshold crossing: maintenance / auto work order (fixed at 30%)', () => {
-  it('crossing down through 30% drafts exactly one Auto: work order', async () => {
+describe('threshold crossing: maintenance / auto work order (configurable, default 30%)', () => {
+  it('crossing down through 30% drafts exactly one Auto: work order, in draft status', async () => {
     const assetId = await createHealthTestAsset({ healthScore: 40 })
     await withClient(async (c) => {
       await c.query('select public.apply_asset_health($1, 25, null)', [assetId])
 
       const { rows } = await c.query(
-        `select count(*)::int as n from public.work_orders where asset_id = $1 and title like 'Auto:%' and status <> 'closed'`,
+        `select status from public.work_orders where asset_id = $1 and title like 'Auto:%' and status <> 'closed'`,
         [assetId]
       )
-      expect(rows[0].n).toBe(1)
+      expect(rows.length).toBe(1)
+      // Auto-generated WOs land as a literal draft awaiting approval, not 'new'.
+      expect(rows[0].status).toBe('draft')
+    })
+  })
+
+  it('respects an org-configured maintenanceThreshold instead of the 30 default', async () => {
+    const assetId = await createHealthTestAsset({ healthScore: 45 })
+    await withClient(async (c) => {
+      // jsonb_set can't create the intermediate 'health' object, so merge it in.
+      await c.query(
+        `update public.organizations
+         set settings = coalesce(settings, '{}'::jsonb)
+           || jsonb_build_object('health', coalesce(settings->'health', '{}'::jsonb) || '{"maintenanceThreshold": 40}'::jsonb)
+         where id = $1`,
+        [ORG_A]
+      )
+      try {
+        // 45 -> 38 crosses the configured 40 (but not the default 30) — WO fires.
+        await c.query('select public.apply_asset_health($1, 38, null)', [assetId])
+        const { rows } = await c.query(
+          `select count(*)::int as n from public.work_orders where asset_id = $1 and title like 'Auto:%' and status <> 'closed'`,
+          [assetId]
+        )
+        expect(rows[0].n).toBe(1)
+      } finally {
+        await c.query(
+          `update public.organizations set settings = settings #- '{health,maintenanceThreshold}' where id = $1`,
+          [ORG_A]
+        )
+      }
     })
   })
 

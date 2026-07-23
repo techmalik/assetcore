@@ -1,0 +1,15 @@
+{
+  "name": "@assetcore/rbac",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Single source of truth for AssetCore's role→capability map, shared by the app (UI gating) and the API (enforcement).",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  }
+}

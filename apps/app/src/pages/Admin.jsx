@@ -8,23 +8,30 @@ import { listAuditLog } from '../lib/db/audit.js'
 import { listOrgMembers, inviteOrgMember, updateOrgMemberRole, updateOrgMemberAccess, setOrgMemberStatus, resetOrgMemberPassword } from '../lib/db/orgMembers.js'
 import { getOrg, updateOrgSettings } from '../lib/db/org.js'
 import { useAuth } from '../lib/AuthContext.jsx'
-import { can, ROLE_CAPABILITIES, ROLE_LABELS, ADMIN_ENTRY_CAPS } from '../lib/rbac.js'
+import { can, ROLE_CAPABILITIES, ROLE_LABELS, ADMIN_ENTRY_CAPS, GRANTABLE_CAPS as GRANTABLE_CAP_KEYS } from '../lib/rbac.js'
 import { useToast } from '../lib/ToastContext'
 
-// Capabilities an admin can grant per-user on top of the role baseline
-// (mirrors GRANTABLE_CAPS in apps/api/src/routes/orgMembers.ts).
-const GRANTABLE_CAPS = [
-  { key: 'asset:update', label: 'Edit assets' },
-  { key: 'asset:create', label: 'Create assets' },
-  { key: 'wo:create', label: 'Create work orders' },
-  { key: 'wo:transition', label: 'Change work-order status' },
-  { key: 'pm:update', label: 'Update maintenance status' },
-  { key: 'maintenance:complete', label: 'Complete maintenance' },
-  { key: 'inspection:update', label: 'Update inspection status' },
-  { key: 'compliance:update', label: 'Manage compliance' },
-  { key: 'report:create', label: 'Generate reports' },
-  { key: 'audit:read', label: 'View audit log' },
-]
+// Human labels for the grantable capabilities. The KEYS come from
+// @assetcore/rbac (the same list the API's invite/access schemas validate
+// against), so the chips offered here always match what the server accepts.
+const CAP_LABELS = {
+  'asset:create': 'Create assets',
+  'asset:update': 'Edit assets',
+  'wo:create': 'Create work orders',
+  'wo:update': 'Edit work orders',
+  'wo:assign': 'Assign work orders',
+  'wo:transition': 'Change work-order status',
+  'pm:create': 'Create maintenance schedules',
+  'pm:update': 'Update maintenance status',
+  'maintenance:complete': 'Complete maintenance',
+  'inspection:create': 'Create inspections',
+  'inspection:update': 'Update inspection status',
+  'compliance:create': 'Create compliance records',
+  'compliance:update': 'Manage compliance',
+  'report:create': 'Generate reports',
+  'audit:read': 'View audit log',
+}
+const GRANTABLE_CAPS = GRANTABLE_CAP_KEYS.map((key) => ({ key, label: CAP_LABELS[key] || key }))
 
 // A toggle chip with an explicit check when selected — reads more clearly than
 // a bare colour swap, especially for people filling the form quickly.
@@ -897,13 +904,19 @@ function ConfigTab() {
   const canEdit = can(roleKey, 'org:manage')
   const [org, setOrg] = useState(null)
   const [threshold, setThreshold] = useState(50)
+  const [maintThreshold, setMaintThreshold] = useState(30)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
 
   useEffect(() => {
     getOrg()
-      .then(o => { setOrg(o); setThreshold(o.settings?.health?.inspectionThreshold ?? 50); setLoading(false) })
+      .then(o => {
+        setOrg(o)
+        setThreshold(o.settings?.health?.inspectionThreshold ?? 50)
+        setMaintThreshold(o.settings?.health?.maintenanceThreshold ?? 30)
+        setLoading(false)
+      })
       .catch(e => { setMsg(e.message); setLoading(false) })
   }, [])
 
@@ -911,9 +924,13 @@ function ConfigTab() {
     setSaving(true); setMsg(null)
     try {
       const t = Math.max(1, Math.min(99, Number(threshold) || 50))
-      const settings = { ...(org?.settings || {}), health: { ...(org?.settings?.health || {}), inspectionThreshold: t } }
+      const m = Math.max(1, Math.min(99, Number(maintThreshold) || 30))
+      // The maintenance band must sit below the inspection band — otherwise an
+      // asset would trigger maintenance before (or instead of) an inspection.
+      if (m >= t) { setMsg('Maintenance threshold must be below the inspection threshold.'); setSaving(false); return }
+      const settings = { ...(org?.settings || {}), health: { ...(org?.settings?.health || {}), inspectionThreshold: t, maintenanceThreshold: m } }
       const updated = await updateOrgSettings(settings)
-      setOrg(updated); setThreshold(t); setMsg('Saved.')
+      setOrg(updated); setThreshold(t); setMaintThreshold(m); setMsg('Saved.')
     } catch (e) { setMsg(e.message) } finally { setSaving(false) }
   }
 
@@ -923,14 +940,23 @@ function ConfigTab() {
         <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
       ) : (
         <div style={{maxWidth:520,background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:'18px 20px'}}>
-          <div style={{fontSize:14,fontWeight:600,color:'var(--n800)',marginBottom:4}}>Health & inspection threshold</div>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--n800)',marginBottom:4}}>Health thresholds</div>
           <div style={{fontSize:12,color:'var(--n500)',marginBottom:14,lineHeight:1.6}}>
-            When an asset's health falls to this percentage, an inspection alert is raised. Maintenance alerts and auto-drafted work orders always trigger at 30%.
+            When an asset's health falls to the inspection threshold, an inspection is raised.
+            At the maintenance threshold, a maintenance alert is sent and a work order is auto-drafted.
+            The maintenance threshold must be below the inspection threshold.
           </div>
-          <label style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'var(--n700)'}}>
+          <label style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'var(--n700)',marginBottom:10}}>
             Inspection alert at
             <input type="number" min={1} max={99} value={threshold} disabled={!canEdit}
               onChange={e => setThreshold(e.target.value)}
+              style={{width:80,height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,background:canEdit?'var(--n0)':'var(--n50)',color:'var(--n900)'}}/>
+            % health
+          </label>
+          <label style={{display:'flex',alignItems:'center',gap:10,fontSize:13,color:'var(--n700)'}}>
+            Maintenance trigger at
+            <input type="number" min={1} max={99} value={maintThreshold} disabled={!canEdit}
+              onChange={e => setMaintThreshold(e.target.value)}
               style={{width:80,height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,background:canEdit?'var(--n0)':'var(--n50)',color:'var(--n900)'}}/>
             % health
           </label>

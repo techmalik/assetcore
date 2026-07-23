@@ -4,8 +4,10 @@
 //   > 50        → green  (healthy)
 //   31 – 50     → yellow (attention)
 //   <= 30       → red    (critical)
-// Keep these in lockstep with the inspection/maintenance thresholds in the
-// health-recompute job (inspection alert defaults to 50, maintenance/auto-WO at 30).
+// The display bands here are fixed per the product spec. The *trigger*
+// thresholds in the health-recompute job are org-configurable (inspection
+// defaults to 50, maintenance/auto-WO defaults to 30 — Admin → Configuration);
+// the color bands intentionally stay at the spec values regardless.
 
 export const HEALTH_YELLOW_MAX = 50
 export const HEALTH_RED_MAX = 30

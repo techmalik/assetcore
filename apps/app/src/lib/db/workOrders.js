@@ -1,7 +1,10 @@
 import { api } from '../apiClient'
 
-// Status transitions allowed per current status
+// Status transitions allowed per current status. `draft` is where
+// auto-generated WOs land (health-crossing automation) — approving one moves
+// it to `new`; human-created WOs never start as draft.
 export const WO_TRANSITIONS = {
+  draft:          ['new', 'closed'],
   new:            ['assigned', 'in_progress', 'closed'],
   assigned:       ['in_progress', 'awaiting_parts', 'closed'],
   in_progress:    ['awaiting_parts', 'inspection', 'closed'],
@@ -11,6 +14,7 @@ export const WO_TRANSITIONS = {
 }
 
 export const WO_STATUS_LABEL = {
+  draft:          'Draft',
   new:            'New',
   assigned:       'Assigned',
   in_progress:    'In Progress',
@@ -34,7 +38,14 @@ export const WO_PRIORITY_STYLE = {
 
 // WO status badges are intentionally neutral-blue everywhere (not
 // tone-per-status) - status progression is shown by position/label, not color.
+// Draft is the one exception: a system-proposed WO awaiting approval renders
+// muted/neutral so it reads as "not yet real work".
 export const WO_STATUS_STYLE = { bg: 'var(--b50)', c: 'var(--b700)', br: 'var(--b200)' }
+export const WO_DRAFT_STYLE = { bg: 'var(--n100)', c: 'var(--n600)', br: 'var(--n300)' }
+
+export function woStatusStyle(status) {
+  return status === 'draft' ? WO_DRAFT_STYLE : WO_STATUS_STYLE
+}
 
 export async function listWorkOrders({ status, priority, asset_id, locationId } = {}) {
   const params = new URLSearchParams()

@@ -70,9 +70,19 @@ const assetInput = z.object({
   nbv_cents: z.number().int().nullable().optional(),
   parent_asset_id: z.string().uuid().nullable().optional(),
   assigned_operator_id: z.string().uuid().nullable().optional(),
-  last_maintenance_at: z.string().nullable().optional(),
-  next_maintenance_at: z.string().nullable().optional(),
+  // Required on create (and never clearable via PATCH): without both dates
+  // the asset is invisible to recompute_asset_health()'s daily decay pass —
+  // it would sit at its initial health forever and never alert.
+  last_maintenance_at: z.string().min(1),
+  next_maintenance_at: z.string().min(1),
 })
+
+// next must be strictly after last, or the decay denominator is <= 0 and the
+// recompute job skips the asset. ISO yyyy-mm-dd strings compare lexically.
+function maintenanceDatesOrdered(data: { last_maintenance_at?: string; next_maintenance_at?: string }): boolean {
+  if (!data.last_maintenance_at || !data.next_maintenance_at) return true
+  return data.next_maintenance_at > data.last_maintenance_at
+}
 
 assetsRouter.get('/assets', async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : null
@@ -161,6 +171,7 @@ assetsRouter.post('/assets/:id/activity', async (req, res) => {
 assetsRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
   const parsed = assetInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  if (!maintenanceDatesOrdered(parsed.data)) return res.status(400).json({ error: 'invalid_maintenance_dates' })
   const { columns, placeholders, values } = buildInsert(parsed.data, ALLOWED)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
@@ -189,8 +200,16 @@ assetsRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
 
 // Bulk CSV import. Body: { rows: [{ ain, name, category, site, status, ... }] }.
 // Create-only (dedupe by AIN), per-row result, one row's failure never aborts
-// the rest (savepoint per row).
-const importRowSchema = z.object({ ain: z.string().min(1), name: z.string().min(1) }).passthrough()
+// the rest (savepoint per row). Maintenance dates are required per row, same
+// as the create endpoint — an imported asset must decay like any other.
+const importRowSchema = z.object({
+  ain: z.string().min(1),
+  name: z.string().min(1),
+  last_maintenance_date: z.string().min(1),
+  next_maintenance_date: z.string().min(1),
+}).passthrough()
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res) => {
   const rows = Array.isArray(req.body?.rows) ? req.body.rows : null
@@ -219,8 +238,16 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
     const out: Array<{ ain: string; status: 'created' | 'skipped' | 'error'; message?: string }> = []
     for (const raw of rows) {
       const parsed = importRowSchema.safeParse(raw)
-      if (!parsed.success) { out.push({ ain: String(raw?.ain ?? '(missing)'), status: 'error', message: 'ain and name are required' }); continue }
+      if (!parsed.success) { out.push({ ain: String(raw?.ain ?? '(missing)'), status: 'error', message: 'ain, name, last_maintenance_date and next_maintenance_date are required' }); continue }
       const r = parsed.data as Record<string, any>
+      if (!ISO_DATE.test(r.last_maintenance_date) || !ISO_DATE.test(r.next_maintenance_date)) {
+        out.push({ ain: r.ain, status: 'error', message: 'maintenance dates must be YYYY-MM-DD' })
+        continue
+      }
+      if (r.next_maintenance_date <= r.last_maintenance_date) {
+        out.push({ ain: r.ain, status: 'error', message: 'next_maintenance_date must be after last_maintenance_date' })
+        continue
+      }
       const categoryId = r.category ? catByKey.get(String(r.category).toLowerCase()) ?? null : null
       const locationId = r.location ? locByKey.get(String(r.location).toLowerCase()) ?? null : null
       const siteKey = r.site ? String(r.site).toLowerCase() : null
@@ -250,11 +277,11 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
       await c.query('savepoint import_row')
       try {
         const { rows: ins } = await c.query(
-          `insert into public.assets (org_id, ain, name, category_id, site_id, status, health_score, purchase_value_cents, specs, lat, lng)
-           values (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
+          `insert into public.assets (org_id, ain, name, category_id, site_id, status, health_score, purchase_value_cents, specs, lat, lng, last_maintenance_at, next_maintenance_at)
+           values (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12)
            on conflict (org_id, ain) do nothing
            returning id`,
-          [r.ain, r.name, categoryId, siteId, status, health, value, JSON.stringify(specs), num(r.lat), num(r.lng)]
+          [r.ain, r.name, categoryId, siteId, status, health, value, JSON.stringify(specs), num(r.lat), num(r.lng), r.last_maintenance_date, r.next_maintenance_date]
         )
         if (ins[0]) {
           await writeAuditLog(c, { orgId: req.claims!.org_id!, actorId: req.claims!.sub, action: 'asset.import', entityType: 'asset', entityId: ins[0].id })
@@ -281,6 +308,7 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
 assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) => {
   const parsed = assetInput.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  if (!maintenanceDatesOrdered(parsed.data)) return res.status(400).json({ error: 'invalid_maintenance_dates' })
   const { setSql, values } = buildSet(parsed.data, ALLOWED)
   // health_score isn't in ALLOWED (see comment above) — a request setting
   // ONLY health_score would otherwise 400 as an empty patch.
