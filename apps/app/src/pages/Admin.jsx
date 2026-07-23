@@ -155,7 +155,7 @@ function SiteModal({ site, locations, onClose, onSave }) {
 
   return (
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:400,padding:24,boxShadow:'var(--sh-lg)'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:400,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
         <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:18}}>{site ? 'Edit Site' : 'Add Site'}</div>
         <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
           {[['name','Site Name','e.g. Lagos DS-04'],['code','Site Code','e.g. LG-DS04'],['region','Region (optional)','e.g. South West']].map(([k,l,ph]) => (
@@ -272,7 +272,7 @@ function LocationModal({ location, onClose, onSave }) {
 
   return (
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:380,padding:24,boxShadow:'var(--sh-lg)'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:380,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
         <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:18}}>{location ? 'Edit Location' : 'Add Location'}</div>
         <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
           {[['name','Location Name','e.g. Lagos'],['code','Short Code (optional)','e.g. LG']].map(([k,l,ph]) => (
@@ -371,7 +371,7 @@ function CatModal({ cat, onClose, onSave }) {
 
   return (
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:380,padding:24,boxShadow:'var(--sh-lg)'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:380,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
         <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:18}}>{cat ? 'Edit Category' : 'Add Category'}</div>
         <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
           {[['name','Category Name','e.g. Metering Station'],['code','Short Code','e.g. MTR']].map(([k,l,ph]) => (
@@ -559,7 +559,7 @@ function InviteModal({ locations, sites, onClose, onInvited }) {
   if (link) {
     return (
       <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,padding:24,boxShadow:'var(--sh-lg)'}}>
+        <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
           <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:10}}>Invite sent</div>
           <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>SMTP isn't configured in dev — share this set-password link with {form.email} directly:</p>
           <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all',marginBottom:16}}>{link}</code>
@@ -783,7 +783,7 @@ function UsersTab() {
       {accessMember && <AccessModal member={accessMember} locations={locations} sites={sites} onClose={() => setAccessMember(null)} onSaved={() => { setAccessMember(null); load() }} />}
       {resetLink && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,padding:24,boxShadow:'var(--sh-lg)'}}>
+          <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
             <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:10}}>Password reset link</div>
             <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>Share this one-time link with the user (also emailed if SMTP is configured):</p>
             <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all',marginBottom:16}}>{resetLink}</code>
@@ -978,7 +978,7 @@ export default function Admin({ dark, toggleDark }) {
               <h1 style={{fontFamily:'var(--ff-d)',fontSize:22,fontWeight:700,letterSpacing:'-.3px',color:'var(--n950)'}}>Admin</h1>
               <p style={{fontSize:12,color:'var(--n500)'}}>Manage your organisation settings, team, and audit trail</p>
             </div>
-            <div style={{display:'flex',gap:0}}>
+            <div className="tab-strip" style={{gap:0}}>
               {visibleTabs.map(t => (
                 <button key={t.k} className={`tab-btn${tab===t.k?' active':''}`} onClick={() => setTab(t.k)}>{t.label}</button>
               ))}

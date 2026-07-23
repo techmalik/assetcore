@@ -110,7 +110,7 @@ export default function Reports({ dark, toggleDark }) {
                 Generate Report
               </button>
             </div>
-            <div style={{display:'flex',gap:0}}>
+            <div className="tab-strip" style={{gap:0}}>
               {[{k:'library',label:'Report Library'},{k:'analytics',label:'Analytics'},{k:'generate',label:'Generate Report'}].map(t => (
                 <button key={t.k} className={`tab-btn${tab===t.k?' active':''}`} onClick={() => setTab(t.k)}>{t.label}</button>
               ))}

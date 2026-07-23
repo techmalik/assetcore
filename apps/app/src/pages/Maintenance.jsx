@@ -199,10 +199,10 @@ export default function Maintenance({ dark, toggleDark }) {
             </div>
           </div>
 
-          <div style={{flex:1,overflow:'hidden',display:'flex'}}>
+          <div className="split-with-aside" style={{flex:1,overflow:'hidden',display:'flex'}}>
             {tab === 'pm' && (
               <>
-                <div style={{flex:1,overflowY:'auto'}}>
+                <div className="split-primary" style={{flex:1,overflowY:'auto'}}>
                   {overdueOnly && (
                     <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 16px',background:'var(--srb)',borderBottom:'1px solid var(--srbr)',fontSize:12,color:'var(--srt)'}}>
                       Showing overdue tasks only ({visibleTasks.length})
@@ -233,7 +233,7 @@ export default function Maintenance({ dark, toggleDark }) {
                   )}
                 </div>
 
-                <div style={{width:300,flexShrink:0,borderLeft:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+                <div className="aside-panel" style={{width:300,flexShrink:0,borderLeft:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
                   <div style={{padding:'14px 16px',borderBottom:'var(--bdr)'}}>
                     <div style={{fontSize:13,fontWeight:600,color:'var(--n900)'}}>
                       {new Date(weekStart).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – {new Date(weekEnd).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
@@ -281,7 +281,7 @@ export default function Maintenance({ dark, toggleDark }) {
 
             {tab === 'compliance' && (
               <div style={{flex:1,overflowY:'auto'}}>
-                <div style={{padding:'14px 24px',borderBottom:'var(--bdr)',background:'var(--n0)',display:'flex',gap:20}}>
+                <div style={{padding:'14px 24px',borderBottom:'var(--bdr)',background:'var(--n0)',display:'flex',gap:20,flexWrap:'wrap'}}>
                   {[
                     {label:'Active',count:5,c:'var(--sgt)',bg:'var(--sgb)',br:'var(--sgbr)'},
                     {label:'Expiring Soon',count:1,c:'var(--sat)',bg:'var(--sab)',br:'var(--sabr)'},

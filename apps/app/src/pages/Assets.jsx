@@ -766,13 +766,13 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
   const section = { fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)', marginBottom: 8 }
 
   return (
-    <div style={{ width: 360, flexShrink: 0, borderLeft: 'var(--bdr)', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="detail-panel" style={{ '--panel-w': '360px', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: 'var(--bdr)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b600)', marginBottom: 2 }}>{asset.ain}{archived && <span style={{ color: 'var(--n400)' }}> · archived</span>}</div>
           <div style={{ fontFamily: 'var(--ff-d)', fontSize: 16, fontWeight: 700, color: 'var(--n950)', letterSpacing: '-.2px' }}>{asset.name}</div>
         </div>
-        <button onClick={onClose} style={{ width: 26, height: 26, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--n500)' }}>
+        <button onClick={onClose} className="row-action" style={{ width: 40, height: 40, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', color: 'var(--n500)' }}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
         </button>
       </div>

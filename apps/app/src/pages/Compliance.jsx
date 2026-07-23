@@ -183,10 +183,10 @@ function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded })
   const docList = lic.documents?.length ? lic.documents : (lic.document_url ? [{ url: lic.document_url, name: lic.document_url.split('/').pop() }] : [])
 
   return (
-    <div style={{width:320,flexShrink:0,borderLeft:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div className="detail-panel" style={{'--panel-w':'320px',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <div style={{padding:'14px 16px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:8}}>
         <span style={{fontSize:13,fontWeight:600,color:'var(--n900)',flex:1}}>Licence Detail</span>
-        <button onClick={onClose} style={{width:24,height:24,border:'none',background:'none',cursor:'pointer',color:'var(--n400)',fontSize:18,lineHeight:1}}>×</button>
+        <button onClick={onClose} className="row-action" style={{width:40,height:40,border:'none',background:'none',color:'var(--n400)',fontSize:18,lineHeight:1}}>×</button>
       </div>
       <div style={{flex:1,overflowY:'auto',padding:'16px'}}>
         <StatusBadge tone={meta} size="md" weight={600} style={{marginBottom:12}} />
@@ -393,7 +393,7 @@ function AuditsPanel({ canCreate }) {
 
   return (
     <div style={{ flex: 1, overflowY: 'auto' }}>
-      <div style={{ padding: '12px 24px', display: 'flex', alignItems: 'center' }}>
+      <div style={{ padding: '12px 24px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
         <div style={{ fontSize: 13, color: 'var(--n600)' }}>Routine-maintenance & ISO audit attestations</div>
         <div style={{ flex: 1 }} />
         {pmCompliance && (

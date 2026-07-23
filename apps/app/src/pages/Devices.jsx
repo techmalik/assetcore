@@ -192,8 +192,8 @@ export default function Devices({ dark, toggleDark }) {
                 </button>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => setFilter('all')} style={{ height: 28, padding: '0 12px', border: `1px solid ${filter === 'all' ? 'var(--b400)' : 'var(--n200)'}`, borderRadius: 4, background: filter === 'all' ? 'var(--b50)' : 'var(--n0)', fontSize: 12, fontWeight: filter === 'all' ? 600 : 400, color: filter === 'all' ? 'var(--b700)' : 'var(--n600)', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button onClick={() => setFilter('all')} className="filter-pill" style={{ height: 28, padding: '0 12px', border: `1px solid ${filter === 'all' ? 'var(--b400)' : 'var(--n200)'}`, borderRadius: 4, background: filter === 'all' ? 'var(--b50)' : 'var(--n0)', fontSize: 12, fontWeight: filter === 'all' ? 600 : 400, color: filter === 'all' ? 'var(--b700)' : 'var(--n600)', cursor: 'pointer' }}>
                 All ({counts.all})
               </button>
               {[
@@ -282,9 +282,9 @@ export default function Devices({ dark, toggleDark }) {
 
 function EmptyState({ canCreate, onAdd }) {
   return (
-    <div style={{ padding: 40, display: 'flex', gap: 40, alignItems: 'flex-start' }}>
+    <div style={{ padding: 'clamp(16px, 4vw, 40px)', display: 'flex', gap: 40, alignItems: 'flex-start', flexWrap: 'wrap' }}>
       {/* Left: empty state */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', gap: 14, textAlign: 'center', background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8 }}>
+      <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', gap: 14, textAlign: 'center', background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8 }}>
         <div style={{ width: 56, height: 56, borderRadius: 12, background: 'var(--n100)', border: 'var(--bdr)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="var(--n400)" strokeWidth="1.4" /><path d="M6 10h.01M6 14h.01M10 10h4M10 14h4" stroke="var(--n400)" strokeWidth="1.3" strokeLinecap="round" /></svg>
         </div>
@@ -300,7 +300,7 @@ function EmptyState({ canCreate, onAdd }) {
       </div>
 
       {/* Right: how it works */}
-      <div style={{ width: 300, flexShrink: 0, background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, padding: 20 }}>
+      <div style={{ flex: '1 1 300px', minWidth: 260, background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, padding: 20 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--n800)', marginBottom: 14 }}>How telemetry works</div>
         {[
           { step: '1', title: 'Register device', desc: 'Add the device serial and link it to an asset or site.' },

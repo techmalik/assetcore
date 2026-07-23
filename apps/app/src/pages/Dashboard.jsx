@@ -106,7 +106,7 @@ export default function Dashboard({ dark, toggleDark }) {
 
         <div style={{flex:1,overflowY:'auto',padding:24}}>
           {/* Page header */}
-          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:20}}>
+          <div className="page-header" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:20}}>
             <div>
               <h1 style={{fontFamily:'var(--ff-d)',fontSize:26,fontWeight:700,letterSpacing:'-.4px',color:'var(--n950)',lineHeight:1.15}}>Operations Dashboard</h1>
               <p style={{fontSize:13,color:'var(--n500)',marginTop:4}}>
@@ -131,7 +131,7 @@ export default function Dashboard({ dark, toggleDark }) {
           )}
 
           {/* KPI cards */}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:20}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:20}}>
             <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/assets')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/assets') }}>
               <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Total Assets</div>
               <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:'var(--n950)',lineHeight:1,marginBottom:8}}>
@@ -180,7 +180,7 @@ export default function Dashboard({ dark, toggleDark }) {
           </div>
 
           {/* Main grid */}
-          <div style={{display:'grid',gridTemplateColumns:'280px 1fr',gap:16,marginBottom:16}}>
+          <div className="dash-main-grid" style={{display:'grid',gap:16,marginBottom:16}}>
             {/* Health donut */}
             <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:20,boxShadow:'var(--sh-sm)'}}>
               <div style={{fontSize:14,fontWeight:600,color:'var(--n800)',marginBottom:16}}>Network Health</div>
@@ -282,7 +282,7 @@ export default function Dashboard({ dark, toggleDark }) {
           </div>
 
           {/* Bottom row */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 360px',gap:16}}>
+          <div className="dash-bottom-grid" style={{display:'grid',gap:16}}>
             {/* Recent Work Orders — live */}
             <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,boxShadow:'var(--sh-sm)',overflow:'hidden'}}>
               <div style={{padding:'14px 20px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>

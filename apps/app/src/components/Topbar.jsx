@@ -29,7 +29,7 @@ function LocationSwitcher() {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 10px', fontSize: 12, color: 'var(--n600)' }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sg)', flexShrink: 0 }} />
-        {locations[0].name}
+        <span className="locswitch-label">{locations[0].name}</span>
       </div>
     )
   }
@@ -39,11 +39,11 @@ function LocationSwitcher() {
       <button onClick={() => setOpen((o) => !o)} title="Location filter" aria-haspopup="menu" aria-expanded={open}
         style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 6, background: 'var(--n0)', cursor: 'pointer', fontSize: 12, color: 'var(--n700)' }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: current ? 'var(--sg)' : 'var(--n300)', flexShrink: 0 }} />
-        {current ? current.name : 'All my locations'}
+        <span className="locswitch-label">{current ? current.name : 'All my locations'}</span>
         <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ transition: 'transform .15s', transform: open ? 'rotate(180deg)' : 'none' }}><path d="M3 4.5l3 3 3-3" stroke="var(--n500)" strokeWidth="1.3" strokeLinecap="round" /></svg>
       </button>
       {open && (
-        <div role="menu" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, minWidth: 200, background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, boxShadow: 'var(--sh-lg)', zIndex: 60, overflow: 'hidden', padding: '4px 0' }}>
+        <div role="menu" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, minWidth: 200, maxWidth: 'calc(100vw - 24px)', background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, boxShadow: 'var(--sh-lg)', zIndex: 60, overflow: 'hidden', padding: '4px 0' }}>
           <button role="menuitem" onClick={() => { setLocationId(null); setOpen(false) }}
             style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 14px', background: !locationId ? 'var(--n50)' : 'none', border: 'none', fontFamily: 'var(--ff-u)', fontSize: 13, color: 'var(--n800)', cursor: 'pointer', textAlign: 'left', fontWeight: !locationId ? 600 : 400 }}
             onMouseEnter={(e) => e.currentTarget.style.background = 'var(--n50)'} onMouseLeave={(e) => e.currentTarget.style.background = !locationId ? 'var(--n50)' : 'none'}>
@@ -82,29 +82,49 @@ export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
 
   const iconBtn = { width: 32, height: 32, border: '1px solid var(--n200)', borderRadius: 6, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--n600)', cursor: 'pointer' }
   const menuItem = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', background: 'none', border: 'none', fontFamily: 'var(--ff-u)', fontSize: 13, color: 'var(--n700)', cursor: 'pointer', textAlign: 'left' }
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
   return (
     <header style={{background:'var(--n0)',borderBottom:'var(--bdr)',flexShrink:0,zIndex:40}}>
-      <div style={{height:52,display:'flex',alignItems:'center',padding:'0 24px',gap:16}}>
+      <div style={{height:52,display:'flex',alignItems:'center',padding:'0 24px',gap:16,position:'relative'}}>
+        {mobileSearchOpen ? (
+          <div className="topbar-mobile-search-overlay" style={{position:'absolute',inset:0,background:'var(--n0)',display:'flex',alignItems:'center',gap:8,padding:'0 16px',zIndex:45}}>
+            <div style={{position:'relative',flex:1}}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{position:'absolute',left:9,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}>
+                <circle cx="7" cy="7" r="4.5" stroke="var(--n400)" strokeWidth="1.3"/>
+                <path d="M10 10l2.5 2.5" stroke="var(--n400)" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+              <input autoFocus placeholder="Search assets, work orders…" style={{width:'100%',height:40,border:'1px solid var(--n200)',borderRadius:4,padding:'0 12px 0 30px',fontFamily:'var(--ff-u)',fontSize:14,color:'var(--n900)',background:'var(--n50)',outline:'none'}}/>
+            </div>
+            <button onClick={() => setMobileSearchOpen(false)} aria-label="Close search" style={iconBtn}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+        ) : (
+        <>
         {/* Hamburger — visible only on mobile via CSS */}
         <button onClick={toggle} className="sidebar-hamburger" style={{display:'none',width:32,height:32,border:'1px solid var(--n200)',borderRadius:6,background:'var(--n0)',alignItems:'center',justifyContent:'center',color:'var(--n600)',flexShrink:0,cursor:'pointer'}}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
         </button>
-        <nav style={{display:'flex',alignItems:'center',gap:4,fontSize:13,flex:1}}>
+        <nav className="topbar-breadcrumb" style={{display:'flex',alignItems:'center',gap:4,fontSize:13,flex:1,minWidth:0}}>
           <button onClick={() => nav('/dashboard')} title="Go to dashboard" style={{background:'none',border:'none',padding:0,fontFamily:'var(--ff-u)',fontSize:13,color:'var(--n400)',cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.color='var(--b600)'} onMouseLeave={(e)=>e.currentTarget.style.color='var(--n400)'}>{org?.short_name || org?.name || '—'}</button>
           <span style={{color:'var(--n300)',margin:'0 2px'}}>/</span>
-          <span style={{color:'var(--n900)',fontWeight:500}}>{breadcrumb}</span>
+          <span style={{color:'var(--n900)',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{breadcrumb}</span>
         </nav>
 
         <LocationSwitcher />
 
-        <div style={{position:'relative',width:260}}>
+        <div className="topbar-search" style={{position:'relative',width:260}}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{position:'absolute',left:9,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}>
             <circle cx="7" cy="7" r="4.5" stroke="var(--n400)" strokeWidth="1.3"/>
             <path d="M10 10l2.5 2.5" stroke="var(--n400)" strokeWidth="1.3" strokeLinecap="round"/>
           </svg>
-          <input placeholder="Search assets, work orders… ⌘K" style={{width:'100%',height:32,border:'1px solid var(--n200)',borderRadius:4,padding:'0 12px 0 30px',fontFamily:'var(--ff-u)',fontSize:13,color:'var(--n900)',background:'var(--n50)',outline:'none'}}/>
+          <input placeholder="Search assets, work orders…" style={{width:'100%',height:32,border:'1px solid var(--n200)',borderRadius:4,padding:'0 12px 0 30px',fontFamily:'var(--ff-u)',fontSize:13,color:'var(--n900)',background:'var(--n50)',outline:'none'}}/>
         </div>
+
+        <button onClick={() => setMobileSearchOpen(true)} className="topbar-mobile-search-btn" title="Search" style={{display:'none',width:32,height:32,border:'1px solid var(--n200)',borderRadius:6,background:'var(--n0)',alignItems:'center',justifyContent:'center',color:'var(--n600)',flexShrink:0,cursor:'pointer'}}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M10 10l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+        </button>
 
         <div style={{display:'flex',alignItems:'center',gap:6}}>
           <div style={{position:'relative'}}>
@@ -128,7 +148,7 @@ export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
             </button>
 
             {menuOpen && (
-              <div role="menu" style={{position:'absolute',top:'calc(100% + 8px)',right:0,width:250,background:'var(--n0)',border:'var(--bdr)',borderRadius:10,boxShadow:'var(--sh-lg)',zIndex:60,overflow:'hidden'}}>
+              <div role="menu" style={{position:'absolute',top:'calc(100% + 8px)',right:0,width:250,maxWidth:'calc(100vw - 24px)',background:'var(--n0)',border:'var(--bdr)',borderRadius:10,boxShadow:'var(--sh-lg)',zIndex:60,overflow:'hidden'}}>
                 <div style={{padding:'14px 14px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:10}}>
                   <div style={{width:36,height:36,borderRadius:'50%',background:'var(--b700)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:600,color:'#fff',flexShrink:0}}>{initials}</div>
                   <div style={{minWidth:0}}>
@@ -162,6 +182,8 @@ export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
       {children}
     </header>
