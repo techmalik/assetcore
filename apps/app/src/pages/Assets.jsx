@@ -105,7 +105,7 @@ function Field({ label, required, full, children }) {
 }
 
 // ── CSV helpers ────────────────────────────────────────────────────────────────
-const CSV_HEADERS = ['ain', 'name', 'category', 'location', 'site', 'status', 'manufacturer', 'model', 'serial_number', 'install_date', 'purchase_date', 'runtime_hours', 'value', 'health_score', 'tags', 'lat', 'lng']
+const CSV_HEADERS = ['ain', 'name', 'category', 'location', 'site', 'status', 'manufacturer', 'model', 'serial_number', 'install_date', 'purchase_date', 'runtime_hours', 'value', 'health_score', 'last_maintenance_date', 'next_maintenance_date', 'tags', 'lat', 'lng']
 
 function csvCell(v) {
   const s = String(v ?? '')
@@ -113,7 +113,7 @@ function csvCell(v) {
 }
 
 function downloadTemplate() {
-  const example = ['AST-001', 'Compressor Unit X-5', 'Compressor', 'Lagos', 'Lagos DS-04', 'operational', 'GE', 'GCF-700', 'SN-001', '2023-01-15', '2022-11-01', '18240', '5000000', '90', 'critical,offshore', '6.45', '3.4']
+  const example = ['AST-001', 'Compressor Unit X-5', 'Compressor', 'Lagos', 'Lagos DS-04', 'operational', 'GE', 'GCF-700', 'SN-001', '2023-01-15', '2022-11-01', '18240', '5000000', '90', '2025-06-01', '2025-12-01', 'critical,offshore', '6.45', '3.4']
   const csv = CSV_HEADERS.join(',') + '\n' + example.map(csvCell).join(',') + '\n'
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
@@ -225,6 +225,14 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
     e.preventDefault(); setErr('')
     if (!form.ain.trim() || !form.name.trim() || !form.category_id || !form.location_id || !form.site_id) {
       setErr('AIN, name, type, location and site are all required.'); return
+    }
+    // Maintenance dates are mandatory — without both, the asset is excluded
+    // from the daily health-decay job and would never decay or alert.
+    if (!form.last_maintenance_at || !form.next_maintenance_at) {
+      setErr('Last and next maintenance dates are required — they drive the health decay schedule.'); return
+    }
+    if (form.next_maintenance_at <= form.last_maintenance_at) {
+      setErr('Next maintenance date must be after the last maintenance date.'); return
     }
     if (form.value !== '' && isNaN(Number(form.value))) { setErr('Asset value must be a number.'); return }
     if (form.lat !== '' && isNaN(Number(form.lat))) { setErr('Latitude must be a number.'); return }
@@ -357,10 +365,10 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
           <Field label="Initial health %">
             <input {...inputProps} type="number" min={0} max={100} value={form.health_score} onChange={(e) => set('health_score', e.target.value)} placeholder="e.g. 90" />
           </Field>
-          <Field label="Last maintenance date">
+          <Field label="Last maintenance date" required>
             <input {...inputProps} type="date" value={form.last_maintenance_at} onChange={(e) => set('last_maintenance_at', e.target.value)} />
           </Field>
-          <Field label="Next maintenance date">
+          <Field label="Next maintenance date" required>
             <input {...inputProps} type="date" value={form.next_maintenance_at} onChange={(e) => set('next_maintenance_at', e.target.value)} />
           </Field>
           <Field label="Tags (comma separated)" full>
@@ -657,7 +665,7 @@ function ImportModal({ onClose, onDone }) {
       <div style={{ position: 'relative', width: 460, maxWidth: '92vw', maxHeight: '88vh', overflowY: 'auto', background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 24, zIndex: 1 }}>
         <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)', marginBottom: 6 }}>Import assets from CSV</h3>
         <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 14, lineHeight: 1.6 }}>
-          Download the template, fill it in, then upload it. Assets are matched by AIN — existing AINs are skipped. Category, Location and Site are matched by name or code; the Location column disambiguates sites that share a name across locations.
+          Download the template, fill it in, then upload it. Assets are matched by AIN — existing AINs are skipped. Category, Location and Site are matched by name or code; the Location column disambiguates sites that share a name across locations. Last and next maintenance dates are required per row (they drive the health decay schedule).
         </p>
         <button onClick={downloadTemplate} className="btn btn-secondary" style={{ height: 34, padding: '0 14px', fontSize: 13, marginBottom: 14 }}>↓ Download template</button>
         <div>
