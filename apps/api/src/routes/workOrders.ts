@@ -21,7 +21,10 @@ const ALLOWED = [
 ]
 
 // Status transitions allowed per current status — mirrors apps/app/src/lib/db/workOrders.js.
+// `draft` is where auto-generated WOs land (apply_asset_health, 0013) — a
+// planner approves it into `new` (or closes it) before the normal flow starts.
 const WO_TRANSITIONS: Record<string, string[]> = {
+  draft: ['new', 'closed'],
   new: ['assigned', 'in_progress', 'closed'],
   assigned: ['in_progress', 'awaiting_parts', 'closed'],
   in_progress: ['awaiting_parts', 'inspection', 'closed'],
@@ -30,7 +33,7 @@ const WO_TRANSITIONS: Record<string, string[]> = {
   closed: [],
 }
 const WO_STATUS_LABEL: Record<string, string> = {
-  new: 'New', assigned: 'Assigned', in_progress: 'In Progress',
+  draft: 'Draft', new: 'New', assigned: 'Assigned', in_progress: 'In Progress',
   awaiting_parts: 'Awaiting Parts', inspection: 'Inspection', closed: 'Closed',
 }
 
@@ -56,7 +59,7 @@ const woInput = z.object({
   title: z.string().min(1),
   description: z.string().nullable().optional(),
   type: z.enum(['corrective', 'preventive', 'inspection', 'emergency']).optional(),
-  status: z.enum(['new', 'assigned', 'in_progress', 'awaiting_parts', 'inspection', 'closed']).optional(),
+  status: z.enum(['draft', 'new', 'assigned', 'in_progress', 'awaiting_parts', 'inspection', 'closed']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   assignee_id: z.string().uuid().nullable().optional(),
   sla_due: z.string().nullable().optional(),

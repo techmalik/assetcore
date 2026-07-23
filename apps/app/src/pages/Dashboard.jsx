@@ -8,7 +8,7 @@ import { useLocationFilter } from '../lib/LocationFilterContext'
 import { getDashboardStats, getRecentWorkOrders, getDashboardAlerts } from '../lib/db/dashboard.js'
 import { getComplianceLicenceCounts, getPmCompliance } from '../lib/db/complianceLicences.js'
 import { listPMTasks } from '../lib/db/pmTasks.js'
-import { WO_STATUS_LABEL, WO_PRIORITY_LABEL, WO_STATUS_STYLE, WO_PRIORITY_STYLE } from '../lib/db/workOrders.js'
+import { WO_STATUS_LABEL, WO_PRIORITY_LABEL, woStatusStyle, WO_PRIORITY_STYLE } from '../lib/db/workOrders.js'
 
 const ALERT_SEVERITY_STYLE = {
   critical: { c: 'var(--srt)', bg: 'var(--srb)' },
@@ -322,7 +322,7 @@ export default function Dashboard({ dark, toggleDark }) {
                                 </div>
                               ) : <span style={{fontSize:12,color:'var(--n400)'}}>Unassigned</span>}
                             </td>
-                            <td style={{padding:'10px 12px'}}><StatusBadge tone={WO_STATUS_STYLE} label={WO_STATUS_LABEL[wo.status]} size="md" /></td>
+                            <td style={{padding:'10px 12px'}}><StatusBadge tone={woStatusStyle(wo.status)} label={WO_STATUS_LABEL[wo.status]} size="md" /></td>
                             <td style={{padding:'10px 12px'}}><StatusBadge tone={WO_PRIORITY_STYLE[wo.priority] || WO_PRIORITY_STYLE.low} label={WO_PRIORITY_LABEL[wo.priority]} size="md" /></td>
                             <td style={{padding:'10px 12px',textAlign:'right',fontFamily:'var(--ff-m)',fontSize:11,color:due.color,whiteSpace:'nowrap'}}>{due.text}</td>
                           </tr>

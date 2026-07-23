@@ -5,6 +5,26 @@ first licensed release shipped to a client (NGML).
 
 ## [1.0.0] — unreleased
 
+### Owner-review follow-ups (July 2026)
+
+- Auto-generated work orders now land in a real `draft` status with an
+  explicit Approve/Dismiss step (previously they arrived as `new`,
+  indistinguishable from human-created WOs).
+- The 30% maintenance/auto-WO health threshold is now org-configurable
+  (Admin → Configuration), alongside the existing inspection threshold; the
+  UI enforces maintenance < inspection. Defaults unchanged (30/50).
+- Work orders are now editable and assignable from the UI (title,
+  description, type, priority, SLA, cost + assignee picker for `wo:assign`
+  holders, on both create and edit) — the PATCH endpoint existed but had no
+  UI.
+- Last/next maintenance dates are now required when creating an asset (form,
+  API, and CSV import) so every asset participates in the daily health-decay
+  job instead of silently sitting at its initial health forever.
+- Role→capability RBAC map extracted to a shared workspace package
+  (`@assetcore/rbac`) consumed by both the app and the API — removes the
+  hand-mirrored copies that had already drifted (the Admin UI offered only a
+  subset of the capabilities the API accepted).
+
 First licensed on-prem release. Supersedes the pre-1.0 Supabase-based SaaS
 prototype entirely — nothing before this line was ever deployed to a client.
 
