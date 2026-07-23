@@ -385,7 +385,7 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
                 </button>
                 {editing && (
                   <button type="button" onClick={() => removePhoto(p)} disabled={busyFile} title="Remove image"
-                    style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', border: '1px solid var(--n200)', background: 'var(--n0)', color: 'var(--srt)', fontSize: 11, lineHeight: '16px', cursor: 'pointer', padding: 0 }}>
+                    style={{ position: 'absolute', top: -8, right: -8, width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--n200)', background: 'var(--n0)', color: 'var(--srt)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
                     ✕
                   </button>
                 )}

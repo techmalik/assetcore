@@ -38,7 +38,7 @@ export default function Auth() {
 
   return (
     <div style={{minHeight:'100vh',background:'var(--n100)',display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
-      <form onSubmit={submit} style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,overflow:'hidden',boxShadow:'var(--sh-lg)',width:480}}>
+      <form onSubmit={submit} style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,overflow:'hidden',boxShadow:'var(--sh-lg)',width:'100%',maxWidth:480}}>
         <div style={{background:'var(--n950)',padding:'24px 32px',display:'flex',alignItems:'center',gap:10}}>
           <Logo/>
           <span style={{fontFamily:'var(--ff-d)',fontSize:18,fontWeight:700,color:'#fff',letterSpacing:'-.3px'}}>AssetCore</span>
@@ -61,7 +61,7 @@ export default function Auth() {
               </div>
               <div style={{position:'relative'}}>
                 <input className="input" value={password} onChange={(e)=>setPassword(e.target.value)} type={showPw?'text':'password'} autoComplete="current-password" required style={{paddingRight:40}}/>
-                <button type="button" onClick={()=>setShowPw(s=>!s)} style={{position:'absolute',right:6,top:'50%',transform:'translateY(-50%)',width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',cursor:'pointer',color:'var(--n400)'}}>
+                <button type="button" onClick={()=>setShowPw(s=>!s)} style={{position:'absolute',right:2,top:'50%',transform:'translateY(-50%)',width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',cursor:'pointer',color:'var(--n400)'}}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.3"/><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8Z" stroke="currentColor" strokeWidth="1.3"/></svg>
                 </button>
               </div>

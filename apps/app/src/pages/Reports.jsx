@@ -247,7 +247,7 @@ export default function Reports({ dark, toggleDark }) {
             {tab === 'generate' && (
               <div style={{padding:'24px',maxWidth:800}}>
                 <div style={{fontSize:13,fontWeight:600,color:'var(--n700)',marginBottom:12}}>Select Report Template</div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10,marginBottom:24}}>
                   {TEMPLATES.map(t => {
                     const m = KIND_META[t.key]
                     const active = selectedKind === t.key

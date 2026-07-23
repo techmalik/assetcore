@@ -36,7 +36,7 @@ function StepBar({ step }) {
                 ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3L10 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 : i + 1}
             </div>
-            <span style={{ fontSize: 13, fontWeight: i === step ? 600 : 400, color: i === step ? 'var(--n900)' : i < step ? 'var(--b600)' : 'var(--n400)' }}>{s}</span>
+            <span className="hide-tiny" style={{ fontSize: 13, fontWeight: i === step ? 600 : 400, color: i === step ? 'var(--n900)' : i < step ? 'var(--b600)' : 'var(--n400)' }}>{s}</span>
           </div>
           {i < STEPS.length - 1 && (
             <div style={{ flex: 1, height: 1, background: i < step ? 'var(--b300)' : 'var(--n200)', margin: '0 16px' }} />
@@ -149,7 +149,7 @@ export default function Onboarding() {
 
           {/* ── Step 0: Welcome ─────────────────────────────────── */}
           {step === 0 && (
-            <div style={{ background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 10, padding: 40 }}>
+            <div style={{ background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 10, padding: 'clamp(16px, 5vw, 40px)' }}>
               <div style={{ width: 56, height: 56, background: 'var(--b50)', border: '1px solid var(--b200)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
                 <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><path d="M14 2L25 8V20L14 26L3 20V8L14 2Z" stroke="var(--b500)" strokeWidth="1.8" fill="none"/><text x="14" y="18" textAnchor="middle" fontFamily="'Bricolage Grotesque',sans-serif" fontSize="11" fontWeight="700" fill="var(--b600)">A</text></svg>
               </div>
@@ -181,7 +181,7 @@ export default function Onboarding() {
 
           {/* ── Step 1: Sites ───────────────────────────────────── */}
           {step === 1 && (
-            <div style={{ background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 10, padding: 40 }}>
+            <div style={{ background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 10, padding: 'clamp(16px, 5vw, 40px)' }}>
               <h2 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, color: 'var(--n950)', marginBottom: 6 }}>Add your locations & sites</h2>
               <p style={{ fontSize: 14, color: 'var(--n500)', marginBottom: 28 }}>A <strong>location</strong> is a larger zone (e.g. Lagos); a <strong>site</strong> is a specific area within it. Each site you add here is filed under its location — we create the location for you. Manage both later from Admin.</p>
 
@@ -194,7 +194,7 @@ export default function Onboarding() {
 
               {/* Add site form */}
               <div style={{ background: 'var(--n50)', border: '1px solid var(--n200)', borderRadius: 8, padding: 20, marginBottom: 20 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 12, marginBottom: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 120px', gap: 12, marginBottom: 12 }}>
                   <div>
                     <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 6 }}>Site name *</label>
                     <input className="input" value={siteForm.name} onChange={e => setSiteForm(p => ({ ...p, name: e.target.value }))}
@@ -231,11 +231,11 @@ export default function Onboarding() {
 
           {/* ── Step 2: Categories ──────────────────────────────── */}
           {step === 2 && (
-            <div style={{ background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 10, padding: 40 }}>
+            <div style={{ background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 10, padding: 'clamp(16px, 5vw, 40px)' }}>
               <h2 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, color: 'var(--n950)', marginBottom: 6 }}>Asset categories</h2>
               <p style={{ fontSize: 14, color: 'var(--n500)', marginBottom: 24 }}>Select the asset types in your operation. You can add custom categories too.</p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 8, marginBottom: 24 }}>
                 {DEFAULT_CATEGORIES.map(c => {
                   const on = selectedCats.includes(c.code)
                   return (
