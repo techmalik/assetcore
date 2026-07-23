@@ -263,7 +263,7 @@ export default function Reports({ dark, toggleDark }) {
 
                 <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:6,padding:'18px 20px',marginBottom:20}}>
                   <div style={{fontSize:13,fontWeight:600,color:'var(--n700)',marginBottom:14}}>Parameters</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div className="form-grid" style={{ gap:12 }}>
                     <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Date range
                       <select value={dateRange} onChange={e=>setDateRange(e.target.value)} style={{height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',background:'var(--n0)',appearance:'none'}}>
                         <option value="last_7">Last 7 days</option>

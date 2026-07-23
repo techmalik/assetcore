@@ -295,7 +295,7 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="form-grid" style={{ gap: 12 }}>
           <Field label="Asset name" required full>
             <input {...inputProps} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Compressor Unit X-5" />
           </Field>
@@ -462,7 +462,7 @@ function RaiseWOModal({ asset, onClose, onCreated }) {
           <Field label="Description">
             <textarea value={form.description} onChange={(e) => set('description', e.target.value)} rows={3} className="input" style={{ width: '100%', height: 'auto', padding: '8px 10px', resize: 'vertical' }} />
           </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-grid" style={{ gap: 12 }}>
             <Field label="Type">
               <select {...inputProps} value={form.type} onChange={(e) => set('type', e.target.value)}>
                 {Object.entries(WO_TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -551,7 +551,7 @@ function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
               </select>
             </Field>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-grid" style={{ gap: 12 }}>
             <Field label="Completed on" required>
               <input {...inputProps} type="date" max={localDateStr(0)} value={form.completed_at} onChange={(e) => set('completed_at', e.target.value)} />
             </Field>
@@ -972,7 +972,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
               {canCompleteMaintenance && <button onClick={onCompleteMaintenance} className="btn btn-primary" style={{ width: '100%', height: 36, fontSize: 13 }}>Complete Maintenance</button>}
               {canWO && <button onClick={onRaiseWO} className="btn btn-secondary" style={{ width: '100%', height: 36, fontSize: 13 }}>Raise Work Order</button>}
               {canEdit && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div className="form-grid" style={{ gap: 8 }}>
                   <button onClick={onEdit} className="btn btn-secondary" style={{ height: 34, fontSize: 13 }}>Edit Asset</button>
                   <button onClick={onArchive} className="btn btn-danger-soft" style={{ height: 34, fontSize: 13 }}>Archive</button>
                 </div>

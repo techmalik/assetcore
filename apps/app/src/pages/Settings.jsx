@@ -143,7 +143,7 @@ function LicenceCard() {
         <div style={{ fontSize: 12, color: 'var(--n500)' }}>Loading…</div>
       ) : licence ? (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div className="form-grid" style={{ gap: 12, marginBottom: 14 }}>
             <div>
               <div style={{ fontSize: 11, color: 'var(--n500)', marginBottom: 2 }}>Licensed to</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--n900)' }}>{licence.licensed_to}</div>

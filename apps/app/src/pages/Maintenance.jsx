@@ -65,7 +65,7 @@ function ScheduleModal({ onClose, onSaved }) {
           <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Description
             <textarea value={form.description||''} onChange={e=>set('description',e.target.value)} rows={2} style={{marginTop:4,width:'100%',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',resize:'vertical',boxSizing:'border-box'}}/>
           </label>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div className="form-grid" style={{ gap:10 }}>
             <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Frequency *
               <select value={form.frequency} onChange={e=>set('frequency',e.target.value)} style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 8px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',background:'var(--n0)'}}>
                 {Object.entries(FREQ_LABEL).map(([k,v]) => <option key={k} value={k}>{v}</option>)}

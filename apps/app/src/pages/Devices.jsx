@@ -88,7 +88,7 @@ function DeviceModal({ device, sites, assets, onClose, onSaved }) {
           <label style={lbl}>Device name *
             <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Lagos DS-04 Flow Transmitter" style={inp} />
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="form-grid" style={{ gap: 10 }}>
             <label style={lbl}>Type
               <select value={form.kind} onChange={e => set('kind', e.target.value)} style={{ ...inp, appearance: 'none' }}>
                 {Object.entries(KIND_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
@@ -100,7 +100,7 @@ function DeviceModal({ device, sites, assets, onClose, onSaved }) {
               </select>
             </label>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="form-grid" style={{ gap: 10 }}>
             <label style={lbl}>Serial number
               <input value={form.serial_number} onChange={e => set('serial_number', e.target.value)} placeholder="e.g. TRM-SN-001" style={inp} />
             </label>

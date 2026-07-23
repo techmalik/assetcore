@@ -70,7 +70,7 @@ function InspectionModal({ onClose, onSaved, sites }) {
           <label style={lbl}>Title *
             <input value={form.title} onChange={e=>set('title',e.target.value)} placeholder="e.g. Lagos DS-04 Safety Inspection" style={inp}/>
           </label>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div className="form-grid" style={{ gap:10 }}>
             <label style={lbl}>Type
               <select value={form.kind} onChange={e=>set('kind',e.target.value)} style={{...inp,appearance:'none'}}>
                 {Object.entries(KIND_META).map(([k,m]) => <option key={k} value={k}>{m.label}</option>)}

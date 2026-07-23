@@ -110,7 +110,7 @@ function LicenceModal({ licence, authorities, sites, onClose, onSaved }) {
           <label style={labelStyle}>Licence / Certificate name *
             <input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="e.g. Operating Licence — Lagos DS-04" style={inputStyle}/>
           </label>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div className="form-grid" style={{ gap:10 }}>
             <label style={labelStyle}>Type
               <select value={form.kind} onChange={e=>set('kind',e.target.value)} style={selectStyle}>
                 {Object.entries(KIND_LABEL).map(([k,l]) => <option key={k} value={k}>{l}</option>)}
@@ -132,7 +132,7 @@ function LicenceModal({ licence, authorities, sites, onClose, onSaved }) {
               {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </label>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div className="form-grid" style={{ gap:10 }}>
             <label style={labelStyle}>Issued date *
               <input type="date" value={form.issued_date} onChange={e=>set('issued_date',e.target.value)} style={inputStyle}/>
             </label>
@@ -302,7 +302,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
           <label style={labelStyle}>Title *
             <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Q2 ISO 9001 Internal Audit — Lagos DS-04" style={inputStyle} />
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="form-grid" style={{ gap: 10 }}>
             <label style={labelStyle}>Standard
               <input value={form.standard} onChange={(e) => set('standard', e.target.value)} placeholder="e.g. ISO 9001" style={inputStyle} />
             </label>
@@ -310,7 +310,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
               <input value={form.iso_reference} onChange={(e) => set('iso_reference', e.target.value)} placeholder="e.g. ISO-9001-2024-001" style={inputStyle} />
             </label>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="form-grid" style={{ gap: 10 }}>
             <label style={labelStyle}>Audit date *
               <input type="date" value={form.audit_date} onChange={(e) => set('audit_date', e.target.value)} style={inputStyle} />
             </label>
@@ -321,7 +321,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
               </select>
             </label>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="form-grid" style={{ gap: 10 }}>
             <label style={labelStyle}>Auditor
               <select value={form.auditor_id} onChange={(e) => set('auditor_id', e.target.value)} style={selectStyle}>
                 <option value="">— Select —</option>
