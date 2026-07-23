@@ -173,11 +173,11 @@ export default function Maintenance({ dark, toggleDark }) {
               <div style={{flex:1}}/>
               {tab === 'pm' && (
                 <>
-                  <button onClick={handleGenerate} disabled={generating} style={{height:32,padding:'0 14px',background:'var(--n0)',color:'var(--n700)',border:'1px solid var(--n200)',borderRadius:4,fontSize:13,cursor:'pointer'}}>
+                  <button onClick={handleGenerate} disabled={generating} className="row-action" style={{height:32,padding:'0 14px',background:'var(--n0)',color:'var(--n700)',border:'1px solid var(--n200)',borderRadius:4,fontSize:13}}>
                     {generating?'Generating…':'Generate Tasks'}
                   </button>
                   {canCreate && (
-                    <button onClick={() => setShowModal(true)} style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',border:'none',borderRadius:4,fontSize:13,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+                    <button onClick={() => setShowModal(true)} className="row-action" style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',borderRadius:4,fontSize:13,fontWeight:500,gap:6}}>
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
                       Schedule PM
                     </button>
@@ -315,7 +315,7 @@ export default function Maintenance({ dark, toggleDark }) {
                         <td style={{padding:'11px 14px'}}>
                           <span style={{display:'inline-flex',padding:'2px 7px',borderRadius:2,border:'1px solid',fontSize:10,fontWeight:500,...licStatus[lic.status]}}>{lic.status}</span>
                         </td>
-                        <td style={{padding:'11px 14px'}}><button style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Renew</button></td>
+                        <td style={{padding:'11px 14px'}}><button className="row-action" style={{fontSize:11,color:'var(--b600)'}}>Renew</button></td>
                       </tr>
                     ))}
                   </tbody>

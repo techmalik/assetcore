@@ -114,7 +114,7 @@ export default function Dashboard({ dark, toggleDark }) {
               </p>
             </div>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <select style={{height:32,border:'1px solid var(--n200)',borderRadius:4,padding:'0 28px 0 10px',fontFamily:'var(--ff-u)',fontSize:13,color:'var(--n700)',background:'var(--n0)',appearance:'none'}}>
+              <select className="select" style={{height:32,border:'1px solid var(--n200)',borderRadius:4,padding:'0 28px 0 10px',fontFamily:'var(--ff-u)',fontSize:13,color:'var(--n700)',background:'var(--n0)',appearance:'none'}}>
                 <option>Last 30 days</option><option>Last 7 days</option><option>This quarter</option>
               </select>
               <button className="btn btn-primary" style={{height:32,padding:'0 14px',fontSize:13}}>

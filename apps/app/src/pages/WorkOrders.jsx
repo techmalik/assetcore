@@ -253,7 +253,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--n500)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8, fontFamily: 'var(--ff-m)' }}>Move to</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {nextStatuses.map(s => (
-                <button key={s} onClick={() => transition(s)} disabled={transitioning}
+                <button key={s} onClick={() => transition(s)} disabled={transitioning} className="filter-pill"
                   style={{ height: 30, padding: '0 12px', fontSize: 12, fontWeight: 500, border: '1px solid var(--b200)', borderRadius: 4, background: s === 'closed' ? 'var(--sgb)' : 'var(--b50)', color: s === 'closed' ? 'var(--sgt)' : 'var(--b700)', cursor: transitioning ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: transitioning ? .6 : 1 }}>
                   {WO_STATUS_LABEL[s]}
                 </button>
@@ -359,12 +359,12 @@ export default function WorkOrders({ dark, toggleDark }) {
           <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {[['all', 'All'], ['open', 'Open'], ...Object.entries(WO_STATUS_LABEL)].map(([v, l]) => (
-              <button key={v} onClick={() => setFilterStatus(v)} style={{ height: 28, padding: '0 10px', border: `1px solid ${filterStatus === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filterStatus === v ? 'var(--b50)' : 'var(--n0)', fontSize: 11, color: filterStatus === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filterStatus === v ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>{l}</button>
+              <button key={v} onClick={() => setFilterStatus(v)} className="filter-pill" style={{ height: 28, padding: '0 10px', border: `1px solid ${filterStatus === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filterStatus === v ? 'var(--b50)' : 'var(--n0)', fontSize: 11, color: filterStatus === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filterStatus === v ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}>{l}</button>
             ))}
           </div>
           <div style={{ display: 'flex', border: '1px solid var(--n200)', borderRadius: 4, overflow: 'hidden' }}>
             {[['list', 'List'], ['kanban', 'Board']].map(([v, l]) => (
-              <button key={v} onClick={() => setView(v)} style={{ height: 28, padding: '0 12px', border: 'none', borderRight: v === 'list' ? '1px solid var(--n200)' : 'none', background: view === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: view === v ? 'var(--b700)' : 'var(--n600)', fontWeight: view === v ? 500 : 400, cursor: 'pointer', fontFamily: 'inherit' }}>{l}</button>
+              <button key={v} onClick={() => setView(v)} className="filter-pill" style={{ height: 28, padding: '0 12px', border: 'none', borderRight: v === 'list' ? '1px solid var(--n200)' : 'none', background: view === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: view === v ? 'var(--b700)' : 'var(--n600)', fontWeight: view === v ? 500 : 400, cursor: 'pointer', fontFamily: 'inherit' }}>{l}</button>
             ))}
           </div>
           {canCreate && (

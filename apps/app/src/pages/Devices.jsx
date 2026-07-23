@@ -136,7 +136,7 @@ function DeviceModal({ device, sites, assets, onClose, onSaved }) {
 // ── Status summary chips ───────────────────────────────────────────────────────
 function SummaryChip({ label, count, active, onClick, color }) {
   return (
-    <button onClick={onClick} style={{ height: 28, padding: '0 12px', border: `1px solid ${active ? color : 'var(--n200)'}`, borderRadius: 4, background: active ? 'var(--n50)' : 'var(--n0)', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? color : 'var(--n600)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+    <button onClick={onClick} className="filter-pill" style={{ height: 28, padding: '0 12px', border: `1px solid ${active ? color : 'var(--n200)'}`, borderRadius: 4, background: active ? 'var(--n50)' : 'var(--n0)', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? color : 'var(--n600)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block' }} />
       {label} ({count})
     </button>
@@ -186,7 +186,7 @@ export default function Devices({ dark, toggleDark }) {
               </div>
               <div style={{ flex: 1 }} />
               {canCreate && (
-                <button onClick={() => setModal('add')} style={{ height: 32, padding: '0 14px', background: 'var(--b500)', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button onClick={() => setModal('add')} className="row-action" style={{ height: 32, padding: '0 14px', background: 'var(--b500)', color: '#fff', borderRadius: 4, fontSize: 13, fontWeight: 500, gap: 6 }}>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" /></svg>
                   Register Device
                 </button>
@@ -255,7 +255,7 @@ export default function Devices({ dark, toggleDark }) {
                           </span>
                         </td>
                         <td style={{ padding: '11px 14px' }}>
-                          <button onClick={() => setModal(dev)} style={{ fontSize: 11, color: 'var(--b600)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Edit</button>
+                          <button onClick={() => setModal(dev)} className="row-action" style={{ fontSize: 11, color: 'var(--b600)' }}>Edit</button>
                         </td>
                       </tr>
                     )

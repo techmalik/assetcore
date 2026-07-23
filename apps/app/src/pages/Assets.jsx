@@ -849,7 +849,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
               <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                 {t.report_url && <button onClick={() => viewDoc({ url: t.report_url, name: t.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
                 {canUpdatePM && t.status !== 'completed' ? (
-                  <select value={t.status} onChange={(e) => changePMStatus(t, e.target.value)} style={{ fontSize: 11, fontWeight: 500, color: PM_STATUS_C[t.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
+                  <select value={t.status} onChange={(e) => changePMStatus(t, e.target.value)} className="select" style={{ fontSize: 11, fontWeight: 500, color: PM_STATUS_C[t.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
                     {Object.keys(PM_STATUS_C).map((k) => <option key={k} value={k}>{k}</option>)}
                   </select>
                 ) : (
@@ -872,7 +872,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
                 <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                   {i.report_url && <button onClick={() => viewDoc({ url: i.report_url, name: i.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
                   {canUpdateInspection ? (
-                    <select value={i.status} onChange={(e) => changeInspectionStatus(i, e.target.value)} style={{ fontSize: 11, fontWeight: 500, color: INSP_STATUS_C[i.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
+                    <select value={i.status} onChange={(e) => changeInspectionStatus(i, e.target.value)} className="select" style={{ fontSize: 11, fontWeight: 500, color: INSP_STATUS_C[i.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
                       {Object.keys(INSP_STATUS_C).map((k) => <option key={k} value={k}>{k}</option>)}
                     </select>
                   ) : (
@@ -1101,10 +1101,10 @@ export default function Assets({ dark, toggleDark }) {
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', gap: 6 }}>
               {[['all', 'All'], ['operational', 'Operational'], ['maintenance', 'Maintenance'], ['standby', 'Standby'], ['offline', 'Offline'], ['attention', 'Attention'], ['critical', 'Critical']].map(([v, l]) => (
-                <button key={v} onClick={() => setFilter(v)} style={{ height: 30, padding: '0 12px', border: `1px solid ${filter === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filter === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: filter === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filter === v ? 500 : 400, cursor: 'pointer' }}>{l}</button>
+                <button key={v} onClick={() => setFilter(v)} className="filter-pill" style={{ height: 30, padding: '0 12px', border: `1px solid ${filter === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filter === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: filter === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filter === v ? 500 : 400, cursor: 'pointer' }}>{l}</button>
               ))}
             </div>
-            <button onClick={() => { setArchivedView((v) => !v); setSelected(null) }} style={{ height: 30, padding: '0 12px', border: `1px solid ${archivedView ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: archivedView ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: archivedView ? 'var(--b700)' : 'var(--n600)', cursor: 'pointer' }}>
+            <button onClick={() => { setArchivedView((v) => !v); setSelected(null) }} className="filter-pill" style={{ height: 30, padding: '0 12px', border: `1px solid ${archivedView ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: archivedView ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: archivedView ? 'var(--b700)' : 'var(--n600)', cursor: 'pointer' }}>
               {archivedView ? '← Active' : 'Archived'}
             </button>
             {canCreate && !archivedView && (
@@ -1132,7 +1132,7 @@ export default function Assets({ dark, toggleDark }) {
                 style={{ height: 30, width: '100%', padding: '0 10px 0 30px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n900)', outline: 'none' }}
               />
             </div>
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="select" style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
               <option value="">All types</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -1141,7 +1141,7 @@ export default function Assets({ dark, toggleDark }) {
                 would be redundant (and could contradict it), so it's hidden
                 rather than shown alongside. */}
             {!globalLocationId && (
-              <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
+              <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} className="select" style={{ height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, fontSize: 12, background: 'var(--n0)', color: 'var(--n700)' }}>
                 <option value="">All locations</option>
                 {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
@@ -1200,12 +1200,12 @@ export default function Assets({ dark, toggleDark }) {
                           <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{a.operator?.full_name || '—'}</td>
                           <td style={{ padding: '11px 14px' }} onClick={(e) => e.stopPropagation()}>
                             {archivedView ? (
-                              canEdit && <button onClick={() => doRestore(a.id)} style={linkBtn}>Restore</button>
+                              canEdit && <button onClick={() => doRestore(a.id)} className="row-action" style={linkBtn}>Restore</button>
                             ) : (
                               <div style={{ display: 'flex', gap: 6 }}>
-                                <button onClick={() => setSelected(a)} style={linkBtn}>View</button>
-                                {canEdit && <button onClick={() => setModal(a)} style={linkBtn}>Edit</button>}
-                                {canWO && <button onClick={() => setWoAsset(a)} style={{ ...linkBtn, color: 'var(--b700)', borderColor: 'var(--b200)' }}>WO</button>}
+                                <button onClick={() => setSelected(a)} className="row-action" style={linkBtn}>View</button>
+                                {canEdit && <button onClick={() => setModal(a)} className="row-action" style={linkBtn}>Edit</button>}
+                                {canWO && <button onClick={() => setWoAsset(a)} className="row-action" style={{ ...linkBtn, color: 'var(--b700)', borderColor: 'var(--b200)' }}>WO</button>}
                               </div>
                             )}
                           </td>

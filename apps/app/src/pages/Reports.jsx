@@ -105,7 +105,7 @@ export default function Reports({ dark, toggleDark }) {
                 <p style={{fontSize:12,color:'var(--n500)'}}>Generate and download operational reports</p>
               </div>
               <div style={{flex:1}}/>
-              <button onClick={() => setTab('generate')} style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',border:'none',borderRadius:4,fontSize:13,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+              <button onClick={() => setTab('generate')} className="row-action" style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',borderRadius:4,fontSize:13,fontWeight:500,gap:6}}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
                 Generate Report
               </button>

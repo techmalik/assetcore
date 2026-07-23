@@ -434,11 +434,11 @@ function AuditsPanel({ canCreate }) {
                 <td style={{ padding: '10px 14px', fontSize: 12 }}>{yn(a.iso_audit_conducted)}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)' }}>{a.site?.name || '—'}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)' }}>{a.asset?.name || '—'}</td>
-                <td style={{ padding: '10px 14px', fontSize: 12 }}>{a.document_url ? <button onClick={() => api.download(`/files/${a.document_url}`, a.document_url.split('/').pop())} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 12, padding: 0 }}>view</button> : '—'}</td>
+                <td style={{ padding: '10px 14px', fontSize: 12 }}>{a.document_url ? <button onClick={() => api.download(`/files/${a.document_url}`, a.document_url.split('/').pop())} className="row-action" style={{ color: 'var(--b600)', fontSize: 12 }}>view</button> : '—'}</td>
                 <td style={{ padding: '10px 14px' }}>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setModal(a)} style={{ fontSize: 11, color: 'var(--b600)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Edit</button>
-                    <button onClick={() => remove(a.id)} style={{ fontSize: 11, color: 'var(--srt)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Archive</button>
+                    <button onClick={() => setModal(a)} className="row-action" style={{ fontSize: 11, color: 'var(--b600)' }}>Edit</button>
+                    <button onClick={() => remove(a.id)} className="row-action" style={{ fontSize: 11, color: 'var(--srt)' }}>Archive</button>
                   </div>
                 </td>
               </tr>
@@ -529,11 +529,11 @@ export default function Compliance({ dark, toggleDark }) {
               <div style={{flex:1}}/>
               {view === 'licences' && (
                 <>
-                  <button onClick={handleRunExpiry} style={{height:32,padding:'0 14px',border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',fontSize:12,color:'var(--n600)',cursor:'pointer'}}>
+                  <button onClick={handleRunExpiry} className="row-action" style={{height:32,padding:'0 14px',border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',fontSize:12,color:'var(--n600)'}}>
                     Check Expiry Alerts
                   </button>
                   {canCreate && (
-                    <button onClick={() => setModal('add')} style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',border:'none',borderRadius:4,fontSize:13,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+                    <button onClick={() => setModal('add')} className="row-action" style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',borderRadius:4,fontSize:13,fontWeight:500,gap:6}}>
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
                       Add Licence
                     </button>
@@ -559,11 +559,11 @@ export default function Compliance({ dark, toggleDark }) {
                   { key:'expired',  label:`Expired (${counts.expired})`,    c:'var(--srt)',  bg:'var(--srb)', br:'var(--srbr)' },
                   { key:'alerts',   label:`Alerts (${counts.expiring + counts.due_soon + counts.expired})`, c:'var(--srt)', bg:'var(--srb)', br:'var(--srbr)' },
                 ].map(s => (
-                  <button key={s.key} onClick={() => setFilter(s.key)} style={{height:28,padding:'0 12px',border:`1px solid ${filter===s.key?s.br:'var(--n200)'}`,borderRadius:4,background:filter===s.key?s.bg:'var(--n0)',fontSize:12,fontWeight:filter===s.key?600:400,color:filter===s.key?s.c:'var(--n600)',cursor:'pointer'}}>
+                  <button key={s.key} onClick={() => setFilter(s.key)} className="filter-pill" style={{height:28,padding:'0 12px',border:`1px solid ${filter===s.key?s.br:'var(--n200)'}`,borderRadius:4,background:filter===s.key?s.bg:'var(--n0)',fontSize:12,fontWeight:filter===s.key?600:400,color:filter===s.key?s.c:'var(--n600)',cursor:'pointer'}}>
                     {s.label}
                   </button>
                 ))}
-                <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} style={{height:28,padding:'0 8px',border:'1px solid var(--n200)',borderRadius:4,fontSize:12,color:'var(--n700)',background:'var(--n0)',marginLeft:4}}>
+                <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} className="select" style={{height:28,padding:'0 8px',border:'1px solid var(--n200)',borderRadius:4,fontSize:12,color:'var(--n700)',background:'var(--n0)',marginLeft:4}}>
                   <option value="">All kinds</option>
                   {Object.entries(KIND_LABEL).map(([k,l]) => <option key={k} value={k}>{l}</option>)}
                 </select>
@@ -617,7 +617,7 @@ export default function Compliance({ dark, toggleDark }) {
                             <StatusBadge tone={meta} />
                           </td>
                           <td style={{padding:'11px 14px'}}>
-                            <button onClick={e => { e.stopPropagation(); setModal(lic) }} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Edit</button>
+                            <button onClick={e => { e.stopPropagation(); setModal(lic) }} className="row-action" style={{fontSize:11,color:'var(--b600)'}}>Edit</button>
                           </td>
                         </tr>
                       )
