@@ -39,7 +39,10 @@ function copy(rel, { optional = false } = {}) {
   }
   const dest = path.join(stagingDir, rel)
   mkdirSync(path.dirname(dest), { recursive: true })
-  cpSync(src, dest, { recursive: true })
+  // verbatimSymlinks keeps workspace links (node_modules/@assetcore/* ->
+  // ../../packages/*) relative, so they still resolve after the tarball is
+  // extracted on the client's box — packages/* is copied alongside below.
+  cpSync(src, dest, { recursive: true, verbatimSymlinks: true })
 }
 
 console.log(`Packaging ${releaseName}...`)
@@ -54,6 +57,9 @@ mkdirSync(stagingDir, { recursive: true })
 // Pre-built artifacts — the whole point is the client's Docker host never
 // runs `npm install` or a build step (see apps/api/Dockerfile, deploy/nginx/Dockerfile).
 copy('node_modules')
+// Workspace packages the API imports at runtime (node_modules/@assetcore/*
+// are symlinks into packages/, so the targets must ship too).
+copy('packages/rbac')
 copy('apps/app/dist')
 copy('apps/admin/dist')
 copy('apps/api/dist')

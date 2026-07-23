@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@assetcore/rbac": "*",
     "@assetcore/ui": "*",
     "@fontsource-variable/bricolage-grotesque": "^5.2.10",
     "@fontsource-variable/ibm-plex-sans": "^5.2.8",

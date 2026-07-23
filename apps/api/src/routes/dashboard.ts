@@ -18,10 +18,22 @@ dashboardRouter.get('/dashboard/stats', async (req, res) => {
     // location instead of some cards silently ignoring it.
     const locClause = locationId ? 'and site_id in (select id from public.sites where location_id = $1)' : ''
     const locParams = locationId ? [locationId] : []
-    const [{ rows: assets }, { rows: wos }, { rows: pm }] = await Promise.all([
+    const [{ rows: assets }, { rows: wos }, { rows: pm }, { rows: mine }] = await Promise.all([
       c.query(`select status, health_score from public.assets where deleted_at is null ${locClause}`, locParams),
       c.query(`select status, priority, sla_due from public.work_orders where deleted_at is null and status <> 'closed' ${locClause}`, locParams),
       c.query(`select count(*)::int as count from public.pm_tasks where status = 'overdue' ${locClause}`, locParams),
+      // "My Open Work" — everything currently assigned to the caller across
+      // all three activity types, regardless of the location filter above
+      // (it's the caller's own work, not a location-scoped aggregate).
+      c.query(`
+        select
+          (select count(*)::int from public.work_orders
+           where deleted_at is null and assignee_id = current_user_id() and status not in ('draft','closed')) as wos,
+          (select count(*)::int from public.pm_tasks
+           where assignee_id = current_user_id() and status in ('pending','in_progress','overdue')) as pm_tasks,
+          (select count(*)::int from public.inspections
+           where inspector_id = current_user_id() and status in ('scheduled','due','in_progress')) as inspections
+      `),
     ])
 
     const byStatus: Record<string, number> = { operational: 0, attention: 0, critical: 0, offline: 0 }
@@ -61,6 +73,7 @@ dashboardRouter.get('/dashboard/stats', async (req, res) => {
         critical: wos.filter((w) => w.priority === 'critical').length,
       },
       overduePM: pm[0]?.count ?? 0,
+      myWork: (mine[0]?.wos ?? 0) + (mine[0]?.pm_tasks ?? 0) + (mine[0]?.inspections ?? 0),
     }
   })
   res.json(stats)

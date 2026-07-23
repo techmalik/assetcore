@@ -9,6 +9,7 @@ import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadTo, cleanupOrphanedUpload } from '../files.js'
+import { notifyUsers, notifyRoleHolders } from '../notify.js'
 
 export const inspectionsRouter = Router()
 inspectionsRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -78,6 +79,13 @@ inspectionsRouter.post('/inspections', requireCap('inspection:create'), async (r
     const { rows: full } = await c.query(`${SELECT} where i.id = $1`, [rows[0].id])
     const inspection = full[0]
     await writeAuditLog(c, { orgId: inspection.org_id, actorId: req.claims!.sub, action: 'inspection.create', entityType: 'inspection', entityId: inspection.id, after: inspection })
+    if (inspection.inspector_id) {
+      await notifyUsers(c, {
+        orgId: inspection.org_id, userIds: [inspection.inspector_id], actorId: req.claims!.sub,
+        kind: 'inspection_assigned', title: `Inspection assigned to you: ${inspection.title}`,
+        body: `Scheduled ${inspection.scheduled_date}.`, entityType: 'inspection', entityId: inspection.id,
+      })
+    }
     return inspection
   })
   res.status(201).json(row)
@@ -92,11 +100,37 @@ inspectionsRouter.patch('/inspections/:id', requireCap('inspection:update'), asy
   if (!setSql) return res.status(400).json({ error: 'empty_patch' })
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows: before } = await c.query('select inspector_id, status from public.inspections where id = $1', [req.params.id])
+    if (!before[0]) return null
+    const inspectorChanged = 'inspector_id' in patch && patch.inspector_id !== before[0].inspector_id
+    const justCompleted = patch.status === 'completed' && before[0].status !== 'completed'
+
     const { rows } = await c.query(`update public.inspections set ${setSql} where id = $1 returning id, org_id`, [req.params.id, ...values])
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${SELECT} where i.id = $1`, [req.params.id])
     const inspection = full[0]
     await writeAuditLog(c, { orgId: inspection.org_id, actorId: req.claims!.sub, action: 'inspection.update', entityType: 'inspection', entityId: inspection.id, after: inspection })
+
+    if (inspectorChanged && patch.inspector_id) {
+      await notifyUsers(c, {
+        orgId: inspection.org_id, userIds: [patch.inspector_id], actorId: req.claims!.sub,
+        kind: 'inspection_assigned', title: `Inspection assigned to you: ${inspection.title}`,
+        body: `Scheduled ${inspection.scheduled_date}.`, entityType: 'inspection', entityId: inspection.id,
+      })
+    }
+    if (justCompleted) {
+      // hse_officer is the compliance-owning role for inspections (per the
+      // app's own role matrix) so it's included here alongside owner/ops_manager,
+      // unlike PM-task completion which stays owner/ops_manager only.
+      await notifyRoleHolders(c, {
+        orgId: inspection.org_id, siteId: inspection.site_id, roles: ['owner', 'ops_manager', 'hse_officer'],
+        actorId: req.claims!.sub, kind: 'work_completed',
+        title: `Inspection completed: ${inspection.title}`,
+        body: inspection.findings ? String(inspection.findings).slice(0, 120) : 'Completed.',
+        entityType: 'inspection', entityId: inspection.id,
+        dedupePrefix: `work_completed:inspection:${inspection.id}`,
+      })
+    }
     return inspection
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -120,8 +154,16 @@ inspectionsRouter.post('/inspections/:id/report', requireCap('inspection:update'
         )
       }
       const { rows: full } = await c.query(`${SELECT} where i.id = $1`, [req.params.id])
+      const inspection = full[0]
       await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'inspection.attachment.add', entityType: 'inspection', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
-      return full[0]
+      await notifyRoleHolders(c, {
+        orgId: inspection.org_id, siteId: inspection.site_id, roles: ['owner', 'ops_manager', 'hse_officer'],
+        actorId: req.claims!.sub, kind: 'report_uploaded',
+        title: `Inspection report uploaded: ${inspection.title}`,
+        body: req.file!.originalname, entityType: 'inspection', entityId: inspection.id,
+        dedupePrefix: `report_uploaded:inspection:${inspection.id}`,
+      })
+      return inspection
     })
   } catch (err) {
     await cleanupOrphanedUpload(req.file.path)

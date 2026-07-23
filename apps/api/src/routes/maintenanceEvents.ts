@@ -8,6 +8,7 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { uploadTo, guardedSingle, validateUploadOrCleanup, cleanupOrphanedUpload, DOCUMENT_MIME_TYPES } from '../files.js'
+import { notifyRoleHolders, notifyWorkOrderClosed } from '../notify.js'
 
 export const maintenanceEventsRouter = Router()
 maintenanceEventsRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -88,7 +89,7 @@ maintenanceEventsRouter.post(
     let result
     try {
       result = await withOrgContext(claimsFromReq(req), async (c) => {
-      const { rows: assetRows } = await c.query('select id, org_id, site_id from public.assets where id = $1', [req.params.id])
+      const { rows: assetRows } = await c.query('select id, org_id, site_id, name from public.assets where id = $1', [req.params.id])
       const asset = assetRows[0]
       if (!asset) return { error: 'not_found' as const }
 
@@ -109,7 +110,7 @@ maintenanceEventsRouter.post(
       }
       if (work_order_id) {
         const { rows: woRows } = await c.query(
-          `update public.work_orders set status = 'closed', updated_at = now() where id = $1 and status <> 'closed' returning id`,
+          `update public.work_orders set status = 'closed', updated_at = now() where id = $1 and status <> 'closed' returning id, ref, title`,
           [work_order_id]
         )
         if (woRows[0]) {
@@ -118,6 +119,10 @@ maintenanceEventsRouter.post(
              values (current_org_id(), $1, current_user_id(), 'status_change', 'Closed via maintenance completion.')`,
             [work_order_id]
           )
+          await notifyWorkOrderClosed(c, {
+            orgId: asset.org_id, woId: woRows[0].id, ref: woRows[0].ref, title: woRows[0].title,
+            actorId: req.claims!.sub,
+          })
         }
       }
 
@@ -137,6 +142,15 @@ maintenanceEventsRouter.post(
       await writeAuditLog(c, {
         orgId: asset.org_id, actorId: req.claims!.sub, action: 'maintenance.complete',
         entityType: 'asset', entityId: asset.id, after: event,
+      })
+
+      await notifyRoleHolders(c, {
+        orgId: asset.org_id, siteId: asset.site_id, roles: ['owner', 'ops_manager'],
+        actorId: req.claims!.sub, kind: 'work_completed',
+        title: `Maintenance completed on ${asset.name || 'asset'}`,
+        body: reportUrl ? 'Completed. Report attached.' : (notes || 'Completed.'),
+        entityType: 'maintenance_event', entityId: event.id,
+        dedupePrefix: `work_completed:maintenance_event:${event.id}`,
       })
 
       return { data: event }
@@ -168,7 +182,7 @@ maintenanceEventsRouter.post(
     let row
     try {
       row = await withOrgContext(claimsFromReq(req), async (c) => {
-        const { rows } = await c.query('update public.maintenance_events set report_url = $2 where id = $1 returning id, org_id, asset_id', [req.params.id, url])
+        const { rows } = await c.query('update public.maintenance_events set report_url = $2 where id = $1 returning id, org_id, asset_id, site_id', [req.params.id, url])
         if (!rows[0]) return null
         await c.query(
           `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
@@ -177,6 +191,13 @@ maintenanceEventsRouter.post(
         )
         const { rows: full } = await c.query('select * from public.maintenance_events where id = $1', [req.params.id])
         await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'maintenance_event.attachment.add', entityType: 'maintenance_event', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
+        await notifyRoleHolders(c, {
+          orgId: rows[0].org_id, siteId: rows[0].site_id, roles: ['owner', 'ops_manager'],
+          actorId: req.claims!.sub, kind: 'report_uploaded',
+          title: 'Maintenance report uploaded', body: req.file!.originalname,
+          entityType: 'maintenance_event', entityId: rows[0].id,
+          dedupePrefix: `report_uploaded:maintenance_event:${rows[0].id}`,
+        })
         return full[0]
       })
     } catch (err) {
