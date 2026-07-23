@@ -317,9 +317,8 @@ a { text-decoration: none; color: inherit; }
   }
   /* Collapse is a desktop affordance; the mobile drawer is always full-width. */
   .sidebar-collapse-btn { display: none; }
-  /* Tables scroll horizontally on small screens — only inside an explicit scroll wrapper */
+  /* Tables force a minimum width on small screens so they scroll instead of squishing */
   .table-scroll table { min-width: 560px; }
-  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
   /* Fixed-width detail/aside panels become full-screen overlays / stack below content */
   .detail-panel {
@@ -429,6 +428,11 @@ a { text-decoration: none; color: inherit; }
 
 /* Tab strip — horizontal on desktop, swipe-scrollable on mobile (no wrap: see media query above) */
 .tab-strip { display: flex; }
+
+/* Horizontal scroll wrapper for data tables — active at every width; the
+   ≤768px block above additionally forces a minimum table width so narrow
+   tables still scroll instead of squishing their columns unreadably. */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* Dashboard grids — fixed desktop columns, single column on mobile */
 .dash-main-grid { grid-template-columns: 280px 1fr; }

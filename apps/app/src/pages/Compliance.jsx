@@ -416,7 +416,7 @@ function AuditsPanel({ canCreate }) {
       ) : audits.length === 0 ? (
         <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>No audits recorded yet.</div>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
               {['Audit', 'Standard / Ref', 'Date', 'Routine maint.', 'ISO audit', 'Site', 'Asset', 'Doc', ''].map((h) => (
@@ -444,7 +444,7 @@ function AuditsPanel({ canCreate }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
       {modal && <AuditModal audit={modal === 'new' ? null : modal} sites={sites} users={users} assets={assets} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />}
     </div>
@@ -587,7 +587,7 @@ export default function Compliance({ dark, toggleDark }) {
               ) : filtered.length === 0 ? (
                 <EmptyState canCreate={canCreate} onAdd={() => setModal('add')} locationName={globalLocation?.name} onShowAll={() => setGlobalLocationId(null)} />
               ) : (
-                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
                   <thead style={{position:'sticky',top:0,zIndex:10}}>
                     <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
                       {['Licence / Certificate','Authority','Site','Issued','Expires','Days','Status',''].map(h => (
@@ -623,7 +623,7 @@ export default function Compliance({ dark, toggleDark }) {
                       )
                     })}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </div>
 

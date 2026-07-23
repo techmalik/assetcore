@@ -487,7 +487,7 @@ function PermissionsMatrix() {
       </button>
       {open && (
         <div style={{padding:'0 16px 16px'}}>
-          <div style={{overflowX:'auto'}}>
+          <div className="table-scroll">
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
               <thead>
                 <tr>
@@ -709,7 +709,7 @@ function UsersTab() {
             ) : err ? (
               <div style={{padding:12,background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:6,fontSize:13,color:'var(--srt)'}}>{err}</div>
             ) : (
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead>
                   <tr style={{background:'var(--n50)'}}>
                     {['User','Email','Role','Status',''].map(h => (
@@ -754,7 +754,7 @@ function UsersTab() {
                     )
                   })}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         )}
@@ -851,7 +851,7 @@ function AuditTab() {
         ) : rows.length === 0 ? (
           <div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>No audit events yet.</div>
         ) : (
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead style={{position:'sticky',top:0,zIndex:10}}>
               <tr style={{background:'var(--n50)'}}>
                 {['Time','Actor','Action','Entity',''].map(h => (
@@ -883,7 +883,7 @@ function AuditTab() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
     </div>

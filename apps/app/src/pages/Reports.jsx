@@ -135,6 +135,7 @@ export default function Reports({ dark, toggleDark }) {
                   </div>
                 ) : (
                   <div style={{padding:'20px 24px'}}>
+                    <div className="table-scroll">
                     <table style={{width:'100%',borderCollapse:'collapse',background:'var(--n0)',border:'var(--bdr)',borderRadius:6,overflow:'hidden'}}>
                       <thead>
                         <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
@@ -184,6 +185,7 @@ export default function Reports({ dark, toggleDark }) {
                         })}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 )}
               </>

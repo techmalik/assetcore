@@ -230,7 +230,7 @@ export default function Inspections({ dark, toggleDark }) {
                 ) : tab==='open' && canCreate && <button onClick={() => setModal('create')} className="btn btn-primary" style={{marginTop:8,height:34,padding:'0 16px',fontSize:13}}>Schedule first inspection</button>}
               </div>
             ) : (
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead style={{position:'sticky',top:0,zIndex:10}}>
                   <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
                     {['Title','Type','Asset','Site','Date','Inspector','Status',''].map(h => (
@@ -269,7 +269,7 @@ export default function Inspections({ dark, toggleDark }) {
                     )
                   })}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         </div>

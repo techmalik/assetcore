@@ -290,7 +290,7 @@ export default function Dashboard({ dark, toggleDark }) {
                 <button style={{border:'none',background:'none',fontSize:13,color:'var(--b600)',fontWeight:500,cursor:'pointer',padding:0}}
                   onClick={() => nav('/work-orders')}>View all →</button>
               </div>
-              <div style={{overflowX:'auto'}}>
+              <div className="table-scroll">
                 {recentWOs.length === 0 ? (
                   <div style={{padding:'32px 20px',textAlign:'center',color:'var(--n400)',fontSize:13}}>
                     {stats ? 'No work orders yet.' : 'Loading…'}

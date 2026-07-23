@@ -1154,7 +1154,7 @@ export default function Assets({ dark, toggleDark }) {
           </div>
 
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
+            <div className="table-scroll" style={{ flex: 1, overflowY: 'auto' }}>
               {loading ? (
                 <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>Loading assets…</div>
               ) : error ? (

@@ -294,7 +294,7 @@ export default function Maintenance({ dark, toggleDark }) {
                   ))}
                   <div style={{marginLeft:'auto',fontSize:11,color:'var(--n400)',display:'flex',alignItems:'center'}}>Phase 3: live licence register coming soon</div>
                 </div>
-                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
                   <thead style={{position:'sticky',top:0,zIndex:10}}>
                     <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
                       {['ID','Certificate / Licence','Issuer','Site','Issued','Expires','Days','Status',''].map(h => (
@@ -319,7 +319,7 @@ export default function Maintenance({ dark, toggleDark }) {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             )}
           </div>
@@ -457,7 +457,7 @@ function SchedulesView({ schedules }) {
   return (
     <div style={{padding:20}}>
       <div style={{fontSize:12,color:'var(--n500)',marginBottom:14}}>No active tasks in the next 30 days. Showing {schedules.length} PM schedule{schedules.length!==1?'s':''}.</div>
-      <table style={{width:'100%',borderCollapse:'collapse'}}>
+      <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
         <thead>
           <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
             {['Schedule','Frequency','Asset','Site','Next Due','Active'].map(h => (
@@ -479,7 +479,7 @@ function SchedulesView({ schedules }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </div>
   )
 }

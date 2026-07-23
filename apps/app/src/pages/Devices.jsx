@@ -219,7 +219,7 @@ export default function Devices({ dark, toggleDark }) {
             ) : shown.length === 0 ? (
               <EmptyState canCreate={canCreate} onAdd={() => setModal('add')} />
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
                     {['Device', 'Type', 'Protocol', 'Linked Asset', 'Site', 'Firmware', 'Last Seen', 'Status', ''].map(h => (
@@ -261,7 +261,7 @@ export default function Devices({ dark, toggleDark }) {
                     )
                   })}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         </div>
