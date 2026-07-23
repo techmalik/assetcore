@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
   Title, Text, Stack, Group, Button, Table, Card, Menu, ActionIcon, Modal,
-  Select, TextInput, NumberInput, Textarea,
+  Select, TextInput, NumberInput, Textarea, SimpleGrid,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
@@ -82,20 +82,20 @@ function LicenceEditor() {
       >
         <form onSubmit={form.onSubmit(save)}>
           <Stack gap="sm">
-            <Group grow>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <TextInput label="Licensed to" withAsterisk disabled={!canWrite} {...form.getInputProps('licensed_to')} />
               <TextInput label="Contract ref" disabled={!canWrite} {...form.getInputProps('contract_ref')} />
-            </Group>
-            <Group grow>
+            </SimpleGrid>
+            <SimpleGrid cols={{ base: 1, sm: 3 }}>
               <TextInput label="Issued" type="date" disabled={!canWrite} {...form.getInputProps('issued_at')} />
               <TextInput label="Expires" type="date" disabled={!canWrite} {...form.getInputProps('expires_at')} />
               <TextInput label="Maintenance until" type="date" disabled={!canWrite} {...form.getInputProps('maintenance_expires_at')} />
-            </Group>
-            <Group grow>
+            </SimpleGrid>
+            <SimpleGrid cols={{ base: 1, sm: 3 }}>
               <NumberInput label="Annual fee" min={0} decimalScale={2} thousandSeparator="," disabled={!canWrite} {...form.getInputProps('annual_fee')} />
               <Select label="Currency" data={['NGN', 'USD']} disabled={!canWrite} {...form.getInputProps('currency')} />
               <NumberInput label="Seats" min={0} disabled={!canWrite} {...form.getInputProps('seats')} />
-            </Group>
+            </SimpleGrid>
             <Textarea label="Notes" autosize minRows={2} disabled={!canWrite} {...form.getInputProps('notes')} />
             {canWrite && (
               <Group justify="flex-end">
@@ -230,15 +230,15 @@ export default function Billing() {
         <form onSubmit={form.onSubmit(create)}>
           <Stack gap="sm">
             <Select label="Organization" withAsterisk data={orgOptions} searchable {...form.getInputProps('org_id')} />
-            <Group grow>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <TextInput label="Invoice number" withAsterisk placeholder="INV-2026-0001" {...form.getInputProps('number')} />
               <TextInput label="PO number" {...form.getInputProps('po_number')} />
-            </Group>
-            <Group grow>
+            </SimpleGrid>
+            <SimpleGrid cols={{ base: 1, sm: 3 }}>
               <NumberInput label="Amount" min={0} decimalScale={2} thousandSeparator="," {...form.getInputProps('amount')} />
               <Select label="Currency" data={['NGN', 'USD']} {...form.getInputProps('currency')} />
               <TextInput label="Due date" type="date" {...form.getInputProps('due_at')} />
-            </Group>
+            </SimpleGrid>
             <Select label="Status" data={['draft', 'sent']} {...form.getInputProps('status')} />
             <Textarea label="Notes" autosize minRows={2} {...form.getInputProps('notes')} />
             <Group justify="flex-end" mt="xs">
