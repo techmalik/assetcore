@@ -183,8 +183,8 @@ function LicenceCard() {
 
 // ── Organisation Tab ──────────────────────────────────────────────────────────
 function OrgTab() {
-  const { org, roleKey } = useAuth()
-  const canEdit = can(roleKey, 'org:manage')
+  const { org, roleKey, extraCaps } = useAuth()
+  const canEdit = can(roleKey, 'org:manage', extraCaps)
   const [form, setForm] = useState({ name: '', short_name: '', region: '' })
   const [saving, setSaving] = useState(false)
   const [ok, setOk]   = useState(null)

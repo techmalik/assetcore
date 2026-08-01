@@ -5,6 +5,83 @@ first licensed release shipped to a client (NGML).
 
 ## [1.0.0] — unreleased
 
+### Owner-review follow-ups (August 2026)
+
+- Asset health is no longer something anyone types. It has always been derived
+  — a linear decay from 100% at the last maintenance date to 0% at the next —
+  but the asset form still offered an "Initial health %" field, the CSV import
+  still accepted a `health_score` column, and the API still honoured both, so a
+  typed value survived only until the next nightly run. The field, the column
+  and the API parameter are gone, and the request is now rejected outright
+  rather than silently ignored. To make that safe, the per-row half of the
+  decay is callable on its own (`recompute_asset_health_for`), so a newly
+  registered asset has a correct score in the same request instead of null
+  until 01:00, and moving either maintenance date recalculates immediately.
+  The CSV import goes through the same path, which incidentally fixes imported
+  low-health assets never raising an inspection or an auto-drafted work order.
+- Depreciation. `assets.nbv_cents` was read by the asset panel and the asset
+  register report and written by nothing but the seed script — every book value
+  the product ever showed was fiction. Book value and accumulated depreciation
+  are now computed from purchase value, in-service date and an admin-chosen
+  org-wide policy (straight-line or declining balance, with useful life and
+  residual value), overridable per asset, configured in Admin → Configuration.
+  Recomputed nightly, on any asset write that moves an input, and across the
+  whole register the moment the policy changes. An asset with no purchase value
+  or no start date reports no book value rather than zero. `purchase_date` and
+  `install_date` were promoted from untyped `specs` JSON keys to real date
+  columns, backfilled in place.
+- Notifications are actionable. Every notification has always carried
+  `(entity_type, entity_id)`; nothing turned that into a route, so a
+  notification was a dead end. Clicking one now opens the work order,
+  inspection, task, asset or licence it is about, from both the list and the
+  detail pane. The list item was also rebuilt from four stacked full-width
+  strips into two lines — title and time on one, kind and body on the next —
+  and the "Dismiss" button, which had no click handler at all, is now a working
+  "Mark as unread".
+- Notification coverage gaps closed: `inspection_due`, `maintenance_due` and
+  `pm_overdue` inserted rows directly and so ignored the per-user preferences
+  the UI offered; all three now go through the preference-aware helpers.
+  `maintenance_due` fired before the auto-work-order dedupe check and could
+  announce a work order that was never drafted. Work-order comments now also
+  reach whoever raised the order, and work-order attachments now notify at all.
+  `pm_due` had a preferences toggle and no producer anywhere in the codebase —
+  it now has one; `system` had neither and its toggle is removed.
+- The Maintenance page's subtitle promised "preventive maintenance, inspections
+  & compliance" and delivered one of the three: its Inspections tab was a
+  "Phase 3 — coming soon" panel and its Compliance tab rendered seven hardcoded
+  fake licences with a dead "Renew" button, both while real Inspections and
+  Compliance pages existed and worked. The two features are extracted into
+  shared panels mounted by both the standalone pages and these tabs, so there
+  is one implementation, live data, and tab badges computed from real counts
+  instead of a literal `7`.
+- "Maintenance" is gone from the status picker when adding an asset. It is an
+  operational state the system derives: a work order moving to in progress puts
+  its asset under maintenance and closing the last one takes it back out,
+  recorded in the asset's activity timeline. The asset registry's filter row
+  also stopped mixing two axes — operational state and health-derived severity
+  are now separate, labelled controls, and the legacy attention/critical values
+  only appear while rows still carry them.
+- Work orders in the asset detail panel now show who they are assigned to and
+  when they were raised, and clicking one opens that work order instead of
+  dumping you on an unfiltered list. Raising a work order from an asset can
+  assign it at creation, which only the Work Orders page could do before.
+- Security: `POST`/`PATCH`/`DELETE /devices` had no capability check at all —
+  any active member, including read-only viewer and auditor roles, could
+  create, edit and delete devices. Now gated on `asset:update`.
+- Per-user granted capabilities were ignored almost everywhere in the UI.
+  `can()` takes an `extraCaps` argument that only two pages passed, so an
+  admin could grant a capability in Admin → Access settings, the API would
+  honour it, and the button would still never appear. Every call site passes it
+  now. Three capability gates also named the wrong capability outright: "Add
+  Licence" checked `wo:create` instead of `compliance:create` (hiding it from
+  the HSE officer role that owns compliance), and "Schedule PM" and "Generate
+  Tasks" checked `wo:create` instead of `pm:create`.
+- The topbar search box was decorative — no state, no handler, no results. It
+  now searches assets by AIN/name and work orders by ref/title. PM schedules
+  can be archived (the function was imported and never called). Asset value is
+  labelled and rendered in naira everywhere, matching the reports and work
+  orders rather than contradicting them with a dollar sign.
+
 ### Owner-review follow-ups (July 2026)
 
 - Auto-generated work orders now land in a real `draft` status with an

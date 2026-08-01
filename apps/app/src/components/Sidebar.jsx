@@ -37,10 +37,10 @@ const OPERATIONS = [
 
 export default function Sidebar({ active }) {
   const nav = useNavigate()
-  const { org, fullName, initials, roleKey } = useAuth()
+  const { org, fullName, initials, roleKey, extraCaps } = useAuth()
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
   const { unreadCount } = useNotifications()
-  const canAdmin = ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c))
+  const canAdmin = ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c, extraCaps))
   const [orgMenu, setOrgMenu] = useState(false)
   const orgRef = useRef(null)
   const [openWOCount, setOpenWOCount] = useState(0)

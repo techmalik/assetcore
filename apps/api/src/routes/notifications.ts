@@ -35,6 +35,18 @@ notificationsRouter.post('/notifications/:id/read', async (req, res) => {
   res.status(204).end()
 })
 
+// Backs the detail pane's second action. The UI used to render a "Dismiss"
+// button with no onClick at all; real deletion isn't possible because
+// public.notifications carries no delete grant for assetcore_app
+// (0001_baseline.sql), so this does the honest thing the existing update grant
+// supports — puts it back in the unread list to deal with later.
+notificationsRouter.post('/notifications/:id/unread', async (req, res) => {
+  await withOrgContext(claimsFromReq(req), (c) =>
+    c.query('update public.notifications set read = false where id = $1 and user_id = current_user_id()', [req.params.id])
+  )
+  res.status(204).end()
+})
+
 notificationsRouter.post('/notifications/read-all', async (req, res) => {
   await withOrgContext(claimsFromReq(req), (c) =>
     c.query("update public.notifications set read = true where user_id = current_user_id() and read = false")

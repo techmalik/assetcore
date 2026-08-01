@@ -41,7 +41,7 @@ function Splash() {
 }
 
 function Routed() {
-  const { loading, authed, needsOnboarding, mustChangePassword, roleKey } = useAuth()
+  const { loading, authed, needsOnboarding, mustChangePassword, roleKey, extraCaps } = useAuth()
   const [dark, setDark] = useState(false)
 
   const toggleDark = () => {
@@ -95,7 +95,7 @@ function Routed() {
       <Route path="/notifications" element={gate(<Notifications {...props} />)} />
       <Route path="/settings" element={gate(<Settings {...props} />)} />
       <Route path="/reports" element={gate(<Reports {...props} />)} />
-      <Route path="/admin" element={gate(ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c)) ? <Admin {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/admin" element={gate(ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c, extraCaps)) ? <Admin {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

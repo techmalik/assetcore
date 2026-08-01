@@ -33,7 +33,9 @@ model, respectively. See `CHANGELOG.md` for what shipped in each release.
 Explicitly parked, not part of the current licensed build:
 
 - Approvals UI (`public.approvals` table exists, unused)
-- `notification_preferences` — no per-channel opt-in/out UI
+- Notification dismissal/deletion — `public.notifications` has no delete grant
+  (read/insert/update only), so the detail pane offers "Mark as unread" rather
+  than a true dismiss
 - Email/SMS notification channels (in-app + polling only)
 - `memberships.site_scope` enforcement (column exists, not checked)
 - Telemetry ingest (`devices`/`telemetry_readings` schema exists, no ingest path)

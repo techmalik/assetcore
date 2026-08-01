@@ -14,7 +14,8 @@ export async function buildReportData(c: PoolClient, kind: ReportKind): Promise<
     case 'asset_register': {
       const { rows } = await c.query(`
         select a.ain, a.name, cat.name as category, s.name as site, a.status,
-          a.health_score, a.purchase_value_cents, a.nbv_cents, a.created_at
+          a.health_score, a.purchase_value_cents, a.nbv_cents,
+          a.accumulated_depreciation_cents, a.depreciation_method, a.created_at
         from public.assets a
         left join public.asset_categories cat on cat.id = a.category_id
         left join public.sites s on s.id = a.site_id
@@ -30,13 +31,17 @@ export async function buildReportData(c: PoolClient, kind: ReportKind): Promise<
           { header: 'Status', key: 'status', width: 14 },
           { header: 'Health Score', key: 'health_score', width: 14 },
           { header: 'Purchase Value (NGN)', key: 'purchase_value', width: 20 },
-          { header: 'NBV (NGN)', key: 'nbv', width: 18 },
+          { header: 'Accumulated Depreciation (NGN)', key: 'accumulated_depreciation', width: 28 },
+          { header: 'Book Value (NGN)', key: 'nbv', width: 18 },
           { header: 'Created', key: 'created_at', width: 14 },
         ],
         rows: rows.map((r) => ({
           ain: r.ain, name: r.name, category: r.category || '', site: r.site || '', status: r.status,
           health_score: r.health_score ?? '',
           purchase_value: r.purchase_value_cents != null ? Number(r.purchase_value_cents) / 100 : '',
+          // Blank, not 0 — a null book value means "not calculable from the
+          // data we hold", which is a different claim from "fully written down".
+          accumulated_depreciation: r.accumulated_depreciation_cents != null ? Number(r.accumulated_depreciation_cents) / 100 : '',
           nbv: r.nbv_cents != null ? Number(r.nbv_cents) / 100 : '',
           created_at: r.created_at,
         })),

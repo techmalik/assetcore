@@ -9,7 +9,7 @@ import { requireCap, hasCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadTo, cleanupOrphanedUpload } from '../files.js'
-import { notifyWorkOrderClosed } from '../notify.js'
+import { notifyUsers, notifyWorkOrderClosed } from '../notify.js'
 
 export const workOrdersRouter = Router()
 workOrdersRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -131,6 +131,40 @@ async function recordAssignment(c: import('pg').PoolClient, orgId: string, woId:
   )
 }
 
+// `maintenance` is an operational state, not something anyone should hand-pick
+// on a form (it was removed from the asset status picker in the same commit
+// series). It follows from the work: an asset with a work order actually being
+// worked on IS under maintenance, and stops being so when that work ends.
+//
+// Only ever moves an asset between `operational` and `maintenance`. `offline`
+// and `standby` are deliberate operator decisions and are never overridden —
+// a decommissioned asset with an open WO stays offline.
+async function syncAssetStatusForWorkOrder(c: import('pg').PoolClient, assetId: string | null, actorId: string): Promise<void> {
+  if (!assetId) return
+
+  const { rows: assetRows } = await c.query('select status from public.assets where id = $1 and deleted_at is null', [assetId])
+  const current = assetRows[0]?.status
+  if (current !== 'operational' && current !== 'maintenance') return
+
+  const { rows: active } = await c.query(
+    `select 1 from public.work_orders
+     where asset_id = $1 and deleted_at is null and status = 'in_progress' limit 1`,
+    [assetId]
+  )
+  const next = active[0] ? 'maintenance' : 'operational'
+  if (next === current) return
+
+  await c.query('update public.assets set status = $2 where id = $1', [assetId, next])
+  await c.query(
+    `insert into public.asset_activity (org_id, asset_id, user_id, kind, body)
+     select org_id, id, $2, 'status_change', $3 from public.assets where id = $1`,
+    [assetId, actorId,
+     next === 'maintenance'
+       ? 'Status set to Under Maintenance — a work order is in progress.'
+       : 'Status returned to Operational — no work orders in progress.']
+  )
+}
+
 workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) => {
   const parsed = woInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
@@ -193,6 +227,11 @@ workOrdersRouter.patch('/work-orders/:id', requireCap('wo:update'), async (req, 
     const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [req.params.id])
     const wo = full[0]
     await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.update', entityType: 'work_order', entityId: wo.id, after: parsed.data })
+    // PATCH can move `status` too (it's in ALLOWED), so the asset's operational
+    // state has to follow from here as well as from /transition.
+    if ('status' in parsed.data) {
+      await syncAssetStatusForWorkOrder(c, wo.asset_id, req.claims!.sub)
+    }
     return { data: wo }
   })
   if ('error' in result) {
@@ -247,6 +286,8 @@ workOrdersRouter.post('/work-orders/:id/transition', requireCap('wo:transition')
       })
     }
 
+    await syncAssetStatusForWorkOrder(c, woFull.asset_id, req.claims!.sub)
+
     return { data: woFull }
   })
 
@@ -273,6 +314,28 @@ workOrdersRouter.post('/work-orders/:id/attachments', requireCap('wo:update'), a
       )
       const activity = rows[0]
       await writeAuditLog(c, { orgId: activity.org_id, actorId: req.claims!.sub, action: 'work_order.attachment.add', entityType: 'work_order', entityId: activity.work_order_id, after: { url, name: file.originalname, size: file.size } })
+
+      // PM tasks, inspections and maintenance completions all announce a
+      // report upload; work orders were the one attachment path that silently
+      // did nothing. Goes to the assignee and the raiser — whoever isn't the
+      // uploader is the one waiting to see it.
+      const { rows: woRows } = await c.query(
+        'select id, org_id, ref, assignee_id, created_by from public.work_orders where id = $1',
+        [req.params.id]
+      )
+      const wo = woRows[0]
+      if (wo) {
+        await notifyUsers(c, {
+          orgId: wo.org_id,
+          userIds: [wo.assignee_id, wo.created_by],
+          actorId: req.claims!.sub,
+          kind: 'report_uploaded',
+          title: `File attached to ${wo.ref}`,
+          body: file.originalname,
+          entityType: 'work_order',
+          entityId: wo.id,
+        })
+      }
       return activity
     })
   } catch (err) {

@@ -154,12 +154,20 @@ describe('threshold crossing: maintenance / auto work order (configurable, defau
   })
 })
 
-describe('manual PATCH crossing fires triggers synchronously (no waiting for the cron)', () => {
-  it('PATCHing health_score down through 30% drafts the auto-WO within the same request/response cycle', async () => {
+// Health is derived from the maintenance window, so the maintenance dates are
+// the only lever a user has on it. These replace an older test that PATCHed
+// health_score directly — that path is gone (see below).
+describe('date changes recompute health synchronously (no waiting for the cron)', () => {
+  it('PATCHing next_maintenance_at into the near future drafts the auto-WO within the same request/response cycle', async () => {
     const assetId = await createHealthTestAsset({ healthScore: 40 })
     const api = await apiAs(USERS.ownerA.email)
 
-    const res = await api.patch(`/api/assets/${assetId}`).send({ health_score: 20 })
+    // A window 95 days elapsed with 5 to go => 5% health, under both thresholds.
+    const lastMaint = new Date(Date.now() - 95 * 86400000).toISOString().slice(0, 10)
+    const nextMaint = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10)
+
+    const res = await api.patch(`/api/assets/${assetId}`)
+      .send({ last_maintenance_at: lastMaint, next_maintenance_at: nextMaint })
     expect(res.status).toBe(200)
 
     // No delay, no cron wait — assert immediately after the response returns.
@@ -169,6 +177,40 @@ describe('manual PATCH crossing fires triggers synchronously (no waiting for the
         [assetId]
       )
       expect(rows[0].n).toBe(1)
+      const { rows: asset } = await c.query('select health_score from public.assets where id = $1', [assetId])
+      expect(asset[0].health_score).toBe(5)
+    })
+  })
+
+  it('a newly created asset has a health score immediately, not after the next cron run', async () => {
+    const api = await apiAs(USERS.ownerA.email)
+    const lastMaint = new Date(Date.now() - 50 * 86400000).toISOString().slice(0, 10)
+    const nextMaint = new Date(Date.now() + 50 * 86400000).toISOString().slice(0, 10)
+
+    const res = await api.post('/api/assets').send({
+      ain: `HEALTH-NEW-${uniqueSuffix()}`,
+      name: 'Freshly registered asset',
+      site_id: SITE_A1,
+      last_maintenance_at: lastMaint,
+      next_maintenance_at: nextMaint,
+    })
+    expect(res.status).toBe(201)
+    // Halfway through the window => 50%.
+    expect(res.body.health_score).toBe(50)
+  })
+
+  it('rejects a body that still tries to set health_score', async () => {
+    const api = await apiAs(USERS.ownerA.email)
+    const assetId = await createHealthTestAsset({ healthScore: 80 })
+
+    // Silently stripping it would leave an old client believing the write
+    // landed, so the schema is strict and this is a 400.
+    const res = await api.patch(`/api/assets/${assetId}`).send({ health_score: 20 })
+    expect(res.status).toBe(400)
+
+    await withClient(async (c) => {
+      const { rows } = await c.query('select health_score from public.assets where id = $1', [assetId])
+      expect(rows[0].health_score).toBe(80)
     })
   })
 })

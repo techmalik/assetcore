@@ -1,7 +1,7 @@
 import { api } from '../apiClient'
 
 export const REPORT_KINDS = {
-  asset_register:      { label: 'Asset Register',      desc: 'Full asset list with category, site, status, health, and NBV' },
+  asset_register:      { label: 'Asset Register',      desc: 'Full asset list with category, site, status, health, purchase value, accumulated depreciation and book value' },
   wo_summary:          { label: 'Work Order Summary',  desc: 'All work orders with site, asset, type, status, priority and SLA' },
   compliance_register: { label: 'Compliance Register', desc: 'Licences and certificates with authority, site, and expiry' },
   pm_history:          { label: 'PM History',           desc: 'Preventive maintenance task history by asset and site' },

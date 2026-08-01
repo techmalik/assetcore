@@ -218,6 +218,12 @@ export default function Reports({ dark, toggleDark }) {
                           <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--n600)',marginBottom:4}}>
                             <span>Total value</span><span style={{fontFamily:'var(--ff-m)',color:'var(--n900)'}}>{fmtNaira(loc.total_value_cents)}</span>
                           </div>
+                          {/* Depreciated book value alongside purchase value — the
+                              nbv_cents column existed from day one but nothing
+                              computed it until recompute_asset_depreciation (0015). */}
+                          <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--n600)',marginBottom:4}}>
+                            <span>Book value</span><span style={{fontFamily:'var(--ff-m)',color:'var(--n900)'}}>{fmtNaira(loc.total_nbv_cents)}</span>
+                          </div>
                           <div style={{height:1,background:'var(--n100)',margin:'8px 0'}}/>
                           <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--n600)',marginBottom:4}}>
                             <span>WO open / completed</span><span style={{fontFamily:'var(--ff-m)',color:'var(--n900)'}}>{loc.wo_open} / {loc.wo_completed}</span>

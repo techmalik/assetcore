@@ -13,6 +13,10 @@ export async function markRead(id) {
   await api.post(`/notifications/${id}/read`)
 }
 
+export async function markUnread(id) {
+  await api.post(`/notifications/${id}/unread`)
+}
+
 export async function markAllRead() {
   await api.post('/notifications/read-all')
 }

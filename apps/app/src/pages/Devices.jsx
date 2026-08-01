@@ -144,8 +144,11 @@ function SummaryChip({ label, count, active, onClick, color }) {
 }
 
 export default function Devices({ dark, toggleDark }) {
-  const { roleKey } = useAuth()
-  const canCreate = can(roleKey, 'wo:create')
+  const { roleKey, extraCaps } = useAuth()
+  // Was 'wo:create'. Device writes are gated on asset:update server-side
+  // (routes/devices.ts) — before that gate existed they were gated on
+  // nothing at all, and this UI check named an unrelated capability.
+  const canCreate = can(roleKey, 'asset:update', extraCaps)
   const [devices, setDevices]   = useState([])
   const [sites, setSites]       = useState([])
   const [assets, setAssets]     = useState([])

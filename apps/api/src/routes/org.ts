@@ -81,11 +81,25 @@ orgRouter.patch('/org/settings', requireCap('org:manage'), async (req, res) => {
   const parsed = settingsPatch.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const orgId = req.claims!.org_id!
+  const { rows: before } = await ownerPool.query(
+    'select settings from public.organizations where id = $1',
+    [orgId]
+  )
   const { rows } = await ownerPool.query(
     `update public.organizations set settings = $2::jsonb where id = $1
      returning id, name, short_name, region, plan, settings`,
     [orgId, JSON.stringify(parsed.data.settings)]
   )
   if (!rows[0]) return res.status(404).json({ error: 'not_found' })
+
+  // The depreciation policy is org-wide, so changing it changes every asset's
+  // book value. Recompute now rather than leaving the register stale until the
+  // 02:00 cron — an admin who switches method and sees nothing move reasonably
+  // concludes the setting doesn't work.
+  const prevDep = JSON.stringify(before[0]?.settings?.depreciation ?? null)
+  const nextDep = JSON.stringify(rows[0].settings?.depreciation ?? null)
+  if (prevDep !== nextDep) {
+    await ownerPool.query('select public.recompute_asset_depreciation($1)', [orgId])
+  }
   res.json(rows[0])
 })

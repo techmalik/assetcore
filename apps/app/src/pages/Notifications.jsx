@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useNotifications } from '../lib/NotificationsContext'
 import { getPreferences, upsertPreference } from '../lib/db/notifications'
+import { notificationHref, notificationLinkLabel } from '../lib/notificationLink'
 
 const KIND_META = {
   wo_transition: { label:'Work Order', dot:'var(--sl)', bg:'var(--slb)', c:'var(--slt)' },
@@ -65,11 +67,14 @@ const PREF_KINDS = [
   { key:'pm_due',         label:'PM due reminders',       desc:'Upcoming PM tasks (7-day warning)' },
   { key:'pm_overdue',     label:'PM overdue alerts',      desc:'Tasks that missed their due date' },
   { key:'licence_expiry', label:'Licence expiry',         desc:'Licences and permits nearing expiry' },
-  { key:'system',         label:'System updates',         desc:'Platform announcements', email:false },
+  // `system` used to be listed here too, offering a toggle for a kind nothing
+  // in the codebase has ever emitted. Removed rather than left as a control
+  // that does nothing. (pm_due kept — 0016 gives it a real producer.)
 ]
 
 export default function Notifications({ dark, toggleDark }) {
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications()
+  const nav = useNavigate()
+  const { notifications, unreadCount, markRead, markUnread, markAllRead } = useNotifications()
   const [selected, setSelected] = useState(null)
   const [panel, setPanel] = useState('detail')
   const [prefs, setPrefs] = useState([])
@@ -119,6 +124,14 @@ export default function Notifications({ dark, toggleDark }) {
   }
 
   const meta = selected ? kindMeta(selected.kind) : DEFAULT_META
+  const href = selected ? notificationHref(selected) : null
+
+  const openEntity = (n) => {
+    const target = notificationHref(n)
+    if (!target) return
+    if (!n.read) markRead(n.id)
+    nav(target)
+  }
 
   return (
     <div className="app-shell">
@@ -151,13 +164,31 @@ export default function Notifications({ dark, toggleDark }) {
                     {g.items.map(n => {
                       const m = kindMeta(n.kind)
                       const active = selected?.id === n.id && panel === 'detail'
+                      // Two lines, not four stacked blocks: title + time on one
+                      // row, kind + body on the next. The old layout put the
+                      // title, the body and the timestamp in three separate
+                      // full-width strips, which read as three unrelated
+                      // fragments rather than one item.
                       return (
-                        <div key={n.id} onClick={() => handleSelect(n)} style={{padding:'12px 16px',borderBottom:'var(--bdr)',cursor:'pointer',background:active?'var(--b50)':'transparent',display:'flex',gap:10,alignItems:'flex-start',borderLeft:`3px solid ${active?'var(--b500)':'transparent'}`}}>
-                          <div style={{width:6,height:6,borderRadius:'50%',background:n.read?'transparent':m.dot,marginTop:5,flexShrink:0,border:n.read?'none':'none'}}/>
+                        <div key={n.id} role="button" tabIndex={0} onClick={() => handleSelect(n)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelect(n) } }}
+                          style={{padding:'10px 16px',borderBottom:'var(--bdr)',cursor:'pointer',background:active?'var(--b50)':'transparent',display:'flex',gap:9,alignItems:'flex-start',borderLeft:`3px solid ${active?'var(--b500)':'transparent'}`}}>
+                          <span style={{width:6,height:6,borderRadius:'50%',background:n.read?'transparent':m.dot,marginTop:6,flexShrink:0}}/>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:12,fontWeight:n.read?400:600,color:'var(--n900)',marginBottom:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{n.title}</div>
-                            {n.body && <div style={{fontSize:11,color:'var(--n500)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:4}}>{n.body}</div>}
-                            <div style={{fontFamily:'var(--ff-m)',fontSize:10,color:'var(--n400)'}}>{fmtTime(n.created_at)}</div>
+                            <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                              <span style={{flex:1,minWidth:0,fontSize:12,fontWeight:n.read?400:600,color:'var(--n900)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{n.title}</span>
+                              <span style={{flexShrink:0,fontFamily:'var(--ff-m)',fontSize:10,color:'var(--n400)'}}>{fmtTime(n.created_at)}</span>
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
+                              <span style={{flexShrink:0,fontSize:10,fontWeight:500,color:m.c,background:m.bg,borderRadius:2,padding:'0 5px',lineHeight:'15px'}}>{m.label}</span>
+                              <span style={{flex:1,minWidth:0,fontSize:11,color:'var(--n500)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{n.body || ''}</span>
+                              {notificationHref(n) && (
+                                <button type="button" title="Open" onClick={(e) => { e.stopPropagation(); openEntity(n) }}
+                                  style={{flexShrink:0,background:'none',border:'none',padding:'0 2px',cursor:'pointer',color:'var(--b600)',fontSize:11,lineHeight:'15px'}}>
+                                  Open ›
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )
@@ -192,9 +223,20 @@ export default function Notifications({ dark, toggleDark }) {
                     <span style={{fontSize:12,color:'var(--n600)'}}>{selected.entity_type ? `${selected.entity_type.replace('_',' ')} event` : 'System notification'}</span>
                     {selected.read ? <span style={{marginLeft:'auto',fontSize:11,color:'var(--sgt)'}}>Read</span> : <span style={{marginLeft:'auto',fontSize:11,color:'var(--n400)'}}>Unread</span>}
                   </div>
-                  <div style={{display:'flex',gap:8}}>
-                    {!selected.read && <button className="btn btn-primary" onClick={() => markRead(selected.id)} style={{height:36,padding:'0 18px',fontSize:13}}>Mark as read</button>}
-                    <button className="btn btn-secondary" style={{height:36,padding:'0 16px',fontSize:13,marginLeft:'auto'}}>Dismiss</button>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                    {/* The whole point of a notification: get to the thing it's
+                        about. (entity_type, entity_id) has always been stored;
+                        nothing ever turned it into a route. Absent for a kind
+                        with no destination, rather than linking somewhere
+                        arbitrary. */}
+                    {href && (
+                      <button className="btn btn-primary" onClick={() => openEntity(selected)} style={{height:36,padding:'0 18px',fontSize:13}}>
+                        {notificationLinkLabel(selected)}
+                      </button>
+                    )}
+                    {selected.read
+                      ? <button className="btn btn-secondary" onClick={() => markUnread(selected.id)} style={{height:36,padding:'0 16px',fontSize:13,marginLeft:'auto'}}>Mark as unread</button>
+                      : <button className="btn btn-secondary" onClick={() => markRead(selected.id)} style={{height:36,padding:'0 16px',fontSize:13,marginLeft:'auto'}}>Mark as read</button>}
                   </div>
                 </div>
               ) : (

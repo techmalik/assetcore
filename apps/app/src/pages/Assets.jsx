@@ -13,6 +13,8 @@ import { listSites } from '../lib/db/sites'
 import { listLocations } from '../lib/db/locations'
 import { listCategories } from '../lib/db/categories'
 import { listOrgUsers } from '../lib/db/orgMembers'
+import { getOrg } from '../lib/db/org'
+import { fmtMoneyExact } from '../lib/money'
 import { createWorkOrder, listWorkOrders, WO_STATUS_LABEL, WO_TYPE_LABEL, WO_PRIORITY_LABEL } from '../lib/db/workOrders'
 import { listPMTasks, updatePMTask, uploadMaintenanceReport } from '../lib/db/pmTasks'
 import { listInspections, updateInspection } from '../lib/db/inspections'
@@ -44,7 +46,22 @@ const STATUS_STYLE = {
 // carrying a legacy status (attention/critical) still shows that as its
 // current option too, so opening Edit and saving unrelated fields doesn't
 // silently reassign its status.
-const STATUS_PICKER_KEYS = ['operational', 'maintenance', 'standby', 'offline']
+// `maintenance` is deliberately absent. It's an operational state the system
+// derives: a work order moving to in_progress puts its asset under maintenance
+// and closing the last one takes it back out (syncAssetStatusForWorkOrder in
+// apps/api/src/routes/workOrders.ts). Hand-picking it on a form produced a
+// status that immediately disagreed with the work. Still a legal value — the
+// spread below keeps it selectable on a row that already has it.
+const STATUS_PICKER_KEYS = ['operational', 'standby', 'offline']
+
+// Status values kept legal by 0012 for backwards compatibility but no longer
+// written by anything — they described health, which now has its own filter.
+const LEGACY_STATUS_KEYS = ['attention', 'critical']
+const STATE_FILTERS = [
+  ['all', 'All'], ['operational', 'Operational'], ['maintenance', 'Maintenance'],
+  ['standby', 'Standby'], ['offline', 'Offline'],
+  ['attention', 'Attention'], ['critical', 'Critical'],
+]
 
 const MAX_PHOTOS = 5
 
@@ -63,14 +80,6 @@ function HealthBar({ score }) {
       <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', width: 28 }}>{score}</span>
     </div>
   )
-}
-
-function formatNBV(cents) {
-  if (!cents) return '—'
-  const n = cents / 100
-  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`
-  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`
-  return `₦${n.toLocaleString()}`
 }
 
 function fmtDate(d) {
@@ -105,7 +114,11 @@ function Field({ label, required, full, children }) {
 }
 
 // ── CSV helpers ────────────────────────────────────────────────────────────────
-const CSV_HEADERS = ['ain', 'name', 'category', 'location', 'site', 'status', 'manufacturer', 'model', 'serial_number', 'install_date', 'purchase_date', 'runtime_hours', 'value', 'health_score', 'last_maintenance_date', 'next_maintenance_date', 'tags', 'lat', 'lng']
+// health_score is deliberately absent: it's derived from the two maintenance
+// dates by recompute_asset_health_for(), so an imported value would be
+// overwritten on the very next write. Importers who supplied one were being
+// quietly ignored.
+const CSV_HEADERS = ['ain', 'name', 'category', 'location', 'site', 'status', 'manufacturer', 'model', 'serial_number', 'install_date', 'purchase_date', 'runtime_hours', 'value', 'last_maintenance_date', 'next_maintenance_date', 'tags', 'lat', 'lng']
 
 function csvCell(v) {
   const s = String(v ?? '')
@@ -152,7 +165,13 @@ function parseCSV(text) {
 }
 
 // ── Add / Edit Asset Modal ────────────────────────────────────────────────────
-function AssetModal({ asset, sites, locations, categories, operators, onClose, onSave }) {
+const DEPRECIATION_LABEL = {
+  straight_line: 'Straight-line',
+  declining_balance: 'Declining balance',
+  none: 'Not depreciated',
+}
+
+function AssetModal({ asset, sites, locations, categories, operators, allAssets = [], orgDepreciation = null, onClose, onSave }) {
   const toast = useToast()
   const editing = Boolean(asset)
   const s0 = asset?.specs || {}
@@ -163,14 +182,21 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
     ain: asset?.ain || '', name: asset?.name || '',
     location_id: initialSite?.location_id || '',
     site_id: asset?.site_id || '', category_id: asset?.category_id || '',
-    status: asset?.status || 'operational', health_score: asset?.health_score ?? 100,
+    status: asset?.status || 'operational',
     manufacturer: s0.manufacturer || '', model: s0.model || '', serial_number: s0.serial_number || '',
-    install_date: s0.install_date || '',
+    install_date: asset?.install_date ? String(asset.install_date).slice(0, 10) : (s0.install_date || ''),
     runtime_hours: s0.runtime_hours != null ? String(s0.runtime_hours) : '',
-    purchase_date: s0.purchase_date || '',
+    purchase_date: asset?.purchase_date ? String(asset.purchase_date).slice(0, 10) : (s0.purchase_date || ''),
     tags: Array.isArray(s0.tags) ? s0.tags.join(', ') : (s0.tags || ''),
     assigned_operator_id: asset?.assigned_operator_id || '',
     value: asset?.purchase_value_cents != null ? String(asset.purchase_value_cents / 100) : '',
+    // Depreciation overrides — empty string means "inherit the org default",
+    // which is what the API stores as null.
+    depreciation_method: asset?.depreciation_method || '',
+    useful_life_years: asset?.useful_life_years != null ? String(asset.useful_life_years) : '',
+    salvage_value: asset?.salvage_value_cents != null ? String(asset.salvage_value_cents / 100) : '',
+    declining_rate_pct: asset?.declining_rate_pct != null ? String(asset.declining_rate_pct) : '',
+    parent_asset_id: asset?.parent_asset_id || '',
     last_maintenance_at: asset?.last_maintenance_at || '', next_maintenance_at: asset?.next_maintenance_at || '',
     lat: asset?.lat != null ? String(asset.lat) : '', lng: asset?.lng != null ? String(asset.lng) : '',
   })
@@ -193,6 +219,12 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
     site_id: p.site_id && sites.find((s) => s.id === p.site_id)?.location_id === id ? p.site_id : '',
   }))
   const sitesForLocation = form.location_id ? sites.filter((s) => s.location_id === form.location_id) : []
+  // Which method is actually in force, so the rate field only appears when it
+  // means something.
+  const effectiveMethod = form.depreciation_method || orgDepreciation?.method || 'straight_line'
+  // An asset can't be its own parent. Deeper cycles are rejected server-side by
+  // the FK graph rather than guessed at here.
+  const parentOptions = allAssets.filter((a) => a.id !== asset?.id)
   const photoCount = photos.length + pendingPhotos.length
   const inputProps = { className: 'input', style: { width: '100%' } }
 
@@ -202,17 +234,26 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
     setSpec('manufacturer', form.manufacturer.trim())
     setSpec('model', form.model.trim())
     setSpec('serial_number', form.serial_number.trim())
-    setSpec('install_date', form.install_date || null)
     setSpec('runtime_hours', form.runtime_hours === '' ? null : Math.max(0, Math.round(Number(form.runtime_hours))))
-    setSpec('purchase_date', form.purchase_date || null)
+    // install_date/purchase_date were `specs` jsonb keys until 0015 promoted
+    // them to real date columns — depreciation can't be computed off untyped
+    // free text. Clear the legacy keys so the column is the only source.
+    setSpec('install_date', null)
+    setSpec('purchase_date', null)
     setSpec('tags', form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : null)
     return {
       ain: form.ain.trim(), name: form.name.trim(),
       site_id: form.site_id || null, category_id: form.category_id || null,
+      install_date: form.install_date || null,
+      purchase_date: form.purchase_date || null,
       status: form.status,
-      health_score: form.health_score === '' ? null : Number(form.health_score),
       assigned_operator_id: form.assigned_operator_id || null,
       purchase_value_cents: form.value === '' ? null : Math.round(Number(form.value) * 100),
+      parent_asset_id: form.parent_asset_id || null,
+      depreciation_method: form.depreciation_method || null,
+      useful_life_years: form.useful_life_years === '' ? null : Number(form.useful_life_years),
+      salvage_value_cents: form.salvage_value === '' ? null : Math.round(Number(form.salvage_value) * 100),
+      declining_rate_pct: form.declining_rate_pct === '' ? null : Number(form.declining_rate_pct),
       last_maintenance_at: form.last_maintenance_at || null,
       next_maintenance_at: form.next_maintenance_at || null,
       lat: form.lat === '' ? null : Number(form.lat),
@@ -353,7 +394,7 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
           <Field label="Runtime (hours)">
             <input {...inputProps} type="number" min="0" step="1" value={form.runtime_hours} onChange={(e) => set('runtime_hours', e.target.value)} placeholder="e.g. 18240" />
           </Field>
-          <Field label="Asset value (USD)">
+          <Field label="Asset value (₦)">
             <input {...inputProps} type="number" min={0} value={form.value} onChange={(e) => set('value', e.target.value)} placeholder="e.g. 5000000" />
           </Field>
           <Field label="Assigned operator">
@@ -362,14 +403,40 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
               {operators.map((u) => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
             </select>
           </Field>
-          <Field label="Initial health %">
-            <input {...inputProps} type="number" min={0} max={100} value={form.health_score} onChange={(e) => set('health_score', e.target.value)} placeholder="e.g. 90" />
-          </Field>
           <Field label="Last maintenance date" required>
             <input {...inputProps} type="date" value={form.last_maintenance_at} onChange={(e) => set('last_maintenance_at', e.target.value)} />
           </Field>
           <Field label="Next maintenance date" required>
             <input {...inputProps} type="date" value={form.next_maintenance_at} onChange={(e) => set('next_maintenance_at', e.target.value)} />
+          </Field>
+          <Field label="Depreciation method" full>
+            <select {...inputProps} value={form.depreciation_method} onChange={(e) => set('depreciation_method', e.target.value)}>
+              <option value="">Organisation default{orgDepreciation ? ` (${DEPRECIATION_LABEL[orgDepreciation.method] || 'Straight-line'})` : ''}</option>
+              {Object.entries(DEPRECIATION_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+          </Field>
+          <Field label="Useful life (years)">
+            <input {...inputProps} type="number" min="0" step="0.5" value={form.useful_life_years}
+              onChange={(e) => set('useful_life_years', e.target.value)}
+              placeholder={orgDepreciation?.usefulLifeYears != null ? `Default ${orgDepreciation.usefulLifeYears}` : 'Default 10'} />
+          </Field>
+          <Field label="Salvage value (₦)">
+            <input {...inputProps} type="number" min="0" value={form.salvage_value}
+              onChange={(e) => set('salvage_value', e.target.value)}
+              placeholder={orgDepreciation?.salvageRatePct ? `Default ${orgDepreciation.salvageRatePct}% of value` : 'Default 0'} />
+          </Field>
+          {effectiveMethod === 'declining_balance' && (
+            <Field label="Declining rate (% per year)">
+              <input {...inputProps} type="number" min="0.1" max="99.9" step="0.1" value={form.declining_rate_pct}
+                onChange={(e) => set('declining_rate_pct', e.target.value)}
+                placeholder={orgDepreciation?.decliningRatePct != null ? `Default ${orgDepreciation.decliningRatePct}` : 'Default 20'} />
+            </Field>
+          )}
+          <Field label="Parent asset" full>
+            <select {...inputProps} value={form.parent_asset_id} onChange={(e) => set('parent_asset_id', e.target.value)}>
+              <option value="">None — top-level asset</option>
+              {parentOptions.map((a) => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
+            </select>
           </Field>
           <Field label="Tags (comma separated)" full>
             <input {...inputProps} value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="e.g. critical, offshore, production" />
@@ -438,9 +505,14 @@ function AssetModal({ asset, sites, locations, categories, operators, onClose, o
 }
 
 // ── Raise Work Order Modal ─────────────────────────────────────────────────────
-function RaiseWOModal({ asset, onClose, onCreated }) {
+function RaiseWOModal({ asset, users = [], onClose, onCreated }) {
   const toast = useToast()
-  const [form, setForm] = useState({ title: `Work order — ${asset.name}`, description: '', type: 'corrective', priority: 'medium' })
+  const { roleKey, extraCaps } = useAuth()
+  // The Work Orders page has always been able to assign at creation; this
+  // asset-context path couldn't, so a WO raised from the asset it concerns
+  // always landed unassigned and needed a second trip to route it.
+  const canAssign = can(roleKey, 'wo:assign', extraCaps)
+  const [form, setForm] = useState({ title: `Work order — ${asset.name}`, description: '', type: 'corrective', priority: 'medium', assignee_id: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
@@ -451,7 +523,15 @@ function RaiseWOModal({ asset, onClose, onCreated }) {
     if (!form.title.trim()) { setErr('Title is required.'); return }
     setSaving(true); setErr('')
     try {
-      const wo = await createWorkOrder({ title: form.title.trim(), description: form.description || null, type: form.type, priority: form.priority, asset_id: asset.id, site_id: asset.site_id || null, status: 'new' })
+      const assigneeId = canAssign ? (form.assignee_id || null) : null
+      const wo = await createWorkOrder({
+        title: form.title.trim(), description: form.description || null,
+        type: form.type, priority: form.priority,
+        asset_id: asset.id, site_id: asset.site_id || null,
+        assignee_id: assigneeId,
+        // Mirrors NewWOModal: assigning at creation means it's already assigned.
+        status: assigneeId ? 'assigned' : 'new',
+      })
       toast.success(`Work order ${wo.ref} created.`)
       onCreated()
     } catch (ex) { setErr(ex.message || 'Failed to raise work order.'); setSaving(false) }
@@ -482,6 +562,14 @@ function RaiseWOModal({ asset, onClose, onCreated }) {
               </select>
             </Field>
           </div>
+          {canAssign && (
+            <Field label="Assign to">
+              <select {...inputProps} value={form.assignee_id} onChange={(e) => set('assignee_id', e.target.value)}>
+                <option value="">Unassigned</option>
+                {users.map((u) => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+              </select>
+            </Field>
+          )}
         </div>
         {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12 }}>{err}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
@@ -707,7 +795,7 @@ const PRIORITY_C = { low: 'var(--sgt)', medium: 'var(--n600)', high: 'var(--sat)
 // completion or health alert read at a glance without opening every entry.
 const ACTIVITY_DOT_C = { maintenance: 'var(--sgt)', alert: 'var(--srt)', inspection: 'var(--sat)', comment: 'var(--b400)', status_change: 'var(--b400)', attachment: 'var(--b400)' }
 
-function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdit, onArchive, onRestore, onRaiseWO, onCompleteMaintenance, onClose, refreshToken }) {
+function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdit, onArchive, onRestore, onRaiseWO, onCompleteMaintenance, onClose, refreshToken, allAssets = [], orgDepreciation = null }) {
   const nav = useNavigate()
   const toast = useToast()
   const { roleKey, extraCaps } = useAuth()
@@ -805,8 +893,43 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
           </div>
           <div style={{ fontSize: 12, color: 'var(--n600)', lineHeight: 1.6 }}>
             <div style={{ fontWeight: 600, color: 'var(--n800)', marginBottom: 4 }}>{healthLabel(asset.health_score)}</div>
-            NBV: {formatNBV(asset.nbv_cents)}
+            {/* Health used to be a number someone typed into the asset form
+                that the nightly decay then overwrote. Saying what drives it
+                makes the reading trustworthy instead of mysterious. */}
+            <div style={{ fontSize: 11, color: 'var(--n500)' }}>
+              Derived from the maintenance window
+              {asset.last_maintenance_at && asset.next_maintenance_at
+                ? ` (${fmtDate(asset.last_maintenance_at)} → ${fmtDate(asset.next_maintenance_at)})`
+                : ''}
+              . Resets to 100% on completion.
+            </div>
           </div>
+        </div>
+
+        {/* Financials */}
+        <div>
+          <div style={section}>Financials</div>
+          <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden' }}>
+            {[
+              ['Purchase value', fmtMoneyExact(asset.purchase_value_cents)],
+              ['Book value (NBV)', fmtMoneyExact(asset.nbv_cents)],
+              ['Accumulated depreciation', fmtMoneyExact(asset.accumulated_depreciation_cents)],
+              ['Method', DEPRECIATION_LABEL[asset.depreciation_method] || `${DEPRECIATION_LABEL[orgDepreciation?.method] || 'Straight-line'} (org default)`],
+              ['In service', asset.install_date || asset.purchase_date ? fmtDate(asset.install_date || asset.purchase_date) : '—'],
+            ].map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 14px', borderBottom: 'var(--bdr)', fontSize: 12 }}>
+                <span style={{ color: 'var(--n500)', flexShrink: 0 }}>{k}</span>
+                <span style={{ color: 'var(--n800)', fontWeight: 500, textAlign: 'right' }}>{v}</span>
+              </div>
+            ))}
+          </div>
+          {asset.nbv_cents == null && (
+            // A null book value is "we can't work this out", not "it's worth
+            // nothing" — say which, rather than rendering a confident ₦0.
+            <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 6 }}>
+              Add a purchase value and an install or purchase date to calculate book value.
+            </div>
+          )}
         </div>
 
         {/* Details */}
@@ -821,10 +944,10 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
               ['Manufacturer', s.manufacturer || '—'],
               ['Model', s.model || '—'],
               ['Serial', s.serial_number || '—'],
-              ['Install date', s.install_date ? fmtDate(s.install_date) : '—'],
-              ['Purchase date', s.purchase_date ? fmtDate(s.purchase_date) : '—'],
+              ['Install date', asset.install_date ? fmtDate(asset.install_date) : '—'],
+              ['Purchase date', asset.purchase_date ? fmtDate(asset.purchase_date) : '—'],
               ['Runtime', s.runtime_hours != null ? `${Number(s.runtime_hours).toLocaleString()} hrs` : '—'],
-              ['Asset value', asset.purchase_value_cents != null ? `$${(asset.purchase_value_cents / 100).toLocaleString()}` : '—'],
+              ['Parent asset', asset.parent_asset_id ? (allAssets.find((a) => a.id === asset.parent_asset_id)?.ain || 'Linked') : '—'],
               ['Coordinates', asset.lat != null && asset.lng != null ? `${asset.lat}, ${asset.lng}` : '—'],
               ['Tags', Array.isArray(s.tags) && s.tags.length ? s.tags.join(', ') : '—'],
             ].map(([k, v]) => (
@@ -898,20 +1021,31 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
           <div style={section}>Work Orders</div>
           {workOrders === null ? <div style={{ fontSize: 12, color: 'var(--n400)' }}>Loading…</div> : workOrders.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--n400)' }}>No work orders for this asset.</div>
-          ) : workOrders.slice(0, 8).map((w) => (
-            <div key={w.id} role="button" tabIndex={0} onClick={() => nav('/work-orders')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') nav('/work-orders') }}
-              style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 0', fontSize: 12, borderBottom: 'var(--bdr)', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)' }}>{w.ref}</span>
-                <span style={{ color: PRIORITY_C[w.priority] || 'var(--n500)', fontWeight: 500, fontSize: 11 }}>{WO_PRIORITY_LABEL[w.priority] || w.priority}</span>
+          ) : workOrders.slice(0, 8).map((w) => {
+            // Deep link, not a bare /work-orders — landing on an unfiltered
+            // list and hunting for the row you just clicked isn't navigation.
+            const openWO = () => nav(`/work-orders?id=${w.id}`)
+            return (
+              <div key={w.id} role="button" tabIndex={0} onClick={openWO} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openWO() }}
+                style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 0', fontSize: 12, borderBottom: 'var(--bdr)', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)' }}>{w.ref}</span>
+                  <span style={{ color: PRIORITY_C[w.priority] || 'var(--n500)', fontWeight: 500, fontSize: 11 }}>{WO_PRIORITY_LABEL[w.priority] || w.priority}</span>
+                </div>
+                <div style={{ color: 'var(--n700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</div>
+                {/* Who's on it and when it was raised — the API has returned
+                    both since day one; only this row left them out. */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, color: 'var(--n400)' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {WO_STATUS_LABEL[w.status] || w.status} · {w.assignee?.full_name || 'Unassigned'}
+                  </span>
+                  <span style={{ flexShrink: 0 }}>
+                    Raised {fmtDate(w.created_at)}{w.sla_due ? ` · Due ${fmtDate(w.sla_due)}` : ''}
+                  </span>
+                </div>
               </div>
-              <div style={{ color: 'var(--n700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, color: 'var(--n400)' }}>
-                <span>{WO_STATUS_LABEL[w.status] || w.status}</span>
-                {w.sla_due && <span>Due {fmtDate(w.sla_due)}</span>}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Documents */}
@@ -1017,6 +1151,9 @@ export default function Assets({ dark, toggleDark }) {
   const [locations, setLocations] = useState([])
   const [categories, setCategories] = useState([])
   const [operators, setOperators] = useState([])
+  // Org-wide depreciation policy (Admin -> Configuration). Used to show what an
+  // asset inherits when it has no override of its own.
+  const [orgDepreciation, setOrgDepreciation] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchParams] = useSearchParams()
@@ -1043,16 +1180,29 @@ export default function Assets({ dark, toggleDark }) {
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const [a, s, l, c, u] = await Promise.all([
+      const [a, s, l, c, u, org] = await Promise.all([
         listAssets({ status: filter, archived: archivedView, locationId: globalLocationId }), listSites(), listLocations().catch(() => []), listCategories(), listOrgUsers().catch(() => []),
+        getOrg().catch(() => null),
       ])
       setAssets(a); setSites(s); setLocations(l); setCategories(c); setOperators(u)
+      setOrgDepreciation(org?.settings?.depreciation || null)
       setSelected((sel) => (sel ? a.find((x) => x.id === sel.id) || null : null))
     } catch (e) { setError(e.message || 'Failed to load assets.') }
     finally { setLoading(false) }
   }, [filter, archivedView, globalLocationId])
 
   useEffect(() => { load() }, [load])
+
+  // ?id=<uuid> — a notification deep-linking to a specific asset. Opens its
+  // detail panel and clears any filter that would hide the row.
+  const deepLinkId = searchParams.get('id')
+  useEffect(() => {
+    if (!deepLinkId || !assets.length) return
+    const target = assets.find((a) => a.id === deepLinkId)
+    if (!target) return
+    setHealthFilter(''); setTypeFilter(''); setLocationFilter(''); setSearch('')
+    setSelected(target)
+  }, [deepLinkId, assets])
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim().toLowerCase()), 250)
@@ -1073,7 +1223,8 @@ export default function Assets({ dark, toggleDark }) {
   }
 
   const linkBtn = { padding: '3px 8px', border: '1px solid var(--n200)', borderRadius: 3, background: 'var(--n0)', fontSize: 11, color: 'var(--n600)', cursor: 'pointer' }
-  const HEALTH_FILTER_LABEL = { good: 'Healthy', attention: 'Needs attention', critical: 'Critical' }
+  // Only render the legacy status pills while rows still carry those values.
+  const hasLegacyStatus = assets.some((a) => LEGACY_STATUS_KEYS.includes(a.status))
   const visibleAssets = assets.filter((a) => {
     if (healthFilter && healthBand(a.health_score) !== healthFilter) return false
     if (typeFilter && a.category_id !== typeFilter) return false
@@ -1100,16 +1251,25 @@ export default function Assets({ dark, toggleDark }) {
                 {loading ? 'Loading…' : `${visibleAssets.length} ${archivedView ? 'archived ' : ''}asset${visibleAssets.length !== 1 ? 's' : ''} · ${locations.length} location${locations.length !== 1 ? 's' : ''} · ${sites.length} site${sites.length !== 1 ? 's' : ''}`}
               </p>
             </div>
-            {healthFilter && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px', border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n50)', fontSize: 12, color: 'var(--n700)' }}>
-                Health: {HEALTH_FILTER_LABEL[healthFilter] || healthFilter}
-                <button onClick={() => setHealthFilter('')} title="Clear health filter" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n500)', padding: 0, lineHeight: 1 }}>✕</button>
-              </div>
-            )}
             <div style={{ flex: 1 }} />
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[['all', 'All'], ['operational', 'Operational'], ['maintenance', 'Maintenance'], ['standby', 'Standby'], ['offline', 'Offline'], ['attention', 'Attention'], ['critical', 'Critical']].map(([v, l]) => (
+            {/* Two orthogonal axes, previously mixed into one row of seven
+                pills. operational/maintenance/standby/offline describe what an
+                asset is DOING; attention/critical are legacy values describing
+                how HEALTHY it is — a dimension the health control beside this
+                one already covers properly. The legacy two only appear while
+                rows still carry them (0012 kept them valid but nothing writes
+                them any more), so they disappear from a clean database instead
+                of sitting there always returning nothing. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n400)', fontFamily: 'var(--ff-m)' }}>State</span>
+              {STATE_FILTERS.filter(([v]) => !LEGACY_STATUS_KEYS.includes(v) || hasLegacyStatus || filter === v).map(([v, l]) => (
                 <button key={v} onClick={() => setFilter(v)} className="filter-pill" style={{ height: 30, padding: '0 12px', border: `1px solid ${filter === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filter === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: filter === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filter === v ? 500 : 400, cursor: 'pointer' }}>{l}</button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n400)', fontFamily: 'var(--ff-m)' }}>Health</span>
+              {[['', 'Any'], ['good', 'Healthy'], ['attention', 'Needs attention'], ['critical', 'Critical']].map(([v, l]) => (
+                <button key={v || 'any'} onClick={() => setHealthFilter(v)} className="filter-pill" style={{ height: 30, padding: '0 12px', border: `1px solid ${healthFilter === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: healthFilter === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: healthFilter === v ? 'var(--b700)' : 'var(--n600)', fontWeight: healthFilter === v ? 500 : 400, cursor: 'pointer' }}>{l}</button>
               ))}
             </div>
             <button onClick={() => { setArchivedView((v) => !v); setSelected(null) }} className="filter-pill" style={{ height: 30, padding: '0 12px', border: `1px solid ${archivedView ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: archivedView ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: archivedView ? 'var(--b700)' : 'var(--n600)', cursor: 'pointer' }}>
@@ -1250,6 +1410,8 @@ export default function Assets({ dark, toggleDark }) {
 
             {selected && (
               <AssetDetailPanel
+                allAssets={assets}
+                orgDepreciation={orgDepreciation}
                 asset={selected}
                 canEdit={canEdit}
                 canWO={canWO}
@@ -1274,6 +1436,8 @@ export default function Assets({ dark, toggleDark }) {
           locations={locations}
           categories={categories}
           operators={operators}
+          allAssets={assets}
+          orgDepreciation={orgDepreciation}
           onClose={() => setModal(null)}
           onSave={afterSave}
         />
@@ -1281,6 +1445,7 @@ export default function Assets({ dark, toggleDark }) {
       {woAsset && (
         <RaiseWOModal
           asset={woAsset}
+          users={operators}
           onClose={() => setWoAsset(null)}
           onCreated={() => { setWoAsset(null); load() }}
         />

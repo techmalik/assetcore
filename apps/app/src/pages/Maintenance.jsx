@@ -4,6 +4,8 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import AssignModal from '../components/AssignModal.jsx'
+import InspectionsPanel from '../components/InspectionsPanel.jsx'
+import CompliancePanel from '../components/CompliancePanel.jsx'
 import { listPMSchedules, createPMSchedule, softDeletePMSchedule } from '../lib/db/pmSchedules'
 import { listPMTasks, updatePMTask, generatePMTasks, uploadMaintenanceReport } from '../lib/db/pmTasks'
 import { listOrgUsers } from '../lib/db/orgMembers'
@@ -97,29 +99,31 @@ function ScheduleModal({ onClose, onSaved, users }) {
   )
 }
 
-// ── Compliance tab (Phase 3 stub) ─────────────────────────────────────────────
-const compliance = [
-  {id:'LIC-001',name:'Operating Licence — Lagos DS-04',issuer:'NMDPRA',issued:'15 Jan 24',expires:'14 Jan 26',status:'Active',site:'Lagos DS-04',days:385},
-  {id:'LIC-002',name:'Environmental Permit — Delta CS',issuer:'NESREA',issued:'1 Mar 23',expires:'28 Feb 26',status:'Active',site:'Delta CS',days:430},
-  {id:'LIC-003',name:'Pressure Vessel Certificate — CMP-0017',issuer:'NSC',issued:'10 Oct 24',expires:'9 Jan 25',status:'Expired',site:'Delta CS',days:-5},
-  {id:'LIC-004',name:'Fire Safety Certificate — Warri Terminal A',issuer:'NSCDC',issued:'5 Aug 24',expires:'20 Jan 25',status:'Expiring',site:'Warri Terminal A',days:6},
-  {id:'LIC-005',name:'Metering Certification — MTR-0042',issuer:'NMI',issued:'14 Jan 24',expires:'13 Jul 25',status:'Active',site:'Lagos DS-04',days:180},
-  {id:'LIC-006',name:'Pipeline Operating Certificate — PIP-0312',issuer:'NMDPRA',issued:'2 Feb 23',expires:'1 Feb 26',status:'Active',site:'Aba Network',days:383},
-  {id:'LIC-007',name:'ESD System Certificate — Lagos',issuer:'NSC',issued:'20 Jun 24',expires:'19 Jun 26',status:'Active',site:'Lagos DS-04',days:521},
-]
-const licStatus = {Active:{bg:'var(--sgb)',c:'var(--sgt)',br:'var(--sgbr)'},Expiring:{bg:'var(--sab)',c:'var(--sat)',br:'var(--sabr)'},Expired:{bg:'var(--srb)',c:'var(--srt)',br:'var(--srbr)'}}
-
 export default function Maintenance({ dark, toggleDark }) {
   const toast = useToast()
-  const { roleKey, user } = useAuth()
-  const canCreate = can(roleKey, 'wo:create')
-  const canAssign = can(roleKey, 'pm:update')
+  const { roleKey, extraCaps, user } = useAuth()
+  // Both "Schedule PM" and "Generate Tasks" hit endpoints gated on pm:create
+  // (pmSchedules.ts, pmTasks.ts) — this used to check wo:create, so the button
+  // appeared for roles whose request would 403 and hid from roles that could.
+  // extraCaps is passed so a per-user grant from Admin -> Access settings
+  // actually surfaces the control the API would already accept.
+  const canCreate = can(roleKey, 'pm:create', extraCaps)
+  const canAssign = can(roleKey, 'pm:update', extraCaps)
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
 
   const [searchParams] = useSearchParams()
   const overdueOnly = searchParams.get('filter') === 'overdue'
-  const [tab, setTab] = useState('pm')
+  // ?tab= lets a notification deep-link land on the right tab; ?id= is passed
+  // straight through to whichever panel owns that entity.
+  const urlTab = searchParams.get('tab')
+  const deepLinkId = searchParams.get('id')
+  const [tab, setTab] = useState(['pm','inspections','compliance'].includes(urlTab) ? urlTab : 'pm')
+  // Counts reported by the embedded panels — replaces a hardcoded '7' badge.
+  const [inspectionCounts, setInspectionCounts] = useState(null)
+  const [complianceCounts, setComplianceCounts] = useState(null)
+  const onInspectionCounts = useCallback((c) => setInspectionCounts(c), [])
+  const onComplianceCounts = useCallback((c) => setComplianceCounts(c), [])
   const [tasks, setTasks] = useState([])
   const [schedules, setSchedules] = useState([])
   const [users, setUsers] = useState([])
@@ -157,6 +161,15 @@ export default function Maintenance({ dark, toggleDark }) {
     setAssigning(null)
     toast.success(assigneeId ? 'Task assigned.' : 'Task unassigned.')
     load()
+  }
+
+  const handleArchiveSchedule = async (schedule) => {
+    if (!window.confirm(`Archive "${schedule.title}"? No further tasks will be generated from it. Existing tasks are unaffected.`)) return
+    try {
+      await softDeletePMSchedule(schedule.id)
+      toast.success('Schedule archived.')
+      load()
+    } catch (e) { toast.error(e.message || 'Failed to archive schedule.') }
   }
 
   const handleGenerate = async () => {
@@ -204,9 +217,11 @@ export default function Maintenance({ dark, toggleDark }) {
                     style={{height:32,padding:'0 12px',border:`1px solid ${mineOnly?'var(--b300)':'var(--n200)'}`,borderRadius:99,background:mineOnly?'var(--b50)':'var(--n0)',fontSize:12,fontWeight:mineOnly?600:400,color:mineOnly?'var(--b700)':'var(--n600)',cursor:'pointer'}}>
                     Assigned to me
                   </button>
-                  <button onClick={handleGenerate} disabled={generating} className="row-action" style={{height:32,padding:'0 14px',background:'var(--n0)',color:'var(--n700)',border:'1px solid var(--n200)',borderRadius:4,fontSize:13}}>
-                    {generating?'Generating…':'Generate Tasks'}
-                  </button>
+                  {canCreate && (
+                    <button onClick={handleGenerate} disabled={generating} className="row-action" style={{height:32,padding:'0 14px',background:'var(--n0)',color:'var(--n700)',border:'1px solid var(--n200)',borderRadius:4,fontSize:13}}>
+                      {generating?'Generating…':'Generate Tasks'}
+                    </button>
+                  )}
                   {canCreate && (
                     <button onClick={() => setShowModal(true)} className="row-action" style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',borderRadius:4,fontSize:13,fontWeight:500,gap:6}}>
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
@@ -219,8 +234,8 @@ export default function Maintenance({ dark, toggleDark }) {
             <div style={{display:'flex',gap:0}}>
               {[
                 {k:'pm',label:'Preventive Maintenance', badge: overdue > 0 ? overdue : null},
-                {k:'inspections',label:'Inspections'},
-                {k:'compliance',label:'Compliance',badge:'7'},
+                {k:'inspections',label:'Inspections', badge: inspectionCounts?.overdue || null},
+                {k:'compliance',label:'Compliance', badge: complianceCounts?.alerts || null},
               ].map(t => (
                 <button key={t.k} className={`tab-btn${tab===t.k?' active':''}`} onClick={() => setTab(t.k)} style={{display:'flex',alignItems:'center',gap:6}}>
                   {t.label}
@@ -257,7 +272,7 @@ export default function Maintenance({ dark, toggleDark }) {
                     overdueOnly ? (
                       <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>No overdue tasks.</div>
                     ) : (
-                      <SchedulesView schedules={schedules} />
+                      <SchedulesView schedules={schedules} canManage={canCreate} onArchive={handleArchiveSchedule} />
                     )
                   ) : (
                     <TasksTable tasks={visibleTasks} onComplete={setCompleting} onAssign={canAssign ? setAssigning : null} />
@@ -302,57 +317,22 @@ export default function Maintenance({ dark, toggleDark }) {
               </>
             )}
 
-            {tab === 'inspections' && (
-              <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12,padding:40}}>
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="var(--n300)" strokeWidth="1.4"/><path d="M8 9h8M8 13h5" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round"/><path d="M16 16l1.5 1.5" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round"/><circle cx="15" cy="15" r="2" stroke="var(--n300)" strokeWidth="1.4"/></svg>
-                <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>Inspections — Phase 3</div>
-                <div style={{fontSize:13,color:'var(--n500)',textAlign:'center',maxWidth:340}}>Inspection checklists, findings, and photo evidence capture are coming in Phase 3. Field technicians will run digital checklists against regulatory and safety requirements.</div>
-              </div>
-            )}
+            {/* Both tabs mount the real feature, not a copy of it — the same
+                components /inspections and /compliance render. Previously this
+                tab strip promised three things and delivered one: a "Phase 3
+                coming soon" panel and seven hardcoded demo licences. */}
+            {/* Mounted always rather than conditionally, so the tab badges are
+                populated on arrival instead of only after you click the tab
+                they describe — a badge you have to open the tab to see isn't
+                doing its job. Costs two list requests on page load. */}
+            <div style={{display: tab === 'inspections' ? 'flex' : 'none', flex:1, minWidth:0, overflow:'hidden'}}>
+              <InspectionsPanel embedded selectedId={deepLinkId} onCounts={onInspectionCounts} />
+            </div>
 
-            {tab === 'compliance' && (
-              <div style={{flex:1,overflowY:'auto'}}>
-                <div style={{padding:'14px 24px',borderBottom:'var(--bdr)',background:'var(--n0)',display:'flex',gap:20,flexWrap:'wrap'}}>
-                  {[
-                    {label:'Active',count:5,c:'var(--sgt)',bg:'var(--sgb)',br:'var(--sgbr)'},
-                    {label:'Expiring Soon',count:1,c:'var(--sat)',bg:'var(--sab)',br:'var(--sabr)'},
-                    {label:'Expired',count:1,c:'var(--srt)',bg:'var(--srb)',br:'var(--srbr)'},
-                  ].map(s => (
-                    <div key={s.label} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 12px',background:s.bg,border:`1px solid ${s.br}`,borderRadius:4}}>
-                      <span style={{fontSize:16,fontWeight:700,color:s.c,fontFamily:'var(--ff-m)'}}>{s.count}</span>
-                      <span style={{fontSize:12,color:s.c}}>{s.label}</span>
-                    </div>
-                  ))}
-                  <div style={{marginLeft:'auto',fontSize:11,color:'var(--n400)',display:'flex',alignItems:'center'}}>Phase 3: live licence register coming soon</div>
-                </div>
-                <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
-                  <thead style={{position:'sticky',top:0,zIndex:10}}>
-                    <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
-                      {['ID','Certificate / Licence','Issuer','Site','Issued','Expires','Days','Status',''].map(h => (
-                        <th key={h} style={{padding:'8px 14px',textAlign:'left',fontSize:10,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--n500)',whiteSpace:'nowrap',borderBottom:'var(--bdr)'}}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {compliance.map(lic => (
-                      <tr key={lic.id} className="row-hover" style={{borderBottom:'var(--bdr)'}}>
-                        <td style={{padding:'11px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:'var(--n500)',whiteSpace:'nowrap'}}>{lic.id}</td>
-                        <td style={{padding:'11px 14px'}}><div style={{fontSize:13,fontWeight:500,color:'var(--n900)'}}>{lic.name}</div></td>
-                        <td style={{padding:'11px 14px',fontSize:12,color:'var(--n600)',whiteSpace:'nowrap'}}>{lic.issuer}</td>
-                        <td style={{padding:'11px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>{lic.site}</td>
-                        <td style={{padding:'11px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:'var(--n500)',whiteSpace:'nowrap'}}>{lic.issued}</td>
-                        <td style={{padding:'11px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:lic.status==='Expired'?'var(--srt)':lic.status==='Expiring'?'var(--sat)':'var(--n600)',whiteSpace:'nowrap'}}>{lic.expires}</td>
-                        <td style={{padding:'11px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:lic.days<0?'var(--srt)':lic.days<30?'var(--sat)':'var(--n600)',whiteSpace:'nowrap'}}>{lic.days<0?`${Math.abs(lic.days)}d ago`:`${lic.days}d`}</td>
-                        <td style={{padding:'11px 14px'}}>
-                          <span style={{display:'inline-flex',padding:'2px 7px',borderRadius:2,border:'1px solid',fontSize:10,fontWeight:500,...licStatus[lic.status]}}>{lic.status}</span>
-                        </td>
-                        <td style={{padding:'11px 14px'}}><button className="row-action" style={{fontSize:11,color:'var(--b600)'}}>Renew</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table></div>
-              </div>
-            )}
+            <div style={{display: tab === 'compliance' ? 'flex' : 'none', flex:1, minWidth:0, overflow:'hidden'}}>
+              <CompliancePanel embedded selectedId={deepLinkId} onCounts={onComplianceCounts} />
+            </div>
+
           </div>
         </div>
       </div>
@@ -500,14 +480,14 @@ function TasksTable({ tasks, onComplete, onAssign }) {
   )
 }
 
-function SchedulesView({ schedules }) {
+function SchedulesView({ schedules, canManage, onArchive }) {
   return (
     <div style={{padding:20}}>
       <div style={{fontSize:12,color:'var(--n500)',marginBottom:14}}>No active tasks in the next 30 days. Showing {schedules.length} PM schedule{schedules.length!==1?'s':''}.</div>
       <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
         <thead>
           <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
-            {['Schedule','Frequency','Asset','Site','Assignee','Next Due','Active'].map(h => (
+            {['Schedule','Frequency','Asset','Site','Assignee','Next Due','Active',''].map(h => (
               <th key={h} style={{padding:'8px 14px',textAlign:'left',fontSize:10,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--n500)',whiteSpace:'nowrap',borderBottom:'var(--bdr)'}}>{h}</th>
             ))}
           </tr>
@@ -523,6 +503,11 @@ function SchedulesView({ schedules }) {
               <td style={{padding:'10px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:'var(--n600)'}}>{fmtDate(s.next_due)}</td>
               <td style={{padding:'10px 14px'}}>
                 <span style={{fontSize:11,fontWeight:500,color:s.active?'var(--sgt)':'var(--n400)'}}>{s.active?'Yes':'No'}</span>
+              </td>
+              <td style={{padding:'10px 14px'}}>
+                {canManage && (
+                  <button onClick={() => onArchive(s)} className="row-action" style={{fontSize:11,color:'var(--n500)'}}>Archive</button>
+                )}
               </td>
             </tr>
           ))}

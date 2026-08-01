@@ -5,6 +5,91 @@ import { useNotifications } from '../lib/NotificationsContext'
 import { useSidebar } from '../lib/SidebarContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { ROLE_LABELS } from '../lib/rbac'
+import { listAssets } from '../lib/db/assets'
+import { listWorkOrders } from '../lib/db/workOrders'
+
+// The topbar search box was a decorative input: no state, no handler, no
+// results — it looked like a feature and did nothing. It now searches assets by
+// AIN/name and work orders by ref/title, and navigates via the same ?id= deep
+// links the notification system uses. Client-side over the two list endpoints,
+// which is what every other filter in this app already does (an org's asset and
+// WO counts are bounded).
+function GlobalSearch({ mobile = false, onDone = null, autoFocus = false }) {
+  const nav = useNavigate()
+  const [q, setQ] = useState('')
+  const [rows, setRows] = useState(null)   // null until first load
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [open])
+
+  // Loaded once on first focus rather than per keystroke.
+  const ensureLoaded = async () => {
+    if (rows !== null) return
+    setRows([])
+    try {
+      const [assets, wos] = await Promise.all([
+        listAssets({ status: 'all' }).catch(() => []),
+        listWorkOrders({}).catch(() => []),
+      ])
+      setRows([
+        ...assets.map(a => ({ id: a.id, kind: 'asset', primary: a.ain, secondary: a.name, href: `/assets?id=${a.id}` })),
+        ...wos.map(w => ({ id: w.id, kind: 'work order', primary: w.ref, secondary: w.title, href: `/work-orders?id=${w.id}` })),
+      ])
+    } catch { setRows([]) }
+  }
+
+  const needle = q.trim().toLowerCase()
+  const results = needle && rows
+    ? rows.filter(r => `${r.primary} ${r.secondary}`.toLowerCase().includes(needle)).slice(0, 8)
+    : []
+
+  const go = (r) => {
+    setOpen(false); setQ('')
+    if (onDone) onDone()
+    nav(r.href)
+  }
+
+  return (
+    <div ref={ref} className={mobile ? undefined : 'topbar-search'} style={{position:'relative', width: mobile ? '100%' : 260, flex: mobile ? 1 : undefined}}>
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{position:'absolute',left:9,top: mobile ? 13 : '50%',transform: mobile ? undefined : 'translateY(-50%)',pointerEvents:'none'}}>
+        <circle cx="7" cy="7" r="4.5" stroke="var(--n400)" strokeWidth="1.3"/>
+        <path d="M10 10l2.5 2.5" stroke="var(--n400)" strokeWidth="1.3" strokeLinecap="round"/>
+      </svg>
+      <input
+        autoFocus={autoFocus}
+        value={q}
+        placeholder="Search assets, work orders…"
+        onFocus={() => { setOpen(true); ensureLoaded() }}
+        onChange={(e) => { setQ(e.target.value); setOpen(true) }}
+        onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) go(results[0]) }}
+        style={{width:'100%',height: mobile ? 40 : 32,border:'1px solid var(--n200)',borderRadius:4,padding:'0 12px 0 30px',fontFamily:'var(--ff-u)',fontSize: mobile ? 14 : 13,color:'var(--n900)',background:'var(--n50)',outline:'none',boxSizing:'border-box'}}/>
+      {open && needle && (
+        <div style={{position:'absolute',top:'calc(100% + 4px)',left:0,right:0,background:'var(--n0)',border:'var(--bdr)',borderRadius:6,boxShadow:'0 8px 24px rgba(0,0,0,.12)',zIndex:60,overflow:'hidden',maxHeight:320,overflowY:'auto'}}>
+          {results.length === 0 ? (
+            <div style={{padding:'10px 12px',fontSize:12,color:'var(--n400)'}}>
+              {rows === null ? 'Searching…' : `No assets or work orders matching “${q.trim()}”`}
+            </div>
+          ) : results.map(r => (
+            <button key={`${r.kind}-${r.id}`} type="button" onClick={() => go(r)}
+              style={{display:'flex',alignItems:'baseline',gap:8,width:'100%',textAlign:'left',padding:'8px 12px',background:'none',border:'none',borderBottom:'var(--bdr)',cursor:'pointer',font:'inherit'}}>
+              <span style={{fontFamily:'var(--ff-m)',fontSize:11,color:'var(--b700)',flexShrink:0}}>{r.primary}</span>
+              <span style={{flex:1,minWidth:0,fontSize:12,color:'var(--n700)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.secondary}</span>
+              <span style={{fontSize:10,color:'var(--n400)',flexShrink:0}}>{r.kind}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function LocationSwitcher() {
   const { locationId, setLocationId, locations, loading } = useLocationFilter()
@@ -94,13 +179,7 @@ export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
       <div style={{height:52,display:'flex',alignItems:'center',padding:'0 24px',gap:16,position:'relative'}}>
         {mobileSearchOpen ? (
           <div className="topbar-mobile-search-overlay" style={{position:'absolute',inset:0,background:'var(--n0)',display:'flex',alignItems:'center',gap:8,padding:'0 16px',zIndex:45}}>
-            <div style={{position:'relative',flex:1}}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{position:'absolute',left:9,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}>
-                <circle cx="7" cy="7" r="4.5" stroke="var(--n400)" strokeWidth="1.3"/>
-                <path d="M10 10l2.5 2.5" stroke="var(--n400)" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
-              <input autoFocus placeholder="Search assets, work orders…" style={{width:'100%',height:40,border:'1px solid var(--n200)',borderRadius:4,padding:'0 12px 0 30px',fontFamily:'var(--ff-u)',fontSize:14,color:'var(--n900)',background:'var(--n50)',outline:'none'}}/>
-            </div>
+            <GlobalSearch mobile autoFocus onDone={() => setMobileSearchOpen(false)} />
             <button onClick={() => setMobileSearchOpen(false)} aria-label="Close search" style={iconBtn}>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
             </button>
@@ -125,13 +204,7 @@ export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
 
         <LocationSwitcher />
 
-        <div className="topbar-search" style={{position:'relative',width:260}}>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{position:'absolute',left:9,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}>
-            <circle cx="7" cy="7" r="4.5" stroke="var(--n400)" strokeWidth="1.3"/>
-            <path d="M10 10l2.5 2.5" stroke="var(--n400)" strokeWidth="1.3" strokeLinecap="round"/>
-          </svg>
-          <input placeholder="Search assets, work orders…" style={{width:'100%',height:32,border:'1px solid var(--n200)',borderRadius:4,padding:'0 12px 0 30px',fontFamily:'var(--ff-u)',fontSize:13,color:'var(--n900)',background:'var(--n50)',outline:'none'}}/>
-        </div>
+        <GlobalSearch />
 
         <button onClick={() => setMobileSearchOpen(true)} className="topbar-mobile-search-btn" title="Search" style={{display:'none',width:32,height:32,border:'1px solid var(--n200)',borderRadius:6,background:'var(--n0)',alignItems:'center',justifyContent:'center',color:'var(--n600)',flexShrink:0,cursor:'pointer'}}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M10 10l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>

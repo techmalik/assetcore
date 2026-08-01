@@ -30,15 +30,27 @@ const MAX_PHOTOS = 5
 // content and enforce the photo cap server-side. Accepting them here would
 // let a client PATCH in arbitrary URLs, bypassing both checks entirely.
 //
-// health_score is also excluded: it's written through apply_asset_health()
-// below instead of the generic column update, so a manual edit runs through
-// the same 50%/30% crossing logic (inspection creation, notifications,
-// auto-drafted work order) as the daily decay job — a PATCH that drops an
-// asset to 20% health should behave identically to it decaying there.
+// health_score, nbv_cents and accumulated_depreciation_cents are excluded
+// because they are DERIVED, not entered. Health is the interval-proportional
+// decay between last_maintenance_at and next_maintenance_at, written only by
+// apply_asset_health(); book value is written only by
+// recompute_asset_depreciation_for(). Both are recomputed here on write (see
+// recomputeDerived below) so a create or a date/valuation edit produces a
+// correct figure in the same request rather than at the next cron run.
 const ALLOWED = [
   'site_id', 'ain', 'name', 'category_id', 'status', 'lat', 'lng',
-  'specs', 'purchase_value_cents', 'nbv_cents', 'parent_asset_id',
+  'specs', 'purchase_value_cents', 'parent_asset_id',
   'assigned_operator_id', 'last_maintenance_at', 'next_maintenance_at',
+  'purchase_date', 'install_date',
+  'depreciation_method', 'useful_life_years', 'salvage_value_cents', 'declining_rate_pct',
+]
+
+const DEPRECIATION_METHODS = ['none', 'straight_line', 'declining_balance'] as const
+
+// Columns whose change invalidates the stored book value.
+const DEPRECIATION_INPUTS = [
+  'purchase_value_cents', 'purchase_date', 'install_date',
+  'depreciation_method', 'useful_life_years', 'salvage_value_cents', 'declining_rate_pct',
 ]
 
 // An asset's location is derived from its site (site -> location), so the two
@@ -62,20 +74,42 @@ const assetInput = z.object({
   name: z.string().min(1),
   category_id: z.string().uuid().nullable().optional(),
   status: z.enum(ASSET_STATUSES).optional(),
-  health_score: z.number().int().min(0).max(100).nullable().optional(),
   lat: z.number().nullable().optional(),
   lng: z.number().nullable().optional(),
   specs: z.record(z.unknown()).optional(),
   purchase_value_cents: z.number().int().nullable().optional(),
-  nbv_cents: z.number().int().nullable().optional(),
   parent_asset_id: z.string().uuid().nullable().optional(),
+  purchase_date: z.string().nullable().optional(),
+  install_date: z.string().nullable().optional(),
+  // Per-asset depreciation overrides. null means "inherit the organisation
+  // default" (organizations.settings->'depreciation'), matching how the SQL
+  // resolves them.
+  depreciation_method: z.enum(DEPRECIATION_METHODS).nullable().optional(),
+  useful_life_years: z.number().positive().nullable().optional(),
+  salvage_value_cents: z.number().int().min(0).nullable().optional(),
+  declining_rate_pct: z.number().gt(0).lt(100).nullable().optional(),
   assigned_operator_id: z.string().uuid().nullable().optional(),
   // Required on create (and never clearable via PATCH): without both dates
   // the asset is invisible to recompute_asset_health()'s daily decay pass —
   // it would sit at its initial health forever and never alert.
   last_maintenance_at: z.string().min(1),
   next_maintenance_at: z.string().min(1),
-})
+// strict() so a body still carrying a derived field — health_score, nbv_cents,
+// accumulated_depreciation_cents — is rejected outright rather than silently
+// stripped. An old client that thinks it can set health should be told it
+// can't, not left believing the write landed.
+}).strict()
+
+// Both derived figures, recomputed for one asset. Called after every write
+// that can move them so the response the client gets back is already correct.
+// recompute_asset_health_for() no-ops when the asset has no usable
+// maintenance window, and recompute_asset_depreciation_for() writes nulls
+// when there's no purchase value or start date — neither needs a guard here.
+type Queryable = { query: (sql: string, values?: unknown[]) => Promise<unknown> }
+async function recomputeDerived(c: Queryable, assetId: string, actorId: string): Promise<void> {
+  await c.query('select public.recompute_asset_health_for($1, $2)', [assetId, actorId])
+  await c.query('select public.recompute_asset_depreciation_for($1)', [assetId])
+}
 
 // next must be strictly after last, or the decay denominator is <= 0 and the
 // recompute job skips the asset. ISO yyyy-mm-dd strings compare lexically.
@@ -182,14 +216,13 @@ assetsRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
       values
     )
     const assetId = rows[0].id
-    // health_score starts null (coalesced to 100 by apply_asset_health), so a
-    // newly-registered asset created already below threshold gets exactly
-    // the same inspection/notification/auto-WO treatment as one that decayed
-    // there — registering a compressor at 20% health shouldn't need a full
-    // day's cron cycle before anyone's alerted.
-    if (parsed.data.health_score != null) {
-      await c.query('select public.apply_asset_health($1, $2, $3)', [assetId, parsed.data.health_score, req.claims!.sub])
-    }
+    // Seed both derived figures immediately. Health is a function of the two
+    // maintenance dates the caller just supplied, so an asset registered
+    // already below threshold gets its inspection/notification/auto-WO in this
+    // request rather than after a full cron cycle — registering a compressor
+    // whose next service is overdue shouldn't stay silently at null health
+    // until 01:00 tomorrow.
+    await recomputeDerived(c, assetId, req.claims!.sub)
     const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [assetId])
     const asset = full[0]
     await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.create', entityType: 'asset', entityId: asset.id, after: asset })
@@ -254,12 +287,18 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
       const siteId = siteKey
         ? (locationId && siteByLocKey.get(`${locationId}::${siteKey}`)) || siteByKey.get(siteKey) || null
         : null
+      // install_date/purchase_date are real date columns as of 0015 — they
+      // used to land in `specs` as unvalidated free text, which is why the
+      // format check below exists now.
+      for (const key of ['install_date', 'purchase_date']) {
+        if (r[key] && !ISO_DATE.test(String(r[key]))) {
+          r[key] = null
+        }
+      }
       const specs: Record<string, unknown> = {}
       if (r.manufacturer) specs.manufacturer = r.manufacturer
       if (r.model) specs.model = r.model
       if (r.serial_number) specs.serial_number = r.serial_number
-      if (r.install_date) specs.install_date = r.install_date
-      if (r.purchase_date) specs.purchase_date = r.purchase_date
       if (r.runtime_hours != null && r.runtime_hours !== '' && !isNaN(Number(r.runtime_hours))) {
         specs.runtime_hours = Math.max(0, Math.round(Number(r.runtime_hours)))
       }
@@ -271,19 +310,23 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
       }
       const status = rawStatus || 'operational'
       const num = (v: any) => (v != null && v !== '' && !isNaN(Number(v)) ? Number(v) : null)
-      const health = num(r.health_score) != null ? Math.max(0, Math.min(100, Math.round(num(r.health_score)!))) : null
       const value = num(r.value) != null ? Math.round(num(r.value)! * 100) : null
 
       await c.query('savepoint import_row')
       try {
         const { rows: ins } = await c.query(
-          `insert into public.assets (org_id, ain, name, category_id, site_id, status, health_score, purchase_value_cents, specs, lat, lng, last_maintenance_at, next_maintenance_at)
-           values (current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12)
+          `insert into public.assets (org_id, ain, name, category_id, site_id, status, purchase_value_cents, specs, lat, lng, last_maintenance_at, next_maintenance_at, install_date, purchase_date)
+           values (current_org_id(), $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13)
            on conflict (org_id, ain) do nothing
            returning id`,
-          [r.ain, r.name, categoryId, siteId, status, health, value, JSON.stringify(specs), num(r.lat), num(r.lng), r.last_maintenance_date, r.next_maintenance_date]
+          [r.ain, r.name, categoryId, siteId, status, value, JSON.stringify(specs), num(r.lat), num(r.lng), r.last_maintenance_date, r.next_maintenance_date, r.install_date || null, r.purchase_date || null]
         )
         if (ins[0]) {
+          // Previously the import wrote health_score straight into the INSERT,
+          // so an imported asset already below threshold raised no inspection
+          // and no auto-WO until the next nightly run. Both derived figures
+          // now go through the same path as a UI-created asset.
+          await recomputeDerived(c, ins[0].id, req.claims!.sub)
           await writeAuditLog(c, { orgId: req.claims!.org_id!, actorId: req.claims!.sub, action: 'asset.import', entityType: 'asset', entityId: ins[0].id })
           out.push({ ain: r.ain, status: 'created' })
         } else {
@@ -310,26 +353,23 @@ assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) =
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   if (!maintenanceDatesOrdered(parsed.data)) return res.status(400).json({ error: 'invalid_maintenance_dates' })
   const { setSql, values } = buildSet(parsed.data, ALLOWED)
-  // health_score isn't in ALLOWED (see comment above) — a request setting
-  // ONLY health_score would otherwise 400 as an empty patch.
-  const hasHealthUpdate = typeof parsed.data.health_score === 'number'
-  const clearsHealth = parsed.data.health_score === null
-  if (!setSql && !hasHealthUpdate && !clearsHealth) return res.status(400).json({ error: 'empty_patch' })
+  if (!setSql) return res.status(400).json({ error: 'empty_patch' })
+
+  // Only recompute what the patch could actually have moved: health follows
+  // the maintenance window, book value follows the valuation inputs.
+  const touchesHealth = 'last_maintenance_at' in parsed.data || 'next_maintenance_at' in parsed.data
+  const touchesDepreciation = DEPRECIATION_INPUTS.some((k) => k in parsed.data)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    if (setSql) {
-      const { rows } = await c.query(`update public.assets set ${setSql} where id = $1 returning id`, [req.params.id, ...values])
-      if (!rows[0]) return null
-    } else {
-      const { rows } = await c.query('select id from public.assets where id = $1', [req.params.id])
-      if (!rows[0]) return null
+    const { rows } = await c.query(`update public.assets set ${setSql} where id = $1 returning id`, [req.params.id, ...values])
+    if (!rows[0]) return null
+    if (touchesHealth) {
+      // Attributed to the caller, so the resulting asset_activity alert names
+      // whoever moved the dates rather than looking like a cron event.
+      await c.query('select public.recompute_asset_health_for($1, $2)', [req.params.id, req.claims!.sub])
     }
-    if (hasHealthUpdate) {
-      // Routes the write through the same 50%/30% crossing logic the daily
-      // decay job uses, attributed to the caller (asset_activity.user_id).
-      await c.query('select public.apply_asset_health($1, $2, $3)', [req.params.id, parsed.data.health_score, req.claims!.sub])
-    } else if (clearsHealth) {
-      await c.query('update public.assets set health_score = null where id = $1', [req.params.id])
+    if (touchesDepreciation) {
+      await c.query('select public.recompute_asset_depreciation_for($1)', [req.params.id])
     }
     const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
