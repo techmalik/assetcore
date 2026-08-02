@@ -7,6 +7,44 @@ first licensed release shipped to a client (NGML).
 
 ### Owner-review follow-ups (August 2026)
 
+- Assignments now record and show **who did the assigning**. Work orders kept
+  the assigner only as an unlabelled byline in the activity feed, under a line
+  reading "Assigned to Jane Doe." — easy to misread as Jane's own entry. PM
+  tasks recorded it nowhere at all (no activity table, and the assignee-change
+  path never wrote an audit entry), and inspections only as a generic
+  `inspection.update` with no `before`. All three now carry `assigned_by` /
+  `assigned_at`, surfaced on the work-order detail, in the PM task and
+  inspection lists, and in the reassign dialog. Existing work orders are
+  backfilled from their activity history.
+- The assignment notification says who assigned it. `wo_assigned` previously
+  used the activity body as its text, which meant the recipient was told
+  "Assigned to <their own name>" — redundant, and it spent the only free text
+  field on something they already knew. Notifications also gained `actor_id`;
+  `notify_users()` had always received the actor and discarded it after a
+  self-exclusion check.
+- Fixed: the "work order closed" notification identified the assigner by taking
+  the most recent assignment activity row — but unassigning writes one of those
+  too, so if A assigned and B later unassigned, B was notified as the assigner.
+  It now reads the column.
+- The **audit log is readable**. Entries rendered a raw action string, a raw
+  entity type, and `entity_id.slice(0, 8)` — the first eight hex characters of
+  a UUID, not even a complete one, so it could not be pasted into a lookup.
+  Rows now carry a human label written with the row (`WO-2026-0002 — Pump seal
+  replacement`), and the action renders in plain English ("Changed work order
+  status"). Existing rows are backfilled.
+  - The label is a **snapshot**, not a lookup: an audit log is a historical
+    record, and asset categories are hard-deleted, so a read-time join loses
+    the name at exactly the moment the delete entry becomes interesting.
+  - Two resolution traps handled: `membership` rows store a `users.id` for
+    invites but a `memberships.id` for everything else, and `maintenance_event`
+    has no name column at all (its label is synthesised from the asset).
+  - The per-asset activity timeline uses the same labels, so system events read
+    like the human ones they sit beside instead of as grey monospace.
+  - Also: the audit list had no ordering tiebreaker, so rows written in one
+    transaction could shuffle between pages; the timestamp showed no year or
+    seconds; and the fifth column rendered `ip`, which no tenant code path has
+    ever populated.
+
 - Asset health is no longer something anyone types. It has always been derived
   — a linear decay from 100% at the last maintenance date to 0% at the next —
   but the asset form still offered an "Initial health %" field, the CSV import

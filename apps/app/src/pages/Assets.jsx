@@ -15,6 +15,7 @@ import { listCategories } from '../lib/db/categories'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { getOrg } from '../lib/db/org'
 import { fmtMoneyExact } from '../lib/money'
+import { actionLabel } from '../lib/auditLabels.js'
 import { createWorkOrder, listWorkOrders, WO_STATUS_LABEL, WO_TYPE_LABEL, WO_PRIORITY_LABEL } from '../lib/db/workOrders'
 import { listPMTasks, updatePMTask, uploadMaintenanceReport } from '../lib/db/pmTasks'
 import { listInspections, updateInspection } from '../lib/db/inspections'
@@ -1038,6 +1039,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, color: 'var(--n400)' }}>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {WO_STATUS_LABEL[w.status] || w.status} · {w.assignee?.full_name || 'Unassigned'}
+                    {w.assigner?.full_name ? ` (by ${w.assigner.full_name})` : ''}
                   </span>
                   <span style={{ flexShrink: 0 }}>
                     Raised {fmtDate(w.created_at)}{w.sla_due ? ` · Due ${fmtDate(w.sla_due)}` : ''}
@@ -1088,7 +1090,11 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: ev.source === 'audit' ? 'var(--n300)' : (ACTIVITY_DOT_C[ev.kind] || 'var(--b400)'), marginTop: 5, flexShrink: 0 }} />
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, color: 'var(--n800)' }}>
-                      {ev.source === 'audit' ? <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n600)' }}>{ev.kind}</span> : ev.body}
+                      {/* Audit rows used to render the raw action string in
+                          grey monospace, sitting right beside human sentences
+                          from asset_activity. Same label map the Admin audit
+                          tab uses. */}
+                      {ev.source === 'audit' ? <span style={{ fontSize: 12, color: 'var(--n600)' }}>{actionLabel(ev.kind)}</span> : ev.body}
                     </div>
                     {ev.attachments?.length > 0 && (
                       <div style={{ marginTop: 2, display: 'flex', gap: 10, flexWrap: 'wrap' }}>

@@ -361,6 +361,12 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
             ['Site', wo.site?.name || '—'],
             ['Asset', wo.asset ? `${wo.asset.ain} — ${wo.asset.name}` : '—'],
             ['Assignee', wo.assignee?.full_name || 'Unassigned'],
+            // Who did the assigning. It existed only as an unlabelled byline in
+            // the activity feed, under a line reading "Assigned to Jane Doe." —
+            // easy to misread as Jane's own entry.
+            ['Assigned by', wo.assigner?.full_name
+              ? `${wo.assigner.full_name}${wo.assigned_at ? ` · ${new Date(wo.assigned_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}` : ''}`
+              : '—'],
             ['SLA Due', wo.sla_due ? <SlaDue date={wo.sla_due} /> : '—'],
             ['Cost', fmtNaira(wo.cost_cents)],
           ].map(([k, v]) => (

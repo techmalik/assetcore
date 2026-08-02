@@ -14,7 +14,7 @@
 // told to navigate elsewhere, which is the confusion this replaces.
 import { useState, useEffect, useCallback, useRef } from 'react'
 import StatusBadge from './StatusBadge.jsx'
-import AssignModal from './AssignModal.jsx'
+import AssignModal, { assignmentSummary } from './AssignModal.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 import { listInspections, createInspection, updateInspection, uploadInspectionReport } from '../lib/db/inspections'
@@ -349,7 +349,16 @@ export default function InspectionsPanel({ embedded = false, selectedId = null, 
                     <td style={{padding:'11px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:'var(--n600)',whiteSpace:'nowrap'}}>
                       {fmtDate(ins.completed_date || ins.scheduled_date)}
                     </td>
-                    <td style={{padding:'11px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>{ins.inspector?.full_name || '—'}</td>
+                    {/* Second line rather than a new column — inspections have
+                        no detail view to put the assigner in. */}
+                    <td style={{padding:'11px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>
+                      <div>{ins.inspector?.full_name || '—'}</div>
+                      {ins.assigner?.full_name && (
+                        <div style={{fontSize:10,color:'var(--n400)'}}>
+                          by {ins.assigner.full_name}{ins.assigned_at ? `, ${fmtDate(ins.assigned_at)}` : ''}
+                        </div>
+                      )}
+                    </td>
                     <td style={{padding:'11px 14px'}}>
                       <StatusBadge tone={sm} />
                     </td>
@@ -381,6 +390,7 @@ export default function InspectionsPanel({ embedded = false, selectedId = null, 
       )}
       {assigning && (
         <AssignModal title="Assign inspector" subtitle={assigning.title} users={users} currentId={assigning.inspector_id}
+          current={assignmentSummary({ assignee: assigning.inspector, assigner: assigning.assigner, assignedAt: assigning.assigned_at })}
           onClose={() => setAssigning(null)} onSave={(userId) => saveAssignment(assigning.id, userId)}/>
       )}
     </div>

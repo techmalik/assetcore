@@ -16,6 +16,8 @@ workOrdersRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const attachmentUpload = uploadTo('attachments')
 
+// assigned_by/assigned_at are deliberately absent: they are stamped from the
+// authenticated caller whenever assignee_id moves, never accepted from a body.
 const ALLOWED = [
   'site_id', 'asset_id', 'ref', 'title', 'description', 'type', 'status', 'priority',
   'assignee_id', 'sla_due', 'parts', 'cost_cents',
@@ -43,12 +45,14 @@ const SELECT = `
     case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name) end as site,
     case when a.id is null then null else jsonb_build_object('id', a.id, 'ain', a.ain, 'name', a.name) end as asset,
     case when au.id is null then null else jsonb_build_object('id', au.id, 'full_name', au.full_name, 'email', au.email) end as assignee,
-    case when cu.id is null then null else jsonb_build_object('id', cu.id, 'full_name', cu.full_name, 'email', cu.email) end as creator
+    case when cu.id is null then null else jsonb_build_object('id', cu.id, 'full_name', cu.full_name, 'email', cu.email) end as creator,
+    case when ab.id is null then null else jsonb_build_object('id', ab.id, 'full_name', ab.full_name, 'email', ab.email) end as assigner
   from public.work_orders w
   left join public.sites s on s.id = w.site_id
   left join public.assets a on a.id = w.asset_id
   left join public.users au on au.id = w.assignee_id
   left join public.users cu on cu.id = w.created_by
+  left join public.users ab on ab.id = w.assigned_by
 `
 
 const woInput = z.object({
@@ -124,6 +128,17 @@ async function recordAssignment(c: import('pg').PoolClient, orgId: string, woId:
   } else {
     body = 'Assignee removed.'
   }
+  // Stamp the durable columns as well as the activity row. The feed alone was
+  // not enough: notifyWorkOrderClosed() used to reverse-engineer "the assigner"
+  // as the newest assignment activity row, but unassignment writes one of those
+  // too, so an assign-by-A / unassign-by-B sequence reported B.
+  await c.query(
+    `update public.work_orders
+     set assigned_by = case when $2::uuid is null then null else $3::uuid end,
+         assigned_at = case when $2::uuid is null then null else now() end
+     where id = $1`,
+    [woId, assigneeId, actorId]
+  )
   await c.query(
     `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body)
      values ($1, $2, $3, 'assignment', $4)`,

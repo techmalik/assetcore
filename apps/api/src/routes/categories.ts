@@ -64,9 +64,15 @@ categoriesRouter.patch('/categories/:id', requireCap('org:manage'), async (req, 
 
 categoriesRouter.delete('/categories/:id', requireCap('org:manage'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query('delete from public.asset_categories where id = $1 returning id, org_id', [req.params.id])
+    // Categories are the one HARD delete in the codebase, so by the time the
+    // audit row is written the name is already gone and no label can be
+    // resolved from the table. Returning it here and passing it as `before`
+    // gives resolve_audit_label() something to fall back to — otherwise the
+    // log would permanently read "asset_category" with no name, which is the
+    // exact case this is meant to prevent.
+    const { rows } = await c.query('delete from public.asset_categories where id = $1 returning id, org_id, name, code', [req.params.id])
     const cat = rows[0]
-    if (cat) await writeAuditLog(c, { orgId: cat.org_id, actorId: req.claims!.sub, action: 'category.delete', entityType: 'asset_category', entityId: cat.id })
+    if (cat) await writeAuditLog(c, { orgId: cat.org_id, actorId: req.claims!.sub, action: 'category.delete', entityType: 'asset_category', entityId: cat.id, before: { name: cat.name, code: cat.code } })
     return cat
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

@@ -25,11 +25,13 @@ const SELECT = `
   select i.*,
     case when a.id is null then null else jsonb_build_object('ain', a.ain, 'name', a.name) end as asset,
     case when s.id is null then null else jsonb_build_object('name', s.name, 'code', s.code) end as site,
-    case when u.id is null then null else jsonb_build_object('full_name', u.full_name) end as inspector
+    case when u.id is null then null else jsonb_build_object('id', u.id, 'full_name', u.full_name) end as inspector,
+    case when ab.id is null then null else jsonb_build_object('id', ab.id, 'full_name', ab.full_name) end as assigner
   from public.inspections i
   left join public.assets a on a.id = i.asset_id
   left join public.sites s on s.id = i.site_id
   left join public.users u on u.id = i.inspector_id
+  left join public.users ab on ab.id = i.assigned_by
 `
 
 const inspectionInput = z.object({
@@ -76,14 +78,24 @@ inspectionsRouter.post('/inspections', requireCap('inspection:create'), async (r
       `insert into public.inspections (org_id, ${columns}) values (current_org_id(), ${placeholders}) returning id`,
       values
     )
+    // Creating an inspection with an inspector IS an assignment, so it gets the
+    // same attribution as a later reassignment.
+    if (parsed.data.inspector_id) {
+      await c.query(
+        'update public.inspections set assigned_by = $2, assigned_at = now() where id = $1',
+        [rows[0].id, req.claims!.sub]
+      )
+    }
     const { rows: full } = await c.query(`${SELECT} where i.id = $1`, [rows[0].id])
     const inspection = full[0]
     await writeAuditLog(c, { orgId: inspection.org_id, actorId: req.claims!.sub, action: 'inspection.create', entityType: 'inspection', entityId: inspection.id, after: inspection })
     if (inspection.inspector_id) {
+      const assignerName = inspection.assigner?.full_name
       await notifyUsers(c, {
         orgId: inspection.org_id, userIds: [inspection.inspector_id], actorId: req.claims!.sub,
         kind: 'inspection_assigned', title: `Inspection assigned to you: ${inspection.title}`,
-        body: `Scheduled ${inspection.scheduled_date}.`, entityType: 'inspection', entityId: inspection.id,
+        body: `Scheduled ${inspection.scheduled_date}.${assignerName ? ` Assigned by ${assignerName}.` : ''}`,
+        entityType: 'inspection', entityId: inspection.id,
       })
     }
     return inspection
@@ -107,15 +119,39 @@ inspectionsRouter.patch('/inspections/:id', requireCap('inspection:update'), asy
 
     const { rows } = await c.query(`update public.inspections set ${setSql} where id = $1 returning id, org_id`, [req.params.id, ...values])
     if (!rows[0]) return null
+
+    if (inspectorChanged) {
+      await c.query(
+        `update public.inspections
+         set assigned_by = case when $2::uuid is null then null else $3::uuid end,
+             assigned_at = case when $2::uuid is null then null else now() end
+         where id = $1`,
+        [req.params.id, patch.inspector_id ?? null, req.claims!.sub]
+      )
+    }
+
     const { rows: full } = await c.query(`${SELECT} where i.id = $1`, [req.params.id])
     const inspection = full[0]
-    await writeAuditLog(c, { orgId: inspection.org_id, actorId: req.claims!.sub, action: 'inspection.update', entityType: 'inspection', entityId: inspection.id, after: inspection })
+    // A reassignment gets its own action and a real `before`. It used to land
+    // as a generic `inspection.update` with no before, so the audit log could
+    // not even be read as "this was an assignment", let alone say from whom.
+    if (inspectorChanged) {
+      await writeAuditLog(c, {
+        orgId: inspection.org_id, actorId: req.claims!.sub, action: 'inspection.assign',
+        entityType: 'inspection', entityId: inspection.id,
+        before: { inspector_id: before[0].inspector_id }, after: { inspector_id: patch.inspector_id ?? null },
+      })
+    } else {
+      await writeAuditLog(c, { orgId: inspection.org_id, actorId: req.claims!.sub, action: 'inspection.update', entityType: 'inspection', entityId: inspection.id, after: inspection })
+    }
 
     if (inspectorChanged && patch.inspector_id) {
+      const assignerName = inspection.assigner?.full_name
       await notifyUsers(c, {
         orgId: inspection.org_id, userIds: [patch.inspector_id], actorId: req.claims!.sub,
         kind: 'inspection_assigned', title: `Inspection assigned to you: ${inspection.title}`,
-        body: `Scheduled ${inspection.scheduled_date}.`, entityType: 'inspection', entityId: inspection.id,
+        body: `Scheduled ${inspection.scheduled_date}.${assignerName ? ` Assigned by ${assignerName}.` : ''}`,
+        entityType: 'inspection', entityId: inspection.id,
       })
     }
     if (justCompleted) {

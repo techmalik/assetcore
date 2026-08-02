@@ -5,6 +5,7 @@ import { listSites, createSite, updateSite, softDeleteSite } from '../lib/db/sit
 import { listLocations, createLocation, updateLocation, softDeleteLocation } from '../lib/db/locations.js'
 import { listCategories, createCategory, updateCategory, deleteCategory } from '../lib/db/categories.js'
 import { listAuditLog } from '../lib/db/audit.js'
+import { actionLabel, actionColor, entityTypeLabel } from '../lib/auditLabels.js'
 import { listOrgMembers, inviteOrgMember, updateOrgMemberRole, updateOrgMemberAccess, setOrgMemberStatus, resetOrgMemberPassword } from '../lib/db/orgMembers.js'
 import { getOrg, updateOrgSettings } from '../lib/db/org.js'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -806,11 +807,6 @@ function UsersTab() {
 
 // ── Audit Log Tab ─────────────────────────────────────────────────────────────
 
-const ACTION_COLORS = {
-  'asset.create': 'var(--sgt)', 'asset.update': 'var(--sat)', 'asset.delete': 'var(--srt)',
-  'wo.create': 'var(--sgt)', 'wo.update': 'var(--sat)', 'wo.transition': 'var(--b600)',
-  'wo.delete': 'var(--srt)', 'site.create': 'var(--sgt)', 'category.create': 'var(--sgt)',
-}
 
 function AuditTab() {
   const [rows, setRows] = useState([])
@@ -861,7 +857,7 @@ function AuditTab() {
           <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead style={{position:'sticky',top:0,zIndex:10}}>
               <tr style={{background:'var(--n50)'}}>
-                {['Time','Actor','Action','Entity',''].map(h => (
+                {['Time','Actor','Action','Entity'].map(h => (
                   <th key={h} style={{padding:'8px 14px',textAlign:'left',fontSize:10,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--n500)',borderBottom:'var(--bdr)'}}>{h}</th>
                 ))}
               </tr>
@@ -869,23 +865,30 @@ function AuditTab() {
             <tbody>
               {rows.map(r => (
                 <tr key={r.id} style={{borderBottom:'var(--bdr)'}}>
+                  {/* Year and seconds included: without them two events a year
+                      apart rendered identically. */}
                   <td style={{padding:'9px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:'var(--n500)',whiteSpace:'nowrap'}}>
-                    {new Date(r.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+                    {new Date(r.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
                   </td>
                   <td style={{padding:'9px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>
-                    {r.actor?.full_name || r.actor?.email || r.actor_id?.slice(0,8) || '—'}
+                    {r.actor?.full_name || r.actor?.email || 'System'}
                   </td>
                   <td style={{padding:'9px 14px'}}>
-                    <span style={{fontFamily:'var(--ff-m)',fontSize:11,fontWeight:600,color:ACTION_COLORS[r.action]||'var(--n600)',background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:3,padding:'1px 7px'}}>
-                      {r.action}
+                    <span style={{fontSize:12,fontWeight:500,color:actionColor(r.action)}}>
+                      {actionLabel(r.action)}
                     </span>
                   </td>
-                  <td style={{padding:'9px 14px',fontSize:12,color:'var(--n600)'}}>
-                    <span style={{color:'var(--n400)'}}>{r.entity_type} </span>
-                    <span style={{fontFamily:'var(--ff-m)',fontSize:11}}>{r.entity_id?.slice(0,8)}</span>
-                  </td>
-                  <td style={{padding:'9px 14px',fontSize:11,color:'var(--n400)'}}>
-                    {r.ip && <span style={{fontFamily:'var(--ff-m)'}}>{r.ip}</span>}
+                  {/* The snapshot label written with the row (0018). This cell
+                      used to read `work_order 3f9a2c1b` — the entity type plus
+                      the first eight characters of a UUID, not even a complete
+                      one, so it couldn't be pasted into a lookup. */}
+                  <td style={{padding:'9px 14px',fontSize:12,color:'var(--n800)'}}>
+                    {r.entity_label
+                      ? <span>{r.entity_label}</span>
+                      : <span style={{color:'var(--n400)'}}>{entityTypeLabel(r.entity_type)}</span>}
+                    {r.entity_label && (
+                      <span style={{color:'var(--n400)',fontSize:11,marginLeft:6}}>{entityTypeLabel(r.entity_type)}</span>
+                    )}
                   </td>
                 </tr>
               ))}

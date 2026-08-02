@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
-import AssignModal from '../components/AssignModal.jsx'
+import AssignModal, { assignmentSummary } from '../components/AssignModal.jsx'
 import InspectionsPanel from '../components/InspectionsPanel.jsx'
 import CompliancePanel from '../components/CompliancePanel.jsx'
 import { listPMSchedules, createPMSchedule, softDeletePMSchedule } from '../lib/db/pmSchedules'
@@ -341,6 +341,7 @@ export default function Maintenance({ dark, toggleDark }) {
       {completing && <CompleteTaskModal task={completing} onClose={() => setCompleting(null)} onDone={onTaskCompleted}/>}
       {assigning && (
         <AssignModal title="Assign task" subtitle={assigning.title} users={users} currentId={assigning.assignee_id}
+          current={assignmentSummary({ assignee: assigning.assignee, assigner: assigning.assigner, assignedAt: assigning.assigned_at })}
           onClose={() => setAssigning(null)} onSave={(userId) => saveAssignment(assigning.id, userId)}/>
       )}
     </div>
@@ -424,7 +425,17 @@ function TasksTable({ tasks, onComplete, onAssign }) {
                 </td>
                 <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>{t.site?.name||'—'}</td>
                 <td style={{padding:'10px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:t.status==='overdue'?'var(--srt)':'var(--n600)',whiteSpace:'nowrap'}}>{fmtDate(t.due_date)}</td>
-                <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>{t.assignee?.full_name||'—'}</td>
+                {/* Second line rather than a new column — the assigner had to
+                    be visible somewhere, and PM tasks have no detail view to
+                    put it in. */}
+                <td style={{padding:'10px 14px',fontSize:12,color:'var(--n700)',whiteSpace:'nowrap'}}>
+                  <div>{t.assignee?.full_name||'—'}</div>
+                  {t.assigner?.full_name && (
+                    <div style={{fontSize:10,color:'var(--n400)'}}>
+                      by {t.assigner.full_name}{t.assigned_at ? `, ${fmtDate(t.assigned_at)}` : ''}
+                    </div>
+                  )}
+                </td>
                 <td style={{padding:'10px 14px'}}>
                   <StatusBadge tone={sc} />
                 </td>

@@ -156,6 +156,7 @@ assetsRouter.get('/assets/:id/activity', async (req, res) => {
     if (!assetRows[0]) return null
     const { rows: acts } = await c.query(
       `select aa.id, aa.kind, aa.body, aa.attachments, aa.created_at, 'activity' as source,
+         null as entity_label,
          case when u.id is null then null else jsonb_build_object('id', u.id, 'full_name', u.full_name) end as actor
        from public.asset_activity aa
        left join public.users u on u.id = aa.user_id
@@ -164,6 +165,7 @@ assetsRouter.get('/assets/:id/activity', async (req, res) => {
     )
     const { rows: audits } = await c.query(
       `select al.id, al.action as kind, null as body, '[]'::jsonb as attachments, al.created_at, 'audit' as source,
+         al.entity_label,
          case when u.id is null then null else jsonb_build_object('id', u.id, 'full_name', u.full_name) end as actor
        from public.audit_log al
        left join public.users u on u.id = al.actor_id

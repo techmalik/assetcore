@@ -55,9 +55,9 @@ export async function notifyRoleHolders(c: pg.PoolClient, input: NotifyRoleHolde
 }
 
 /**
- * "Work order closed" feedback: tell whoever created it and whoever most
- * recently assigned it (they're the ones who were waiting on it, not the
- * assignee who just did the work) — shared by both places a WO can close
+ * "Work order closed" feedback: tell whoever created it and whoever assigned
+ * it (they're the ones who were waiting on it, not the assignee who just did
+ * the work) — shared by both places a WO can close
  * (workOrders.ts's transition endpoint and maintenanceEvents.ts's
  * maintenance-completion flow, which can close a linked WO as a side
  * effect). Both pass the same dedupe prefix, so if a completion closes a WO
@@ -66,16 +66,17 @@ export async function notifyRoleHolders(c: pg.PoolClient, input: NotifyRoleHolde
 export async function notifyWorkOrderClosed(c: pg.PoolClient, input: {
   orgId: string; woId: string; ref: string; title: string; actorId: string | null | undefined
 }): Promise<number> {
-  const { rows: created } = await c.query('select created_by from public.work_orders where id = $1', [input.woId])
-  const { rows: lastAssign } = await c.query(
-    `select user_id from public.work_order_activity
-     where work_order_id = $1 and kind = 'assignment' and user_id is not null
-     order by created_at desc limit 1`,
+  // Reads work_orders.assigned_by (0017) rather than the old "newest
+  // 'assignment' activity row" query. Unassignment writes an assignment row
+  // too, so that query reported whoever last CLEARED the assignee as the
+  // assigner — assign by A, unassign by B, and B got the completion notice.
+  const { rows } = await c.query(
+    'select created_by, assigned_by from public.work_orders where id = $1',
     [input.woId]
   )
   return notifyUsers(c, {
     orgId: input.orgId,
-    userIds: [created[0]?.created_by, lastAssign[0]?.user_id],
+    userIds: [rows[0]?.created_by, rows[0]?.assigned_by],
     actorId: input.actorId,
     kind: 'work_completed',
     title: `Work order closed: ${input.ref}`,
