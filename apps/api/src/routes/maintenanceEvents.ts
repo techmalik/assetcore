@@ -149,7 +149,10 @@ maintenanceEventsRouter.post(
         actorId: req.claims!.sub, kind: 'work_completed',
         title: `Maintenance completed on ${asset.name || 'asset'}`,
         body: reportUrl ? 'Completed. Report attached.' : (notes || 'Completed.'),
-        entityType: 'maintenance_event', entityId: event.id,
+        // Points at the asset, not the event: there is no maintenance-event
+        // detail view to land on, and the asset panel is where the completion
+        // and its report are actually visible.
+        entityType: 'asset', entityId: asset.id,
         dedupePrefix: `work_completed:maintenance_event:${event.id}`,
       })
 
@@ -195,7 +198,7 @@ maintenanceEventsRouter.post(
           orgId: rows[0].org_id, siteId: rows[0].site_id, roles: ['owner', 'ops_manager'],
           actorId: req.claims!.sub, kind: 'report_uploaded',
           title: 'Maintenance report uploaded', body: req.file!.originalname,
-          entityType: 'maintenance_event', entityId: rows[0].id,
+          entityType: 'asset', entityId: rows[0].asset_id,
           dedupePrefix: `report_uploaded:maintenance_event:${rows[0].id}`,
         })
         return full[0]

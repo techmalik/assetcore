@@ -19,7 +19,10 @@ auditRouter.get('/audit-log', requireCap('audit:read'), async (req, res) => {
          case when u.id is null then null else jsonb_build_object('full_name', u.full_name, 'email', u.email) end as actor
        from public.audit_log al
        left join public.users u on u.id = al.actor_id
-       order by al.created_at desc
+       -- id as a tiebreaker: rows written in one transaction share a
+       -- created_at, so without it they can shuffle between pages and an
+       -- event can be seen twice or missed entirely while paging.
+       order by al.created_at desc, al.id desc
        limit $1 offset $2`,
       [limit, offset]
     )

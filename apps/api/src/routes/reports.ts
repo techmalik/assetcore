@@ -45,7 +45,8 @@ reportsRouter.get('/reports/location-analytics', async (req, res) => {
         select s.location_id,
           count(a.id) as asset_count,
           avg(a.health_score) as avg_health,
-          sum(coalesce(a.purchase_value_cents, 0)) as total_value_cents
+          sum(coalesce(a.purchase_value_cents, 0)) as total_value_cents,
+          sum(coalesce(a.nbv_cents, 0)) as total_nbv_cents
         from public.assets a
         join public.sites s on s.id = a.site_id
         where a.deleted_at is null
@@ -69,6 +70,7 @@ reportsRouter.get('/reports/location-analytics', async (req, res) => {
         coalesce(aa.asset_count, 0)::int as asset_count,
         round(aa.avg_health)::int as avg_health,
         coalesce(aa.total_value_cents, 0)::bigint as total_value_cents,
+        coalesce(aa.total_nbv_cents, 0)::bigint as total_nbv_cents,
         coalesce(wa.wo_open, 0)::int as wo_open,
         coalesce(wa.wo_completed, 0)::int as wo_completed,
         coalesce(wa.wo_cost_cents, 0)::bigint as wo_cost_cents

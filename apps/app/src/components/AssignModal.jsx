@@ -4,7 +4,20 @@ import { useState } from 'react'
 // the "Assigned operator" select in Assets.jsx's AssetModal, and the assignee
 // selects Work Orders already has (WorkOrders.jsx). One modal instead of
 // three near-identical inline forms.
-export default function AssignModal({ title, subtitle, users, currentId, onClose, onSave }) {
+/** "Jane Doe · assigned by Sam Okoro, 14 Mar 25" — shared so the PM task and
+ * inspection tables phrase it identically. Returns null when nobody is
+ * assigned, so callers can fall back to a dash. */
+export function assignmentSummary({ assignee, assigner, assignedAt }) {
+  const who = assignee?.full_name
+  if (!who) return null
+  if (!assigner?.full_name) return who
+  const when = assignedAt
+    ? `, ${new Date(assignedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}`
+    : ''
+  return `${who} · assigned by ${assigner.full_name}${when}`
+}
+
+export default function AssignModal({ title, subtitle, users, currentId, current, onClose, onSave }) {
   const [userId, setUserId] = useState(currentId || '')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -27,7 +40,14 @@ export default function AssignModal({ title, subtitle, users, currentId, onClose
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
-        {subtitle && <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 14 }}>{subtitle}</p>}
+        {subtitle && <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: current ? 6 : 14 }}>{subtitle}</p>}
+        {/* Neither PM tasks nor inspections have a detail view, so this modal
+            is the only place the existing assignment can be shown in full. */}
+        {current && (
+          <p style={{ fontSize: 12, color: 'var(--n600)', marginBottom: 14, background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 4, padding: '6px 10px' }}>
+            Currently {current}
+          </p>
+        )}
         <select className="input" value={userId} onChange={(e) => setUserId(e.target.value)} style={{ width: '100%' }} autoFocus>
           <option value="">Unassigned</option>
           {users.map((u) => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}

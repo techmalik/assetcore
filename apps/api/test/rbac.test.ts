@@ -56,6 +56,37 @@ describe('TASK-1.1: org:manage gate on sites/locations/categories', () => {
   })
 })
 
+// Device writes carried no capability check at all: the router applied only
+// auth + membership, so a viewer or auditor could create, edit and delete
+// telemetry hardware. Only RLS kept it inside the org.
+describe('device writes require a capability', () => {
+  // Two logins for the whole block, not one per assertion — /auth/login is
+  // rate-limited and this suite shares one app instance.
+  let viewer: Awaited<ReturnType<typeof apiAs>>
+  let ops: Awaited<ReturnType<typeof apiAs>>
+  beforeAll(async () => {
+    viewer = await apiAs(USERS.viewerA.email)
+    ops = await apiAs(USERS.opsManagerA.email)
+  })
+
+  it('ops_manager (holds asset:update) can create a device, viewer cannot', async () => {
+    const created = await ops.post('/api/devices').send({ name: 'Created By Ops Manager', kind: 'sensor' })
+    expect(created.status).toBe(201)
+
+    const denied = await viewer.post('/api/devices').send({ name: 'Rogue Device', kind: 'sensor' })
+    expect(denied.status).toBe(403)
+  })
+
+  it('viewer cannot edit or delete a device, but can still read', async () => {
+    const created = await ops.post('/api/devices').send({ name: 'Device Under Test', kind: 'sensor' })
+    expect(created.status).toBe(201)
+
+    expect((await viewer.patch(`/api/devices/${created.body.id}`).send({ name: 'Renamed' })).status).toBe(403)
+    expect((await viewer.delete(`/api/devices/${created.body.id}`)).status).toBe(403)
+    expect((await viewer.get('/api/devices')).status).toBe(200)
+  })
+})
+
 describe('TASK-1.2: compliance_audits RLS enforces site scope on write', () => {
   it('a site-scoped HSE officer cannot create an audit for a site outside their scope', async () => {
     const api = await apiAs(USERS.hseOfficerA1.email) // scoped to SITE_A1 only

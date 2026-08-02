@@ -11,6 +11,10 @@ const jobs = [
   { name: 'mark_overdue_pm_tasks', schedule: '5 0 * * *', sql: 'select public.mark_overdue_pm_tasks()' },
   { name: 'check_licence_expiry', schedule: '0 7 * * *', sql: 'select public.check_licence_expiry()' },
   { name: 'recompute_asset_health', schedule: '0 1 * * *', sql: 'select public.recompute_asset_health()' },
+  // After the health pass, so a night's run leaves both derived figures on the
+  // same day's basis.
+  { name: 'recompute_asset_depreciation', schedule: '0 2 * * *', sql: 'select public.recompute_asset_depreciation()' },
+  { name: 'notify_pm_due', schedule: '30 6 * * *', sql: 'select public.notify_pm_due()' },
 ]
 
 export function startJobs(): void {

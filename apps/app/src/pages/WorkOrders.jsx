@@ -361,6 +361,12 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
             ['Site', wo.site?.name || '—'],
             ['Asset', wo.asset ? `${wo.asset.ain} — ${wo.asset.name}` : '—'],
             ['Assignee', wo.assignee?.full_name || 'Unassigned'],
+            // Who did the assigning. It existed only as an unlabelled byline in
+            // the activity feed, under a line reading "Assigned to Jane Doe." —
+            // easy to misread as Jane's own entry.
+            ['Assigned by', wo.assigner?.full_name
+              ? `${wo.assigner.full_name}${wo.assigned_at ? ` · ${new Date(wo.assigned_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}` : ''}`
+              : '—'],
             ['SLA Due', wo.sla_due ? <SlaDue date={wo.sla_due} /> : '—'],
             ['Cost', fmtNaira(wo.cost_cents)],
           ].map(([k, v]) => (
@@ -451,11 +457,15 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function WorkOrders({ dark, toggleDark }) {
-  const { roleKey, user } = useAuth()
-  const canCreate     = can(roleKey, 'wo:create')
-  const canTransition = can(roleKey, 'wo:transition')
-  const canEdit       = can(roleKey, 'wo:update')
-  const canAssign     = can(roleKey, 'wo:assign')
+  const { roleKey, extraCaps, user } = useAuth()
+  // extraCaps matters: an admin can grant these per-user in Admin -> Access
+  // settings and the API honours them (middleware/rbac.ts), but every
+  // can() call here used to omit the third argument, so a granted
+  // capability produced a button that never appeared.
+  const canCreate     = can(roleKey, 'wo:create', extraCaps)
+  const canTransition = can(roleKey, 'wo:transition', extraCaps)
+  const canEdit       = can(roleKey, 'wo:update', extraCaps)
+  const canAssign     = can(roleKey, 'wo:assign', extraCaps)
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
 
@@ -472,6 +482,9 @@ export default function WorkOrders({ dark, toggleDark }) {
   const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || 'all')
   // Supports the Dashboard's "My Open Work" card linking in as ?assignee=me.
   const [mineOnly, setMineOnly] = useState(searchParams.get('assignee') === 'me')
+  // ?id=<uuid> — deep link from a notification or from the asset sidebar's
+  // work-order list, which used to dump you on an unfiltered page.
+  const deepLinkId = searchParams.get('id')
   const [view, setView] = useState('list')
   const [selectedId, setSelectedId] = useState(null)
   const [showNew, setShowNew] = useState(false)
@@ -490,6 +503,17 @@ export default function WorkOrders({ dark, toggleDark }) {
   }, [filterStatus, globalLocationId])
 
   useEffect(() => { load() }, [load])
+
+  // Open the deep-linked WO once the list has arrived. Also clears the status
+  // filter, so linking to a draft or closed WO doesn't land on a page that
+  // filters it straight back out.
+  useEffect(() => {
+    if (!deepLinkId || !wos.length) return
+    if (!wos.some(w => w.id === deepLinkId)) return
+    setFilterStatus('all')
+    setMineOnly(false)
+    setSelectedId(deepLinkId)
+  }, [deepLinkId, wos])
 
   const visibleWos = mineOnly ? wos.filter(w => w.assignee_id === user?.id) : wos
   const byStatus = STATUS_COL_ORDER.reduce((acc, s) => { acc[s] = visibleWos.filter(w => w.status === s); return acc }, {})

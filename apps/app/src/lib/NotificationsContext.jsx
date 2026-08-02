@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useAuth } from './AuthContext'
-import { countUnread, listNotifications, markRead as doMarkRead, markAllRead as doMarkAllRead } from './db/notifications'
+import { countUnread, listNotifications, markRead as doMarkRead, markUnread as doMarkUnread, markAllRead as doMarkAllRead } from './db/notifications'
 
 const NotifCtx = createContext(null)
 const POLL_MS = 30_000
@@ -45,6 +45,14 @@ export function NotificationsProvider({ children }) {
     } catch { /* ignore */ }
   }, [])
 
+  const markUnread = useCallback(async (id) => {
+    try {
+      await doMarkUnread(id)
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: false } : n))
+      setUnreadCount(prev => prev + 1)
+    } catch { /* ignore */ }
+  }, [])
+
   const markAllRead = useCallback(async () => {
     try {
       await doMarkAllRead()
@@ -54,7 +62,7 @@ export function NotificationsProvider({ children }) {
   }, [])
 
   return (
-    <NotifCtx.Provider value={{ unreadCount, notifications, refresh, markRead, markAllRead }}>
+    <NotifCtx.Provider value={{ unreadCount, notifications, refresh, markRead, markUnread, markAllRead }}>
       {children}
     </NotifCtx.Provider>
   )

@@ -23,11 +23,13 @@ const SELECT = `
     case when a.id is null then null else jsonb_build_object('id', a.id, 'ain', a.ain, 'name', a.name) end as asset,
     case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name, 'code', s.code) end as site,
     case when u.id is null then null else jsonb_build_object('id', u.id, 'full_name', u.full_name) end as assignee,
+    case when ab.id is null then null else jsonb_build_object('id', ab.id, 'full_name', ab.full_name) end as assigner,
     case when sch.id is null then null else jsonb_build_object('title', sch.title, 'frequency', sch.frequency) end as schedule
   from public.pm_tasks t
   left join public.assets a on a.id = t.asset_id
   left join public.sites s on s.id = t.site_id
   left join public.users u on u.id = t.assignee_id
+  left join public.users ab on ab.id = t.assigned_by
   left join public.pm_schedules sch on sch.id = t.schedule_id
 `
 
@@ -76,14 +78,39 @@ pmTasksRouter.patch('/pm-tasks/:id', requireCap('pm:update'), async (req, res) =
 
     const { rows } = await c.query(`update public.pm_tasks set ${setSql} where id = $1 returning id, org_id`, [req.params.id, ...values])
     if (!rows[0]) return null
+
+    // Stamp who assigned it, and clear the stamp on unassignment. There is no
+    // pm_task_activity table, so before this the assigner of a PM task was
+    // recorded absolutely nowhere — not in an activity feed, and not in the
+    // audit log either, since writeAuditLog was only called on completion.
+    if (assigneeChanged) {
+      await c.query(
+        `update public.pm_tasks
+         set assigned_by = case when $2::uuid is null then null else $3::uuid end,
+             assigned_at = case when $2::uuid is null then null else now() end
+         where id = $1`,
+        [req.params.id, patch.assignee_id ?? null, req.claims!.sub]
+      )
+    }
+
     const { rows: full } = await c.query(`${SELECT} where t.id = $1`, [req.params.id])
     const task = full[0]
 
+    if (assigneeChanged) {
+      await writeAuditLog(c, {
+        orgId: task.org_id, actorId: req.claims!.sub, action: 'pm_task.assign',
+        entityType: 'pm_task', entityId: task.id,
+        before: { assignee_id: before[0].assignee_id }, after: { assignee_id: patch.assignee_id ?? null },
+      })
+    }
+
     if (assigneeChanged && patch.assignee_id) {
+      const assignerName = task.assigner?.full_name
       await notifyUsers(c, {
         orgId: task.org_id, userIds: [patch.assignee_id], actorId: req.claims!.sub,
         kind: 'pm_assigned', title: `PM task assigned to you: ${task.title}`,
-        body: `Due ${task.due_date}.`, entityType: 'pm_task', entityId: task.id,
+        body: `Due ${task.due_date}.${assignerName ? ` Assigned by ${assignerName}.` : ''}`,
+        entityType: 'pm_task', entityId: task.id,
       })
     }
 

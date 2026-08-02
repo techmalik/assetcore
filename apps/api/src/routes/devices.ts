@@ -5,11 +5,21 @@ import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
+import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 
 export const devicesRouter = Router()
 devicesRouter.use(requireAuth, requireOrg, requireActiveMembership)
+
+// Device writes were unauthorized: the router applied only auth + membership,
+// so any active member — including viewer and auditor, whose whole role is
+// read-only — could create, edit and soft-delete devices. RLS kept it inside
+// the org and nothing else stopped it. Gated on asset:update rather than a new
+// device:* capability: a device is telemetry hardware attached to an asset,
+// and the roles that may edit an asset (owner, ops_manager, maint_engineer)
+// are exactly the ones that should be able to edit its instrumentation.
+const DEVICE_WRITE_CAP = 'asset:update'
 
 const ALLOWED = ['asset_id', 'site_id', 'serial_number', 'name', 'kind', 'protocol', 'status', 'firmware_version', 'ip_address', 'config']
 
@@ -50,7 +60,7 @@ devicesRouter.get('/devices', async (req, res) => {
   res.json(rows)
 })
 
-devicesRouter.post('/devices', async (req, res) => {
+devicesRouter.post('/devices', requireCap(DEVICE_WRITE_CAP), async (req, res) => {
   const parsed = deviceInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { columns, placeholders, values } = buildInsert(parsed.data, ALLOWED)
@@ -68,7 +78,7 @@ devicesRouter.post('/devices', async (req, res) => {
   res.status(201).json(row)
 })
 
-devicesRouter.patch('/devices/:id', async (req, res) => {
+devicesRouter.patch('/devices/:id', requireCap(DEVICE_WRITE_CAP), async (req, res) => {
   const parsed = deviceInput.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { setSql, values } = buildSet(parsed.data, ALLOWED)
@@ -86,7 +96,7 @@ devicesRouter.patch('/devices/:id', async (req, res) => {
   res.json(row)
 })
 
-devicesRouter.delete('/devices/:id', async (req, res) => {
+devicesRouter.delete('/devices/:id', requireCap(DEVICE_WRITE_CAP), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
       'update public.devices set deleted_at = now() where id = $1 returning id, org_id',

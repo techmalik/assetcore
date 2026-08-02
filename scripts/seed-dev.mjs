@@ -59,8 +59,9 @@ async function main() {
   )
 
   await client.query(
-    `insert into public.organizations (id, name, short_name, industry, region, plan, billing_status)
-     values ($1, 'Nigeria Gas Marketing Limited', 'NGML', 'Oil & Gas Distribution', 'Nigeria', 'licensed', 'licensed')
+    `insert into public.organizations (id, name, short_name, industry, region, plan, billing_status, settings)
+     values ($1, 'Nigeria Gas Marketing Limited', 'NGML', 'Oil & Gas Distribution', 'Nigeria', 'licensed', 'licensed',
+             '{"depreciation":{"method":"straight_line","usefulLifeYears":15,"salvageRatePct":5,"decliningRatePct":20,"startFrom":"install_date"}}'::jsonb)
      on conflict (id) do nothing`,
     [ORG]
   )
@@ -127,19 +128,37 @@ async function main() {
     )
   }
 
+  // Seeded assets used to carry a hand-written health_score, a hand-written
+  // nbv_cents, no purchase value, no dates, and the legacy attention/critical
+  // statuses — so none of them participated in the health decay job or in
+  // depreciation, and the demo data disagreed with how the product actually
+  // works. Now every asset gets a real maintenance window, a purchase value
+  // and an in-service date, and both derived figures are computed at the end
+  // of the seed by the same functions the app uses.
+  //
+  // daysSinceLast/daysUntilNext produce the intended health: the decay is
+  // linear across the window, so 32% health is a window 68% elapsed.
   const assets = [
-    ['a0000000-0000-0000-0000-000000000001', 'NGML-MTR-0042', 'Lagos DS-04 Metering Station', 'c0000000-0000-0000-0000-000000000001', 'critical', 32, 19540000000],
-    ['a0000000-0000-0000-0000-000000000002', 'NGML-CMP-0017', 'Delta Compression Station C-017', 'c0000000-0000-0000-0000-000000000002', 'attention', 61, 84020000000],
-    ['a0000000-0000-0000-0000-000000000003', 'NGML-REG-0089', 'North Benin PRG-089', 'c0000000-0000-0000-0000-000000000003', 'attention', 74, 2410000000],
-    ['a0000000-0000-0000-0000-000000000004', 'NGML-VLV-0089', 'Warri T-A Isolation Valve 089', 'c0000000-0000-0000-0000-000000000004', 'operational', 88, 870000000],
-    ['a0000000-0000-0000-0000-000000000005', 'NGML-PIP-0312', 'Aba DN200 Pipeline Segment 312', 'c0000000-0000-0000-0000-000000000005', 'operational', 92, 120000000000],
-    ['a0000000-0000-0000-0000-000000000004', 'NGML-SCR-041', 'Warri Terminal A RTU', 'c0000000-0000-0000-0000-000000000006', 'critical', 18, 1230000000],
+    // siteId, ain, name, categoryId, status, daysSinceLast, daysUntilNext, purchaseValueCents, ageYears
+    ['a0000000-0000-0000-0000-000000000001', 'NGML-MTR-0042', 'Lagos DS-04 Metering Station', 'c0000000-0000-0000-0000-000000000001', 'operational', 61, 29, 24000000000, 6],
+    ['a0000000-0000-0000-0000-000000000002', 'NGML-CMP-0017', 'Delta Compression Station C-017', 'c0000000-0000-0000-0000-000000000002', 'operational', 35, 55, 98000000000, 4],
+    ['a0000000-0000-0000-0000-000000000003', 'NGML-REG-0089', 'North Benin PRG-089', 'c0000000-0000-0000-0000-000000000003', 'operational', 23, 67, 2900000000, 3],
+    ['a0000000-0000-0000-0000-000000000004', 'NGML-VLV-0089', 'Warri T-A Isolation Valve 089', 'c0000000-0000-0000-0000-000000000004', 'operational', 11, 79, 1000000000, 2],
+    ['a0000000-0000-0000-0000-000000000005', 'NGML-PIP-0312', 'Aba DN200 Pipeline Segment 312', 'c0000000-0000-0000-0000-000000000005', 'operational', 7, 83, 140000000000, 9],
+    ['a0000000-0000-0000-0000-000000000004', 'NGML-SCR-041', 'Warri Terminal A RTU', 'c0000000-0000-0000-0000-000000000006', 'standby', 74, 16, 1400000000, 5],
   ]
-  for (const [siteId, ain, name, categoryId, status, health, nbv] of assets) {
+  for (const [siteId, ain, name, categoryId, status, sinceLast, untilNext, value, ageYears] of assets) {
     await client.query(
-      `insert into public.assets (org_id, site_id, ain, name, category_id, status, health_score, nbv_cents)
-       values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (org_id, ain) do nothing`,
-      [ORG, siteId, ain, name, categoryId, status, health, nbv]
+      `insert into public.assets (
+         org_id, site_id, ain, name, category_id, status,
+         purchase_value_cents, last_maintenance_at, next_maintenance_at,
+         install_date, purchase_date
+       )
+       values ($1, $2, $3, $4, $5, $6, $7,
+               current_date - $8::int, current_date + $9::int,
+               current_date - ($10::int * 365), current_date - ($10::int * 365) - 30)
+       on conflict (org_id, ain) do nothing`,
+      [ORG, siteId, ain, name, categoryId, status, value, sinceLast, untilNext, ageYears]
     )
   }
 
@@ -240,6 +259,12 @@ async function main() {
   await client.query(
     `update public.devices set last_seen_at = now() - interval '3 days' where id = 'f1000000-0000-0000-0000-000000000003'`
   )
+
+  // Derived figures, computed the same way the running app computes them —
+  // rather than seeded literals that drift from whatever the functions
+  // actually produce.
+  await client.query('select public.recompute_asset_health($1)', [ORG])
+  await client.query('select public.recompute_asset_depreciation($1)', [ORG])
 
   await client.query('commit')
 

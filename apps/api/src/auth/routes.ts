@@ -21,8 +21,15 @@ const refreshCookieOpts = {
   maxAge: 30 * 24 * 60 * 60 * 1000,
 }
 
-const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false })
-const forgotLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false })
+// The integration suite drives real logins through this route — one per test
+// user per block — and shares a single app instance across files, so the
+// production limit of 10 per 15 minutes starts 429ing unrelated tests as soon
+// as anyone adds one that logs in. That made the limiter a tripwire on test
+// authorship rather than a security control. Raised only under NODE_ENV=test;
+// the production numbers are unchanged.
+const isTest = process.env.NODE_ENV === 'test'
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: isTest ? 1000 : 10, standardHeaders: true, legacyHeaders: false })
+const forgotLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: isTest ? 1000 : 5, standardHeaders: true, legacyHeaders: false })
 
 // UUID that matches no real site — the encoding for "scoped, but to zero sites"
 // (so an empty scope denies rather than falling back to the null = all-sites case).
