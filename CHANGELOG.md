@@ -3,7 +3,11 @@
 All notable changes to AssetCore are recorded here, starting from the
 first licensed release shipped to a client (NGML).
 
-## [1.0.0] — unreleased
+## [1.1.0] — 2026-08-02
+
+Derived health and book value, actionable notifications, assignment
+attribution, and a readable audit log. Adds four migrations (0015–0018), two
+nightly jobs, and an org-wide depreciation policy under Admin → Configuration.
 
 ### Owner-review follow-ups (August 2026)
 
@@ -119,6 +123,8 @@ first licensed release shipped to a client (NGML).
   can be archived (the function was imported and never called). Asset value is
   labelled and rendered in naira everywhere, matching the reports and work
   orders rather than contradicting them with a dollar sign.
+
+## [1.0.0] — 2026-07-23
 
 ### Owner-review follow-ups (July 2026)
 
