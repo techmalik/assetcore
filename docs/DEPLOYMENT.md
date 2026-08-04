@@ -134,3 +134,33 @@ branded per `VITE_INSTANCE_*`) and starts all three services.
 That's a working instance. For day-2 operations (backups, monitoring, user
 admin, licence renewal), see `docs/OPERATIONS.md`. For applying a later
 release, see `docs/UPGRADE.md`.
+
+## Appendix: what the automated VPS deploy does (and its migration lag)
+
+`.github/workflows/deploy.yml` SSHes into the production VPS on every push to
+`main` and runs `/opt/assetcore/deploy/deploy.sh`. That script lives on the
+server, not in this repo. Two behaviours of it are worth knowing before you
+rely on a push to land a schema or data change:
+
+- **Migrations run one deploy behind.** The script applies migrations with
+  `docker compose run --rm api node /repo/scripts/migrate.mjs` *before* it
+  rebuilds the images. `db/` is baked into the `api` image at build time, so
+  that run sees the migration set from the **previously built** image, not the
+  commit being deployed. A migration added in commit N is therefore applied by
+  the deploy of commit N+1. Verified in the 2026-08-04 run: it applied
+  `0015`–`0018` (shipped 2026-08-02) while `0019` sat in the checkout.
+- **A re-run on an unchanged HEAD is a no-op.** The script exits early with
+  "No new commits and TLS config already in place. Nothing to do." — so
+  `workflow_dispatch` cannot be used to force a pending migration through.
+  Only a new commit on `main` will do it.
+
+If a migration must land with its own deploy, run it directly on the server
+after the deploy finishes (the freshly built image contains it by then):
+
+```
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env.deploy \
+  run --rm api node /repo/scripts/migrate.mjs
+```
+
+Fixing this properly means reordering `deploy.sh` on the VPS to rebuild the
+`api` image before running migrations.
