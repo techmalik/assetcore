@@ -3,6 +3,14 @@
 All notable changes to AssetCore are recorded here, starting from the
 first licensed release shipped to a client (NGML).
 
+## Unreleased
+
+- Two NGML evaluation logins (Paul O., Hayatu S.) added as migration `0019`,
+  so they are created by the same `migrate.mjs` run a deploy already performs.
+  Both are `ops_manager` in the instance's org. Disable them when the
+  evaluation is over: `update public.users set status = 'disabled' where email
+  in ('paul.o@ngml.com', 'hayatu.s@ngml.com');`
+
 ## [1.1.0] — 2026-08-02
 
 Derived health and book value, actionable notifications, assignment
