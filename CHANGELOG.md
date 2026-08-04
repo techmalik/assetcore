@@ -7,9 +7,15 @@ first licensed release shipped to a client (NGML).
 
 - Two NGML evaluation logins (Paul O., Hayatu S.) added as migration `0019`,
   so they are created by the same `migrate.mjs` run a deploy already performs.
-  Both are `ops_manager` in the instance's org. Disable them when the
-  evaluation is over: `update public.users set status = 'disabled' where email
-  in ('paul.o@ngml.com', 'hayatu.s@ngml.com');`
+  Migration `0020` then promotes both to `owner`, so the evaluation covers org
+  settings, user management and licence/billing rather than only the
+  operational surface. Tenant-app role only — neither is a `platform_admin`.
+  Disable them when the evaluation is over: `update public.users set status =
+  'disabled' where email in ('paul.o@ngml.com', 'hayatu.s@ngml.com');`
+
+- Note for anyone adding a migration: the VPS deploy applies migrations one
+  deploy late (see the appendix in `docs/DEPLOYMENT.md`), so a migration needs
+  a follow-up commit on `main` before it reaches the database.
 
 ## [1.1.0] — 2026-08-02
 
