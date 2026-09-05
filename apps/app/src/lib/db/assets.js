@@ -50,3 +50,17 @@ export async function uploadAssetPhoto(id, file) {
   form.append('photo', file)
   return api.upload(`/assets/${id}/photos`, form)
 }
+
+// ── Condition score ──────────────────────────────────────────────────────────
+// What the engine makes of the asset right now, component by component. Always
+// computed live, even when the stored score is a manual override, so someone
+// deciding whether to keep their own number can see the calculated one first.
+export async function getAssetHealth(id) {
+  return api.get(`/assets/${id}/health`)
+}
+
+// `claim` is the user handing a hand-entered score back to the engine — the
+// only thing that replaces a manual override.
+export async function recomputeAssetHealth(id, { claim = false } = {}) {
+  return api.post(`/assets/${id}/health/recompute`, { claim })
+}

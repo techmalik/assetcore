@@ -15,6 +15,8 @@ const icons = {
   assets: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 7h10M3 10h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   workorders: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M6 6h4M6 9h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   spareParts: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5.2 2.9v5.8L8 13.4 2.8 10.5V4.7L8 1.8Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M2.8 4.7L8 7.6l5.2-2.9M8 7.6v5.8" stroke="currentColor" strokeWidth="1.2"/></svg>,
+  defects: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2.2l6 11.3H2L8 2.2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M8 6.5v3M8 11.3v.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  approvals: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.2l3 3 7-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 13h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
   depreciation: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 3.5v9h11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M5 6.5l2.5 2.5 2-2 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   maintenance: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="3" y="4" width="10" height="9" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M5 4V3a1 1 0 012 0v1M9 4V3a1 1 0 012 0v1" stroke="currentColor" strokeWidth="1.3"/></svg>,
   inspections: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2l1 3h3.2l-2.6 1.9 1 3L8 8.2 5.4 9.9l1-3L3.8 5H7L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>,
@@ -34,6 +36,8 @@ export default function Sidebar({ active }) {
   const canAdmin = can(roleKey, 'audit:read')
   const canParts = can(roleKey, 'parts:read')
   const canDepreciation = can(roleKey, 'depreciation:read')
+  const canDefects = can(roleKey, 'defect:read')
+  const canApprovals = can(roleKey, 'approval:read')
 
   const go = (path) => { nav(path); close() }
 
@@ -75,6 +79,16 @@ export default function Sidebar({ active }) {
         <div className={`nav-item${active==='inspections'?' active':''}`} onClick={() => go('/inspections')}>
           {icons.inspections} Inspections
         </div>
+        {canDefects && (
+          <div className={`nav-item${active==='defects'?' active':''}`} onClick={() => go('/defects')}>
+            {icons.defects} Defects
+          </div>
+        )}
+        {canApprovals && (
+          <div className={`nav-item${active==='approvals'?' active':''}`} onClick={() => go('/approvals')}>
+            {icons.approvals} Approvals
+          </div>
+        )}
         <div className={`nav-item${active==='compliance'?' active':''}`} onClick={() => go('/compliance')}>
           {icons.compliance} Compliance
         </div>

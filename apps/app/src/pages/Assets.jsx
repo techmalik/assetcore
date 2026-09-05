@@ -8,6 +8,7 @@ import ImportAssetsDialog from '../components/ImportAssetsDialog.jsx'
 import { AssetQrCode, PrintQrSheet } from '../components/AssetQr.jsx'
 import {
   listAssets, createAsset, updateAsset, softDeleteAsset, restoreAsset, uploadAssetPhoto,
+  getAssetHealth, recomputeAssetHealth,
 } from '../lib/db/assets'
 import { listSites } from '../lib/db/sites'
 import { listCategories } from '../lib/db/categories'
@@ -53,8 +54,144 @@ function StatusBadge({ status }) {
   )
 }
 
-function HealthBar({ score }) {
-  if (score == null) return <span style={{ fontSize: 11, color: 'var(--n400)' }}>Not set</span>
+/**
+ * The condition score, with its working shown.
+ *
+ * Phase 3 replaced a number somebody typed into a form with five weighted
+ * signals. Showing only the total would have swapped one unexplained figure
+ * for another, so every component is listed with its own sub-score and the
+ * sentence saying where it came from — including the ones that had no evidence
+ * and were therefore left out of the average.
+ */
+function ConditionPanel({ asset, canEdit, onChanged }) {
+  const [health, setHealth] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const [open, setOpen] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setHealth(null)
+    setErr('')
+    getAssetHealth(asset.id)
+      .then((h) => { if (!cancelled) setHealth(h) })
+      .catch((ex) => { if (!cancelled) setErr(ex.message || 'Could not work out the score.') })
+    return () => { cancelled = true }
+  }, [asset.id])
+
+  const claim = async () => {
+    setBusy(true)
+    try {
+      const h = await recomputeAssetHealth(asset.id, { claim: true })
+      setHealth(h)
+      onChanged()
+    } catch (ex) {
+      setErr(ex.message || 'Recompute failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const computed = asset.health_score_source === 'computed'
+  const shown = asset.health_score
+  const color = shown == null ? 'var(--n400)' : shown < 40 ? 'var(--sr)' : shown < 70 ? 'var(--sa)' : 'var(--sg)'
+
+  return (
+    <div style={{ background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 6, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)' }}>Condition score</span>
+        <div style={{ flex: 1 }} />
+        <span className={`badge ${computed ? 'badge-b' : 'badge-n'}`}>{computed ? 'Calculated' : 'Entered by hand'}</span>
+      </div>
+
+      {shown == null ? (
+        <p style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.55 }}>
+          Not scored yet. {health?.score != null ? `AssetCore makes it ${health.score}.` : ''}
+        </p>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
+            <svg viewBox="0 0 64 64" width="64" height="64">
+              <circle cx="32" cy="32" r="24" fill="none" stroke="var(--n200)" strokeWidth="7" />
+              <circle cx="32" cy="32" r="24" fill="none" stroke={color} strokeWidth="7" strokeDasharray={`${(150.8 * shown) / 100} ${150.8}`} strokeLinecap="round" transform="rotate(-90 32 32)" />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontFamily: 'var(--ff-m)', fontSize: 16, fontWeight: 500 }}>{shown}</span>
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--n600)', lineHeight: 1.55 }}>
+            <div style={{ fontWeight: 600, color: 'var(--n800)', marginBottom: 3 }}>
+              {shown < 40 ? 'Poor condition' : shown < 70 ? 'Fair condition' : 'Good condition'}
+            </div>
+            {computed
+              ? <>Calculated from {health ? `${health.components.filter((c) => c.score != null).length} of ${health.components.length} signals` : 'live signals'}{asset.health_score_computed_at ? `, last on ${new Date(asset.health_score_computed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}.</>
+              : <>Entered by hand. AssetCore makes it {health?.score ?? '—'} from the signals below.</>}
+          </div>
+        </div>
+      )}
+
+      {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 10 }}>{err}</p>}
+
+      {health && (
+        <>
+          <button onClick={() => setOpen((v) => !v)}
+            style={{ background: 'none', border: 'none', padding: 0, marginTop: 12, cursor: 'pointer', font: 'inherit', fontSize: 11.5, color: 'var(--b600)' }}>
+            {open ? 'Hide the working' : 'Show the working'}
+          </button>
+
+          {open && (
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {health.components.map((c) => (
+                <div key={c.key} style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 5, padding: '9px 11px', opacity: c.score == null ? 0.7 : 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--n800)' }}>{c.label}</span>
+                    <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11.5, fontWeight: 500, color: c.score == null ? 'var(--n400)' : c.score < 40 ? 'var(--srt)' : c.score < 70 ? 'var(--sat)' : 'var(--sgt)' }}>
+                      {c.score == null ? 'no data' : `${c.score}/100`}
+                    </span>
+                    <span style={{ fontFamily: 'var(--ff-m)', fontSize: 10.5, color: 'var(--n400)', width: 34, textAlign: 'right' }}>
+                      {c.weight}%
+                    </span>
+                  </div>
+                  {c.score != null && (
+                    <div style={{ height: 4, background: 'var(--n200)', borderRadius: 99, overflow: 'hidden', margin: '6px 0 5px' }}>
+                      <div style={{ width: `${c.score}%`, height: '100%', borderRadius: 99, background: c.score < 40 ? 'var(--sr)' : c.score < 70 ? 'var(--sa)' : 'var(--sg)' }} />
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11.5, color: 'var(--n500)', lineHeight: 1.5, marginTop: c.score != null ? 0 : 4 }}>{c.detail}</div>
+                </div>
+              ))}
+
+              {health.weight_applied < 100 && (
+                <p style={{ fontSize: 11.5, color: 'var(--n500)', lineHeight: 1.55 }}>
+                  Scored out of the {health.weight_applied}% of the weighting that had evidence behind it. A signal
+                  with nothing to read is left out rather than counted as zero — never inspected is not the same as
+                  in poor condition.
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {canEdit && !computed && (
+        <button onClick={claim} disabled={busy} className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12, marginTop: 12 }}>
+          {busy ? 'Working…' : 'Let AssetCore keep this up to date'}
+        </button>
+      )}
+      {canEdit && computed && (
+        <p style={{ fontSize: 11.5, color: 'var(--n500)', marginTop: 10, lineHeight: 1.55 }}>
+          Recalculated nightly and whenever an inspection, defect or job changes. Typing a score on the edit
+          form takes it back to manual.
+        </p>
+      )}
+    </div>
+  )
+}
+
+// A calculated score and a typed one are not the same claim, so the list says
+// which is which rather than showing both as a plain bar.
+function HealthBar({ score, source }) {
+  if (score == null) return <span style={{ fontSize: 11, color: 'var(--n400)' }}>Not scored</span>
   const color = score < 40 ? 'var(--sr)' : score < 70 ? 'var(--sa)' : 'var(--sg)'
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -62,6 +199,9 @@ function HealthBar({ score }) {
         <div style={{ width: `${score}%`, height: '100%', background: color, borderRadius: 99 }} />
       </div>
       <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', width: 28 }}>{score}</span>
+      {source === 'manual' && (
+        <span title="Entered by hand — not calculated" style={{ fontSize: 10, color: 'var(--n400)', fontFamily: 'var(--ff-m)' }}>set</span>
+      )}
     </div>
   )
 }
@@ -178,7 +318,6 @@ function AssetModal({ asset, sites, categories, members, onClose, onSave }) {
       status: form.status,
       lifecycle_status: form.lifecycle_status,
       criticality: form.criticality,
-      health_score: numOrNull(form.health_score),
       manufacturer: textOrNull(form.manufacturer),
       model: textOrNull(form.model),
       serial_number: textOrNull(form.serial_number),
@@ -196,6 +335,13 @@ function AssetModal({ asset, sites, categories, members, onClose, onSave }) {
       lat: numOrNull(form.lat),
       lng: numOrNull(form.lng),
     }
+    // Sending health_score at all marks the score as a manual override, so it
+    // only goes when someone has actually typed a different number — an edit
+    // to the serial number must not take the asset off the scoring engine.
+    if (String(form.health_score) !== String(asset?.health_score ?? '')) {
+      payload.health_score = numOrNull(form.health_score)
+    }
+
     try {
       if (asset) await updateAsset(asset.id, payload)
       else await createAsset(payload)
@@ -258,8 +404,12 @@ function AssetModal({ asset, sites, categories, members, onClose, onSave }) {
                 {Object.entries(STATUS_STYLE).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
             </Field>
-            <Field label="Condition score (0–100, entered by hand)">
-              <input className="input" type="number" min={0} max={100} value={form.health_score} onChange={(e) => set('health_score', e.target.value)} placeholder="Leave blank if unknown" style={{ width: '100%' }} />
+            <Field label="Condition score override (0–100)">
+              <input className="input" type="number" min={0} max={100} value={form.health_score} onChange={(e) => set('health_score', e.target.value)} placeholder="Leave to AssetCore" style={{ width: '100%' }} />
+              <p style={{ fontSize: 11.5, color: 'var(--n500)', marginTop: 5, lineHeight: 1.5 }}>
+                Normally calculated from inspections, defects, overdue work, risk and age. Typing a number
+                here takes this asset off that calculation until you hand it back on the asset panel.
+              </p>
             </Field>
           </Section>
 
@@ -577,7 +727,7 @@ export default function Assets({ dark, toggleDark }) {
                           <span className={`badge ${CRITICALITY_CLASS[a.criticality] || 'badge-n'}`} style={{ textTransform: 'capitalize' }}>{a.criticality}</span>
                         </td>
                         <td style={{ padding: '11px 14px' }}><StatusBadge status={a.status} /></td>
-                        <td style={{ padding: '11px 14px' }}><HealthBar score={a.health_score} /></td>
+                        <td style={{ padding: '11px 14px' }}><HealthBar score={a.health_score} source={a.health_score_source} /></td>
                         <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{formatNaira(a.nbv_cents)}</td>
                         <td style={{ padding: '11px 14px' }}>
                           {canEdit && !filters.archived && (
@@ -625,32 +775,7 @@ export default function Assets({ dark, toggleDark }) {
                     </div>
                   )}
 
-                  {/* Condition score — stated as entered, not derived. */}
-                  <div style={{ background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 6, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', marginBottom: 10, fontFamily: 'var(--ff-m)' }}>Condition score</div>
-                    {selected.health_score == null ? (
-                      <p style={{ fontSize: 12, color: 'var(--n500)' }}>Not recorded. Edit the asset to enter one.</p>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
-                          <svg viewBox="0 0 64 64" width="64" height="64">
-                            <circle cx="32" cy="32" r="24" fill="none" stroke="var(--n200)" strokeWidth="7" />
-                            <circle cx="32" cy="32" r="24" fill="none" stroke={selected.health_score < 40 ? 'var(--sr)' : selected.health_score < 70 ? 'var(--sa)' : 'var(--sg)'} strokeWidth="7" strokeDasharray={`${(150.8 * selected.health_score) / 100} ${150.8}`} strokeLinecap="round" transform="rotate(-90 32 32)" />
-                          </svg>
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontFamily: 'var(--ff-m)', fontSize: 16, fontWeight: 500 }}>{selected.health_score}</span>
-                          </div>
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--n600)', lineHeight: 1.55 }}>
-                          <div style={{ fontWeight: 600, color: 'var(--n800)', marginBottom: 3 }}>
-                            {selected.health_score < 40 ? 'Poor condition' : selected.health_score < 70 ? 'Fair condition' : 'Good condition'}
-                          </div>
-                          Entered by hand
-                          {selected.health_score_source === 'computed' ? ' — now maintained automatically' : ' — not calculated from inspections yet'}.
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <ConditionPanel asset={selected} canEdit={canEdit} onChanged={load} />
 
                   {/* Asset tag */}
                   <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden' }}>
