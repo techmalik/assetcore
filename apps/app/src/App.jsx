@@ -16,6 +16,7 @@ import Onboarding from './pages/Onboarding.jsx'
 import ForcePasswordChange from './pages/ForcePasswordChange.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Assets from './pages/Assets.jsx'
+import Scan from './pages/Scan.jsx'
 import WorkOrders from './pages/WorkOrders.jsx'
 import Maintenance from './pages/Maintenance.jsx'
 import Compliance from './pages/Compliance.jsx'
@@ -84,6 +85,7 @@ function Routed() {
       } />
       <Route path="/dashboard" element={gate(<Dashboard {...props} />)} />
       <Route path="/assets" element={gate(<Assets {...props} />)} />
+      <Route path="/scan" element={gate(<Scan {...props} />)} />
       <Route path="/work-orders" element={gate(<WorkOrders {...props} />)} />
       <Route path="/maintenance" element={gate(<Maintenance {...props} />)} />
       <Route path="/compliance" element={gate(<Compliance {...props} />)} />

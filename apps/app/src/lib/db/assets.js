@@ -4,9 +4,29 @@ import { api } from '../apiClient'
 // (work orders, PM, inspections, compliance). Components call these helpers;
 // they never inline fetch calls.
 
-export async function listAssets({ status } = {}) {
-  const qs = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : ''
-  return api.get(`/assets${qs}`)
+// Any of: status, criticality, lifecycle_status, site_id, category_id, tag, q,
+// archived. Empty and 'all' values are dropped rather than sent.
+export async function listAssets(filters = {}) {
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(filters)) {
+    if (v !== undefined && v !== null && v !== '' && v !== 'all') params.set(k, v)
+  }
+  const qs = params.toString()
+  return api.get(`/assets${qs ? `?${qs}` : ''}`)
+}
+
+// What a QR scan resolves against. Throws with status 404 if the tag is unknown.
+export async function getAssetByAin(ain) {
+  return api.get(`/assets/by-ain/${encodeURIComponent(ain)}`)
+}
+
+export async function restoreAsset(id) {
+  return api.post(`/assets/${id}/restore`)
+}
+
+// rows: array of objects keyed by CSV header. mode: 'create' | 'upsert'.
+export async function importAssets({ rows, mode = 'create', create_missing_categories = false }) {
+  return api.post('/assets/import', { rows, mode, create_missing_categories })
 }
 
 export async function getAsset(id) {

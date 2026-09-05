@@ -1,0 +1,2426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AssetCore — Product Demo</title>
+<meta name="theme-color" content="#1a3a5c"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --ff-d: 'Bricolage Grotesque', system-ui, sans-serif;
+  --ff-u: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --ff-m: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --b50: oklch(97% 0.012 237);
+  --b100: oklch(93% 0.030 237);
+  --b200: oklch(86% 0.060 237);
+  --b300: oklch(75% 0.095 237);
+  --b400: oklch(63% 0.130 237);
+  --b500: oklch(52% 0.148 237);
+  --b600: oklch(43% 0.135 237);
+  --b700: oklch(34% 0.108 237);
+  --b800: oklch(26% 0.075 237);
+  --b900: oklch(18% 0.052 237);
+
+  --n0: #ffffff;
+  --n50: oklch(98.5% 0.004 237);
+  --n100: oklch(96.8% 0.006 237);
+  --n200: oklch(92.5% 0.007 237);
+  --n300: oklch(84% 0.007 237);
+  --n400: oklch(70% 0.007 237);
+  --n500: oklch(56% 0.007 237);
+  --n600: oklch(44% 0.007 237);
+  --n700: oklch(35% 0.007 237);
+  --n800: oklch(25% 0.007 237);
+  --n900: oklch(16% 0.007 237);
+  --n950: oklch(10% 0.007 237);
+
+  --sg: oklch(54% 0.172 145);
+  --sgb: oklch(96.5% 0.035 145);
+  --sgt: oklch(35% 0.118 145);
+  --sgbr: oklch(87% 0.075 145);
+
+  --sa: oklch(68% 0.182 72);
+  --sab: oklch(97% 0.040 72);
+  --sat: oklch(42% 0.125 72);
+  --sabr: oklch(88% 0.100 72);
+
+  --sr: oklch(52% 0.215 25);
+  --srb: oklch(96.5% 0.038 25);
+  --srt: oklch(35% 0.148 25);
+  --srbr: oklch(87% 0.088 25);
+
+  --sl: oklch(54% 0.148 237);
+  --slb: oklch(96.5% 0.030 237);
+  --slt: oklch(36% 0.108 237);
+  --slbr: oklch(87% 0.070 237);
+
+  --bdr: 1px solid var(--n200);
+  --sh-sm: 0 1px 3px rgba(8,18,42,.07), 0 1px 2px rgba(8,18,42,.04);
+  --sh-md: 0 4px 8px rgba(8,18,42,.08), 0 2px 4px rgba(8,18,42,.04);
+  --sh-lg: 0 16px 48px rgba(8,18,42,.14), 0 4px 12px rgba(8,18,42,.06);
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--ff-u);
+  color: var(--n900);
+  background: var(--n100);
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  line-height: 1.5;
+}
+#app { height: 100%; }
+
+button { font-family: var(--ff-u); cursor: pointer; }
+input, select, textarea { font-family: var(--ff-u); color: var(--n900); background: var(--n0); }
+a { text-decoration: none; color: inherit; }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--n300); border-radius: 2px; }
+
+.app-shell { display: flex; height: 100vh; overflow: hidden; background: var(--n100); }
+
+.sidebar {
+  width: 220px; flex-shrink: 0; background: var(--n0);
+  border-right: var(--bdr); display: flex; flex-direction: column; overflow: hidden;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 16px; font-size: 13px; color: var(--n700);
+  border-left: 2px solid transparent; cursor: pointer; user-select: none;
+  transition: background 0.1s;
+}
+.nav-item:hover { background: var(--n50); }
+.nav-item.active { background: var(--b50); border-left-color: var(--b500); color: var(--b700); font-weight: 500; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 3px; border-radius: 2px;
+  padding: 2px 7px; font-size: 11px; font-weight: 500; border: 1px solid; white-space: nowrap;
+}
+.badge-g { background: var(--sgb); color: var(--sgt); border-color: var(--sgbr); }
+.badge-a { background: var(--sab); color: var(--sat); border-color: var(--sabr); }
+.badge-r { background: var(--srb); color: var(--srt); border-color: var(--srbr); }
+.badge-b { background: var(--slb); color: var(--slt); border-color: var(--slbr); }
+.badge-n { background: var(--n100); color: var(--n600); border-color: var(--n200); }
+.badge-ip { background: oklch(95% .04 270); color: oklch(38% .12 270); border-color: oklch(85% .06 270); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; height: 40px; border-radius: 4px;
+  font-family: var(--ff-u); font-size: 14px; font-weight: 500;
+  cursor: pointer; border: none;
+}
+.btn-primary { background: var(--b500); color: #fff; }
+.btn-primary:hover { background: var(--b600); }
+.btn-secondary { background: var(--n0); color: var(--n800); border: 1px solid var(--n300); }
+.btn-secondary:hover { background: var(--n50); }
+
+.input {
+  width: 100%; height: 40px; border: 1px solid var(--n300); border-radius: 4px;
+  padding: 0 12px; font-family: var(--ff-u); font-size: 14px;
+  color: var(--n900); background: var(--n0); outline: none;
+}
+.input:focus { border-color: var(--b500); box-shadow: 0 0 0 3px var(--b100); }
+
+.label { display: block; font-size: 12px; font-weight: 500; color: var(--n700); margin-bottom: 5px; }
+
+.kpi { background: var(--n0); border: var(--bdr); border-radius: 8px; padding: 20px; box-shadow: var(--sh-sm); }
+
+.tab-btn {
+  padding: 10px 16px; font-size: 13px; color: var(--n500);
+  border: none; border-bottom: 2px solid transparent; background: transparent;
+  cursor: pointer; font-family: var(--ff-u); white-space: nowrap;
+}
+.tab-btn.active { color: var(--b600); font-weight: 500; border-bottom-color: var(--b500); }
+
+.row-hover:hover { background: var(--n50); }
+
+.card { background: var(--n0); border: var(--bdr); border-radius: 8px; box-shadow: var(--sh-sm); }
+.th {
+  padding: 9px 14px; text-align: left; font-size: 10px; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--n500);
+  white-space: nowrap; border-bottom: var(--bdr); background: var(--n50);
+}
+.h1 { font-family: var(--ff-d); font-size: 22px; font-weight: 700; letter-spacing: -.3px; color: var(--n950); }
+.sub { font-size: 12px; color: var(--n500); }
+.mono { font-family: var(--ff-m); }
+.pgbtn {
+  height: 30px; padding: 0 12px; border: 1px solid var(--n200); border-radius: 4px;
+  background: var(--n0); font-size: 12px; color: var(--n600); cursor: pointer;
+}
+.pgbtn.on { border-color: var(--b300); background: var(--b50); color: var(--b700); font-weight: 500; }
+.iconbtn {
+  width: 32px; height: 32px; border: 1px solid var(--n200); border-radius: 6px;
+  background: var(--n0); display: flex; align-items: center; justify-content: center;
+  color: var(--n600); cursor: pointer; flex-shrink: 0;
+}
+.linkbtn { font-size: 11px; color: var(--b600); background: none; border: none; cursor: pointer; padding: 0; }
+.modal-bg { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.4); padding: 20px; }
+.modal { background: var(--n0); border: var(--bdr); border-radius: 10px; padding: 26px; width: 480px; max-width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: var(--sh-lg); }
+.mlabel { font-size: 12px; font-weight: 600; color: var(--n700); display: block; margin-bottom: 5px; }
+.minput { height: 36px; border: 1px solid var(--n200); border-radius: 4px; padding: 0 10px; font-size: 13px; outline: none; background: var(--n0); color: var(--n900); width: 100%; }
+select.minput { appearance: none; background-image: linear-gradient(45deg,transparent 50%,var(--n400) 50%),linear-gradient(135deg,var(--n400) 50%,transparent 50%); background-position: calc(100% - 15px) 15px, calc(100% - 10px) 15px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 28px; }
+
+[data-theme=dark] {
+  --n0: oklch(13% .007 237);
+  --n50: oklch(16% .008 237);
+  --n100: oklch(19% .008 237);
+  --n200: oklch(24% .009 237);
+  --n300: oklch(32% .009 237);
+  --n400: oklch(48% .008 237);
+  --n500: oklch(60% .007 237);
+  --n600: oklch(72% .007 237);
+  --n700: oklch(82% .006 237);
+  --n800: oklch(90% .005 237);
+  --n900: oklch(95% .004 237);
+  --n950: oklch(97% .003 237);
+  --bdr: 1px solid oklch(24% .009 237);
+  --sh-sm: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
+  --sh-md: 0 4px 8px rgba(0,0,0,.35), 0 2px 4px rgba(0,0,0,.2);
+  --sgb: oklch(20% .05 145); --sgt: oklch(70% .14 145); --sgbr: oklch(28% .07 145);
+  --sab: oklch(20% .05 72); --sat: oklch(72% .15 72); --sabr: oklch(28% .07 72);
+  --srb: oklch(20% .05 25); --srt: oklch(68% .15 25); --srbr: oklch(28% .07 25);
+  --slb: oklch(18% .04 237); --slt: oklch(70% .12 237); --slbr: oklch(26% .06 237);
+}
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes spin { to { transform: rotate(360deg) } }
+
+.sidebar-overlay { display: none; }
+.sidebar-hamburger { display: none !important; }
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed; top: 0; bottom: 0; left: 0;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+    z-index: 100; width: 220px;
+  }
+  .sidebar.open { transform: translateX(0); box-shadow: var(--sh-lg); }
+  .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 99; }
+  .sidebar-hamburger { display: flex !important; }
+  .topbar-search { display: none !important; }
+  .side-panel { display: none !important; }
+  table { min-width: 640px; }
+  .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .kpi-grid { grid-template-columns: repeat(2,1fr) !important; }
+  .dash-grid, .dash-grid-2 { grid-template-columns: 1fr !important; }
+}
+
+.demo-flag {
+  position: fixed; bottom: 12px; right: 12px; z-index: 500;
+  background: var(--n950); color: var(--n0); opacity: .82;
+  font-family: var(--ff-m); font-size: 10px; letter-spacing: .06em;
+  text-transform: uppercase; padding: 5px 10px; border-radius: 4px;
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="demo-flag">Static demo · sample data</div>
+<script>
+/* ==========================================================================
+   AssetCore — static demo build.
+   No backend, no auth, no network. Every figure below is sample data held in
+   memory; edits made in the UI last until the page is reloaded.
+   ========================================================================== */
+
+const ORG = { name: 'Nigeria Gas Marketing Limited', short_name: 'NGML', region: 'Nigeria' }
+const ME  = { full_name: 'Adaeze Okeke', initials: 'AO', role: 'Org Owner / Admin' }
+const SUPPORT_EMAIL = 'support@assetcore.io'
+
+/* ── date helpers ───────────────────────────────────────────────────────── */
+const DAY = 86400000
+const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d }
+// 'YYYY-MM-DD' is parsed as UTC by the Date constructor, which shifts a whole
+// day either side of midnight depending on the viewer's offset. Parse plain
+// dates as local so every "due in N days" figure agrees with the calendar.
+function parseDate(v) {
+  if (v instanceof Date) return v
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const [y,m,d] = v.split('-').map(Number)
+    return new Date(y, m - 1, d)
+  }
+  return new Date(v)
+}
+const iso = (d) => {
+  const x = parseDate(d)
+  return x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0') + '-' + String(x.getDate()).padStart(2,'0')
+}
+const rel = (days) => iso(new Date(today().getTime() + days * DAY))
+const relTs = (mins) => new Date(Date.now() - mins * 60000).toISOString()
+const fmtDate = (d) => d ? parseDate(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}) : '—'
+const fmtDateLong = (d) => d ? parseDate(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'
+const fmtDateTime = (d) => d ? parseDate(d).toLocaleString('en-GB',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'
+const daysUntil = (d) => Math.round((parseDate(d).setHours(0,0,0,0) - today()) / DAY)
+
+/* ── sample data ────────────────────────────────────────────────────────── */
+const SITES = [
+  { id:'s1', name:'Lagos DS-04',      code:'LAG-DS04', region:'Lagos' },
+  { id:'s2', name:'Delta CS',         code:'DEL-CS',   region:'Delta' },
+  { id:'s3', name:'North Benin',      code:'NTH-BEN',  region:'Edo'   },
+  { id:'s4', name:'Warri Terminal A', code:'WAR-TA',   region:'Delta' },
+  { id:'s5', name:'Aba Network',      code:'ABA-NET',  region:'Abia'  },
+]
+const CATEGORIES = [
+  { id:'c1', name:'Metering Station',    code:'MTR' },
+  { id:'c2', name:'Compressor',          code:'CMP' },
+  { id:'c3', name:'Pressure Regulator',  code:'REG' },
+  { id:'c4', name:'Valve',               code:'VLV' },
+  { id:'c5', name:'Pipeline',            code:'PIP' },
+  { id:'c6', name:'SCADA / RTU',         code:'SCR' },
+  { id:'c7', name:'ESD Valve',           code:'ESD' },
+]
+const PEOPLE = [
+  { id:'u1', full_name:'Adaeze Okeke',  email:'a.okeke@ngml.example',   role_key:'owner',          status:'active' },
+  { id:'u2', full_name:'Chidi Umeh',    email:'c.umeh@ngml.example',    role_key:'ops_manager',    status:'active' },
+  { id:'u3', full_name:'Ngozi Bello',   email:'n.bello@ngml.example',   role_key:'maint_engineer', status:'active' },
+  { id:'u4', full_name:'Tunde Adeyemi', email:'t.adeyemi@ngml.example', role_key:'field_tech',     status:'active' },
+  { id:'u5', full_name:'Ifeoma Nwosu',  email:'i.nwosu@ngml.example',   role_key:'hse_officer',    status:'active' },
+  { id:'u6', full_name:'Bala Yakubu',   email:'b.yakubu@ngml.example',  role_key:'viewer',         status:'disabled' },
+]
+
+const ASSETS = [
+  { id:'a1', ain:'NGML-MTR-0042', name:'Lagos DS-04 Metering Station',   cat:'c1', site:'s1', status:'critical',    health:32, nbv:19540000000 },
+  { id:'a2', ain:'NGML-CMP-0017', name:'Delta Compression Station C-017',cat:'c2', site:'s2', status:'attention',   health:61, nbv:84020000000 },
+  { id:'a3', ain:'NGML-REG-0089', name:'North Benin PRG-089',            cat:'c3', site:'s3', status:'attention',   health:74, nbv:2410000000 },
+  { id:'a4', ain:'NGML-VLV-0089', name:'Warri T-A Isolation Valve 089',  cat:'c4', site:'s4', status:'operational', health:88, nbv:870000000 },
+  { id:'a5', ain:'NGML-PIP-0312', name:'Aba DN200 Pipeline Segment 312', cat:'c5', site:'s5', status:'operational', health:92, nbv:120000000000 },
+  { id:'a6', ain:'NGML-SCR-041',  name:'Warri Terminal A RTU',           cat:'c6', site:'s4', status:'critical',    health:18, nbv:1230000000 },
+]
+
+const WOS = [
+  { id:'w1', ref:'WO-2025-0041', title:'Pressure sensor calibration — MTR-0042', description:'Inlet pressure reading deviating by >5%. Sensor requires recalibration or replacement.', type:'corrective', status:'in_progress',    priority:'critical', site:'s1', asset:'a1', assignee:'u3', sla:rel(2) },
+  { id:'w2', ref:'WO-2025-0042', title:'SCADA RTU comms failure — Warri A',      description:'RTU lost communication with SCADA host. No telemetry for 47 minutes. Field inspection required.', type:'emergency', status:'assigned', priority:'critical', site:'s4', asset:'a6', assignee:'u4', sla:rel(1) },
+  { id:'w3', ref:'WO-2025-0039', title:'Quarterly service — CMP-0017',           description:'Scheduled quarterly preventive maintenance. Lubrication, filter change, belt inspection.', type:'preventive', status:'new',       priority:'medium',   site:'s2', asset:'a2', assignee:null, sla:rel(7) },
+  { id:'w4', ref:'WO-2025-0038', title:'PRG-089 outlet pressure variance',        description:'Outlet pressure 0.8 bar above set point. Possible seat wear. Inspect and adjust.', type:'corrective', status:'awaiting_parts', priority:'high', site:'s3', asset:'a3', assignee:'u3', sla:rel(-1) },
+  { id:'w5', ref:'WO-2025-0035', title:'Annual NMDPRA inspection — MTR-0042',     description:'Regulatory inspection per NMDPRA directive. Prepare calibration certificates and maintenance logs.', type:'inspection', status:'inspection', priority:'high', site:'s1', asset:'a1', assignee:'u5', sla:rel(5) },
+  { id:'w6', ref:'WO-2025-0031', title:'Valve actuator seal replacement — VLV-0089', description:'Actuator seal replaced and stroke-tested. Closed after HSE sign-off.', type:'corrective', status:'closed', priority:'low', site:'s4', asset:'a4', assignee:'u4', sla:rel(-9) },
+]
+
+const WO_ACTIVITY = {
+  w1: [
+    { id:1, kind:'status_change', body:'Status changed from Assigned to In Progress', actor:'Ngozi Bello', at: relTs(140) },
+    { id:2, kind:'comment', body:'Reference gauge fitted. Deviation confirmed at 6.2% on the inlet transmitter.', actor:'Ngozi Bello', at: relTs(120) },
+    { id:3, kind:'attachment', body:'calibration-run-1.pdf', actor:'Ngozi Bello', at: relTs(96) },
+    { id:4, kind:'comment', body:'Replacement transmitter ordered from stores — ETA tomorrow morning.', actor:'Chidi Umeh', at: relTs(55) },
+  ],
+  w2: [
+    { id:1, kind:'status_change', body:'Status changed from New to Assigned', actor:'Chidi Umeh', at: relTs(45) },
+    { id:2, kind:'comment', body:'Tunde dispatched to Warri Terminal A. ETA 40 minutes.', actor:'Chidi Umeh', at: relTs(40) },
+  ],
+  w4: [
+    { id:1, kind:'status_change', body:'Status changed from In Progress to Awaiting Parts', actor:'Ngozi Bello', at: relTs(2100) },
+    { id:2, kind:'comment', body:'Seat kit not in stores. Purchase requisition PR-4471 raised.', actor:'Ngozi Bello', at: relTs(2090) },
+  ],
+}
+
+const LICENCES = [
+  { id:'l1', name:'Operating Licence — Lagos DS-04',            number:'NMDPRA/OL/2024/LAG-DS04', authority:'NMDPRA', site:'s1', issued:rel(-591), expiry:rel(138), notes:'Renewal window opens 90 days before expiry.' },
+  { id:'l2', name:'Environmental Permit — Delta CS',            number:'NESREA/EP/2023/DEL-CS',   authority:'NESREA', site:'s2', issued:rel(-912), expiry:rel(183), notes:'' },
+  { id:'l3', name:'Pressure Vessel Certificate — CMP-0017',     number:'NSC/PVC/2024/CMP0017',    authority:'NSC',    site:'s2', issued:rel(-323), expiry:rel(-5),  notes:'EXPIRED — renewal urgent' },
+  { id:'l4', name:'Fire Safety Certificate — Warri Terminal A', number:'NSCDC/FSC/2024/WAR-TA',   authority:'NSCDC',  site:'s4', issued:rel(-389), expiry:rel(6),   notes:'Inspection booked with NSCDC Delta command.' },
+  { id:'l5', name:'Metering Certification — MTR-0042',          number:'NMI/MC/2024/MTR0042',     authority:'NMI',    site:'s1', issued:rel(-592), expiry:rel(74),  notes:'' },
+  { id:'l6', name:'Pipeline Operating Certificate — PIP-0312',  number:'NMDPRA/POC/2023/PIP0312', authority:'NMDPRA', site:'s5', issued:rel(-939), expiry:rel(156), notes:'' },
+  { id:'l7', name:'ESD System Certificate — Lagos',             number:'NSC/ESD/2024/LAG001',     authority:'NSC',    site:'s1', issued:rel(-435), expiry:rel(294), notes:'' },
+]
+const AUTHORITIES = [
+  { id:'au1', code:'NMDPRA', name:'Nigerian Midstream & Downstream Petroleum Regulatory Authority' },
+  { id:'au2', code:'NESREA', name:'National Environmental Standards & Regulations Enforcement Agency' },
+  { id:'au3', code:'NSC',    name:'Nigerian Standards Council' },
+  { id:'au4', code:'NSCDC',  name:'Nigeria Security & Civil Defence Corps' },
+  { id:'au5', code:'NMI',    name:'National Metrology Institute' },
+]
+
+const INSPECTIONS = [
+  { id:'i1', title:'Lagos DS-04 — Inlet Calibration Inspection', kind:'safety',    status:'due',       asset:'a1', site:'s1', inspector:'u5', date: rel(0),  findings:'' },
+  { id:'i2', title:'CMP-0017 Condition Assessment',              kind:'condition', status:'scheduled', asset:'a2', site:'s2', inspector:'u3', date: rel(1),  findings:'' },
+  { id:'i3', title:'Warri RTU Enclosure Integrity Check',        kind:'integrity', status:'overdue',   asset:'a6', site:'s4', inspector:'u4', date: rel(-3), findings:'' },
+  { id:'i4', title:'Aba DN200 Pipeline Integrity Check',         kind:'integrity', status:'completed', asset:'a5', site:'s5', inspector:'u5', date: rel(-4), findings:'No corrosion detected. Cathodic protection reading nominal at -0.85V. Coating intact.' },
+]
+
+const DEVICES = [
+  { id:'d1', name:'Lagos DS-04 Flow Transmitter', serial:'TRM-FLW-001', kind:'meter',   protocol:'modbus', status:'online',        firmware:'v2.3.1', ip:'192.168.10.21', asset:'a1', site:'s1', lastSeen: relTs(4) },
+  { id:'d2', name:'Delta CS Pressure Sensor',     serial:'SEN-PRS-007', kind:'sensor',  protocol:'mqtt',   status:'unprovisioned', firmware:null,     ip:null,            asset:'a2', site:'s2', lastSeen: null },
+  { id:'d3', name:'Warri Terminal Gateway',       serial:'GW-WAR-001',  kind:'gateway', protocol:'mqtt',   status:'offline',       firmware:'v1.8.0', ip:'10.0.1.5',      asset:null, site:'s4', lastSeen: relTs(4320) },
+  { id:'d4', name:'Aba Cathodic Protection RTU',  serial:'RTU-ABA-012', kind:'plc',     protocol:'opc-ua', status:'online',        firmware:'v4.0.2', ip:'10.0.4.19',     asset:'a5', site:'s5', lastSeen: relTs(11) },
+  { id:'d5', name:'North Benin Regulator Sensor', serial:'SEN-REG-021', kind:'sensor',  protocol:'mqtt',   status:'error',         firmware:'v2.1.0', ip:'10.0.3.44',     asset:'a3', site:'s3', lastSeen: relTs(180) },
+]
+
+const PM_SCHEDULES = [
+  { id:'p1', title:'Quarterly Calibration — MTR-0042',     frequency:'quarterly',   asset:'a1', site:'s1', next_due: rel(4),  active:true },
+  { id:'p2', title:'Monthly Lubrication — CMP-0017',       frequency:'monthly',     asset:'a2', site:'s2', next_due: rel(9),  active:true },
+  { id:'p3', title:'Weekly Valve Stroke Test — VLV-0089',  frequency:'weekly',      asset:'a4', site:'s4', next_due: rel(2),  active:true },
+  { id:'p4', title:'Annual Pipeline Survey — PIP-0312',    frequency:'annual',      asset:'a5', site:'s5', next_due: rel(120),active:true },
+  { id:'p5', title:'Semi-annual RTU Battery Check',        frequency:'semi_annual', asset:'a6', site:'s4', next_due: rel(-2), active:true },
+]
+
+const PM_TASKS = [
+  { id:'t1', title:'Calibrate inlet pressure transmitter', schedule:'p1', asset:'a1', site:'s1', due: rel(4),  assignee:'u3', status:'pending' },
+  { id:'t2', title:'Replace lube oil filter — CMP-0017',   schedule:'p2', asset:'a2', site:'s2', due: rel(9),  assignee:'u3', status:'pending' },
+  { id:'t3', title:'Stroke test isolation valve 089',      schedule:'p3', asset:'a4', site:'s4', due: rel(2),  assignee:'u4', status:'in_progress' },
+  { id:'t4', title:'RTU battery capacity check',           schedule:'p5', asset:'a6', site:'s4', due: rel(-2), assignee:'u4', status:'overdue' },
+  { id:'t5', title:'Regulator seat inspection — PRG-089',  schedule:'p1', asset:'a3', site:'s3', due: rel(0),  assignee:'u3', status:'pending' },
+  { id:'t6', title:'Cathodic protection reading — Aba',    schedule:'p4', asset:'a5', site:'s5', due: rel(6),  assignee:'u5', status:'pending' },
+  { id:'t7', title:'Gateway firmware update — Warri',      schedule:'p5', asset:null, site:'s4', due: rel(-1), assignee:'u4', status:'overdue' },
+  { id:'t8', title:'Metering skid visual inspection',      schedule:'p1', asset:'a1', site:'s1', due: rel(11), assignee:'u4', status:'pending' },
+]
+
+const REPORTS = [
+  { id:'r1', title:'Asset Register — '      + fmtDateLong(rel(0)),  kind:'asset_register',      format:'xlsx', created: relTs(35),   by:'Adaeze Okeke', size: 184320,  status:'ready' },
+  { id:'r2', title:'Work Order Summary — '  + fmtDateLong(rel(-2)), kind:'wo_summary',          format:'xlsx', created: relTs(2880), by:'Chidi Umeh',   size: 96400,   status:'ready' },
+  { id:'r3', title:'Compliance Register — ' + fmtDateLong(rel(-6)), kind:'compliance_register', format:'csv',  created: relTs(8640), by:'Ifeoma Nwosu', size: 21800,   status:'ready' },
+  { id:'r4', title:'PM History — '          + fmtDateLong(rel(0)),  kind:'pm_history',          format:'xlsx', created: relTs(3),    by:'Adaeze Okeke', size: null,    status:'generating' },
+]
+
+const NOTIFICATIONS = [
+  { id:'n1', kind:'wo_assigned',  title:'WO-2025-0042 assigned to you',            body:'SCADA RTU comms failure — Warri A. Emergency priority, SLA due in 24 hours.', at: relTs(42),   read:false, entity:'work_order' },
+  { id:'n2', kind:'pm_overdue',   title:'PM task overdue: RTU battery capacity check', body:'Warri Terminal A RTU — due 2 days ago. Assigned to Tunde Adeyemi.',     at: relTs(180),  read:false, entity:'pm_task' },
+  { id:'n3', kind:'wo_comment',   title:'New comment on WO-2025-0041',             body:'Chidi Umeh: Replacement transmitter ordered from stores — ETA tomorrow morning.', at: relTs(55), read:false, entity:'work_order' },
+  { id:'n4', kind:'system',       title:'Compliance alert: Pressure Vessel Certificate expired', body:'NSC/PVC/2024/CMP0017 expired 5 days ago. Renewal required before CMP-0017 returns to service.', at: relTs(1400), read:true, entity:'compliance_licence' },
+  { id:'n5', kind:'wo_transition',title:'WO-2025-0038 moved to Awaiting Parts',    body:'Seat kit not in stores. Purchase requisition PR-4471 raised.',            at: relTs(2100), read:true,  entity:'work_order' },
+  { id:'n6', kind:'pm_due',       title:'3 PM tasks due this week',                body:'Stroke test isolation valve 089, Calibrate inlet pressure transmitter, Regulator seat inspection.', at: relTs(9800), read:true, entity:'pm_task' },
+]
+
+const AUDIT = [
+  { id:'g1', at: relTs(42),   actor:'Chidi Umeh',   action:'wo.transition',   entity:'work_order',        eid:'b1000000', ip:'10.4.2.18' },
+  { id:'g2', at: relTs(120),  actor:'Ngozi Bello',  action:'wo.update',       entity:'work_order',        eid:'b1000000', ip:'10.4.2.31' },
+  { id:'g3', at: relTs(190),  actor:'Adaeze Okeke', action:'asset.update',    entity:'asset',             eid:'a0000000', ip:'10.4.1.7'  },
+  { id:'g4', at: relTs(1400), actor:'Ifeoma Nwosu', action:'compliance.update',entity:'compliance_licence',eid:'d1000000', ip:'10.4.5.12' },
+  { id:'g5', at: relTs(2100), actor:'Ngozi Bello',  action:'wo.transition',   entity:'work_order',        eid:'b1000000', ip:'10.4.2.31' },
+  { id:'g6', at: relTs(2860), actor:'Adaeze Okeke', action:'user.invite',     entity:'membership',        eid:'22222222', ip:'10.4.1.7'  },
+  { id:'g7', at: relTs(4300), actor:'Tunde Adeyemi',action:'inspection.create',entity:'inspection',       eid:'e1000000', ip:'10.4.7.90' },
+  { id:'g8', at: relTs(8600), actor:'Adaeze Okeke', action:'site.create',     entity:'site',              eid:'a0000000', ip:'10.4.1.7'  },
+  { id:'g9', at: relTs(9900), actor:'Adaeze Okeke', action:'category.create', entity:'asset_category',    eid:'c0000000', ip:'10.4.1.7'  },
+]
+
+const INTEGRATION_ROWS = {
+  sap:    { enabled:true,  config:{ system_url:'https://s4hana.ngml.example', client:'100', username:'ASSETCORE_RFC' }, last_synced_at: relTs(310), last_sync_status:'ok' },
+  termii: { enabled:true,  config:{ sender_id:'NGML-OPS' }, last_synced_at: relTs(90), last_sync_status:'ok' },
+}
+
+/* ── lookups ────────────────────────────────────────────────────────────── */
+const byId = (arr, id) => arr.find(x => x.id === id) || null
+const siteOf = (id) => byId(SITES, id)
+const catOf  = (id) => byId(CATEGORIES, id)
+const assetOf= (id) => byId(ASSETS, id)
+const userOf = (id) => byId(PEOPLE, id)
+
+const ROLE_LABELS = {
+  owner:'Org Owner / Admin', ops_manager:'Operations Manager', maint_engineer:'Maintenance Engineer',
+  field_tech:'Field Technician', hse_officer:'HSE Officer', viewer:'Executive / Viewer',
+}
+const ROLES_LIST = [
+  {key:'owner',label:'Owner',desc:'Full access including licence and org settings.',perms:['All modules','Admin','Licence']},
+  {key:'ops_manager',label:'Ops Manager',desc:'Full access to assets, work orders, maintenance, reports.',perms:['Assets (full)','Work Orders (full)','Maintenance (full)','Reports (full)']},
+  {key:'maint_engineer',label:'Maintenance Engineer',desc:'Create and complete work orders, log maintenance.',perms:['Assets (view/edit)','Work Orders (full)','Maintenance (full)']},
+  {key:'field_tech',label:'Field Technician',desc:'View and update assigned work orders.',perms:['Assets (view)','Work Orders (assigned only)','Maintenance (assigned only)']},
+  {key:'hse_officer',label:'HSE / Compliance Officer',desc:'Full access to compliance and inspections.',perms:['Assets (view)','Compliance (full)','Inspections (full)','Reports (view)']},
+  {key:'viewer',label:'Viewer',desc:'Read-only access to dashboard and reports.',perms:['Dashboard (view)','Reports (view)']},
+]
+
+const WO_STATUS_LABEL = { new:'New', assigned:'Assigned', in_progress:'In Progress', awaiting_parts:'Awaiting Parts', inspection:'Inspection', closed:'Closed' }
+const WO_PRIORITY_LABEL = { low:'Low', medium:'Medium', high:'High', critical:'Critical' }
+const WO_TYPE_LABEL = { corrective:'Corrective', preventive:'Preventive', inspection:'Inspection', emergency:'Emergency' }
+const WO_TRANSITIONS = {
+  new:['assigned'], assigned:['in_progress','awaiting_parts'],
+  in_progress:['awaiting_parts','inspection','closed'], awaiting_parts:['in_progress'],
+  inspection:['in_progress','closed'], closed:[],
+}
+const STATUS_COL_ORDER = ['new','assigned','in_progress','awaiting_parts','inspection','closed']
+const FREQ_LABEL = { daily:'Daily', weekly:'Weekly', monthly:'Monthly', quarterly:'Quarterly', semi_annual:'Semi-annual', annual:'Annual' }
+const REPORT_KINDS = {
+  asset_register:      { label:'Asset Register',      desc:'Full asset list with category, site, status, health, and NBV' },
+  wo_summary:          { label:'Work Order Summary',  desc:'All work orders with site, asset, type, status, priority and SLA' },
+  compliance_register: { label:'Compliance Register', desc:'Licences and certificates with authority, site, and expiry' },
+  pm_history:          { label:'PM History',          desc:'Preventive maintenance task history by asset and site' },
+}
+const DEVICE_KIND_LABELS = { sensor:'Sensor', gateway:'Gateway', meter:'Meter', camera:'Camera', plc:'PLC' }
+const PROTOCOL_LABELS = { mqtt:'MQTT', modbus:'Modbus', http:'HTTP/REST', 'opc-ua':'OPC-UA' }
+
+/* ── formatting ─────────────────────────────────────────────────────────── */
+function formatNBV(cents) {
+  if (!cents) return '—'
+  const n = cents / 100
+  if (n >= 1e9) return '₦' + (n/1e9).toFixed(1) + 'B'
+  if (n >= 1e6) return '₦' + (n/1e6).toFixed(1) + 'M'
+  return '₦' + n.toLocaleString()
+}
+function initialsOf(name) {
+  if (!name) return '?'
+  const p = name.trim().split(/\s+/)
+  return ((p[0]?.[0]||'') + (p[1]?.[0]||'')).toUpperCase()
+}
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+}
+function licenceStatus(expiry) {
+  const d = daysUntil(expiry)
+  if (d < 0)  return 'expired'
+  if (d <= 30) return 'expiring'
+  if (d <= 90) return 'due_soon'
+  return 'active'
+}
+function fmtLastSeen(ts) {
+  if (!ts) return 'Never'
+  const mins = Math.floor((Date.now() - new Date(ts)) / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return mins + 'm ago'
+  const hrs = Math.floor(mins/60)
+  if (hrs < 24) return hrs + 'h ago'
+  return Math.floor(hrs/24) + 'd ago'
+}
+function fmtNotifTime(ts) {
+  const d = new Date(ts), diff = Date.now() - d
+  if (diff < 60000) return 'Just now'
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago'
+  if (diff < 86400000) return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})
+}
+function fmtSize(b) {
+  if (!b) return '—'
+  return b < 1e6 ? (b/1000).toFixed(0) + ' KB' : (b/1e6).toFixed(1) + ' MB'
+}
+function slaLabel(sla) {
+  if (!sla) return { text:'—', color:'var(--n400)' }
+  const days = daysUntil(sla)
+  if (days < 0)  return { text: Math.abs(days) + 'd overdue', color:'var(--srt)' }
+  if (days === 0) return { text:'Today', color:'var(--sat)' }
+  if (days <= 2)  return { text: days + 'd left', color:'var(--sat)' }
+  return { text: parseDate(sla).toLocaleDateString('en-GB',{day:'numeric',month:'short'}), color:'var(--n500)' }
+}
+</script>
+<script>
+/* ── app state ──────────────────────────────────────────────────────────── */
+const S = {
+  route: 'dashboard',
+  dark: false,
+  sidebarOpen: false,
+  dashSite: 0,
+  assets:   { filter:'all', selected:null, modal:null },
+  wos:      { filter:'all', view:'list', selected:null, modal:false, comment:'' },
+  maint:    { tab:'pm', modal:false },
+  compliance:{ filter:'all', selected:null, modal:null },
+  inspections:{ tab:'open', modal:null },
+  devices:  { filter:'all', modal:null },
+  integrations:{ open:null },
+  notifications:{ selected:'n1', panel:'detail' },
+  reports:  { tab:'library', kind:null, format:'xlsx', range:'last_30' },
+  settings: { tab:'profile' },
+  admin:    { tab:'sites', sub:'members', modal:null },
+}
+
+const NAV = [
+  { key:'dashboard',    label:'Dashboard',     group:'ops' },
+  { key:'assets',       label:'Assets',        group:'ops' },
+  { key:'work-orders',  label:'Work Orders',   group:'ops' },
+  { key:'maintenance',  label:'Maintenance',   group:'ops' },
+  { key:'inspections',  label:'Inspections',   group:'ops' },
+  { key:'compliance',   label:'Compliance',    group:'ops' },
+  { key:'reports',      label:'Reports',       group:'ops' },
+  { key:'devices',      label:'Devices',       group:'ops' },
+  { key:'notifications',label:'Notifications', group:'sys' },
+  { key:'admin',        label:'Admin',         group:'sys' },
+  { key:'integrations', label:'Integrations',  group:'sys' },
+  { key:'settings',     label:'Settings',      group:'sys' },
+]
+
+const ICONS = {
+  dashboard:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3" fill="var(--b100)"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3" fill="var(--b100)"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3" fill="var(--b100)"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.3" fill="var(--b100)"/></svg>',
+  assets:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 7h10M3 10h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  'work-orders':'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M6 6h4M6 9h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  maintenance:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="3" y="4" width="10" height="9" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M5 4V3a1 1 0 012 0v1M9 4V3a1 1 0 012 0v1" stroke="currentColor" stroke-width="1.3"/></svg>',
+  inspections:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2l1 3h3.2l-2.6 1.9 1 3L8 8.2 5.4 9.9l1-3L3.8 5H7L8 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+  compliance:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  reports:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 13V5l6-3 6 3v8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><rect x="6" y="9" width="4" height="4" rx=".5" stroke="currentColor" stroke-width="1.2"/></svg>',
+  devices:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="5" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 8h.01M5 11h.01M8 8h3M8 11h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+  integrations:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M6 8h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4 4V3M4 13v-1M12 4V3M12 13v-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+  notifications:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2a4 4 0 00-4 4v3l-1 1v.5h10V10l-1-1V6a4 4 0 00-4-4z" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 12.5a1.5 1.5 0 003 0" stroke="currentColor" stroke-width="1.3"/></svg>',
+  admin:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 14c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  settings:'<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M6.8 2.1l-.5 1.5A4.6 4.6 0 005 4.4L3.5 4l-1.2 2 1.1 1.1a4.5 4.5 0 000 1.8L2.3 10l1.2 2 1.5-.4A4.6 4.6 0 006.3 12.4l.5 1.5h2.4l.5-1.5A4.6 4.6 0 0011 11.6l1.5.4 1.2-2-1.1-1.1a4.5 4.5 0 000-1.8l1.1-1.1-1.2-2-1.5.4A4.6 4.6 0 009.7 3.6L9.2 2.1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+  plus:'<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  close:'<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  dots:'<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="3" r="1" fill="currentColor"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="11" r="1" fill="currentColor"/></svg>',
+}
+
+const unreadCount = () => NOTIFICATIONS.filter(n => !n.read).length
+
+/* ── shell ──────────────────────────────────────────────────────────────── */
+function Sidebar(active) {
+  const item = (n) => `
+    <div class="nav-item${active===n.key?' active':''}" data-act="nav" data-val="${n.key}">
+      ${ICONS[n.key]} ${n.label}
+    </div>`
+  return `
+  ${S.sidebarOpen ? '<div class="sidebar-overlay" data-act="close-sidebar"></div>' : ''}
+  <aside class="sidebar${S.sidebarOpen?' open':''}">
+    <div style="padding:14px 16px;border-bottom:var(--bdr);display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <div style="width:28px;height:28px;background:var(--b800);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span style="font-family:var(--ff-m);font-size:10px;font-weight:700;color:var(--b200)">NG</span>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:var(--n900)">${ORG.short_name}</div>
+        <div style="font-size:10px;color:var(--n500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ORG.name}</div>
+      </div>
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="var(--n400)" stroke-width="1.3" stroke-linecap="round"/></svg>
+    </div>
+    <nav style="flex:1;padding:8px 0;overflow-y:auto">
+      <div style="padding:12px 16px 4px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--n400);font-family:var(--ff-m)">Operations</div>
+      ${NAV.filter(n=>n.group==='ops').map(item).join('')}
+      <div style="height:1px;background:var(--n200);margin:8px 16px"></div>
+      ${NAV.filter(n=>n.group==='sys').map(item).join('')}
+    </nav>
+    <div style="border-top:var(--bdr);padding:12px 16px;display:flex;align-items:center;gap:8px">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--b700);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff">${ME.initials}</div>
+      <div style="min-width:0">
+        <div style="font-size:12px;font-weight:500;color:var(--n900)">${ME.full_name}</div>
+        <div style="font-size:10px;color:var(--n500)">${ME.role}</div>
+      </div>
+    </div>
+  </aside>`
+}
+
+function Topbar(breadcrumb, extra) {
+  const u = unreadCount()
+  return `
+  <header style="background:var(--n0);border-bottom:var(--bdr);flex-shrink:0;z-index:40">
+    <div style="height:52px;display:flex;align-items:center;padding:0 24px;gap:16px">
+      <button class="iconbtn sidebar-hamburger" data-act="toggle-sidebar">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </button>
+      <nav style="display:flex;align-items:center;gap:4px;font-size:13px;flex:1;min-width:0">
+        <span style="color:var(--n400)">${ORG.short_name}</span>
+        <span style="color:var(--n300);margin:0 2px">/</span>
+        <span style="color:var(--n900);font-weight:500">${breadcrumb}</span>
+      </nav>
+      <div class="topbar-search" style="position:relative;width:260px">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none">
+          <circle cx="7" cy="7" r="4.5" stroke="var(--n400)" stroke-width="1.3"/><path d="M10 10l2.5 2.5" stroke="var(--n400)" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <input placeholder="Search assets, work orders… ⌘K" style="width:100%;height:32px;border:1px solid var(--n200);border-radius:4px;padding:0 12px 0 30px;font-size:13px;background:var(--n50);outline:none"/>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="position:relative">
+          <button class="iconbtn" data-act="nav" data-val="notifications">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2a4 4 0 00-4 4v3l-1 1v.5h10V10l-1-1V6a4 4 0 00-4-4z" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 12.5a1.5 1.5 0 003 0" stroke="currentColor" stroke-width="1.3"/></svg>
+          </button>
+          ${u > 0 ? `<span style="position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;background:var(--sr);color:#fff;font-size:9px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--n0);padding:0 3px">${u}</span>` : ''}
+        </div>
+        <button class="iconbtn" data-act="toggle-dark" title="Toggle dark mode">
+          ${S.dark
+            ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.8 3.8l.7.7M11.5 11.5l.7.7M3.8 12.2l.7-.7M11.5 4.5l.7-.7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>'
+            : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M11 3.5A5.5 5.5 0 103.5 11 5.5 5.5 0 0011 3.5z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/></svg>'}
+        </button>
+        <button class="iconbtn" data-act="signout" title="Sign out">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2H3.5A1.5 1.5 0 002 3.5v9A1.5 1.5 0 003.5 14H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10 11l3-3-3-3M13 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--b700);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff">${ME.initials}</div>
+      </div>
+    </div>
+    ${extra || ''}
+  </header>`
+}
+
+function Shell(routeKey, breadcrumb, body, topExtra) {
+  return `<div class="app-shell">
+    ${Sidebar(routeKey)}
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+      ${Topbar(breadcrumb, topExtra)}
+      ${body}
+    </div>
+  </div>`
+}
+
+function PageHead(title, sub, actions) {
+  return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+    <div><h1 class="h1">${title}</h1><p class="sub">${sub}</p></div>
+    <div style="flex:1"></div>
+    ${actions || ''}
+  </div>`
+}
+
+function PrimaryBtn(label, act, val) {
+  return `<button class="btn btn-primary" style="height:32px;padding:0 14px;font-size:13px" data-act="${act}"${val?` data-val="${val}"`:''}>
+    <span style="display:flex;color:#fff">${ICONS.plus}</span>${label}</button>`
+}
+</script>
+<script>
+/* ── Dashboard ──────────────────────────────────────────────────────────── */
+const DASH_SITES = ['All Sites','Lagos','Delta','North','Warri','Aba']
+
+function dashStats() {
+  const a = { total: ASSETS.length, operational:0, attention:0, critical:0, offline:0 }
+  let hsum = 0
+  for (const x of ASSETS) { a[x.status]++; hsum += x.health }
+  a.avgHealth = Math.round(hsum / ASSETS.length)
+  const open = WOS.filter(w => w.status !== 'closed')
+  return {
+    assets: a,
+    wos: { open: open.length, overdue: open.filter(w => daysUntil(w.sla) < 0).length, critical: open.filter(w => w.priority === 'critical').length },
+    overduePM: PM_TASKS.filter(t => t.status === 'overdue').length,
+  }
+}
+const pct = (n,t) => t === 0 ? '0%' : Math.round(n/t*100) + '%'
+
+function dashAlerts() {
+  const out = []
+  PM_TASKS.filter(t => t.status==='overdue').forEach(t => out.push({
+    id:'pm'+t.id, severity:'high', title:'Overdue PM: ' + t.title,
+    subtitle:(assetOf(t.asset)?.name || siteOf(t.site)?.name || '—'), at: t.due }))
+  LICENCES.forEach(l => {
+    const st = licenceStatus(l.expiry)
+    if (st === 'expired') out.push({ id:'lic'+l.id, severity:'critical', title:'Licence expired: ' + l.name, subtitle:l.number, at:l.expiry })
+    else if (st === 'expiring') out.push({ id:'lic'+l.id, severity:'medium', title:'Licence expiring: ' + l.name, subtitle: daysUntil(l.expiry) + ' days remaining', at:l.expiry })
+  })
+  WOS.filter(w => w.priority==='critical' && w.status!=='closed').forEach(w => out.push({
+    id:'wo'+w.id, severity:'critical', title:w.ref + ' — ' + w.title, subtitle:'Critical priority · ' + WO_STATUS_LABEL[w.status], at:w.sla }))
+  DEVICES.filter(d => d.status==='offline'||d.status==='error').forEach(d => out.push({
+    id:'dev'+d.id, severity:'medium', title:(d.status==='error'?'Device error: ':'Device offline: ') + d.name,
+    subtitle:(siteOf(d.site)?.name||'—') + ' · last seen ' + fmtLastSeen(d.lastSeen), at:d.lastSeen }))
+  return out
+}
+
+const ALERT_SEV = {
+  critical:{c:'var(--srt)'}, high:{c:'var(--srt)'}, medium:{c:'var(--sat)'}, low:{c:'var(--n500)'},
+}
+
+function pageDashboard() {
+  const st = dashStats(), a = st.assets, w = st.wos
+  const C = 339.3
+  const opArc = a.operational/a.total*C, attArc = a.attention/a.total*C, critArc = a.critical/a.total*C
+  const cc = { expired: LICENCES.filter(l=>licenceStatus(l.expiry)==='expired').length,
+               expiring: LICENCES.filter(l=>licenceStatus(l.expiry)==='expiring').length }
+  const alerts = dashAlerts()
+  const recent = WOS.slice(0,5)
+  const upcoming = PM_TASKS.filter(t => { const d = daysUntil(t.due); return d >= 0 && d <= 14 }).slice(0,6)
+
+  const siteTabs = `<div style="height:34px;display:flex;align-items:center;padding:0 24px;gap:6px;background:var(--n50);border-top:var(--bdr);overflow-x:auto">
+    <span style="font-size:12px;color:var(--n500);font-weight:500;margin-right:2px">Site:</span>
+    ${DASH_SITES.map((s,i)=>`<button data-act="dash-site" data-val="${i}" style="height:22px;padding:0 8px;border:${i===S.dashSite?'1px solid var(--b300)':'1px solid transparent'};border-radius:3px;background:${i===S.dashSite?'var(--b50)':'transparent'};font-size:12px;color:${i===S.dashSite?'var(--b700)':'var(--n600)'};cursor:pointer;white-space:nowrap">${s}</button>`).join('')}
+    <div style="flex:1"></div>
+    <span class="mono" style="font-size:11px;color:var(--n400);white-space:nowrap">${new Date().toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} WAT</span>
+  </div>`
+
+  const kpi = (label, value, note, noteColor) => `<div class="kpi">
+    <div style="font-size:12px;font-weight:500;color:var(--n500);margin-bottom:12px">${label}</div>
+    <div class="mono" style="font-size:30px;font-weight:500;color:var(--n950);line-height:1;margin-bottom:8px">${value}</div>
+    <div style="font-size:12px;color:${noteColor||'var(--n500)'}">${note}</div></div>`
+
+  const legend = [
+    {c:'var(--sg)',cc:'var(--sgt)',l:'Operational',v:a.operational+' · '+pct(a.operational,a.total)},
+    {c:'var(--sa)',cc:'var(--sat)',l:'Attention Req.',v:a.attention+' · '+pct(a.attention,a.total)},
+    {c:'var(--sr)',cc:'var(--srt)',l:'Critical',v:a.critical+' · '+pct(a.critical,a.total)},
+    {c:'var(--n300)',cc:'var(--n500)',l:'Offline',v:a.offline+' · '+pct(a.offline,a.total)},
+  ]
+
+  const body = `<div style="flex:1;overflow-y:auto;padding:24px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap">
+      <div>
+        <h1 style="font-family:var(--ff-d);font-size:26px;font-weight:700;letter-spacing:-.4px;color:var(--n950);line-height:1.15">Operations Dashboard</h1>
+        <p style="font-size:13px;color:var(--n500);margin-top:4px">Network health overview · ${ORG.name}</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <select class="minput" style="width:auto;height:32px">
+          <option>Last 30 days</option><option>Last 7 days</option><option>This quarter</option>
+        </select>
+        <button class="btn btn-primary" style="height:32px;padding:0 14px;font-size:13px" data-act="nav" data-val="reports">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 9v3h3M12 9v3H9M2 5V2h3M12 5V2H9" stroke="#fff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Generate Report
+        </button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+      ${kpi('Total Assets', a.total.toLocaleString(), pct(a.operational,a.total)+' operational','var(--sgt)')}
+      ${kpi('Operational', pct(a.operational,a.total), a.operational+' of '+a.total+' assets')}
+      ${kpi('Open Work Orders', w.open, w.overdue+' overdue · '+w.critical+' critical','var(--srt)')}
+      ${kpi('Overdue PM', st.overduePM, st.overduePM===0?'All tasks on schedule':'task'+(st.overduePM!==1?'s':'')+' past due date', st.overduePM>0?'var(--sat)':null)}
+      ${kpi('Compliance Alerts', cc.expired+cc.expiring, cc.expired+' expired · '+cc.expiring+' expiring', cc.expired>0?'var(--srt)':null)}
+    </div>
+
+    <div class="dash-grid" style="display:grid;grid-template-columns:280px 1fr;gap:16px;margin-bottom:16px">
+      <div class="card" style="padding:20px">
+        <div style="font-size:14px;font-weight:600;color:var(--n800);margin-bottom:16px">Network Health</div>
+        <div style="position:relative;width:140px;height:140px;margin:0 auto 16px">
+          <svg viewBox="0 0 140 140" width="140" height="140">
+            <circle cx="70" cy="70" r="54" fill="none" stroke="var(--n200)" stroke-width="14"/>
+            <circle cx="70" cy="70" r="54" fill="none" stroke="var(--sg)" stroke-width="14" stroke-dasharray="${opArc} ${C-opArc}" stroke-linecap="round" transform="rotate(-90 70 70)"/>
+            <circle cx="70" cy="70" r="54" fill="none" stroke="var(--sa)" stroke-width="14" stroke-dasharray="${attArc} ${C-attArc}" stroke-dashoffset="${-opArc}" transform="rotate(-90 70 70)"/>
+            <circle cx="70" cy="70" r="54" fill="none" stroke="var(--sr)" stroke-width="14" stroke-dasharray="${critArc} ${C-critArc}" stroke-dashoffset="${-(opArc+attArc)}" transform="rotate(-90 70 70)"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <span class="mono" style="font-size:28px;font-weight:500;color:var(--n950);line-height:1">${a.avgHealth}</span>
+            <span style="font-size:11px;color:var(--n500)">Health Score</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${legend.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+            <span style="display:flex;align-items:center;gap:6px;color:${r.cc}">
+              <span style="width:10px;height:10px;background:${r.c};border-radius:50%;display:inline-block;flex-shrink:0"></span>${r.l}</span>
+            <span class="mono" style="font-weight:500">${r.v}</span></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;min-height:280px">
+        <div style="padding:14px 16px;border-bottom:var(--bdr);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+          <div style="font-size:14px;font-weight:600;color:var(--n800)">Active Alerts</div>
+          <span style="background:var(--srb);color:var(--srt);font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;border:1px solid var(--srbr)">${alerts.length}</span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:8px 0">
+          ${alerts.map(al=>{const sev=ALERT_SEV[al.severity]||ALERT_SEV.low; return `
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 16px">
+              <span style="width:8px;height:8px;border-radius:50%;background:${sev.c};margin-top:5px;flex-shrink:0"></span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12px;color:var(--n800);font-weight:500">${esc(al.title)}</div>
+                <div style="font-size:11px;color:var(--n500)">${esc(al.subtitle||'')}</div>
+              </div>
+              <span class="mono" style="font-size:10px;color:${sev.c};white-space:nowrap">${al.at?parseDate(al.at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''}</span>
+            </div>`}).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-grid-2" style="display:grid;grid-template-columns:1fr 360px;gap:16px">
+      <div class="card" style="overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:var(--bdr);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:600;color:var(--n800)">Recent Work Orders</div>
+          <button style="border:none;background:none;font-size:13px;color:var(--b600);font-weight:500;cursor:pointer;padding:0" data-act="nav" data-val="work-orders">View all →</button>
+        </div>
+        <div class="scroll-x" style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>${['WO Ref','Description','Assignee','Status','Priority','Due'].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+            <tbody>${recent.map(wo=>{
+              const due = slaLabel(wo.sla), as = userOf(wo.assignee)
+              const sb = { new:'n', assigned:'b', in_progress:'ip', awaiting_parts:'b', inspection:'b', closed:'g' }[wo.status]
+              const pb = { low:'b', medium:'b', high:'a', critical:'r' }[wo.priority]
+              return `<tr style="border-bottom:var(--bdr)">
+                <td class="mono" style="padding:10px 12px;font-size:12px;color:var(--b700);font-weight:500;white-space:nowrap">${wo.ref}</td>
+                <td style="padding:10px 12px">
+                  <div style="font-size:13px;font-weight:500;color:var(--n900)">${esc(wo.title)}</div>
+                  <div style="font-size:11px;color:var(--n500)">${siteOf(wo.site)?.name||'—'}</div></td>
+                <td style="padding:10px 12px;white-space:nowrap">${as?`<div style="display:flex;align-items:center;gap:6px">
+                    <div style="width:24px;height:24px;border-radius:50%;background:var(--b700);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:#fff;flex-shrink:0">${initialsOf(as.full_name)}</div>
+                    <span style="font-size:12px;color:var(--n700)">${as.full_name}</span></div>`
+                  :'<span style="font-size:12px;color:var(--n400)">Unassigned</span>'}</td>
+                <td style="padding:10px 12px"><span class="badge badge-${sb}">${WO_STATUS_LABEL[wo.status]}</span></td>
+                <td style="padding:10px 12px"><span class="badge badge-${pb}">${WO_PRIORITY_LABEL[wo.priority]}</span></td>
+                <td class="mono" style="padding:10px 12px;text-align:right;font-size:11px;color:${due.color};white-space:nowrap">${due.text}</td>
+              </tr>`}).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:var(--bdr);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+          <div style="font-size:14px;font-weight:600;color:var(--n800)">Upcoming Maintenance</div>
+          <button style="border:none;background:none;font-size:13px;color:var(--b600);font-weight:500;cursor:pointer;padding:0" data-act="nav" data-val="maintenance">Schedule →</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:8px 0">
+          ${upcoming.map(t=>{
+            const d = daysUntil(t.due)
+            const lbl = d===0?{text:'Today',color:'var(--sat)'}:{text:'in '+d+'d',color:'var(--n500)'}
+            return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px">
+              <div style="min-width:0">
+                <div style="font-size:12px;color:var(--n800);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</div>
+                <div style="font-size:11px;color:var(--n500)">${assetOf(t.asset)?.name||siteOf(t.site)?.name||'—'}</div>
+              </div>
+              <span class="mono" style="font-size:11px;color:${lbl.color};white-space:nowrap">${lbl.text}</span>
+            </div>`}).join('')}
+        </div>
+      </div>
+    </div>
+  </div>`
+  return Shell('dashboard','Dashboard',body,siteTabs)
+}
+
+/* ── Assets ─────────────────────────────────────────────────────────────── */
+const ASSET_STATUS = {
+  critical:   { bg:'var(--srb)', c:'var(--srt)', br:'var(--srbr)', label:'Critical' },
+  attention:  { bg:'var(--sab)', c:'var(--sat)', br:'var(--sabr)', label:'Attention' },
+  operational:{ bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)', label:'Operational' },
+  offline:    { bg:'var(--n100)',c:'var(--n500)',br:'var(--n300)', label:'Offline' },
+}
+function statusBadge(status) {
+  const s = ASSET_STATUS[status] || ASSET_STATUS.offline
+  return `<span style="display:inline-flex;align-items:center;gap:4px;border-radius:2px;padding:2px 7px;font-size:11px;font-weight:500;border:1px solid ${s.br};background:${s.bg};color:${s.c};white-space:nowrap">${s.label}</span>`
+}
+function healthBar(score) {
+  const color = score < 40 ? 'var(--sr)' : score < 70 ? 'var(--sa)' : 'var(--sg)'
+  return `<div style="display:flex;align-items:center;gap:8px">
+    <div style="width:60px;height:5px;background:var(--n200);border-radius:99px;overflow:hidden">
+      <div style="width:${score}%;height:100%;background:${color};border-radius:99px"></div></div>
+    <span class="mono" style="font-size:11px;color:var(--n700);width:28px">${score}</span></div>`
+}
+
+function pageAssets() {
+  const f = S.assets.filter
+  const list = f === 'all' ? ASSETS : ASSETS.filter(a => a.status === f)
+  const sel = S.assets.selected ? assetOf(S.assets.selected) : null
+
+  const toolbar = `<div style="padding:16px 24px;border-bottom:var(--bdr);background:var(--n0);display:flex;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap">
+    <div><h1 class="h1">Asset Registry</h1><p class="sub">${list.length} assets · ${SITES.length} sites</p></div>
+    <div style="flex:1"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${[['all','All'],['operational','Operational'],['attention','Attention'],['critical','Critical']]
+        .map(([v,l])=>`<button class="pgbtn${f===v?' on':''}" data-act="asset-filter" data-val="${v}">${l}</button>`).join('')}
+    </div>
+    ${PrimaryBtn('Add Asset','asset-modal','add')}
+  </div>`
+
+  const table = `<table style="width:100%;border-collapse:collapse">
+    <thead style="position:sticky;top:0;z-index:10"><tr>${['AIN','Asset Name','Category','Site','Status','Health','NBV',''].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+    <tbody>${list.map(a=>`
+      <tr class="row-hover" data-act="asset-select" data-val="${a.id}" style="border-bottom:var(--bdr);cursor:pointer;background:${sel?.id===a.id?'var(--b50)':'transparent'}">
+        <td class="mono" style="padding:11px 14px;font-size:11px;font-weight:500;color:var(--b700);white-space:nowrap">${a.ain}</td>
+        <td style="padding:11px 14px"><div style="font-size:13px;font-weight:500;color:var(--n900)">${esc(a.name)}</div></td>
+        <td style="padding:11px 14px;font-size:12px;color:var(--n600);white-space:nowrap">${catOf(a.cat)?.name||'—'}</td>
+        <td style="padding:11px 14px;font-size:12px;color:var(--n700);white-space:nowrap">${siteOf(a.site)?.name||'—'}</td>
+        <td style="padding:11px 14px">${statusBadge(a.status)}</td>
+        <td style="padding:11px 14px">${healthBar(a.health)}</td>
+        <td class="mono" style="padding:11px 14px;font-size:11px;color:var(--n700);white-space:nowrap">${formatNBV(a.nbv)}</td>
+        <td style="padding:11px 14px"><button style="background:none;border:none;cursor:pointer;color:var(--n400);padding:4px" data-act="asset-modal" data-val="${a.id}" data-stop="1">${ICONS.dots}</button></td>
+      </tr>`).join('')}</tbody></table>`
+
+  const empty = `<div style="padding:64px 20px;text-align:center">
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="margin:0 auto 16px"><rect x="6" y="8" width="28" height="26" rx="3" stroke="var(--n300)" stroke-width="1.5"/><path d="M13 16h14M13 21h14M13 26h8" stroke="var(--n300)" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <p style="font-size:14px;font-weight:600;color:var(--n600);margin-bottom:6px">No assets in this filter</p>
+    <p style="font-size:13px;color:var(--n400)">Switch to “All” to see the full registry.</p></div>`
+
+  const panel = sel ? `<div class="side-panel" style="width:340px;flex-shrink:0;border-left:var(--bdr);background:var(--n0);display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:var(--bdr);display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div><div class="mono" style="font-size:11px;color:var(--b600);margin-bottom:2px">${sel.ain}</div>
+        <div style="font-family:var(--ff-d);font-size:16px;font-weight:700;color:var(--n950);letter-spacing:-.2px">${esc(sel.name)}</div></div>
+      <button class="iconbtn" style="width:26px;height:26px" data-act="asset-select" data-val="">${ICONS.close}</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${statusBadge(sel.status)}
+        <span class="badge badge-n">${catOf(sel.cat)?.name}</span>
+        <span class="badge badge-n">${siteOf(sel.site)?.name}</span>
+      </div>
+      <div style="background:var(--n50);border:var(--bdr);border-radius:6px;padding:14px 16px">
+        <div class="mono" style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n500);margin-bottom:10px">Health Score</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="position:relative;width:64px;height:64px;flex-shrink:0">
+            <svg viewBox="0 0 64 64" width="64" height="64">
+              <circle cx="32" cy="32" r="24" fill="none" stroke="var(--n200)" stroke-width="7"/>
+              <circle cx="32" cy="32" r="24" fill="none" stroke="${sel.health<40?'var(--sr)':sel.health<70?'var(--sa)':'var(--sg)'}" stroke-width="7" stroke-dasharray="${150.8*sel.health/100} 150.8" stroke-linecap="round" transform="rotate(-90 32 32)"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span class="mono" style="font-size:16px;font-weight:500">${sel.health}</span></div>
+          </div>
+          <div style="font-size:12px;color:var(--n600);line-height:1.6">
+            <div style="font-weight:600;color:var(--n800);margin-bottom:4px">${sel.status==='critical'?'Critical condition':sel.status==='attention'?'Needs attention':'Healthy'}</div>
+            NBV: ${formatNBV(sel.nbv)}
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--n0);border:var(--bdr);border-radius:6px;overflow:hidden">
+        <div class="mono" style="padding:10px 14px;border-bottom:var(--bdr);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n500)">Details</div>
+        ${[['AIN',sel.ain],['Category',catOf(sel.cat)?.name],['Site',siteOf(sel.site)?.name],['NBV',formatNBV(sel.nbv)],
+           ['Open WOs', WOS.filter(w=>w.asset===sel.id&&w.status!=='closed').length],
+           ['Linked devices', DEVICES.filter(d=>d.asset===sel.id).length]]
+          .map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:9px 14px;border-bottom:var(--bdr);font-size:12px">
+            <span style="color:var(--n500)">${k}</span>
+            <span style="color:var(--n800);font-weight:500;${k==='AIN'||k==='NBV'?'font-family:var(--ff-m)':''}">${v}</span></div>`).join('')}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-primary" style="width:100%;height:36px;font-size:13px" data-act="wo-modal">Raise Work Order</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="btn btn-secondary" style="height:34px;font-size:13px" data-act="asset-modal" data-val="${sel.id}">Edit Asset</button>
+          <button style="height:34px;font-size:13px;background:none;border:1px solid var(--srbr);color:var(--srt);border-radius:4px;cursor:pointer;font-family:inherit" data-act="asset-archive" data-val="${sel.id}">Archive</button>
+        </div>
+      </div>
+    </div>
+  </div>` : ''
+
+  const body = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+    ${toolbar}
+    <div style="flex:1;overflow:hidden;display:flex">
+      <div class="scroll-x" style="flex:1;overflow:auto">${list.length ? table : empty}</div>
+      ${panel}
+    </div>
+  </div>${S.assets.modal ? assetModal() : ''}`
+  return Shell('assets','Assets',body)
+}
+
+function assetModal() {
+  const editing = S.assets.modal !== 'add'
+  const a = editing ? assetOf(S.assets.modal) : null
+  return `<div class="modal-bg" data-act="close-modal"><div class="modal" data-stop-bubble="1" style="width:480px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="font-family:var(--ff-d);font-size:18px;font-weight:700;color:var(--n950)">${editing?'Edit Asset':'Add Asset'}</h3>
+      <button style="background:none;border:none;cursor:pointer;color:var(--n400)" data-act="close-modal">${ICONS.close}</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div><label class="mlabel">AIN *</label><input id="f-ain" class="minput mono" value="${a?.ain||''}" placeholder="e.g. NGML-MTR-0042"/></div>
+      <div><label class="mlabel">Status</label><select id="f-status" class="minput">
+        ${Object.entries(ASSET_STATUS).map(([k,v])=>`<option value="${k}"${a?.status===k?' selected':''}>${v.label}</option>`).join('')}
+      </select></div>
+    </div>
+    <div style="margin-bottom:12px"><label class="mlabel">Asset name *</label>
+      <input id="f-name" class="minput" value="${a?esc(a.name):''}" placeholder="e.g. Lagos DS-04 Metering Station"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div><label class="mlabel">Site *</label><select id="f-site" class="minput">
+        ${SITES.map(s=>`<option value="${s.id}"${a?.site===s.id?' selected':''}>${s.name}</option>`).join('')}</select></div>
+      <div><label class="mlabel">Category *</label><select id="f-cat" class="minput">
+        ${CATEGORIES.map(c=>`<option value="${c.id}"${a?.cat===c.id?' selected':''}>${c.name}</option>`).join('')}</select></div>
+    </div>
+    <div style="margin-bottom:20px"><label class="mlabel">Health score (0–100)</label>
+      <input id="f-health" class="minput" type="number" min="0" max="100" value="${a?.health ?? 100}"/></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" style="height:36px;padding:0 16px;font-size:13px" data-act="close-modal">Cancel</button>
+      <button class="btn btn-primary" style="height:36px;padding:0 18px;font-size:13px" data-act="asset-save" data-val="${editing?a.id:''}">${editing?'Save changes':'Add asset'}</button>
+    </div>
+  </div></div>`
+}
+</script>
+<script>
+/* ── Work Orders ────────────────────────────────────────────────────────── */
+const PRIORITY_STYLE = {
+  critical:{bg:'var(--srb)',c:'var(--srt)',br:'var(--srbr)'},
+  high:{bg:'var(--sab)',c:'var(--sat)',br:'var(--sabr)'},
+  medium:{bg:'var(--b50)',c:'var(--b700)',br:'var(--b200)'},
+  low:{bg:'var(--n100)',c:'var(--n600)',br:'var(--n300)'},
+}
+function prioBadge(p) {
+  const s = PRIORITY_STYLE[p] || PRIORITY_STYLE.low
+  return `<span style="display:inline-flex;padding:1px 6px;border-radius:2px;font-size:10px;font-weight:600;background:${s.bg};color:${s.c};border:1px solid ${s.br};text-transform:uppercase;letter-spacing:.04em">${WO_PRIORITY_LABEL[p]}</span>`
+}
+function typeBadge(t) {
+  return `<span style="padding:1px 6px;border-radius:2px;font-size:10px;font-weight:500;background:var(--n100);color:var(--n600);border:1px solid var(--n200);text-transform:uppercase;letter-spacing:.04em">${WO_TYPE_LABEL[t]||t}</span>`
+}
+function statusPill(s) {
+  return `<span style="padding:2px 8px;border-radius:3px;font-size:11px;font-weight:500;background:var(--b50);color:var(--b700);border:1px solid var(--b200);white-space:nowrap">${WO_STATUS_LABEL[s]}</span>`
+}
+function slaSpan(sla) {
+  if (!sla) return '<span style="font-size:11px;color:var(--n400)">—</span>'
+  const l = slaLabel(sla)
+  return `<span class="mono" style="font-size:11px;color:${l.color}">${l.text}</span>`
+}
+
+function pageWorkOrders() {
+  const f = S.wos.filter
+  const list = f === 'all' ? WOS : WOS.filter(w => w.status === f)
+  const sel = S.wos.selected ? byId(WOS, S.wos.selected) : null
+
+  const toolbar = `<div style="padding:14px 24px;border-bottom:var(--bdr);background:var(--n0);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap">
+    <div><h1 class="h1">Work Orders</h1><p class="sub">${list.length} orders</p></div>
+    <div style="flex:1"></div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap">
+      ${[['all','All'],...Object.entries(WO_STATUS_LABEL)].map(([v,l])=>
+        `<button data-act="wo-filter" data-val="${v}" style="height:28px;padding:0 10px;border:1px solid ${f===v?'var(--b300)':'var(--n200)'};border-radius:4px;background:${f===v?'var(--b50)':'var(--n0)'};font-size:11px;color:${f===v?'var(--b700)':'var(--n600)'};font-weight:${f===v?600:400};cursor:pointer;white-space:nowrap">${l}</button>`).join('')}
+    </div>
+    <div style="display:flex;border:1px solid var(--n200);border-radius:4px;overflow:hidden">
+      ${[['list','List'],['kanban','Board']].map(([v,l])=>
+        `<button data-act="wo-view" data-val="${v}" style="height:28px;padding:0 12px;border:none;${v==='list'?'border-right:1px solid var(--n200);':''}background:${S.wos.view===v?'var(--b50)':'var(--n0)'};font-size:12px;color:${S.wos.view===v?'var(--b700)':'var(--n600)'};font-weight:${S.wos.view===v?500:400};cursor:pointer">${l}</button>`).join('')}
+    </div>
+    ${PrimaryBtn('New WO','wo-modal')}
+  </div>`
+
+  const kanban = `<div style="display:flex;height:100%;overflow-x:auto">
+    ${STATUS_COL_ORDER.map(s=>{
+      const col = WOS.filter(w=>w.status===s)
+      return `<div style="min-width:240px;width:240px;flex-shrink:0;border-right:var(--bdr);display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:10px 14px;border-bottom:var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--n50);flex-shrink:0">
+          <span style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--n600)">${WO_STATUS_LABEL[s]}</span>
+          <span class="mono" style="font-size:11px;background:var(--n200);color:var(--n600);border-radius:99px;padding:1px 7px">${col.length}</span>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:10px">
+          ${col.map(w=>`<div class="row-hover" data-act="wo-select" data-val="${w.id}" style="background:${sel?.id===w.id?'var(--b50)':'var(--n0)'};border:1px solid ${sel?.id===w.id?'var(--b300)':'var(--n200)'};border-radius:6px;padding:10px 12px;margin-bottom:8px;cursor:pointer">
+            <div style="font-size:12px;font-weight:600;color:var(--n900);margin-bottom:6px;line-height:1.4">${esc(w.title)}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">${prioBadge(w.priority)}${typeBadge(w.type)}</div>
+            <div style="font-size:11px;color:var(--n500)">${assetOf(w.asset)?.ain||siteOf(w.site)?.name||'—'}</div>
+            <div style="margin-top:4px">${slaSpan(w.sla)}</div>
+          </div>`).join('')}
+        </div>
+      </div>`}).join('')}
+  </div>`
+
+  const table = `<table style="width:100%;border-collapse:collapse">
+    <thead style="position:sticky;top:0;z-index:10"><tr>${['Ref','Title','Site','Asset','Type','Priority','Status','SLA',''].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+    <tbody>${list.map(w=>`
+      <tr class="row-hover" data-act="wo-select" data-val="${w.id}" style="border-bottom:var(--bdr);cursor:pointer;background:${sel?.id===w.id?'var(--b50)':'transparent'}">
+        <td class="mono" style="padding:10px 14px;font-size:11px;color:var(--b700);white-space:nowrap">${w.ref}</td>
+        <td style="padding:10px 14px;font-size:13px;font-weight:500;color:var(--n900);max-width:260px">
+          <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.title)}</div></td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--n600);white-space:nowrap">${siteOf(w.site)?.name||'—'}</td>
+        <td class="mono" style="padding:10px 14px;font-size:11px;color:var(--n700);white-space:nowrap">${assetOf(w.asset)?.ain||'—'}</td>
+        <td style="padding:10px 14px">${typeBadge(w.type)}</td>
+        <td style="padding:10px 14px">${prioBadge(w.priority)}</td>
+        <td style="padding:10px 14px">${statusPill(w.status)}</td>
+        <td style="padding:10px 14px">${slaSpan(w.sla)}</td>
+        <td style="padding:10px 14px"><button style="background:none;border:none;cursor:pointer;color:var(--n400);padding:4px" data-act="wo-select" data-val="${w.id}">${ICONS.dots}</button></td>
+      </tr>`).join('')}</tbody></table>`
+
+  const detail = sel ? woDetail(sel) : ''
+
+  const body = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+    ${toolbar}
+    <div style="flex:1;overflow:hidden;display:flex">
+      <div class="scroll-x" style="flex:1;overflow:auto">${S.wos.view==='kanban'?kanban:(list.length?table:'<div style="padding:64px;text-align:center;color:var(--n400);font-size:13px">No work orders in this filter.</div>')}</div>
+      ${detail}
+    </div>
+  </div>${S.wos.modal ? woModal() : ''}`
+  return Shell('work-orders','Work Orders',body)
+}
+
+function woDetail(wo) {
+  const acts = WO_ACTIVITY[wo.id] || []
+  const next = WO_TRANSITIONS[wo.status] || []
+  return `<div class="side-panel" style="width:400px;flex-shrink:0;border-left:var(--bdr);background:var(--n0);display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:14px 18px;border-bottom:var(--bdr);display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div class="mono" style="font-size:11px;color:var(--b600);margin-bottom:3px">${wo.ref}</div>
+        <div style="font-family:var(--ff-d);font-size:15px;font-weight:700;color:var(--n950);letter-spacing:-.2px;line-height:1.3">${esc(wo.title)}</div>
+      </div>
+      <button class="iconbtn" style="width:26px;height:26px" data-act="wo-select" data-val="">${ICONS.close}</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${statusPill(wo.status)}${prioBadge(wo.priority)}${typeBadge(wo.type)}</div>
+      <div style="background:var(--n50);border:var(--bdr);border-radius:6px;overflow:hidden">
+        ${[['Site',siteOf(wo.site)?.name||'—'],
+           ['Asset',wo.asset?`${assetOf(wo.asset).ain} — ${esc(assetOf(wo.asset).name)}`:'—'],
+           ['Assignee',userOf(wo.assignee)?.full_name||'Unassigned'],
+           ['SLA Due',slaSpan(wo.sla)]]
+          .map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 12px;border-bottom:var(--bdr);font-size:12px">
+            <span style="color:var(--n500);flex-shrink:0">${k}</span>
+            <span style="color:var(--n800);font-weight:500;text-align:right">${v}</span></div>`).join('')}
+      </div>
+      <div>
+        <div class="mono" style="font-size:11px;font-weight:600;color:var(--n500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Description</div>
+        <p style="font-size:13px;color:var(--n700);line-height:1.65">${esc(wo.description)}</p>
+      </div>
+      ${next.length ? `<div>
+        <div class="mono" style="font-size:11px;font-weight:600;color:var(--n500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Move to</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${next.map(s=>`<button data-act="wo-transition" data-val="${wo.id}:${s}" style="height:30px;padding:0 12px;font-size:12px;font-weight:500;border:1px solid var(--b200);border-radius:4px;background:${s==='closed'?'var(--sgb)':'var(--b50)'};color:${s==='closed'?'var(--sgt)':'var(--b700)'};cursor:pointer;font-family:inherit">${WO_STATUS_LABEL[s]}</button>`).join('')}
+        </div></div>` : ''}
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="mono" style="font-size:11px;font-weight:600;color:var(--n500);text-transform:uppercase;letter-spacing:.05em">Activity</div>
+          <span style="font-size:11px;color:var(--n400)">Attach file</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${acts.length===0?'<p style="font-size:12px;color:var(--n400)">No activity yet.</p>':''}
+          ${acts.map(a=>`<div style="display:flex;gap:8px">
+            <div style="width:26px;height:26px;border-radius:50%;background:var(--b100);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--b700)">${a.actor[0]}</div>
+            <div style="flex:1">
+              <div style="font-size:12px;color:var(--n700);line-height:1.5">
+                ${a.kind==='status_change'?`<em style="color:var(--n500)">${esc(a.body)}</em>`
+                 :a.kind==='attachment'?`Attached <strong>${esc(a.body)}</strong>`
+                 :esc(a.body)}</div>
+              <div class="mono" style="font-size:10px;color:var(--n400);margin-top:2px">${a.actor} · ${new Date(a.at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+            </div></div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div style="border-top:var(--bdr);padding:12px 18px;display:flex;gap:8px;flex-shrink:0">
+      <input id="wo-comment" class="input" placeholder="Add a comment…" style="flex:1;height:34px;font-size:13px"/>
+      <button class="btn btn-primary" style="height:34px;padding:0 14px;font-size:13px;flex-shrink:0" data-act="wo-comment" data-val="${wo.id}">Post</button>
+    </div>
+  </div>`
+}
+
+function woModal() {
+  return `<div class="modal-bg" data-act="close-modal"><div class="modal" data-stop-bubble="1" style="width:520px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="font-family:var(--ff-d);font-size:18px;font-weight:700;color:var(--n950)">New Work Order</h3>
+      <button style="background:none;border:none;cursor:pointer;color:var(--n400)" data-act="close-modal">${ICONS.close}</button>
+    </div>
+    <div style="margin-bottom:12px"><label class="mlabel">Title *</label>
+      <input id="w-title" class="minput" placeholder="Brief description of the work"/></div>
+    <div style="margin-bottom:12px"><label class="mlabel">Description</label>
+      <textarea id="w-desc" class="minput" rows="3" style="height:auto;padding:8px 10px;resize:vertical" placeholder="Detailed description, symptoms, observations…"></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div><label class="mlabel">Type</label><select id="w-type" class="minput">
+        ${Object.entries(WO_TYPE_LABEL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
+      <div><label class="mlabel">Priority</label><select id="w-prio" class="minput">
+        ${Object.entries(WO_PRIORITY_LABEL).map(([k,v])=>`<option value="${k}"${k==='medium'?' selected':''}>${v}</option>`).join('')}</select></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div><label class="mlabel">Site</label><select id="w-site" class="minput">
+        <option value="">Any site</option>${SITES.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select></div>
+      <div><label class="mlabel">Asset</label><select id="w-asset" class="minput">
+        <option value="">No specific asset</option>${ASSETS.map(a=>`<option value="${a.id}">${a.ain} — ${esc(a.name)}</option>`).join('')}</select></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div><label class="mlabel">Assignee</label><select id="w-assignee" class="minput">
+        <option value="">Unassigned</option>${PEOPLE.filter(p=>p.status==='active').map(p=>`<option value="${p.id}">${p.full_name}</option>`).join('')}</select></div>
+      <div><label class="mlabel">SLA due date</label><input id="w-sla" class="minput" type="date" value="${rel(3)}"/></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" style="height:36px;padding:0 16px;font-size:13px" data-act="close-modal">Cancel</button>
+      <button class="btn btn-primary" style="height:36px;padding:0 18px;font-size:13px" data-act="wo-save">Create work order</button>
+    </div>
+  </div></div>`
+}
+
+/* ── Maintenance ────────────────────────────────────────────────────────── */
+const TASK_STATUS = {
+  pending:    {bg:'var(--slb)',c:'var(--slt)',br:'var(--slbr)',label:'Pending'},
+  in_progress:{bg:'var(--sab)',c:'var(--sat)',br:'var(--sabr)',label:'In Progress'},
+  completed:  {bg:'var(--sgb)',c:'var(--sgt)',br:'var(--sgbr)',label:'Complete'},
+  overdue:    {bg:'var(--srb)',c:'var(--srt)',br:'var(--srbr)',label:'Overdue'},
+  skipped:    {bg:'var(--n100)',c:'var(--n500)',br:'var(--n200)',label:'Skipped'},
+}
+function weekDays() {
+  const ref = today()
+  const mon = new Date(ref); mon.setDate(ref.getDate() - ((ref.getDay()+6)%7))
+  return Array.from({length:7},(_,i)=>{ const d=new Date(mon); d.setDate(mon.getDate()+i); return d })
+}
+
+function pageMaintenance() {
+  const tab = S.maint.tab
+  const open = PM_TASKS.filter(t => t.status !== 'completed' && t.status !== 'skipped')
+  const overdue = open.filter(t => t.status === 'overdue').length
+  const days = weekDays()
+  const wkStart = iso(days[0]), wkEnd = iso(days[6])
+
+  const tabs = `<div style="display:flex">
+    ${[{k:'pm',label:'Preventive Maintenance',badge:overdue||null},
+       {k:'schedules',label:'Schedules'},
+       {k:'compliance',label:'Compliance',badge:LICENCES.length}].map(t=>
+      `<button class="tab-btn${tab===t.k?' active':''}" data-act="maint-tab" data-val="${t.k}" style="display:flex;align-items:center;gap:6px">${t.label}
+        ${t.badge?`<span style="background:var(--srb);color:var(--srt);border:1px solid var(--srbr);border-radius:2px;font-size:9px;font-weight:600;padding:0 5px;line-height:16px">${t.badge}</span>`:''}
+      </button>`).join('')}
+  </div>`
+
+  const header = `<div style="padding:14px 24px 0;border-bottom:var(--bdr);background:var(--n0);flex-shrink:0">
+    ${PageHead('Maintenance','Preventive maintenance, schedules & compliance',
+      tab==='pm'||tab==='schedules'
+      ? `<button class="pgbtn" style="height:32px" data-act="pm-generate">Generate Tasks</button>${PrimaryBtn('Schedule PM','pm-modal')}`
+      : '')}
+    ${tabs}
+  </div>`
+
+  const tasksTable = `<table style="width:100%;border-collapse:collapse">
+    <thead style="position:sticky;top:0;z-index:10"><tr>${['Task','Frequency','Asset','Site','Due','Assignee','Status',''].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+    <tbody>${open.map(t=>{
+      const sc = TASK_STATUS[t.status] || TASK_STATUS.pending
+      const sch = byId(PM_SCHEDULES, t.schedule)
+      const as = assetOf(t.asset)
+      return `<tr class="row-hover" style="border-bottom:var(--bdr)">
+        <td style="padding:10px 14px"><div style="font-size:12px;font-weight:500;color:var(--n900)">${esc(t.title)}</div></td>
+        <td style="padding:10px 14px;font-size:11px;color:var(--n600);white-space:nowrap">${sch?FREQ_LABEL[sch.frequency]:'—'}</td>
+        <td style="padding:10px 14px">${as?`<div style="font-size:12px;font-weight:500;color:var(--n900)">${esc(as.name)}</div><div class="mono" style="font-size:10px;color:var(--n400)">${as.ain}</div>`:'<span style="font-size:12px;color:var(--n400)">—</span>'}</td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--n700);white-space:nowrap">${siteOf(t.site)?.name||'—'}</td>
+        <td class="mono" style="padding:10px 14px;font-size:11px;color:${t.status==='overdue'?'var(--srt)':'var(--n600)'};white-space:nowrap">${fmtDate(t.due)}</td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--n700);white-space:nowrap">${userOf(t.assignee)?.full_name||'—'}</td>
+        <td style="padding:10px 14px"><span style="display:inline-flex;padding:2px 7px;border-radius:2px;border:1px solid ${sc.br};font-size:10px;font-weight:500;background:${sc.bg};color:${sc.c}">${sc.label}</span></td>
+        <td style="padding:10px 14px"><button class="linkbtn" data-act="pm-complete" data-val="${t.id}">Mark done</button></td>
+      </tr>`}).join('')}</tbody></table>`
+
+  const calendar = `<div class="side-panel" style="width:300px;flex-shrink:0;border-left:var(--bdr);background:var(--n0);display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:14px 16px;border-bottom:var(--bdr)">
+      <div style="font-size:13px;font-weight:600;color:var(--n900)">${days[0].toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – ${days[6].toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+      <div style="font-size:11px;color:var(--n500)">This week's PM tasks</div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:8px 0">
+      ${days.map(d=>{
+        const key = iso(d)
+        const dayTasks = open.filter(t => t.due === key)
+        const isToday = key === iso(today())
+        return `<div style="padding:8px 14px;border-bottom:var(--bdr);background:${isToday?'var(--b50)':'transparent'}">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:${dayTasks.length?'6px':'0'}">
+            <div style="width:24px;height:24px;border-radius:50%;background:${isToday?'var(--b500)':'transparent'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:${isToday?600:400};color:${isToday?'#fff':'var(--n700)'}">${d.getDate()}</div>
+            <span style="font-size:11px;color:${isToday?'var(--b700)':'var(--n500)'};font-weight:${isToday?600:400}">${d.toLocaleDateString('en-GB',{weekday:'short'})}</span>
+            ${dayTasks.length?`<span style="margin-left:auto;font-size:10px;color:var(--n400)">${dayTasks.length} task${dayTasks.length>1?'s':''}</span>`:''}
+          </div>
+          ${dayTasks.map(t=>{const sc=TASK_STATUS[t.status]||TASK_STATUS.pending; return `<div style="margin-left:32px;margin-bottom:4px;padding:4px 8px;background:var(--n50);border-radius:3px;border-left:2px solid ${sc.c};font-size:11px;color:var(--n700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</div>`}).join('')}
+          ${dayTasks.length===0?'<div style="margin-left:32px;font-size:11px;color:var(--n300)">No tasks</div>':''}
+        </div>`}).join('')}
+    </div>
+  </div>`
+
+  const schedulesView = `<div style="padding:20px 24px">
+    <div style="font-size:12px;color:var(--n500);margin-bottom:14px">${PM_SCHEDULES.length} PM schedules · tasks are generated automatically from each frequency.</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>${['Schedule','Frequency','Asset','Site','Next Due','Active'].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+      <tbody>${PM_SCHEDULES.map(s=>`<tr class="row-hover" style="border-bottom:var(--bdr)">
+        <td style="padding:10px 14px;font-size:12px;font-weight:500;color:var(--n900)">${esc(s.title)}</td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--n600)">${FREQ_LABEL[s.frequency]}</td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--n700)">${assetOf(s.asset)?.name||'—'}</td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--n700)">${siteOf(s.site)?.name||'—'}</td>
+        <td class="mono" style="padding:10px 14px;font-size:11px;color:var(--n600)">${fmtDate(s.next_due)}</td>
+        <td style="padding:10px 14px"><span style="font-size:11px;font-weight:500;color:${s.active?'var(--sgt)':'var(--n400)'}">${s.active?'Yes':'No'}</span></td>
+      </tr>`).join('')}</tbody></table>
+  </div>`
+
+  const complianceSummary = `<div style="flex:1;overflow-y:auto">
+    <div style="padding:14px 24px;border-bottom:var(--bdr);background:var(--n0);display:flex;gap:20px;flex-wrap:wrap">
+      ${[{label:'Active',count:LICENCES.filter(l=>['active','due_soon'].includes(licenceStatus(l.expiry))).length,c:'var(--sgt)',bg:'var(--sgb)',br:'var(--sgbr)'},
+         {label:'Expiring Soon',count:LICENCES.filter(l=>licenceStatus(l.expiry)==='expiring').length,c:'var(--sat)',bg:'var(--sab)',br:'var(--sabr)'},
+         {label:'Expired',count:LICENCES.filter(l=>licenceStatus(l.expiry)==='expired').length,c:'var(--srt)',bg:'var(--srb)',br:'var(--srbr)'}]
+        .map(s=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:${s.bg};border:1px solid ${s.br};border-radius:4px">
+          <span class="mono" style="font-size:16px;font-weight:700;color:${s.c}">${s.count}</span>
+          <span style="font-size:12px;color:${s.c}">${s.label}</span></div>`).join('')}
+      <div style="margin-left:auto;display:flex;align-items:center">
+        <button class="linkbtn" style="font-size:12px" data-act="nav" data-val="compliance">Open full compliance register →</button></div>
+    </div>
+    ${licenceTable(LICENCES)}
+  </div>`
+
+  let content
+  if (tab === 'pm') content = `<div style="flex:1;overflow:hidden;display:flex"><div class="scroll-x" style="flex:1;overflow:auto">${tasksTable}</div>${calendar}</div>`
+  else if (tab === 'schedules') content = `<div style="flex:1;overflow:auto" class="scroll-x">${schedulesView}</div>`
+  else content = complianceSummary
+
+  const body = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">${header}${content}</div>${S.maint.modal?pmModal():''}`
+  return Shell('maintenance','Maintenance',body)
+}
+
+function pmModal() {
+  return `<div class="modal-bg" data-act="close-modal"><div class="modal" data-stop-bubble="1" style="width:420px">
+    <div style="display:flex;align-items:center;margin-bottom:18px">
+      <h2 style="font-family:var(--ff-d);font-size:17px;font-weight:700;color:var(--n950);flex:1">New PM Schedule</h2>
+      <button style="width:28px;height:28px;border:none;background:none;cursor:pointer;color:var(--n500);font-size:20px;line-height:1" data-act="close-modal">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label class="mlabel">Title *</label><input id="p-title" class="minput" placeholder="e.g. Quarterly Calibration — MTR-0042"/></div>
+      <div><label class="mlabel">Description</label><textarea id="p-desc" class="minput" rows="2" style="height:auto;padding:8px 10px;resize:vertical"></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label class="mlabel">Frequency *</label><select id="p-freq" class="minput">
+          ${Object.entries(FREQ_LABEL).map(([k,v])=>`<option value="${k}"${k==='monthly'?' selected':''}>${v}</option>`).join('')}</select></div>
+        <div><label class="mlabel">First due *</label><input id="p-due" class="minput" type="date" value="${rel(7)}"/></div>
+      </div>
+      <div><label class="mlabel">Asset</label><select id="p-asset" class="minput">
+        <option value="">No specific asset</option>${ASSETS.map(a=>`<option value="${a.id}">${a.ain} — ${esc(a.name)}</option>`).join('')}</select></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-secondary" style="height:34px;padding:0 16px;font-size:13px" data-act="close-modal">Cancel</button>
+      <button class="btn btn-primary" style="height:34px;padding:0 18px;font-size:13px" data-act="pm-save">Save Schedule</button>
+    </div>
+  </div></div>`
+}
+</script>
+<script>
+/* ── Compliance ─────────────────────────────────────────────────────────── */
+const LIC_STATUS_META = {
+  active:   { label:'Active',   bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
+  due_soon: { label:'Due Soon', bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)' },
+  expiring: { label:'Expiring', bg:'var(--sab)', c:'var(--sat)', br:'var(--sabr)' },
+  expired:  { label:'Expired',  bg:'var(--srb)', c:'var(--srt)', br:'var(--srbr)' },
+}
+function daysLabel(expiry) {
+  const d = daysUntil(expiry)
+  if (d < 0) return Math.abs(d) + 'd ago'
+  if (d === 0) return 'Today'
+  return d + 'd'
+}
+function licenceTable(list, selectable) {
+  return `<table style="width:100%;border-collapse:collapse">
+    <thead style="position:sticky;top:0;z-index:10"><tr>${['Licence / Certificate','Authority','Site','Issued','Expires','Days','Status',''].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+    <tbody>${list.map(l=>{
+      const st = licenceStatus(l.expiry), meta = LIC_STATUS_META[st]
+      const active = selectable && S.compliance.selected === l.id
+      return `<tr class="row-hover"${selectable?` data-act="lic-select" data-val="${l.id}"`:''} style="border-bottom:var(--bdr);${selectable?'cursor:pointer;':''}background:${active?'var(--b50)':'transparent'};border-left:3px solid ${active?'var(--b500)':'transparent'}">
+        <td style="padding:11px 14px">
+          <div style="font-size:13px;font-weight:500;color:var(--n900)">${esc(l.name)}</div>
+          <div class="mono" style="font-size:10px;color:var(--n400)">${l.number}</div></td>
+        <td style="padding:11px 14px;font-size:12px;color:var(--n700);white-space:nowrap">${l.authority}</td>
+        <td style="padding:11px 14px;font-size:12px;color:var(--n700);white-space:nowrap">${siteOf(l.site)?.name||'—'}</td>
+        <td class="mono" style="padding:11px 14px;font-size:11px;color:var(--n500);white-space:nowrap">${fmtDate(l.issued)}</td>
+        <td class="mono" style="padding:11px 14px;font-size:11px;color:${st==='expired'?'var(--srt)':st==='expiring'?'var(--sat)':'var(--n600)'};white-space:nowrap">${fmtDate(l.expiry)}</td>
+        <td class="mono" style="padding:11px 14px;font-size:11px;color:${st==='expired'?'var(--srt)':(st==='expiring'||st==='due_soon')?'var(--sat)':'var(--n600)'};font-weight:${st!=='active'?600:400};white-space:nowrap">${daysLabel(l.expiry)}</td>
+        <td style="padding:11px 14px"><span style="display:inline-flex;padding:2px 7px;border-radius:2px;border:1px solid ${meta.br};font-size:10px;font-weight:500;background:${meta.bg};color:${meta.c}">${meta.label}</span></td>
+        <td style="padding:11px 14px"><button class="linkbtn" data-act="lic-modal" data-val="${l.id}" data-stop="1">Edit</button></td>
+      </tr>`}).join('')}</tbody></table>`
+}
+
+function pageCompliance() {
+  const f = S.compliance.filter
+  const counts = { total: LICENCES.length, active:0, due_soon:0, expiring:0, expired:0 }
+  LICENCES.forEach(l => counts[licenceStatus(l.expiry)]++)
+  const list = LICENCES.filter(l => {
+    const st = licenceStatus(l.expiry)
+    if (f === 'all') return true
+    if (f === 'active') return st === 'active' || st === 'due_soon'
+    if (f === 'expiring') return st === 'expiring' || st === 'due_soon'
+    if (f === 'expired') return st === 'expired'
+    return true
+  })
+  const sel = S.compliance.selected ? byId(LICENCES, S.compliance.selected) : null
+
+  const chips = [
+    {key:'all',      label:`All (${counts.total})`,                        c:'var(--n700)',bg:'var(--n100)',br:'var(--n200)'},
+    {key:'active',   label:`Active (${counts.active+counts.due_soon})`,    c:'var(--sgt)', bg:'var(--sgb)', br:'var(--sgbr)'},
+    {key:'expiring', label:`Expiring (${counts.expiring+counts.due_soon})`,c:'var(--sat)', bg:'var(--sab)', br:'var(--sabr)'},
+    {key:'expired',  label:`Expired (${counts.expired})`,                  c:'var(--srt)', bg:'var(--srb)', br:'var(--srbr)'},
+  ]
+
+  const header = `<div style="padding:14px 24px 12px;border-bottom:var(--bdr);background:var(--n0);flex-shrink:0">
+    ${PageHead('Compliance','Licences, certificates & regulatory requirements',
+      `<button class="pgbtn" style="height:32px" data-act="lic-check">Check Expiry Alerts</button>${PrimaryBtn('Add Licence','lic-modal','add')}`)}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${chips.map(s=>`<button data-act="lic-filter" data-val="${s.key}" style="height:28px;padding:0 12px;border:1px solid ${f===s.key?s.br:'var(--n200)'};border-radius:4px;background:${f===s.key?s.bg:'var(--n0)'};font-size:12px;font-weight:${f===s.key?600:400};color:${f===s.key?s.c:'var(--n600)'};cursor:pointer">${s.label}</button>`).join('')}
+    </div>
+  </div>`
+
+  const panel = sel ? (() => {
+    const st = licenceStatus(sel.expiry), meta = LIC_STATUS_META[st], d = daysUntil(sel.expiry)
+    return `<div class="side-panel" style="width:320px;flex-shrink:0;border-left:var(--bdr);background:var(--n0);display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:14px 16px;border-bottom:var(--bdr);display:flex;align-items:center;gap:8px">
+        <span style="font-size:13px;font-weight:600;color:var(--n900);flex:1">Licence Detail</span>
+        <button style="width:24px;height:24px;border:none;background:none;cursor:pointer;color:var(--n400);font-size:18px;line-height:1" data-act="lic-select" data-val="">×</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px">
+        <span style="display:inline-flex;padding:2px 8px;border-radius:2px;border:1px solid ${meta.br};font-size:11px;font-weight:600;background:${meta.bg};color:${meta.c};margin-bottom:12px">${meta.label}</span>
+        <h3 style="font-family:var(--ff-d);font-size:16px;font-weight:700;color:var(--n950);margin-bottom:4px;line-height:1.3">${esc(sel.name)}</h3>
+        <div class="mono" style="font-size:11px;color:var(--n400);margin-bottom:16px">${sel.number}</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+          ${[['Authority', sel.authority + ' — ' + (AUTHORITIES.find(a=>a.code===sel.authority)?.name.slice(0,34)||'')],
+             ['Site', siteOf(sel.site)?.name||'Not site-specific'],
+             ['Issued', fmtDate(sel.issued)],
+             ['Expires', fmtDate(sel.expiry)],
+             ['Days', d<0?Math.abs(d)+' days ago':d===0?'Today':d+' days remaining']]
+            .map(([k,v])=>`<div style="display:flex;gap:8px">
+              <span style="font-size:11px;color:var(--n500);width:70px;flex-shrink:0">${k}</span>
+              <span style="font-size:12px;color:${k==='Days'&&d<30?'var(--srt)':'var(--n800)'};font-weight:${k==='Days'?600:400}">${esc(v)}</span></div>`).join('')}
+          ${sel.notes?`<div><div style="font-size:11px;color:var(--n500);margin-bottom:4px">Notes</div>
+            <div style="font-size:12px;color:var(--n700);line-height:1.6;background:var(--n50);border:var(--bdr);border-radius:4px;padding:8px 10px">${esc(sel.notes)}</div></div>`:''}
+          <div><div style="font-size:11px;color:var(--n500);margin-bottom:4px">Document</div>
+            <span style="font-size:12px;color:var(--n400)">No document uploaded (demo)</span></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" style="flex:1;height:34px;font-size:13px" data-act="lic-modal" data-val="${sel.id}">Edit</button>
+          <button class="btn btn-secondary" style="height:34px;padding:0 14px;font-size:13px;color:var(--srt)" data-act="lic-archive" data-val="${sel.id}">Archive</button>
+        </div>
+      </div>
+    </div>`
+  })() : ''
+
+  const body = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">${header}
+    <div style="flex:1;overflow:hidden;display:flex">
+      <div class="scroll-x" style="flex:1;overflow:auto">${list.length?licenceTable(list,true):'<div style="padding:64px;text-align:center;color:var(--n400);font-size:13px">No licences in this filter.</div>'}</div>
+      ${panel}
+    </div></div>${S.compliance.modal?licModal():''}`
+  return Shell('compliance','Compliance',body)
+}
+
+function licModal() {
+  const editing = S.compliance.modal !== 'add'
+  const l = editing ? byId(LICENCES, S.compliance.modal) : null
+  return `<div class="modal-bg" data-act="close-modal"><div class="modal" data-stop-bubble="1">
+    <div style="display:flex;align-items:center;margin-bottom:18px">
+      <h2 style="font-family:var(--ff-d);font-size:17px;font-weight:700;color:var(--n950);flex:1">${editing?'Edit Licence':'Add Licence'}</h2>
+      <button style="width:28px;height:28px;border:none;background:none;cursor:pointer;color:var(--n500);font-size:20px;line-height:1" data-act="close-modal">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label class="mlabel">Licence / Certificate name *</label>
+        <input id="l-name" class="minput" value="${l?esc(l.name):''}" placeholder="e.g. Operating Licence — Lagos DS-04"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label class="mlabel">Regulatory authority</label><select id="l-auth" class="minput">
+          ${AUTHORITIES.map(a=>`<option value="${a.code}"${l?.authority===a.code?' selected':''}>${a.code} — ${a.name.slice(0,26)}</option>`).join('')}</select></div>
+        <div><label class="mlabel">Licence number</label>
+          <input id="l-num" class="minput" value="${l?.number||''}" placeholder="e.g. NMDPRA/OL/2024/001"/></div>
+      </div>
+      <div><label class="mlabel">Site</label><select id="l-site" class="minput">
+        <option value="">— All sites / not site-specific —</option>
+        ${SITES.map(s=>`<option value="${s.id}"${l?.site===s.id?' selected':''}>${s.name}</option>`).join('')}</select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label class="mlabel">Issued date *</label><input id="l-issued" class="minput" type="date" value="${l?.issued||rel(0)}"/></div>
+        <div><label class="mlabel">Expiry date *</label><input id="l-expiry" class="minput" type="date" value="${l?.expiry||rel(365)}"/></div>
+      </div>
+      <div><label class="mlabel">Notes</label><textarea id="l-notes" class="minput" rows="2" style="height:auto;padding:8px 10px;resize:vertical">${l?esc(l.notes):''}</textarea></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-secondary" style="height:34px;padding:0 16px;font-size:13px" data-act="close-modal">Cancel</button>
+      <button class="btn btn-primary" style="height:34px;padding:0 18px;font-size:13px" data-act="lic-save" data-val="${editing?l.id:''}">${editing?'Save Changes':'Add Licence'}</button>
+    </div>
+  </div></div>`
+}
+
+/* ── Inspections ────────────────────────────────────────────────────────── */
+const INSP_STATUS = {
+  scheduled:  {label:'Scheduled',  bg:'var(--slb)',c:'var(--slt)',br:'var(--slbr)'},
+  due:        {label:'Due',        bg:'var(--sab)',c:'var(--sat)',br:'var(--sabr)'},
+  in_progress:{label:'In Progress',bg:'var(--sab)',c:'var(--sat)',br:'var(--sabr)'},
+  completed:  {label:'Completed',  bg:'var(--sgb)',c:'var(--sgt)',br:'var(--sgbr)'},
+  overdue:    {label:'Overdue',    bg:'var(--srb)',c:'var(--srt)',br:'var(--srbr)'},
+}
+const INSP_KIND = {
+  safety:{label:'Safety',c:'var(--srt)'}, condition:{label:'Condition',c:'var(--sat)'},
+  integrity:{label:'Integrity',c:'var(--sl)'}, regulatory:{label:'Regulatory',c:'var(--b600)'},
+  environmental:{label:'Environmental',c:'var(--sgt)'},
+}
+
+function pageInspections() {
+  const open = INSPECTIONS.filter(i => i.status !== 'completed')
+  const closed = INSPECTIONS.filter(i => i.status === 'completed')
+  const shown = S.inspections.tab === 'open' ? open : closed
+
+  const header = `<div style="padding:14px 24px 0;border-bottom:var(--bdr);background:var(--n0);flex-shrink:0">
+    ${PageHead('Inspections','Safety, condition, integrity & regulatory inspections', PrimaryBtn('New Inspection','insp-modal','create'))}
+    <div style="display:flex">
+      ${[{k:'open',label:`Open (${open.length})`},{k:'closed',label:`Completed (${closed.length})`}].map(t=>
+        `<button class="tab-btn${S.inspections.tab===t.k?' active':''}" data-act="insp-tab" data-val="${t.k}">${t.label}</button>`).join('')}
+    </div></div>`
+
+  const table = `<table style="width:100%;border-collapse:collapse">
+    <thead style="position:sticky;top:0;z-index:10"><tr>${['Title','Type','Asset','Site','Date','Inspector','Status',''].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+    <tbody>${shown.map(ins=>{
+      const sm = INSP_STATUS[ins.status], km = INSP_KIND[ins.kind]
+      return `<tr class="row-hover" style="border-bottom:var(--bdr)">
+        <td style="padding:11px 14px">
+          <div style="font-size:13px;font-weight:500;color:var(--n900);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.title)}</div>
+          ${ins.findings?`<div style="font-size:11px;color:var(--n500);margin-top:2px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ins.findings)}</div>`:''}</td>
+        <td style="padding:11px 14px;white-space:nowrap"><span style="font-size:11px;font-weight:500;color:${km.c}">${km.label}</span></td>
+        <td class="mono" style="padding:11px 14px;font-size:11px;color:var(--n700);white-space:nowrap">${assetOf(ins.asset)?.ain||'—'}</td>
+        <td style="padding:11px 14px;font-size:12px;color:var(--n700);white-space:nowrap">${siteOf(ins.site)?.name||'—'}</td>
+        <td class="mono" style="padding:11px 14px;font-size:11px;color:var(--n600);white-space:nowrap">${fmtDate(ins.date)}</td>
+        <td style="padding:11px 14px;font-size:12px;color:var(--n700);white-space:nowrap">${userOf(ins.inspector)?.full_name||'—'}</td>
+        <td style="padding:11px 14px"><span style="display:inline-flex;padding:2px 7px;border-radius:2px;border:1px solid ${sm.br};font-size:10px;font-weight:500;background:${sm.bg};color:${sm.c}">${sm.label}</span></td>
+        <td style="padding:11px 14px">${ins.status!=='completed'?`<button class="linkbtn" data-act="insp-modal" data-val="${ins.id}">Complete</button>`:''}</td>
+      </tr>`}).join('')}</tbody></table>`
+
+  const empty = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:12px;text-align:center">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="var(--n300)" stroke-width="1.4"/><path d="M8 9h8M8 13h5" stroke="var(--n300)" stroke-width="1.4" stroke-linecap="round"/><circle cx="15" cy="15" r="2" stroke="var(--n300)" stroke-width="1.4"/></svg>
+    <div style="font-size:14px;font-weight:600;color:var(--n700)">${S.inspections.tab==='open'?'No open inspections':'No completed inspections'}</div></div>`
+
+  const body = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">${header}
+    <div class="scroll-x" style="flex:1;overflow:auto">${shown.length?table:empty}</div>
+  </div>${S.inspections.modal?inspModal():''}`
+  return Shell('inspections','Inspections',body)
+}
+
+function inspModal() {
+  const creating = S.inspections.modal === 'create'
+  const ins = creating ? null : byId(INSPECTIONS, S.inspections.modal)
+  if (creating) {
+    return `<div class="modal-bg" data-act="close-modal"><div class="modal" data-stop-bubble="1">
+      <div style="display:flex;align-items:center;margin-bottom:18px">
+        <h2 style="font-family:var(--ff-d);font-size:17px;font-weight:700;color:var(--n950);flex:1">New Inspection</h2>
+        <button style="width:28px;height:28px;border:none;background:none;cursor:pointer;color:var(--n500);font-size:20px;line-height:1" data-act="close-modal">×</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div><label class="mlabel">Title *</label><input id="i-title" class="minput" placeholder="e.g. Lagos DS-04 — Inlet Calibration Inspection"/></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="mlabel">Type</label><select id="i-kind" class="minput">
+            ${Object.entries(INSP_KIND).map(([k,v])=>`<option value="${k}"${k==='condition'?' selected':''}>${v.label}</option>`).join('')}</select></div>
+          <div><label class="mlabel">Scheduled date</label><input id="i-date" class="minput" type="date" value="${rel(3)}"/></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label class="mlabel">Asset</label><select id="i-asset" class="minput">
+            <option value="">No specific asset</option>${ASSETS.map(a=>`<option value="${a.id}">${a.ain}</option>`).join('')}</select></div>
+          <div><label class="mlabel">Inspector</label><select id="i-inspector" class="minput">
+            ${PEOPLE.filter(p=>p.status==='active').map(p=>`<option value="${p.id}">${p.full_name}</option>`).join('')}</select></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+        <button class="btn btn-secondary" style="height:34px;padding:0 16px;font-size:13px" data-act="close-modal">Cancel</button>
+        <button class="btn btn-primary" style="height:34px;padding:0 18px;font-size:13px" data-act="insp-save">Schedule Inspection</button>
+      </div></div></div>`
+  }
+  return `<div class="modal-bg" data-act="close-modal"><div class="modal" data-stop-bubble="1">
+    <div style="display:flex;align-items:center;margin-bottom:18px">
+      <h2 style="font-family:var(--ff-d);font-size:17px;font-weight:700;color:var(--n950);flex:1">Complete Inspection</h2>
+      <button style="width:28px;height:28px;border:none;background:none;cursor:pointer;color:var(--n500);font-size:20px;line-height:1" data-act="close-modal">×</button>
+    </div>
+    <div style="font-size:12px;color:var(--n600);margin-bottom:14px">${esc(ins.title)}</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label class="mlabel">Findings *</label>
+        <textarea id="i-findings" class="minput" rows="4" style="height:auto;padding:8px 10px;resize:vertical" placeholder="Describe what was observed, measured, or discovered…"></textarea></div>
+      <div><label class="mlabel">Additional notes</label>
+        <textarea id="i-notes" class="minput" rows="2" style="height:auto;padding:8px 10px;resize:vertical"></textarea></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-secondary" style="height:34px;padding:0 16px;font-size:13px" data-act="close-modal">Cancel</button>
+      <button class="btn btn-primary" style="height:34px;padding:0 18px;font-size:13px" data-act="insp-complete" data-val="${ins.id}">Mark Complete</button>
+    </div></div></div>`
+}
+
+/* ── Devices ────────────────────────────────────────────────────────────── */
+const DEV_STATUS = {
+  online:       {label:'Online',       dot:'var(--sg)',  c:'var(--sgt)',bg:'var(--sgb)', br:'var(--sgbr)'},
+  offline:      {label:'Offline',      dot:'var(--n400)',c:'var(--n600)',bg:'var(--n100)',br:'var(--n300)'},
+  error:        {label:'Error',        dot:'var(--sr)',  c:'var(--srt)',bg:'var(--srb)', br:'var(--srbr)'},
+  unprovisioned:{label:'Unprovisioned',dot:'var(--sa)',  c:'var(--sat)',bg:'var(--sab)', br:'var(--sabr)'},
+}
+
+function pageDevices() {
+  const f = S.devices.filter
+  const counts = { all: DEVICES.length, online:0, offline:0, error:0, unprovisioned:0 }
+  DEVICES.forEach(d => counts[d.status]++)
+  const shown = f === 'all' ? DEVICES : DEVICES.filter(d => d.status === f)
+
+  const chip = (key, color) => `<button data-act="dev-filter" data-val="${key}" style="height:28px;padding:0 12px;border:1px solid ${f===key?color:'var(--n200)'};border-radius:4px;background:${f===key?'var(--n50)':'var(--n0)'};font-size:12px;font-weight:${f===key?600:400};color:${f===key?color:'var(--n600)'};cursor:pointer;display:flex;align-items:center;gap:6px">
+    <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block"></span>${DEV_STATUS[key].label} (${counts[key]})</button>`
+
+  const header = `<div style="padding:14px 24px 12px;border-bottom:var(--bdr);background:var(--n0);flex-shrink:0">
+    ${PageHead('Devices','IoT sensors, meters, gateways &amp; telemetry endpoints', PrimaryBtn('Register Device','dev-modal','add'))}
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="pgbtn${f==='all'?' on':''}" style="height:28px" data-act="dev-filter" data-val="all">All (${counts.all})</button>
+      ${chip('online','var(--sgt)')}${chip('offline','var(--n500)')}${chip('error','var(--srt)')}${chip('unprovisioned','var(--sat)')}
+    </div></div>`
+
+  const table = `<table style="width:100%;border-collapse:collapse">
+    <thead style="position:sticky;top:0;z-index:10"><tr>${['Device','Type','Protocol','Linked Asset','Site','Firmware','Last Seen','Status',''].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+    <tbody>${shown.map(d=>{
+      const sm = DEV_STATUS[d.status]
+      return `<tr class="row-hover" style="border-bottom:var(--bdr)">
+        <td style="padding:11px 14px">
+          <div style="font-size:13px;font-weight:500;color:var(--n900)">${esc(d.name)}</div>
+          <div class="mono" style="font-size:10px;color:var(--n400)">${d.serial}</div></td>
+        <td style="padding:11px 14px;font-size:12px;color:var(--n700)">${DEVICE_KIND_LABELS[d.kind]}</td>
+        <td style="padding:11px 14px"><span class="mono" style="font-size:10px;background:var(--n100);color:var(--n700);border:1px solid var(--n200);border-radius:2px;padding:2px 6px">${PROTOCOL_LABELS[d.protocol]}</span></td>
+        <td class="mono" style="padding:11px 14px;font-size:11px;color:var(--n700);white-space:nowrap">${assetOf(d.asset)?.ain||'<span style="color:var(--n400)">—</span>'}</td>
+        <td style="padding:11px 14px;font-size:12px;color:var(--n700);white-space:nowrap">${siteOf(d.site)?.name||'—'}</td>
+        <td class="mono" style="padding:11px 14px;font-size:11px;color:var(--n500)">${d.firmware||'—'}</td>
+        <td class="mono" style="padding:11px 14px;font-size:11px;color:${d.status==='online'?'var(--sgt)':'var(--n500)'};white-space:nowrap">${fmtLastSeen(d.lastSeen)}</td>
+        <td style="padding:11px 14px"><span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:2px;border:1px solid ${sm.br};font-size:10px;font-weight:500;background:${sm.bg};color:${sm.c}">
+          <span style="width:5px;height:5px;border-radius:50%;background:${sm.dot};display:inline-block"></span>${sm.label}</span></td>
+        <td style="padding:11px 14px"><button class="linkbtn" data-act="dev-modal" data-val="${d.id}">Edit</button></td>
+      </tr>`}).join('')}</tbody></table>`
+
+  const body = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">${header}
+    <div class="scroll-x" style="flex:1;overflow:auto">${shown.length?table:'<div style="padding:64px;text-align:center;color:var(--n400);font-size:13px">No devices in this filter.</div>'}</div>
+  </div>${S.devices.modal?devModal():''}`
+  return Shell('devices','Devices',body)
+}
+
+function devModal() {
+  const editing = S.devices.modal !== 'add'
+  const d = editing ? byId(DEVICES, S.devices.modal) : null
+  return `<div class="modal-bg" data-act="close-modal"><div class="modal" data-stop-bubble="1">
+    <div style="display:flex;align-items:center;margin-bottom:18px">
+      <h2 style="font-family:var(--ff-d);font-size:17px;font-weight:700;color:var(--n950);flex:1">${editing?'Edit Device':'Register Device'}</h2>
+      <button style="width:28px;height:28px;border:none;background:none;cursor:pointer;color:var(--n500);font-size:20px;line-height:1" data-act="close-modal">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label class="mlabel">Device name *</label>
+        <input id="d-name" class="minput" value="${d?esc(d.name):''}" placeholder="e.g. Lagos DS-04 Flow Transmitter"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label class="mlabel">Type</label><select id="d-kind" class="minput">
+          ${Object.entries(DEVICE_KIND_LABELS).map(([k,v])=>`<option value="${k}"${d?.kind===k?' selected':''}>${v}</option>`).join('')}</select></div>
+        <div><label class="mlabel">Protocol</label><select id="d-proto" class="minput">
+          ${Object.entries(PROTOCOL_LABELS).map(([k,v])=>`<option value="${k}"${d?.protocol===k?' selected':''}>${v}</option>`).join('')}</select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label class="mlabel">Serial number</label><input id="d-serial" class="minput" value="${d?.serial||''}" placeholder="e.g. TRM-SN-001"/></div>
+        <div><label class="mlabel">IP address</label><input id="d-ip" class="minput" value="${d?.ip||''}" placeholder="e.g. 192.168.1.10"/></div>
+      </div>
+      <div><label class="mlabel">Firmware version</label><input id="d-fw" class="minput" value="${d?.firmware||''}" placeholder="e.g. v2.3.1"/></div>
+      <div><label class="mlabel">Linked asset</label><select id="d-asset" class="minput">
+        <option value="">— Not linked to an asset —</option>
+        ${ASSETS.map(a=>`<option value="${a.id}"${d?.asset===a.id?' selected':''}>${a.ain} — ${esc(a.name)}</option>`).join('')}</select></div>
+      <div><label class="mlabel">Site</label><select id="d-site" class="minput">
+        <option value="">— Not site-specific —</option>
+        ${SITES.map(s=>`<option value="${s.id}"${d?.site===s.id?' selected':''}>${s.name}</option>`).join('')}</select></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-secondary" style="height:34px;padding:0 16px;font-size:13px" data-act="close-modal">Cancel</button>
+      <button class="btn btn-primary" style="height:34px;padding:0 18px;font-size:13px" data-act="dev-save" data-val="${editing?d.id:''}">${editing?'Save Changes':'Register Device'}</button>
+    </div></div></div>`
+}
+</script>
+<script>
+/* ── Integrations ───────────────────────────────────────────────────────── */
+const INTEGRATION_DEFS = [
+  {
+    kind:'sap', name:'SAP S/4HANA', category:'ERP',
+    logo:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="6" fill="#0070F2"/><text x="16" y="21" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="sans-serif">SAP</text></svg>',
+    desc:'Sync asset master data from SAP Plant Maintenance. Push work orders and equipment status back to SAP PM.',
+    dataFlows:[{dir:'←',label:'Asset master data (Equipment Master)',from:'SAP PM'},
+               {dir:'→',label:'Work order status updates',from:'AssetCore'},
+               {dir:'←',label:'Material catalogue / spare parts',from:'SAP MM'}],
+    fields:[{key:'system_url',label:'System URL',placeholder:'https://s4hana.company.com'},
+            {key:'client',label:'Client number',placeholder:'100'},
+            {key:'username',label:'RFC username',placeholder:'ASSETCORE_RFC'}],
+    secretNote:'RFC password is stored in this database and never displayed after entry.',
+    syncLabel:'Sync asset master',
+  },
+  {
+    kind:'termii', name:'Termii SMS', category:'Notifications',
+    logo:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="6" fill="#6C47FF"/><path d="M8 10h16M8 16h10M8 22l4-4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    desc:'Send SMS alerts for critical work orders, overdue inspections, and compliance expiry to field technicians in Nigeria.',
+    dataFlows:[{dir:'→',label:'Critical WO assignments & escalations',from:'AssetCore'},
+               {dir:'→',label:'Compliance expiry warnings',from:'AssetCore'},
+               {dir:'→',label:'PM due reminders',from:'AssetCore'}],
+    fields:[{key:'sender_id',label:'Sender ID',placeholder:'ASSETCORE'}],
+    secretNote:'API key is stored in this database and never displayed after entry.',
+    syncLabel:'Send test SMS', hasToggle:true,
+  },
+  {
+    kind:'scada', name:'SCADA / Historian', category:'Telemetry',
+    logo:'<svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="6" fill="var(--n700)"/><path d="M6 22l5-7 5 3 5-8 5 4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    desc:'Connect to your SCADA historian (OSIsoft PI, Wonderware, or custom OPC-UA endpoint) to stream process data into asset telemetry.',
+    comingSoon:true,
+  },
+]
+
+function integStatus(row) {
+  if (!row) return '<span style="font-size:11px;color:var(--n400)">Not configured</span>'
+  if (!row.enabled) return '<span style="font-size:11px;color:var(--n500)">Disabled</span>'
+  if (row.last_synced_at) return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--sgt)">
+    <span style="width:6px;height:6px;border-radius:50%;background:var(--sg)"></span>
+    Last synced ${new Date(row.last_synced_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>`
+  return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--sgt)"><span style="width:6px;height:6px;border-radius:50%;background:var(--sg)"></span>Configured</span>`
+}
+
+function pageIntegrations() {
+  const card = (def) => {
+    const row = INTEGRATION_ROWS[def.kind] || null
+    const open = S.integrations.open === def.kind
+    return `<div style="background:var(--n0);border:var(--bdr);border-radius:8px;overflow:hidden">
+      <div style="padding:18px 20px;display:flex;align-items:flex-start;gap:14px">
+        <div style="flex-shrink:0">${def.logo}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:600;color:var(--n900)">${def.name}</span>
+            <span style="font-size:10px;font-weight:500;color:var(--n500);background:var(--n100);border:1px solid var(--n200);border-radius:2px;padding:1px 6px">${def.category}</span>
+            ${def.comingSoon?'<span style="font-size:10px;font-weight:500;color:var(--b600);background:var(--b50);border:1px solid var(--b100);border-radius:2px;padding:1px 6px">Coming soon</span>':''}
+          </div>
+          <p style="font-size:12px;color:var(--n600);line-height:1.6;margin-bottom:8px">${def.desc}</p>
+          ${integStatus(row)}
+        </div>
+        ${!def.comingSoon?`<button class="pgbtn" data-act="integ-toggle" data-val="${def.kind}" style="flex-shrink:0">${open?'Close':row?'Edit':'Configure'}</button>`:''}
+      </div>
+      ${def.dataFlows?`<div style="padding:0 20px 16px;display:flex;gap:8px;flex-wrap:wrap">
+        ${def.dataFlows.map(fl=>`<div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:4px;background:var(--n50);border:var(--bdr);font-size:11px;color:var(--n700)">
+          <span class="mono" style="font-weight:700;color:${fl.dir==='←'?'var(--b600)':'var(--sgt)'}">${fl.dir}</span>${fl.label}
+          <span style="color:var(--n400)">from ${fl.from}</span></div>`).join('')}
+      </div>`:''}
+      ${open?`<div style="border-top:var(--bdr);padding:18px 20px;background:var(--n50)">
+        ${def.hasToggle?`<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <div style="width:36px;height:20px;border-radius:10px;background:${row?.enabled?'var(--b500)':'var(--n300)'};position:relative;flex-shrink:0">
+            <div style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:${row?.enabled?'18px':'2px'}"></div></div>
+          <span style="font-size:13px;font-weight:500;color:var(--n800)">${row?.enabled?'Enabled':'Disabled'}</span>
+          <span style="font-size:11px;color:var(--n500)">— SMS notifications will ${row?.enabled?'be sent':'not be sent'}</span>
+        </div>`:''}
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+          ${(def.fields||[]).map(fl=>`<label style="font-size:12px;font-weight:500;color:var(--n800);display:flex;flex-direction:column;gap:4px">${fl.label}
+            <input class="minput" style="max-width:360px" value="${row?.config?.[fl.key]||''}" placeholder="${fl.placeholder}"/></label>`).join('')}
+        </div>
+        <div style="font-size:11px;color:var(--n500);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="var(--n400)" stroke-width="1.2"/><path d="M7 6v4M7 4.5v.5" stroke="var(--n400)" stroke-width="1.2" stroke-linecap="round"/></svg>
+          ${def.secretNote}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" style="height:34px;padding:0 16px;font-size:13px" data-act="integ-save">Save Configuration</button>
+          <button class="btn btn-secondary" style="height:34px;padding:0 14px;font-size:13px;opacity:.5;cursor:not-allowed">${def.syncLabel}</button>
+          <span style="font-size:11px;color:var(--n500)">Commissioned per engagement — contact AssetCore support</span>
+        </div>
+      </div>`:''}
+    </div>`
+  }
+
+  const body = `<div style="flex:1;overflow-y:auto"><div style="padding:20px 24px;max-width:860px">
+    <div style="margin-bottom:20px">
+      <h1 class="h1">Integrations</h1>
+      <p class="sub" style="margin-top:2px">Connect AssetCore to your ERP, SMS, and SCADA systems. Secrets are stored in this database and never displayed after entry.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">${INTEGRATION_DEFS.map(card).join('')}</div>
+    <div style="margin-top:24px;padding:14px 16px;background:var(--n50);border:var(--bdr);border-radius:6px">
+      <div style="font-size:12px;font-weight:600;color:var(--n700);margin-bottom:4px">Connector wiring</div>
+      <div style="font-size:11px;color:var(--n500);line-height:1.7">SAP sync, Termii SMS, and telemetry ingest are commissioned per client engagement — contact AssetCore support to enable them for this instance.</div>
+    </div>
+  </div></div>`
+  return Shell('integrations','Integrations',body)
+}
+
+/* ── Reports ────────────────────────────────────────────────────────────── */
+const REPORT_KIND_META = {
+  asset_register:      {icon:'A',bg:'var(--sgb)',c:'var(--sgt)',br:'var(--sgbr)'},
+  wo_summary:          {icon:'W',bg:'var(--sab)',c:'var(--sat)',br:'var(--sabr)'},
+  compliance_register: {icon:'C',bg:'var(--slb)',c:'var(--slt)',br:'var(--slbr)'},
+  pm_history:          {icon:'P',bg:'var(--n100)',c:'var(--n700)',br:'var(--n300)'},
+}
+const REPORT_STATUS = {
+  pending:   {label:'Pending',   bg:'var(--n100)',c:'var(--n600)',br:'var(--n300)'},
+  generating:{label:'Generating',bg:'var(--sab)', c:'var(--sat)', br:'var(--sabr)'},
+  ready:     {label:'Ready',     bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)'},
+  failed:    {label:'Failed',    bg:'var(--srb)', c:'var(--srt)', br:'var(--srbr)'},
+}
+
+function pageReports() {
+  const header = `<div style="padding:14px 24px 0;border-bottom:var(--bdr);background:var(--n0);flex-shrink:0">
+    ${PageHead('Reports','Generate and download operational reports',
+      `<button class="btn btn-primary" style="height:32px;padding:0 14px;font-size:13px" data-act="rep-tab" data-val="generate"><span style="display:flex;color:#fff">${ICONS.plus}</span>Generate Report</button>`)}
+    <div style="display:flex">
+      ${[{k:'library',label:'Report Library'},{k:'generate',label:'Generate Report'}].map(t=>
+        `<button class="tab-btn${S.reports.tab===t.k?' active':''}" data-act="rep-tab" data-val="${t.k}">${t.label}</button>`).join('')}
+    </div></div>`
+
+  const library = `<div style="padding:20px 24px" class="scroll-x">
+    <table style="width:100%;border-collapse:collapse;background:var(--n0);border:var(--bdr);border-radius:6px;overflow:hidden">
+      <thead><tr>${['Report Name','Type','Format','Requested','By','Size','Status',''].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+      <tbody>${REPORTS.map(r=>{
+        const km = REPORT_KIND_META[r.kind], sm = REPORT_STATUS[r.status]
+        return `<tr class="row-hover" style="border-bottom:var(--bdr)">
+          <td style="padding:11px 14px"><div style="font-size:13px;font-weight:500;color:var(--n900)">${esc(r.title)}</div></td>
+          <td style="padding:11px 14px"><span style="display:inline-flex;padding:2px 7px;border-radius:2px;border:1px solid ${km.br};font-size:10px;font-weight:500;background:${km.bg};color:${km.c}">${REPORT_KINDS[r.kind].label}</span></td>
+          <td style="padding:11px 14px"><span class="mono" style="background:var(--n100);color:var(--n700);border:1px solid var(--n200);border-radius:2px;font-size:10px;font-weight:600;padding:2px 6px;text-transform:uppercase">${r.format}</span></td>
+          <td class="mono" style="padding:11px 14px;font-size:11px;color:var(--n500);white-space:nowrap">${fmtDateTime(r.created)}</td>
+          <td style="padding:11px 14px;font-size:12px;color:var(--n700);white-space:nowrap">${r.by}</td>
+          <td class="mono" style="padding:11px 14px;font-size:11px;color:var(--n500);white-space:nowrap">${fmtSize(r.size)}</td>
+          <td style="padding:11px 14px"><span style="display:inline-flex;align-items:center;gap:5px;padding:2px 7px;border-radius:2px;border:1px solid ${sm.br};font-size:10px;font-weight:500;background:${sm.bg};color:${sm.c}">
+            ${r.status==='generating'?`<svg width="8" height="8" viewBox="0 0 14 14" fill="none" style="animation:spin 1s linear infinite"><circle cx="7" cy="7" r="5" stroke="${sm.c}" stroke-width="1.8" stroke-dasharray="14 8"/></svg>`:''}${sm.label}</span></td>
+          <td style="padding:11px 14px">${r.status==='ready'?'<button class="linkbtn">Download</button>':'<span style="font-size:11px;color:var(--n400)">Generating…</span>'}</td>
+        </tr>`}).join('')}</tbody></table>
+  </div>`
+
+  const generate = `<div style="padding:24px;max-width:800px">
+    <div style="font-size:13px;font-weight:600;color:var(--n700);margin-bottom:12px">Select Report Template</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:24px">
+      ${Object.entries(REPORT_KINDS).map(([k,t])=>{
+        const m = REPORT_KIND_META[k], active = S.reports.kind === k
+        return `<div data-act="rep-kind" data-val="${k}" style="border:1px solid ${active?'var(--b400)':'var(--n200)'};border-radius:6px;padding:14px 16px;cursor:pointer;background:${active?'var(--b50)':'var(--n0)'}">
+          <div class="mono" style="width:32px;height:32px;border-radius:6px;background:${active?'var(--b100)':'var(--n100)'};border:1px solid ${active?'var(--b200)':'var(--n200)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${active?'var(--b700)':'var(--n600)'};margin-bottom:10px">${m.icon}</div>
+          <div style="font-size:13px;font-weight:600;color:${active?'var(--b800)':'var(--n900)'};margin-bottom:3px">${t.label}</div>
+          <div style="font-size:11px;color:var(--n500);line-height:1.5">${t.desc}</div>
+        </div>`}).join('')}
+    </div>
+    <div style="background:var(--n0);border:var(--bdr);border-radius:6px;padding:18px 20px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:600;color:var(--n700);margin-bottom:14px">Parameters</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <label style="font-size:12px;font-weight:500;color:var(--n800);display:flex;flex-direction:column;gap:4px">Date range
+          <select class="minput" style="height:34px">
+            <option value="last_7">Last 7 days</option><option value="last_30" selected>Last 30 days</option>
+            <option value="last_90">Last quarter</option><option value="ytd">Year to date</option></select></label>
+        <label style="font-size:12px;font-weight:500;color:var(--n800);display:flex;flex-direction:column;gap:4px">Output format
+          <select class="minput" style="height:34px"><option value="xlsx">Excel (XLSX)</option><option value="csv">CSV</option></select></label>
+      </div>
+    </div>
+    ${!S.reports.kind?'<div style="font-size:12px;color:var(--n400);margin-bottom:12px">Select a template above to generate a report.</div>':''}
+    <button class="btn btn-primary" style="height:40px;padding:0 24px;font-size:14px;${!S.reports.kind?'opacity:.5;cursor:not-allowed':''}" data-act="rep-generate">Generate Report</button>
+  </div>`
+
+  const body = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">${header}
+    <div style="flex:1;overflow-y:auto">${S.reports.tab==='library'?library:generate}</div></div>`
+  return Shell('reports','Reports',body)
+}
+
+/* ── Notifications ──────────────────────────────────────────────────────── */
+const NOTIF_KIND = {
+  wo_transition:{label:'Work Order',dot:'var(--sl)',bg:'var(--slb)',c:'var(--slt)'},
+  wo_comment:{label:'Work Order',dot:'var(--sl)',bg:'var(--slb)',c:'var(--slt)'},
+  wo_assigned:{label:'Work Order',dot:'var(--sl)',bg:'var(--slb)',c:'var(--slt)'},
+  pm_due:{label:'Maintenance',dot:'var(--sa)',bg:'var(--sab)',c:'var(--sat)'},
+  pm_overdue:{label:'Maintenance',dot:'var(--sr)',bg:'var(--srb)',c:'var(--srt)'},
+  system:{label:'System',dot:'var(--n400)',bg:'var(--n100)',c:'var(--n700)'},
+}
+const PREF_KINDS = [
+  {key:'wo_transition',label:'Work order transitions',desc:'Status changes on work orders',in_app:true,email:true},
+  {key:'wo_comment',label:'Work order comments',desc:'New comments on work orders',in_app:true,email:false},
+  {key:'wo_assigned',label:'Work order assignments',desc:'When a WO is assigned to you',in_app:true,email:true},
+  {key:'pm_due',label:'PM due reminders',desc:'Upcoming PM tasks (7-day warning)',in_app:true,email:false},
+  {key:'pm_overdue',label:'PM overdue alerts',desc:'Tasks that missed their due date',in_app:true,email:true},
+  {key:'system',label:'System updates',desc:'Platform announcements',in_app:true,email:false},
+]
+function toggleEl(on, act, val) {
+  return `<div data-act="${act}" data-val="${val}" style="width:36px;height:20px;border-radius:10px;background:${on?'var(--b500)':'var(--n200)'};position:relative;cursor:pointer;flex-shrink:0">
+    <div style="width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:3px;left:${on?'19px':'3px'}"></div></div>`
+}
+function groupNotifs() {
+  const t = today().getTime(), y = t - DAY, wk = t - 7*DAY
+  const buckets = { Today:[], Yesterday:[], 'This Week':[], Earlier:[] }
+  for (const n of NOTIFICATIONS) {
+    const d = new Date(n.at); d.setHours(0,0,0,0)
+    const ts = d.getTime()
+    if (ts >= t) buckets['Today'].push(n)
+    else if (ts >= y) buckets['Yesterday'].push(n)
+    else if (ts >= wk) buckets['This Week'].push(n)
+    else buckets['Earlier'].push(n)
+  }
+  return Object.entries(buckets).filter(([,v])=>v.length)
+}
+
+function pageNotifications() {
+  const groups = groupNotifs()
+  const sel = byId(NOTIFICATIONS, S.notifications.selected)
+  const u = unreadCount()
+
+  const list = `<div style="width:340px;flex-shrink:0;border-right:var(--bdr);background:var(--n0);display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:var(--bdr);display:flex;align-items:center;gap:8px">
+      <span style="font-size:13px;font-weight:600;color:var(--n900);flex:1">Notifications
+        ${u>0?`<span style="margin-left:6px;background:var(--sr);color:#fff;border-radius:10px;font-size:10px;font-weight:600;padding:1px 6px">${u}</span>`:''}</span>
+      <button style="height:26px;padding:0 8px;border:1px solid var(--n200);border-radius:4px;background:${S.notifications.panel==='prefs'?'var(--b50)':'var(--n0)'};font-size:11px;color:${S.notifications.panel==='prefs'?'var(--b600)':'var(--n600)'};cursor:pointer" data-act="notif-panel" data-val="prefs">Preferences</button>
+      <button style="height:26px;padding:0 8px;border:1px solid var(--n200);border-radius:4px;background:var(--n0);font-size:11px;color:var(--n600);cursor:pointer" data-act="notif-all-read">Mark all read</button>
+    </div>
+    <div style="flex:1;overflow-y:auto">
+      ${groups.map(([label,items])=>`<div>
+        <div class="mono" style="padding:10px 16px 4px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--n400);background:var(--n50);border-bottom:var(--bdr)">${label}</div>
+        ${items.map(n=>{
+          const m = NOTIF_KIND[n.kind], active = sel?.id===n.id && S.notifications.panel==='detail'
+          return `<div data-act="notif-select" data-val="${n.id}" style="padding:12px 16px;border-bottom:var(--bdr);cursor:pointer;background:${active?'var(--b50)':'transparent'};display:flex;gap:10px;align-items:flex-start;border-left:3px solid ${active?'var(--b500)':'transparent'}">
+            <div style="width:6px;height:6px;border-radius:50%;background:${n.read?'transparent':m.dot};margin-top:5px;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:${n.read?400:600};color:var(--n900);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.title)}</div>
+              <div style="font-size:11px;color:var(--n500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">${esc(n.body)}</div>
+              <div class="mono" style="font-size:10px;color:var(--n400)">${fmtNotifTime(n.at)}</div>
+            </div></div>`}).join('')}
+      </div>`).join('')}
+    </div></div>`
+
+  const detail = sel ? (() => {
+    const m = NOTIF_KIND[sel.kind]
+    return `<div style="flex:1;overflow-y:auto;padding:24px 28px;background:var(--n50)">
+      <div style="max-width:600px">
+        <div style="margin-bottom:12px"><span style="display:inline-flex;padding:2px 8px;border-radius:2px;border:1px solid ${m.dot};font-size:11px;font-weight:500;background:${m.bg};color:${m.c}">${m.label}</span></div>
+        <h2 style="font-family:var(--ff-d);font-size:22px;font-weight:700;color:var(--n950);letter-spacing:-.3px;margin-bottom:6px">${esc(sel.title)}</h2>
+        <div class="mono" style="font-size:11px;color:var(--n400);margin-bottom:20px">${fmtNotifTime(sel.at)}</div>
+        <div style="background:var(--n0);border:var(--bdr);border-radius:6px;padding:16px 18px;margin-bottom:16px">
+          <p style="font-size:14px;color:var(--n700);line-height:1.7">${esc(sel.body)}</p></div>
+        <div style="background:var(--n0);border:var(--bdr);border-radius:6px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="var(--n400)" stroke-width="1.2"/><path d="M8 5.5V8l2 1.5" stroke="var(--n400)" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <span style="font-size:12px;color:var(--n600)">${sel.entity.replace('_',' ')} event</span>
+          <span style="margin-left:auto;font-size:11px;color:${sel.read?'var(--sgt)':'var(--n400)'}">${sel.read?'Read':'Unread'}</span></div>
+        <div style="display:flex;gap:8px">
+          ${!sel.read?`<button class="btn btn-primary" style="height:36px;padding:0 18px;font-size:13px" data-act="notif-read" data-val="${sel.id}">Mark as read</button>`:''}
+          <button class="btn btn-secondary" style="height:36px;padding:0 16px;font-size:13px;margin-left:auto">Dismiss</button>
+        </div>
+      </div></div>`
+  })() : '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--n400);font-size:13px;background:var(--n50)">Select a notification</div>'
+
+  const prefs = `<div style="flex:1;overflow-y:auto;padding:24px 28px;background:var(--n50)">
+    <div style="max-width:560px">
+      <h2 style="font-family:var(--ff-d);font-size:22px;font-weight:700;color:var(--n950);letter-spacing:-.3px;margin-bottom:4px">Notification Preferences</h2>
+      <p style="font-size:13px;color:var(--n500);margin-bottom:20px">Choose which events generate notifications for your account.</p>
+      <div style="background:var(--n0);border:var(--bdr);border-radius:6px;overflow:hidden;margin-bottom:16px">
+        <div style="padding:10px 16px;border-bottom:var(--bdr);display:grid;grid-template-columns:1fr 72px 56px;gap:8px">
+          <span class="mono" style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n500)">Event</span>
+          <span class="mono" style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n500);text-align:center">In-app</span>
+          <span class="mono" style="font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n500);text-align:center">Email</span>
+        </div>
+        ${PREF_KINDS.map((p,i)=>`<div style="padding:14px 16px;${i<PREF_KINDS.length-1?'border-bottom:var(--bdr);':''}display:grid;grid-template-columns:1fr 72px 56px;gap:8px;align-items:center">
+          <div><div style="font-size:13px;font-weight:500;color:var(--n900)">${p.label}</div>
+            <div style="font-size:12px;color:var(--n500);margin-top:2px">${p.desc}</div></div>
+          <div style="display:flex;justify-content:center">${toggleEl(p.in_app,'pref-toggle',p.key+':in_app')}</div>
+          <div style="display:flex;justify-content:center">${toggleEl(p.email,'pref-toggle',p.key+':email')}</div>
+        </div>`).join('')}
+      </div>
+      <p style="font-size:11px;color:var(--n400)">Changes are saved automatically.</p>
+    </div></div>`
+
+  const body = `<div style="flex:1;overflow:hidden;display:flex">${list}${S.notifications.panel==='prefs'?prefs:detail}</div>`
+  return Shell('notifications','Notifications',body)
+}
+</script>
+<script>
+/* ── Settings ───────────────────────────────────────────────────────────── */
+function pageSettings() {
+  const tab = S.settings.tab
+
+  const profile = `<div style="max-width:520px">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:28px">
+      <div style="width:60px;height:60px;border-radius:50%;background:var(--b700);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;color:#fff">${ME.initials}</div>
+      <div><div style="font-size:16px;font-weight:600;color:var(--n900)">${ME.full_name}</div>
+        <div style="font-size:12px;color:var(--n500)">${ME.role}</div></div>
+    </div>
+    <div style="background:var(--n0);border:var(--bdr);border-radius:8px;padding:20px 24px;margin-bottom:20px">
+      <div style="font-size:14px;font-weight:600;color:var(--n800);margin-bottom:16px">Personal details</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <label><span class="label">Full name</span><input class="minput" value="${ME.full_name}"/></label>
+        <label><span class="label">Phone number</span><input class="minput" value="+234 803 411 8820"/></label>
+        <label><span class="label">Work email</span><input class="minput" value="a.okeke@ngml.example" disabled style="background:var(--n50)"/></label>
+      </div>
+      <button class="btn btn-primary" style="margin-top:16px;height:36px;padding:0 20px;font-size:13px" data-act="noop">Save profile</button>
+    </div>
+    <div style="background:var(--n0);border:var(--bdr);border-radius:8px;padding:20px 24px">
+      <div style="font-size:14px;font-weight:600;color:var(--n800);margin-bottom:16px">Change password</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <label><span class="label">Current password</span><input class="minput" type="password"/></label>
+        <label><span class="label">New password</span><input class="minput" type="password" placeholder="Min 8 characters"/></label>
+        <label><span class="label">Confirm new password</span><input class="minput" type="password"/></label>
+      </div>
+      <button class="btn btn-secondary" style="margin-top:16px;height:36px;padding:0 20px;font-size:13px" data-act="noop">Change password</button>
+    </div></div>`
+
+  const org = `<div style="max-width:520px">
+    <div style="background:var(--n0);border:var(--bdr);border-radius:8px;padding:20px 24px;margin-bottom:20px">
+      <div style="font-size:14px;font-weight:600;color:var(--n800);margin-bottom:16px">Organisation details</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <label><span class="label">Organisation name</span><input class="minput" value="${ORG.name}"/></label>
+        <label><span class="label">Short name / trading name</span><input class="minput" value="${ORG.short_name}"/></label>
+        <label><span class="label">Region</span><input class="minput" value="${ORG.region}"/></label>
+      </div>
+      <button class="btn btn-primary" style="margin-top:16px;height:36px;padding:0 20px;font-size:13px" data-act="noop">Save organisation</button>
+    </div>
+    <div style="background:var(--n0);border:var(--bdr);border-radius:8px;padding:20px 24px">
+      <div style="font-size:14px;font-weight:600;color:var(--n800);margin-bottom:16px">Licence</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div><div style="font-size:11px;color:var(--n500);margin-bottom:2px">Licensed to</div>
+          <div style="font-size:13px;font-weight:600;color:var(--n900)">${ORG.name}</div></div>
+        <div><div style="font-size:11px;color:var(--n500);margin-bottom:2px">Contract ref</div>
+          <div class="mono" style="font-size:13px;font-weight:600;color:var(--n900)">AC-NGML-2025-01</div></div>
+        <div><div style="font-size:11px;color:var(--n500);margin-bottom:2px">Expires</div>
+          <div style="font-size:13px;font-weight:600;color:var(--n900)">${fmtDateLong(rel(287))}</div></div>
+        <div><div style="font-size:11px;color:var(--n500);margin-bottom:2px">Seats</div>
+          <div style="font-size:13px;font-weight:600;color:var(--n900)">40</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--n500);line-height:1.6">For licence terms, renewal, or support, contact
+        <span style="color:var(--b600);font-weight:500">${SUPPORT_EMAIL}</span>.</div>
+    </div></div>`
+
+  const body = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+    <div style="padding:14px 24px 0;border-bottom:var(--bdr);background:var(--n0);flex-shrink:0">
+      <div style="margin-bottom:12px"><h1 class="h1">Settings</h1></div>
+      <div style="display:flex">
+        ${[{k:'profile',l:'Profile'},{k:'org',l:'Organisation'}].map(t=>
+          `<button class="tab-btn${tab===t.k?' active':''}" data-act="set-tab" data-val="${t.k}">${t.l}</button>`).join('')}
+      </div></div>
+    <div style="flex:1;overflow-y:auto;padding:24px">${tab==='profile'?profile:org}</div></div>`
+  return Shell('settings','Settings',body)
+}
+
+/* ── Admin ──────────────────────────────────────────────────────────────── */
+const ACTION_COLORS = {
+  'asset.create':'var(--sgt)','asset.update':'var(--sat)','asset.delete':'var(--srt)',
+  'wo.create':'var(--sgt)','wo.update':'var(--sat)','wo.transition':'var(--b600)',
+  'wo.delete':'var(--srt)','site.create':'var(--sgt)','category.create':'var(--sgt)',
+  'compliance.update':'var(--sat)','user.invite':'var(--b600)','inspection.create':'var(--sgt)',
+}
+
+function pageAdmin() {
+  const tab = S.admin.tab
+
+  const sitesTab = `<div style="flex:1;overflow-y:auto;padding:20px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px">
+      <div style="font-size:14px;font-weight:600;color:var(--n800)">Sites (${SITES.length})</div>
+      <button class="btn btn-primary" style="height:32px;padding:0 14px;font-size:13px" data-act="admin-modal" data-val="site">+ Add Site</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+      ${SITES.map(s=>`<div style="background:var(--n0);border:var(--bdr);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div><div style="font-size:13px;font-weight:600;color:var(--n900)">${s.name}</div>
+            <div class="mono" style="font-size:11px;color:var(--b600);margin-top:2px">${s.code}</div></div>
+          <div style="display:flex;gap:4px">
+            <button class="pgbtn" style="height:auto;padding:3px 8px;font-size:11px" data-act="admin-modal" data-val="site">Edit</button>
+            <button class="pgbtn" style="height:auto;padding:3px 8px;font-size:11px;color:var(--srt)" data-act="noop">Archive</button>
+          </div></div>
+        <div style="font-size:11px;color:var(--n500)">${s.region} · ${ASSETS.filter(a=>a.site===s.id).length} assets</div>
+      </div>`).join('')}
+    </div></div>`
+
+  const catsTab = `<div style="flex:1;overflow-y:auto;padding:20px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px">
+      <div style="font-size:14px;font-weight:600;color:var(--n800)">Asset Categories (${CATEGORIES.length})</div>
+      <button class="btn btn-primary" style="height:32px;padding:0 14px;font-size:13px" data-act="admin-modal" data-val="category">+ Add Category</button>
+    </div>
+    <div style="background:var(--n0);border:var(--bdr);border-radius:6px;overflow:hidden;max-width:640px">
+      ${CATEGORIES.map((c,i)=>`<div style="display:flex;align-items:center;padding:11px 14px;${i<CATEGORIES.length-1?'border-bottom:var(--bdr)':''}">
+        <span class="mono" style="font-size:11px;font-weight:600;color:var(--b600);background:var(--b50);border:1px solid var(--b200);border-radius:3px;padding:1px 7px;margin-right:12px;flex-shrink:0">${c.code}</span>
+        <span style="flex:1;font-size:13px;color:var(--n900)">${c.name}</span>
+        <div style="display:flex;gap:6px">
+          <button class="pgbtn" style="height:auto;padding:3px 8px;font-size:11px" data-act="admin-modal" data-val="category">Edit</button>
+          <button class="pgbtn" style="height:auto;padding:3px 8px;font-size:11px;color:var(--srt)" data-act="noop">Delete</button>
+        </div></div>`).join('')}
+    </div></div>`
+
+  const membersTable = `<div style="flex:1;overflow-y:auto">
+    <div style="padding:16px 24px;border-bottom:var(--bdr);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" style="height:32px;padding:0 14px;font-size:13px" data-act="admin-modal" data-val="invite">+ Invite User</button>
+      <span style="font-size:12px;color:var(--n400);margin-left:4px">Invite team members by email</span>
+    </div>
+    <div class="scroll-x" style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>${['User','Email','Role','Status',''].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+      <tbody>${PEOPLE.map(m=>{
+        const disabled = m.status==='disabled', isSelf = m.id==='u1'
+        return `<tr style="border-bottom:var(--bdr)">
+          <td style="padding:11px 14px"><div style="display:flex;align-items:center;gap:10px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--b700);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#fff;flex-shrink:0">${initialsOf(m.full_name)}</div>
+            <span style="font-size:13px;font-weight:500;color:var(--n900)">${m.full_name}${isSelf?'<span style="color:var(--n400);font-weight:400"> (you)</span>':''}</span></div></td>
+          <td style="padding:11px 14px;font-size:12px;color:var(--n600)">${m.email}</td>
+          <td style="padding:11px 14px"><select class="minput" style="height:28px;width:auto;font-size:12px">
+            ${ROLES_LIST.map(r=>`<option value="${r.key}"${m.role_key===r.key?' selected':''}>${r.label}</option>`).join('')}</select></td>
+          <td style="padding:11px 14px"><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:${disabled?'var(--n500)':'var(--sgt)'};font-weight:500">
+            <span style="width:6px;height:6px;border-radius:50%;background:${disabled?'var(--n400)':'var(--sg)'};display:inline-block"></span>${disabled?'Disabled':'Active'}</span></td>
+          <td style="padding:11px 14px">${!isSelf?`<div style="display:flex;gap:6px">
+            <button class="pgbtn" style="height:auto;padding:3px 8px;font-size:11px" data-act="noop">Reset password</button>
+            <button class="pgbtn" style="height:auto;padding:3px 8px;font-size:11px;color:${disabled?'var(--sgt)':'var(--srt)'}" data-act="noop">${disabled?'Enable':'Disable'}</button>
+          </div>`:''}</td>
+        </tr>`}).join('')}</tbody></table></div></div>`
+
+  const rolesView = `<div style="flex:1;overflow-y:auto;padding:20px 24px">
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:780px">
+      ${ROLES_LIST.map(r=>`<div style="background:var(--n0);border:var(--bdr);border-radius:6px;padding:16px 18px">
+        <div style="font-size:14px;font-weight:600;color:var(--n900);margin-bottom:4px">${r.label}</div>
+        <div style="font-size:12px;color:var(--n500);margin-bottom:10px;line-height:1.5">${r.desc}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${r.perms.map(p=>`<span style="background:var(--n50);color:var(--n700);border:1px solid var(--n200);border-radius:3px;font-size:11px;padding:2px 8px">${p}</span>`).join('')}
+        </div></div>`).join('')}
+    </div></div>`
+
+  const usersTab = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+    <div style="padding:12px 24px 0;border-bottom:var(--bdr);background:var(--n0);flex-shrink:0;display:flex">
+      ${[{k:'members',l:'Team Members'},{k:'roles',l:'Roles & Permissions'}].map(t=>
+        `<button class="tab-btn${S.admin.sub===t.k?' active':''}" data-act="admin-sub" data-val="${t.k}">${t.l}</button>`).join('')}
+    </div>
+    <div style="flex:1;overflow:hidden;display:flex">${S.admin.sub==='members'?membersTable:rolesView}</div></div>`
+
+  const auditTab = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+    <div style="padding:12px 24px;border-bottom:var(--bdr);display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <div style="font-size:13px;font-weight:500;color:var(--n600)">${AUDIT.length} total events</div>
+      <div style="flex:1"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="pgbtn" style="height:28px;opacity:.5">← Prev</button>
+        <span style="font-size:12px;color:var(--n500)">1 / 1</span>
+        <button class="pgbtn" style="height:28px;opacity:.5">Next →</button>
+      </div></div>
+    <div class="scroll-x" style="flex:1;overflow:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead style="position:sticky;top:0;z-index:10"><tr>${['Time','Actor','Action','Entity','IP'].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead>
+        <tbody>${AUDIT.map(r=>`<tr style="border-bottom:var(--bdr)">
+          <td class="mono" style="padding:9px 14px;font-size:11px;color:var(--n500);white-space:nowrap">${new Date(r.at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+          <td style="padding:9px 14px;font-size:12px;color:var(--n700);white-space:nowrap">${r.actor}</td>
+          <td style="padding:9px 14px"><span class="mono" style="font-size:11px;font-weight:600;color:${ACTION_COLORS[r.action]||'var(--n600)'};background:var(--n50);border:1px solid var(--n200);border-radius:3px;padding:1px 7px">${r.action}</span></td>
+          <td style="padding:9px 14px;font-size:12px;color:var(--n600)"><span style="color:var(--n400)">${r.entity} </span><span class="mono" style="font-size:11px">${r.eid}</span></td>
+          <td class="mono" style="padding:9px 14px;font-size:11px;color:var(--n400)">${r.ip}</td>
+        </tr>`).join('')}</tbody></table></div></div>`
+
+  const TABS = [{k:'sites',label:'Sites'},{k:'categories',label:'Asset Categories'},{k:'users',label:'Users & Roles'},{k:'audit',label:'Audit Log'}]
+  const content = tab==='sites'?sitesTab:tab==='categories'?catsTab:tab==='users'?usersTab:auditTab
+
+  const body = `<div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+    <div style="padding:14px 24px 0;border-bottom:var(--bdr);background:var(--n0);flex-shrink:0">
+      <div style="margin-bottom:12px"><h1 class="h1">Admin</h1>
+        <p class="sub">Manage your organisation settings, team, and audit trail</p></div>
+      <div style="display:flex;overflow-x:auto">
+        ${TABS.map(t=>`<button class="tab-btn${tab===t.k?' active':''}" data-act="admin-tab" data-val="${t.k}">${t.label}</button>`).join('')}
+      </div></div>
+    <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">${content}</div>
+  </div>${S.admin.modal?adminModal():''}`
+  return Shell('admin','Admin',body)
+}
+
+function adminModal() {
+  const kind = S.admin.modal
+  if (kind === 'invite') {
+    return `<div class="modal-bg" data-act="close-modal"><div class="modal" data-stop-bubble="1" style="width:400px">
+      <div style="font-size:15px;font-weight:600;color:var(--n900);margin-bottom:18px">Invite a team member</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div><label class="mlabel">Full name</label><input class="minput" placeholder="e.g. Chidi Umeh"/></div>
+        <div><label class="mlabel">Email address</label><input class="minput" type="email" placeholder="name@company.com"/></div>
+        <div><label class="mlabel">Role</label><select class="minput">
+          ${ROLES_LIST.map(r=>`<option value="${r.key}"${r.key==='field_tech'?' selected':''}>${r.label}</option>`).join('')}</select></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-secondary" style="height:34px;padding:0 16px;font-size:13px" data-act="close-modal">Cancel</button>
+        <button class="btn btn-primary" style="height:34px;padding:0 18px;font-size:13px" data-act="close-modal">Send Invite</button>
+      </div></div></div>`
+  }
+  const isSite = kind === 'site'
+  return `<div class="modal-bg" data-act="close-modal"><div class="modal" data-stop-bubble="1" style="width:400px">
+    <div style="font-size:15px;font-weight:600;color:var(--n900);margin-bottom:18px">${isSite?'Add Site':'Add Category'}</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div><label class="mlabel">${isSite?'Site Name':'Category Name'}</label>
+        <input class="minput" placeholder="${isSite?'e.g. Port Harcourt DS-11':'e.g. Metering Station'}"/></div>
+      <div><label class="mlabel">${isSite?'Site Code':'Short Code'}</label>
+        <input class="minput" placeholder="${isSite?'e.g. PH-DS11':'e.g. MTR'}"/></div>
+      ${isSite?'<div><label class="mlabel">Region (optional)</label><input class="minput" placeholder="e.g. South-South"/></div>':''}
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-secondary" style="height:34px;padding:0 16px;font-size:13px" data-act="close-modal">Cancel</button>
+      <button class="btn btn-primary" style="height:34px;padding:0 18px;font-size:13px" data-act="close-modal">Save</button>
+    </div></div></div>`
+}
+
+/* ── Sign-in screen ─────────────────────────────────────────────────────── */
+function pageAuth() {
+  return `<div style="min-height:100vh;background:var(--n100);display:flex;align-items:center;justify-content:center;padding:40px">
+    <div style="background:var(--n0);border:var(--bdr);border-radius:8px;overflow:hidden;box-shadow:var(--sh-lg);width:480px;max-width:100%">
+      <div style="background:var(--n950);padding:24px 32px;display:flex;align-items:center;gap:10px">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M14 2L25 8V20L14 26L3 20V8L14 2Z" stroke="var(--b300)" stroke-width="1.6" fill="none"/><text x="14" y="18" text-anchor="middle" font-family="'Bricolage Grotesque',sans-serif" font-size="11" font-weight="700" fill="var(--b300)">A</text></svg>
+        <span style="font-family:var(--ff-d);font-size:18px;font-weight:700;color:#fff;letter-spacing:-.3px">AssetCore</span>
+      </div>
+      <div style="padding:36px 32px">
+        <h1 style="font-family:var(--ff-d);font-size:24px;font-weight:700;letter-spacing:-.3px;color:var(--n950);margin-bottom:6px">Sign in</h1>
+        <p style="font-size:13px;color:var(--n500);margin-bottom:28px">Asset management for ${ORG.name}</p>
+        <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">
+          <div><label class="label">Work email</label><input class="input" value="a.okeke@ngml.example"/></div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+              <label class="label" style="margin:0">Password</label>
+              <span style="font-size:12px;color:var(--b600);cursor:pointer">Forgot password?</span></div>
+            <input class="input" type="password" value="demopassword"/>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;height:44px;margin-bottom:16px;font-size:14px" data-act="nav" data-val="dashboard">Sign in</button>
+        <div style="text-align:center;font-size:12px;color:var(--n400)">
+          Licensed to ${ORG.short_name} · Supported by AssetCore · <span style="color:var(--b600)">${SUPPORT_EMAIL}</span></div>
+        <div style="margin-top:20px;padding:10px 12px;background:var(--n50);border:var(--bdr);border-radius:6px;font-size:11px;color:var(--n500);line-height:1.6;text-align:center">
+          This is a static demo — no credentials are checked. Press <strong>Sign in</strong> to enter the app.</div>
+      </div>
+    </div>
+  </div>`
+}
+</script>
+<script>
+/* ── router ─────────────────────────────────────────────────────────────── */
+const PAGES = {
+  auth: pageAuth,
+  dashboard: pageDashboard,
+  assets: pageAssets,
+  'work-orders': pageWorkOrders,
+  maintenance: pageMaintenance,
+  inspections: pageInspections,
+  compliance: pageCompliance,
+  reports: pageReports,
+  devices: pageDevices,
+  notifications: pageNotifications,
+  admin: pageAdmin,
+  integrations: pageIntegrations,
+  settings: pageSettings,
+}
+
+function render() {
+  const fn = PAGES[S.route] || PAGES.dashboard
+  document.getElementById('app').innerHTML = fn()
+  document.documentElement.setAttribute('data-theme', S.dark ? 'dark' : '')
+  window.scrollTo(0,0)
+}
+
+// Render first, then try to reflect the route in the URL. Some contexts
+// (data: URLs, sandboxed frames) refuse the URL write — navigation must not
+// depend on it.
+function go(route) {
+  if (!PAGES[route]) route = 'dashboard'
+  S.route = route
+  S.sidebarOpen = false
+  render()
+  try {
+    if (location.hash !== '#/' + route) history.pushState({ route }, '', '#/' + route)
+  } catch (e) { /* URL is read-only here; in-memory route still changed */ }
+}
+
+function routeFromHash() {
+  const r = (location.hash || '').replace(/^#\/?/, '')
+  return PAGES[r] ? r : null
+}
+
+window.addEventListener('popstate', () => {
+  S.route = routeFromHash() || 'dashboard'
+  S.sidebarOpen = false
+  render()
+})
+window.addEventListener('hashchange', () => {
+  const r = routeFromHash()
+  if (r && r !== S.route) { S.route = r; S.sidebarOpen = false; render() }
+})
+
+/* ── input helpers ──────────────────────────────────────────────────────── */
+const val = (id) => (document.getElementById(id)?.value || '').trim()
+let seq = 100
+const nextId = (p) => p + (++seq)
+
+/* ── actions ────────────────────────────────────────────────────────────── */
+const ACTIONS = {
+  nav:               (v) => go(v),
+  'toggle-dark':     () => { S.dark = !S.dark; render() },
+  'toggle-sidebar':  () => { S.sidebarOpen = !S.sidebarOpen; render() },
+  'close-sidebar':   () => { S.sidebarOpen = false; render() },
+  signout:           () => go('auth'),
+  noop:              () => {},
+  'close-modal':     () => {
+    S.assets.modal = null; S.wos.modal = false; S.maint.modal = false
+    S.compliance.modal = null; S.inspections.modal = null; S.devices.modal = null
+    S.admin.modal = null; render()
+  },
+  'dash-site':       (v) => { S.dashSite = Number(v); render() },
+
+  /* assets */
+  'asset-filter':  (v) => { S.assets.filter = v; render() },
+  'asset-select':  (v) => { S.assets.selected = v || null; render() },
+  'asset-modal':   (v) => { S.assets.modal = v; render() },
+  'asset-archive': (v) => {
+    const i = ASSETS.findIndex(a => a.id === v)
+    if (i >= 0 && confirm('Archive this asset? (Demo — restored on page reload.)')) {
+      ASSETS.splice(i,1); S.assets.selected = null
+    }
+    render()
+  },
+  'asset-save': (v) => {
+    const data = { ain: val('f-ain'), name: val('f-name'), site: val('f-site'), cat: val('f-cat'),
+                   status: val('f-status'), health: Number(val('f-health')) || 0 }
+    if (!data.ain || !data.name) { alert('AIN and asset name are required.'); return }
+    if (v) Object.assign(byId(ASSETS, v), data)
+    else { data.id = nextId('a'); data.nbv = 0; ASSETS.unshift(data); S.assets.selected = data.id }
+    S.assets.modal = null; render()
+  },
+
+  /* work orders */
+  'wo-filter': (v) => { S.wos.filter = v; render() },
+  'wo-view':   (v) => { S.wos.view = v; render() },
+  'wo-select': (v) => { S.wos.selected = v || null; render() },
+  'wo-modal':  () => { go('work-orders'); S.wos.modal = true; render() },
+  'wo-save':   () => {
+    const title = val('w-title')
+    if (!title) { alert('Title is required.'); return }
+    const n = WOS.filter(w => /^WO-\d{4}-\d+$/.test(w.ref)).length
+    const wo = { id: nextId('w'), ref: 'WO-2025-' + String(43 + n - 5).padStart(4,'0'), title,
+      description: val('w-desc') || 'No description provided.', type: val('w-type'), status:'new',
+      priority: val('w-prio'), site: val('w-site') || null, asset: val('w-asset') || null,
+      assignee: val('w-assignee') || null, sla: val('w-sla') || null }
+    WOS.unshift(wo); S.wos.modal = false; S.wos.selected = wo.id; render()
+  },
+  'wo-transition': (v) => {
+    const [id, status] = v.split(':')
+    const wo = byId(WOS, id)
+    if (wo) {
+      const from = WO_STATUS_LABEL[wo.status]
+      wo.status = status
+      ;(WO_ACTIVITY[id] = WO_ACTIVITY[id] || []).push({
+        id: Date.now(), kind:'status_change',
+        body:`Status changed from ${from} to ${WO_STATUS_LABEL[status]}`,
+        actor: ME.full_name, at: new Date().toISOString() })
+    }
+    render()
+  },
+  'wo-comment': (v) => {
+    const text = (document.getElementById('wo-comment')?.value || '').trim()
+    if (!text) return
+    ;(WO_ACTIVITY[v] = WO_ACTIVITY[v] || []).push({
+      id: Date.now(), kind:'comment', body: text, actor: ME.full_name, at: new Date().toISOString() })
+    render()
+  },
+
+  /* maintenance */
+  'maint-tab':   (v) => { S.maint.tab = v; render() },
+  'pm-modal':    () => { S.maint.modal = true; render() },
+  'pm-generate': () => { alert('Task generation runs server-side in the live product. This demo already shows generated tasks.') },
+  'pm-complete': (v) => { const t = byId(PM_TASKS, v); if (t) t.status = 'completed'; render() },
+  'pm-save':     () => {
+    const title = val('p-title')
+    if (!title) { alert('Title is required.'); return }
+    const asset = val('p-asset') || null
+    const s = { id: nextId('p'), title, frequency: val('p-freq'), asset,
+                site: asset ? assetOf(asset).site : null, next_due: val('p-due'), active:true }
+    PM_SCHEDULES.unshift(s)
+    PM_TASKS.unshift({ id: nextId('t'), title, schedule: s.id, asset: s.asset, site: s.site,
+                       due: s.next_due, assignee: null, status:'pending' })
+    S.maint.modal = false; S.maint.tab = 'schedules'; render()
+  },
+
+  /* compliance */
+  'lic-filter': (v) => { S.compliance.filter = v; render() },
+  'lic-select': (v) => { S.compliance.selected = (S.compliance.selected === v || !v) ? null : v; render() },
+  'lic-modal':  (v) => { go('compliance'); S.compliance.modal = v; render() },
+  'lic-check':  () => alert('Expiry alerts sweep runs nightly on the live instance and raises in-app + SMS alerts at 90, 30 and 7 days.'),
+  'lic-archive':(v) => {
+    const i = LICENCES.findIndex(l => l.id === v)
+    if (i >= 0 && confirm('Archive this licence? (Demo — restored on page reload.)')) { LICENCES.splice(i,1); S.compliance.selected = null }
+    render()
+  },
+  'lic-save': (v) => {
+    const data = { name: val('l-name'), number: val('l-num'), authority: val('l-auth'),
+                   site: val('l-site') || null, issued: val('l-issued'), expiry: val('l-expiry'), notes: val('l-notes') }
+    if (!data.name || !data.expiry) { alert('Name and expiry date are required.'); return }
+    if (v) Object.assign(byId(LICENCES, v), data)
+    else { data.id = nextId('l'); LICENCES.unshift(data) }
+    S.compliance.modal = null; render()
+  },
+
+  /* inspections */
+  'insp-tab':   (v) => { S.inspections.tab = v; render() },
+  'insp-modal': (v) => { S.inspections.modal = v; render() },
+  'insp-save':  () => {
+    const title = val('i-title')
+    if (!title) { alert('Title is required.'); return }
+    const asset = val('i-asset') || null
+    INSPECTIONS.unshift({ id: nextId('i'), title, kind: val('i-kind'), status:'scheduled',
+      asset, site: asset ? assetOf(asset).site : null, inspector: val('i-inspector'),
+      date: val('i-date'), findings:'' })
+    S.inspections.modal = null; S.inspections.tab = 'open'; render()
+  },
+  'insp-complete': (v) => {
+    const findings = val('i-findings')
+    if (!findings) { alert('Findings are required to complete an inspection.'); return }
+    const ins = byId(INSPECTIONS, v)
+    if (ins) { ins.status = 'completed'; ins.findings = findings; ins.date = rel(0) }
+    S.inspections.modal = null; S.inspections.tab = 'closed'; render()
+  },
+
+  /* devices */
+  'dev-filter': (v) => { S.devices.filter = v; render() },
+  'dev-modal':  (v) => { S.devices.modal = v; render() },
+  'dev-save':   (v) => {
+    const data = { name: val('d-name'), kind: val('d-kind'), protocol: val('d-proto'),
+                   serial: val('d-serial'), ip: val('d-ip') || null, firmware: val('d-fw') || null,
+                   asset: val('d-asset') || null, site: val('d-site') || null }
+    if (!data.name) { alert('Device name is required.'); return }
+    if (v) Object.assign(byId(DEVICES, v), data)
+    else { data.id = nextId('d'); data.status = 'unprovisioned'; data.lastSeen = null; DEVICES.unshift(data) }
+    S.devices.modal = null; render()
+  },
+
+  /* integrations */
+  'integ-toggle': (v) => { S.integrations.open = S.integrations.open === v ? null : v; render() },
+  'integ-save':   () => alert('Saved. On a live instance the credentials are written to the client database and the secret is never displayed again.'),
+
+  /* reports */
+  'rep-tab':  (v) => { S.reports.tab = v; render() },
+  'rep-kind': (v) => { S.reports.kind = v; render() },
+  'rep-generate': () => {
+    if (!S.reports.kind) return
+    const k = S.reports.kind
+    REPORTS.unshift({ id: nextId('r'), title: REPORT_KINDS[k].label + ' — ' + fmtDateLong(rel(0)),
+      kind: k, format: 'xlsx', created: new Date().toISOString(), by: ME.full_name,
+      size: null, status: 'generating' })
+    S.reports.tab = 'library'; S.reports.kind = null; render()
+    setTimeout(() => { const r = REPORTS[0]; r.status = 'ready'; r.size = 120000 + Math.floor(seq * 977); render() }, 1600)
+  },
+
+  /* notifications */
+  'notif-select': (v) => {
+    const n = byId(NOTIFICATIONS, v); if (n) n.read = true
+    S.notifications.selected = v; S.notifications.panel = 'detail'; render()
+  },
+  'notif-panel':    (v) => { S.notifications.panel = v; render() },
+  'notif-read':     (v) => { const n = byId(NOTIFICATIONS, v); if (n) n.read = true; render() },
+  'notif-all-read': () => { NOTIFICATIONS.forEach(n => n.read = true); render() },
+  'pref-toggle':    (v) => {
+    const [key, field] = v.split(':')
+    const p = PREF_KINDS.find(x => x.key === key); if (p) p[field] = !p[field]
+    render()
+  },
+
+  /* settings + admin */
+  'set-tab':     (v) => { S.settings.tab = v; render() },
+  'admin-tab':   (v) => { S.admin.tab = v; render() },
+  'admin-sub':   (v) => { S.admin.sub = v; render() },
+  'admin-modal': (v) => { S.admin.modal = v; render() },
+}
+
+/* ── delegated event handling ───────────────────────────────────────────── */
+document.addEventListener('click', (e) => {
+  const node = e.target.closest('[data-act]')
+  if (!node) return
+  // Clicks inside a modal box must not fall through to the backdrop's
+  // close action: if the matched [data-act] wraps the modal box, the click
+  // started inside the box and the outer action does not apply.
+  const box = e.target.closest('[data-stop-bubble]')
+  if (box && node !== box && node.contains(box)) return
+  const act = node.dataset.act
+  const fn = ACTIONS[act]
+  if (!fn) return
+  e.preventDefault()
+  e.stopPropagation()
+  fn(node.dataset.val ?? '')
+})
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') ACTIONS['close-modal']()
+  if (e.key === 'Enter' && e.target.id === 'wo-comment' && S.wos.selected) {
+    ACTIONS['wo-comment'](S.wos.selected)
+  }
+})
+
+/* ── boot ───────────────────────────────────────────────────────────────── */
+;(function boot() {
+  S.route = routeFromHash() || 'dashboard'
+  render()
+  try { history.replaceState({ route: S.route }, '', '#/' + S.route) } catch (e) { /* read-only URL */ }
+})()
+</script>
+</body>
+</html>
