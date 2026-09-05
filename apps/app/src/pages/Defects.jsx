@@ -10,6 +10,7 @@ import {
 import { listAssets } from '../lib/db/assets'
 import { listSites } from '../lib/db/sites'
 import { listInspections } from '../lib/db/inspections'
+import { listApprovals, submitApproval, APPROVAL_STATUS_META } from '../lib/db/approvals'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 
@@ -218,6 +219,87 @@ function RaiseModal({ defect, onClose, onRaised }) {
   )
 }
 
+/**
+ * Accepting a defect rather than fixing it is a decision somebody should own.
+ * Deferral is the one defect action routed through the approval matrix; the
+ * rest are ordinary status changes.
+ */
+function DeferralSection({ defect, canSubmit, canRead }) {
+  const [rows, setRows] = useState([])
+  const [busy, setBusy] = useState(false)
+  const [notes, setNotes] = useState('')
+  const [asking, setAsking] = useState(false)
+  const [err, setErr] = useState('')
+
+  const load = useCallback(async () => {
+    if (!canRead) return
+    try { setRows(await listApprovals({ entity_type: 'defect', entity_id: defect.id })) } catch { /* section stays empty */ }
+  }, [defect.id, canRead])
+  useEffect(() => { load() }, [load])
+
+  if (!canRead) return null
+
+  const submit = async () => {
+    setErr('')
+    setBusy(true)
+    try {
+      await submitApproval({
+        entity_type: 'defect', entity_id: defect.id, kind: 'defect_deferral',
+        title: `${defect.ref} — deferral`, notes: notes.trim() || null,
+      })
+      setAsking(false)
+      setNotes('')
+      load()
+    } catch (ex) {
+      setErr(ex.message === 'no_matching_rule'
+        ? 'No approval rule covers defect deferrals yet. An owner adds one on Approvals → Matrix.'
+        : ex.message === 'already_pending' ? 'A deferral request is already waiting on this defect.'
+        : ex.message || 'Could not send the request.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, padding: '12px 14px' }}>
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)', marginBottom: 8 }}>Deferral</div>
+      {rows.length > 0 ? (
+        rows.map((a) => {
+          const meta = APPROVAL_STATUS_META[a.status] || APPROVAL_STATUS_META.pending
+          return (
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 4 }}>
+              <span style={{ flex: 1, color: 'var(--n700)' }}>
+                {a.status === 'pending' ? `With ${a.current_role_label || '—'}` : 'Decided'}
+              </span>
+              <span className={`badge ${meta.cls}`}>{meta.label}</span>
+            </div>
+          )
+        })
+      ) : asking ? (
+        <>
+          <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
+            placeholder="Why this defect should be accepted rather than fixed…"
+            style={{ width: '100%', resize: 'vertical', paddingTop: 8, fontSize: 12 }} />
+          {err && <p style={{ fontSize: 11.5, color: 'var(--srt)', marginTop: 6, lineHeight: 1.5 }}>{err}</p>}
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <button onClick={submit} disabled={busy} className="btn btn-primary" style={{ height: 30, padding: '0 12px', fontSize: 12 }}>{busy ? 'Sending…' : 'Send'}</button>
+            <button onClick={() => { setAsking(false); setErr('') }} className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12 }}>Cancel</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.55, marginBottom: canSubmit ? 8 : 0 }}>
+            Not deferred. Accepting a defect instead of fixing it goes through the approval matrix.
+          </p>
+          {canSubmit && (
+            <button onClick={() => setAsking(true)} className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12 }}>Request deferral</button>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Defects({ dark, toggleDark }) {
   const nav = useNavigate()
@@ -225,6 +307,8 @@ export default function Defects({ dark, toggleDark }) {
   const canCreate = can(roleKey, 'defect:create')
   const canEdit = can(roleKey, 'defect:update')
   const canRaise = can(roleKey, 'wo:create')
+  const canSubmitApproval = can(roleKey, 'approval:create')
+  const canReadApproval = can(roleKey, 'approval:read')
 
   const [defects, setDefects] = useState([])
   const [stats, setStats] = useState(null)
@@ -473,6 +557,10 @@ export default function Defects({ dark, toggleDark }) {
 
                       {canRaise && !detail.work_order && detail.status !== 'resolved' && detail.status !== 'closed' && (
                         <button onClick={() => setRaising(detail)} className="btn btn-primary" style={{ height: 36, fontSize: 13 }}>Raise a work order</button>
+                      )}
+
+                      {detail.status !== 'resolved' && detail.status !== 'closed' && (
+                        <DeferralSection defect={detail} canSubmit={canSubmitApproval} canRead={canReadApproval} />
                       )}
 
                       {canEdit && (

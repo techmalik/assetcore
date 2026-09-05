@@ -11,6 +11,7 @@ import {
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
 import { listSpareParts } from '../lib/db/spareParts'
+import { listApprovals, submitApproval, APPROVAL_KINDS, KIND_LABEL, APPROVAL_STATUS_META } from '../lib/db/approvals'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { api } from '../lib/apiClient'
@@ -398,7 +399,138 @@ function CloseDialog({ wo, onClose, onClosed }) {
   )
 }
 
-function WODetail({ woId, onClose, onUpdate, canTransition, canEdit }) {
+/**
+ * Send a job for approval.
+ *
+ * Requests are raised from the thing being approved rather than from the
+ * approvals page: closure sign-off and spend authorisation both belong to a
+ * job, and asking someone to re-key its reference somewhere else is how the
+ * two drift apart. The matrix does the routing — this only has to say what is
+ * being approved and for how much.
+ */
+function SubmitApprovalModal({ wo, onClose, onSubmitted }) {
+  const [kind, setKind] = useState('wo_closure')
+  const [amountNaira, setAmountNaira] = useState(
+    wo.cost_cents != null ? String(Number(wo.cost_cents) / 100)
+      : wo.estimated_cost_cents != null ? String(Number(wo.estimated_cost_cents) / 100) : ''
+  )
+  const [notes, setNotes] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function submit(e) {
+    e.preventDefault()
+    setErr('')
+    setBusy(true)
+    try {
+      await submitApproval({
+        entity_type: 'work_order',
+        entity_id: wo.id,
+        kind,
+        title: `${wo.ref} — ${KIND_LABEL[kind]}`,
+        amount_cents: amountNaira === '' ? null : Math.round(Number(amountNaira) * 100),
+        notes: notes.trim() || null,
+      })
+      onSubmitted()
+    } catch (ex) {
+      const map = {
+        no_matching_rule: 'No approval band covers that amount for this kind of request. An owner sets the bands on Approvals → Matrix.',
+        already_pending: 'There is already a request of this kind waiting on this job.',
+      }
+      setErr(map[ex.message] || ex.message || 'Could not submit the request.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
+      <form onSubmit={submit} style={{ position: 'relative', width: 460, background: 'var(--n0)', borderRadius: 10, boxShadow: 'var(--sh-lg)', zIndex: 1, padding: 24 }}>
+        <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)' }}>Send for approval</h3>
+        <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16 }}>{wo.ref} — {wo.title}</p>
+
+        <label className="label" style={{ display: 'block', marginBottom: 5 }}>What is being approved</label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+          {APPROVAL_KINDS.work_order.map(([v, l, hint]) => (
+            <button key={v} type="button" onClick={() => setKind(v)}
+              style={{ textAlign: 'left', padding: '9px 11px', borderRadius: 5, cursor: 'pointer', fontFamily: 'inherit',
+                border: `1px solid ${kind === v ? 'var(--b400)' : 'var(--n200)'}`,
+                background: kind === v ? 'var(--slb)' : 'var(--n0)' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: kind === v ? 'var(--slt)' : 'var(--n800)' }}>{l}</div>
+              <div style={{ fontSize: 11, color: 'var(--n500)' }}>{hint}</div>
+            </button>
+          ))}
+        </div>
+
+        <label className="label" style={{ display: 'block', marginBottom: 5 }}>Amount (₦)</label>
+        <input className="input" type="number" min={0} step="0.01" value={amountNaira} onChange={(e) => setAmountNaira(e.target.value)}
+          style={{ width: '100%', fontFamily: 'var(--ff-m)' }} />
+        <p style={{ fontSize: 11.5, color: 'var(--n500)', margin: '5px 0 14px', lineHeight: 1.55 }}>
+          The amount decides which band the request falls into, and therefore who signs it. Prefilled from the
+          job&apos;s actual cost where there is one, its estimate otherwise.
+        </p>
+
+        <label className="label" style={{ display: 'block', marginBottom: 5 }}>Notes for the approver</label>
+        <textarea className="input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
+
+        {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12, lineHeight: 1.5 }}>{err}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
+          <button type="submit" disabled={busy} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{busy ? 'Sending…' : 'Send'}</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+/** Approval requests raised against this job, and the button to raise one. */
+function ApprovalsSection({ wo, canSubmit, canRead }) {
+  const [rows, setRows] = useState([])
+  const [modal, setModal] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!canRead) return
+    try { setRows(await listApprovals({ entity_type: 'work_order', entity_id: wo.id })) } catch { /* section stays empty */ }
+  }, [wo.id, canRead])
+  useEffect(() => { load() }, [load])
+
+  if (!canRead) return null
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--n500)', textTransform: 'uppercase', letterSpacing: '.05em', fontFamily: 'var(--ff-m)' }}>Approvals</span>
+        <div style={{ flex: 1 }} />
+        {canSubmit && (
+          <button onClick={() => setModal(true)} className="btn btn-secondary" style={{ height: 26, padding: '0 10px', fontSize: 11.5 }}>Send for approval</button>
+        )}
+      </div>
+      {rows.length === 0 ? (
+        <p style={{ fontSize: 12, color: 'var(--n400)' }}>Nothing sent for approval on this job.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {rows.map((a) => {
+            const meta = APPROVAL_STATUS_META[a.status] || APPROVAL_STATUS_META.pending
+            return (
+              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <span style={{ flex: 1, color: 'var(--n800)' }}>{KIND_LABEL[a.kind] || a.kind}</span>
+                <span style={{ fontSize: 11, color: 'var(--n500)', whiteSpace: 'nowrap' }}>
+                  {a.status === 'pending' ? `with ${a.current_role_label || '—'}, step ${a.level}/${a.max_levels}` : ''}
+                </span>
+                <span className={`badge ${meta.cls}`}>{meta.label}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {modal && (
+        <SubmitApprovalModal wo={wo} onClose={() => setModal(false)} onSubmitted={() => { setModal(false); load() }} />
+      )}
+    </div>
+  )
+}
+
+function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canSubmitApproval, canReadApproval }) {
   const [wo, setWo] = useState(null)
   const [closing, setClosing] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -540,6 +672,24 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit }) {
 
         <PartsSection wo={wo} canEdit={canEdit} onChanged={async () => { await reload(); onUpdate() }} />
 
+        {wo.defects?.length > 0 && (
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--n500)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8, fontFamily: 'var(--ff-m)' }}>Raised from</div>
+            {wo.defects.map(d => (
+              <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 4 }}>
+                <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)' }}>{d.ref}</span>
+                <span style={{ flex: 1, color: 'var(--n700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</span>
+                <span className="badge badge-n" style={{ textTransform: 'capitalize' }}>{d.severity}</span>
+              </div>
+            ))}
+            <p style={{ fontSize: 11.5, color: 'var(--n500)', marginTop: 6, lineHeight: 1.5 }}>
+              Closing this job resolves {wo.defects.length === 1 ? 'it' : 'them'}.
+            </p>
+          </div>
+        )}
+
+        <ApprovalsSection wo={wo} canSubmit={canSubmitApproval} canRead={canReadApproval} />
+
         {wo.status === 'closed' && (wo.root_cause || wo.corrective_actions || wo.completion_notes || wo.failure_mode || wo.safety_observations || wo.downtime_hours != null) && (
           <div>
             <SectionHead>Completion report</SectionHead>
@@ -618,6 +768,8 @@ export default function WorkOrders({ dark, toggleDark }) {
   const { roleKey } = useAuth()
   const canCreate     = can(roleKey, 'wo:create')
   const canTransition = can(roleKey, 'wo:transition')
+  const canSubmitApproval = can(roleKey, 'approval:create')
+  const canReadApproval = can(roleKey, 'approval:read')
   const canEditWO     = can(roleKey, 'wo:update')
 
   const [wos, setWos] = useState([])
@@ -752,7 +904,8 @@ export default function WorkOrders({ dark, toggleDark }) {
           </div>
 
           {selectedId && (
-            <WODetail woId={selectedId} onClose={() => setSelectedId(null)} onUpdate={load} canTransition={canTransition} canEdit={canEditWO} />
+            <WODetail woId={selectedId} onClose={() => setSelectedId(null)} onUpdate={load} canTransition={canTransition} canEdit={canEditWO}
+              canSubmitApproval={canSubmitApproval} canReadApproval={canReadApproval} />
           )}
         </div>
       </div>
