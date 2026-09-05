@@ -9,6 +9,9 @@ import { documentsRouter } from './documents.js'
 import { workOrdersRouter } from './workOrders.js'
 import { sparePartsRouter } from './spareParts.js'
 import { depreciationRouter } from './depreciation.js'
+import { defectsRouter } from './defects.js'
+import { approvalsRouter } from './approvals.js'
+import { escalationsRouter } from './escalations.js'
 import { pmSchedulesRouter } from './pmSchedules.js'
 import { pmTasksRouter } from './pmTasks.js'
 import { complianceRouter } from './compliance.js'
@@ -38,6 +41,9 @@ apiRouter.use(documentsRouter)
 apiRouter.use(workOrdersRouter)
 apiRouter.use(sparePartsRouter)
 apiRouter.use(depreciationRouter)
+apiRouter.use(defectsRouter)
+apiRouter.use(approvalsRouter)
+apiRouter.use(escalationsRouter)
 apiRouter.use(pmSchedulesRouter)
 apiRouter.use(pmTasksRouter)
 apiRouter.use(complianceRouter)

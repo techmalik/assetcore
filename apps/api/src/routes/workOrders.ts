@@ -9,6 +9,7 @@ import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadTo } from '../files.js'
+import { refreshAssetHealth } from '../healthService.js'
 
 export const workOrdersRouter = Router()
 workOrdersRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -151,7 +152,16 @@ workOrdersRouter.get('/work-orders/:id', async (req, res) => {
         [req.params.id]
       ),
     ])
-    return { ...wo, activity, tasks, parts }
+    // The finding this job came from, if it came from one — the other half of
+    // the inspection -> defect -> work order chain.
+    const { rows: defects } = await c.query(
+      `select d.id, d.ref, d.title, d.severity, d.status, d.inspection_id
+       from public.defects d
+       where d.work_order_id = $1 and d.deleted_at is null
+       order by d.identified_date desc`,
+      [req.params.id]
+    )
+    return { ...wo, activity, tasks, parts, defects }
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
   res.json(row)
@@ -160,7 +170,9 @@ workOrdersRouter.get('/work-orders/:id', async (req, res) => {
 // WO-{year}-{4-digit sequence within the org for that year}, matching the
 // seed data's format. Not concurrency-safe under heavy simultaneous creates
 // (fine at this scale) — the ref column's unique constraint is the backstop.
-async function generateWoRef(c: import('pg').PoolClient): Promise<string> {
+// Exported so a job raised from a defect gets the same ref format as one
+// raised here, rather than a second implementation that drifts.
+export async function generateWoRef(c: import('pg').PoolClient): Promise<string> {
   const year = new Date().getFullYear()
   const { rows } = await c.query(
     `select count(*)::int as n from public.work_orders where ref like $1`,
@@ -280,7 +292,7 @@ workOrdersRouter.post('/work-orders/:id/transition', requireCap('wo:transition')
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows: cur } = await c.query(
-      'select status, actual_start from public.work_orders where id = $1',
+      'select status, actual_start, asset_id from public.work_orders where id = $1',
       [req.params.id]
     )
     if (!cur[0]) return { error: 'not_found' as const }
@@ -320,13 +332,35 @@ workOrdersRouter.post('/work-orders/:id/transition', requireCap('wo:transition')
       [req.params.id, comment || `Status changed to ${WO_STATUS_LABEL[newStatus] || newStatus}`]
     )
 
+    // Closing the job closes the finding it came from. Without this the defect
+    // register slowly fills with items that were fixed months ago, and nobody
+    // trusts it — which is the failure mode a register exists to avoid.
+    let resolvedDefects: string[] = []
+    if (newStatus === 'closed') {
+      const { rows: defects } = await c.query(
+        `update public.defects
+            set status = 'resolved', resolved_at = now(),
+                resolution_notes = coalesce(resolution_notes, $2)
+          where work_order_id = $1 and deleted_at is null
+            and status not in ('resolved','closed')
+          returning ref`,
+        [req.params.id, comment || 'Resolved by the work order raised for it.']
+      )
+      resolvedDefects = defects.map((d: { ref: string }) => d.ref)
+    }
+
+    // Closing clears an overdue job and may clear a defect with it, both of
+    // which the condition score reads.
+    if (newStatus === 'closed') await refreshAssetHealth(c, cur[0].asset_id)
+
     await writeAuditLog(c, {
       orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.transition', entityType: 'work_order', entityId: wo.id,
-      before: { status: cur[0].status }, after: { status: newStatus },
+      before: { status: cur[0].status },
+      after: { status: newStatus, ...(resolvedDefects.length ? { defects_resolved: resolvedDefects } : {}) },
     })
 
     const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [req.params.id])
-    return { data: full[0] }
+    return { data: { ...full[0], defects_resolved: resolvedDefects } }
   })
 
   if ('error' in result) {

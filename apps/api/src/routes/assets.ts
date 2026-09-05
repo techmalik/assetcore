@@ -9,6 +9,7 @@ import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadTo } from '../files.js'
+import { previewAssetHealth, recomputeAssetHealth } from '../healthService.js'
 
 export const assetsRouter = Router()
 assetsRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -23,6 +24,8 @@ const ALLOWED = [
   'purchase_date', 'commission_date', 'warranty_expiry',
   'useful_life_years', 'salvage_value_cents', 'depreciation_method',
   'custodian_id', 'tags', 'notes',
+  // Phase 3 — who owns the condition score, the engine or a person (0004).
+  'health_score_source',
 ]
 
 export const LIFECYCLE_STATUSES = ['planned', 'in_service', 'standby', 'under_maintenance', 'in_storage', 'disposed'] as const
@@ -81,6 +84,9 @@ const assetInput = z.object({
   custodian_id: z.string().uuid().nullable().optional(),
   tags: z.array(z.string().min(1)).optional(),
   notes: z.string().nullable().optional(),
+
+  // Phase 3 addition
+  health_score_source: z.enum(['manual', 'computed']).optional(),
 })
 
 const qp = (req: { query: Record<string, unknown> }, key: string): string | null => {
@@ -161,22 +167,72 @@ assetsRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
 assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) => {
   const parsed = assetInput.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { setSql, values } = buildSet(parsed.data, ALLOWED)
+  const patch: Record<string, unknown> = { ...parsed.data }
+
+  // Typing a condition score is what makes it a manual override — the engine
+  // then leaves the asset alone until someone hands it back (0004).
+  if (patch.health_score !== undefined && patch.health_score_source === undefined) {
+    patch.health_score_source = 'manual'
+  }
+  const { setSql, values } = buildSet(patch, ALLOWED)
   if (!setSql) return res.status(400).json({ error: 'empty_patch' })
+
+  // A hand-entered score has no breakdown behind it; leaving the old one in
+  // place would explain a number that is no longer there.
+  const clearBreakdown = patch.health_score_source === 'manual'
+    ? ', health_score_components = null, health_score_computed_at = null'
+    : ''
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
-      `update public.assets set ${setSql} where id = $1 returning id, org_id`,
+      `update public.assets set ${setSql}${clearBreakdown} where id = $1 returning id, org_id`,
       [req.params.id, ...values]
     )
     if (!rows[0]) return null
+    // Handing the score back to the engine takes effect now, not at 03:00.
+    if (patch.health_score_source === 'computed') {
+      await recomputeAssetHealth(c, String(req.params.id), { claim: true })
+    }
     const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
-    await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.update', entityType: 'asset', entityId: asset.id, after: parsed.data })
+    await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.update', entityType: 'asset', entityId: asset.id, after: patch })
     return asset
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
   res.json(row)
+})
+
+/**
+ * The condition score, taken apart.
+ *
+ * Always returns what the engine makes of the asset right now, even when the
+ * stored score is a manual override — so somebody deciding whether to keep
+ * their own number can see the calculated one beside it.
+ */
+assetsRouter.get('/assets/:id/health', async (req, res) => {
+  const health = await withOrgContext(claimsFromReq(req), (c) => previewAssetHealth(c, String(req.params.id)))
+  if (!health) return res.status(404).json({ error: 'not_found' })
+  res.json(health)
+})
+
+/** Recompute and store. `claim` takes the score off manual entry, which is the
+ * only way a hand-typed number is ever replaced. */
+assetsRouter.post('/assets/:id/health/recompute', requireCap('asset:update'), async (req, res) => {
+  const parsed = z.object({ claim: z.boolean().optional() }).safeParse(req.body ?? {})
+  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+
+  const health = await withOrgContext(claimsFromReq(req), async (c) => {
+    const result = await recomputeAssetHealth(c, String(req.params.id), { claim: parsed.data.claim ?? false })
+    if (!result) return null
+    await writeAuditLog(c, {
+      orgId: req.claims!.org_id!, actorId: req.claims!.sub, action: 'asset.health.recompute',
+      entityType: 'asset', entityId: String(req.params.id),
+      after: { score: result.score, source: result.source, weight_applied: result.weight_applied },
+    })
+    return result
+  })
+  if (!health) return res.status(404).json({ error: 'not_found' })
+  res.json(health)
 })
 
 assetsRouter.post('/assets/:id/photos', requireCap('asset:update'), photoUpload.single('photo'), async (req, res) => {
