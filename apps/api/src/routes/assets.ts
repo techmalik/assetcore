@@ -18,16 +18,37 @@ const photoUpload = uploadTo('assets')
 const ALLOWED = [
   'site_id', 'ain', 'name', 'category_id', 'status', 'health_score', 'lat', 'lng',
   'specs', 'purchase_value_cents', 'nbv_cents', 'parent_asset_id', 'photos',
+  // Phase 1 — nameplate, lifecycle and depreciation basis (0002).
+  'lifecycle_status', 'criticality', 'manufacturer', 'model', 'serial_number', 'supplier',
+  'purchase_date', 'commission_date', 'warranty_expiry',
+  'useful_life_years', 'salvage_value_cents', 'depreciation_method',
+  'custodian_id', 'tags', 'notes',
 ]
+
+export const LIFECYCLE_STATUSES = ['planned', 'in_service', 'standby', 'under_maintenance', 'in_storage', 'disposed'] as const
+export const CRITICALITIES = ['low', 'medium', 'high', 'critical'] as const
+export const DEPRECIATION_METHODS = ['straight_line', 'declining_balance', 'sum_of_years_digits', 'units_of_production'] as const
 
 const SELECT = `
   select a.*,
     case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name) end as site,
-    case when c.id is null then null else jsonb_build_object('id', c.id, 'name', c.name) end as category
+    case when c.id is null then null else jsonb_build_object('id', c.id, 'name', c.name) end as category,
+    case when cu.id is null then null else jsonb_build_object('id', cu.id, 'full_name', cu.full_name, 'email', cu.email) end as custodian,
+    case when p.id is null then null else jsonb_build_object('id', p.id, 'ain', p.ain, 'name', p.name) end as parent_asset
   from public.assets a
   left join public.sites s on s.id = a.site_id
   left join public.asset_categories c on c.id = a.category_id
+  left join public.users cu on cu.id = a.custodian_id
+  left join public.assets p on p.id = a.parent_asset_id
 `
+
+// A date input the UI can clear: '' from an empty <input type="date"> becomes null
+// rather than failing validation or writing an invalid date.
+const dateField = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((v) => (v === '' || v === undefined ? (v === '' ? null : undefined) : v))
+  .refine((v) => v == null || /^\d{4}-\d{2}-\d{2}$/.test(v), { message: 'expected YYYY-MM-DD' })
 
 const assetInput = z.object({
   site_id: z.string().uuid().nullable().optional(),
@@ -43,18 +64,70 @@ const assetInput = z.object({
   nbv_cents: z.number().int().nullable().optional(),
   parent_asset_id: z.string().uuid().nullable().optional(),
   photos: z.array(z.unknown()).optional(),
+
+  // Phase 1 additions
+  lifecycle_status: z.enum(LIFECYCLE_STATUSES).optional(),
+  criticality: z.enum(CRITICALITIES).optional(),
+  manufacturer: z.string().nullable().optional(),
+  model: z.string().nullable().optional(),
+  serial_number: z.string().nullable().optional(),
+  supplier: z.string().nullable().optional(),
+  purchase_date: dateField,
+  commission_date: dateField,
+  warranty_expiry: dateField,
+  useful_life_years: z.number().nonnegative().nullable().optional(),
+  salvage_value_cents: z.number().int().nonnegative().nullable().optional(),
+  depreciation_method: z.enum(DEPRECIATION_METHODS).nullable().optional(),
+  custodian_id: z.string().uuid().nullable().optional(),
+  tags: z.array(z.string().min(1)).optional(),
+  notes: z.string().nullable().optional(),
 })
 
+const qp = (req: { query: Record<string, unknown> }, key: string): string | null => {
+  const v = req.query[key]
+  return typeof v === 'string' && v !== '' && v !== 'all' ? v : null
+}
+
 assetsRouter.get('/assets', async (req, res) => {
-  const status = typeof req.query.status === 'string' ? req.query.status : null
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
-    const clauses = [SELECT, 'where a.deleted_at is null']
+    const clauses = [SELECT, req.query.archived === 'true' ? 'where a.deleted_at is not null' : 'where a.deleted_at is null']
     const values: unknown[] = []
-    if (status && status !== 'all') { clauses.push(`and a.status = $1`); values.push(status) }
+    const add = (sql: string, value: unknown) => { values.push(value); clauses.push(sql.replace('$?', `$${values.length}`)) }
+
+    const status = qp(req, 'status')
+    if (status) add('and a.status = $?', status)
+    const criticality = qp(req, 'criticality')
+    if (criticality) add('and a.criticality = $?', criticality)
+    const lifecycle = qp(req, 'lifecycle_status')
+    if (lifecycle) add('and a.lifecycle_status = $?', lifecycle)
+    const siteId = qp(req, 'site_id')
+    if (siteId) add('and a.site_id = $?', siteId)
+    const categoryId = qp(req, 'category_id')
+    if (categoryId) add('and a.category_id = $?', categoryId)
+    const tag = qp(req, 'tag')
+    if (tag) add('and $? = any(a.tags)', tag)
+
+    // Free-text across the three fields a person actually searches by.
+    const q = qp(req, 'q')
+    if (q) {
+      values.push(`%${q}%`)
+      clauses.push(`and (a.ain ilike $${values.length} or a.name ilike $${values.length} or a.serial_number ilike $${values.length})`)
+    }
+
     clauses.push('order by a.created_at desc')
     return c.query(clauses.join(' '), values).then((r) => r.rows)
   })
   res.json(rows)
+})
+
+// Asset tag lookup — what a QR scan resolves against. AIN is unique per org,
+// and RLS scopes the query, so no org filter is needed here.
+assetsRouter.get('/assets/by-ain/:ain', async (req, res) => {
+  const row = await withOrgContext(claimsFromReq(req), (c) =>
+    c.query(`${SELECT} where upper(a.ain) = upper($1) and a.deleted_at is null`, [req.params.ain]).then((r) => r.rows[0])
+  )
+  if (!row) return res.status(404).json({ error: 'not_found' })
+  res.json(row)
 })
 
 assetsRouter.get('/assets/:id', async (req, res) => {
@@ -135,4 +208,22 @@ assetsRouter.delete('/assets/:id', requireCap('asset:update'), async (req, res) 
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
   res.status(204).end()
+})
+
+// The counterpart to the archive above — 0001 had a soft delete with no way back.
+assetsRouter.post('/assets/:id/restore', requireCap('asset:update'), async (req, res) => {
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query(
+      'update public.assets set deleted_at = null where id = $1 and deleted_at is not null returning id, org_id',
+      [req.params.id]
+    )
+    const asset = rows[0]
+    if (asset) await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.restore', entityType: 'asset', entityId: asset.id })
+    return asset
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
+  const full = await withOrgContext(claimsFromReq(req), (c) =>
+    c.query(`${SELECT} where a.id = $1`, [req.params.id]).then((r) => r.rows[0])
+  )
+  res.json(full)
 })

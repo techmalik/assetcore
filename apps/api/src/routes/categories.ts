@@ -6,16 +6,22 @@ import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { writeAuditLog } from '../audit.js'
-import { buildSet } from '../sqlUtil.js'
+import { buildSet, buildInsert } from '../sqlUtil.js'
 
 export const categoriesRouter = Router()
 categoriesRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
-const ALLOWED = ['name', 'code']
+const ALLOWED = ['name', 'code', 'description', 'depreciation_method', 'useful_life_years', 'salvage_value_percent']
 
 const categoryInput = z.object({
   name: z.string().min(1),
   code: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  // Defaults a new asset in this category inherits (0002). Phase 2's
+  // depreciation engine reads them when building a schedule.
+  depreciation_method: z.enum(['straight_line', 'declining_balance', 'sum_of_years_digits', 'units_of_production']).optional(),
+  useful_life_years: z.number().nonnegative().nullable().optional(),
+  salvage_value_percent: z.number().min(0).max(100).nullable().optional(),
 })
 
 categoriesRouter.get('/categories', async (req, res) => {
@@ -28,12 +34,12 @@ categoriesRouter.get('/categories', async (req, res) => {
 categoriesRouter.post('/categories', async (req, res) => {
   const parsed = categoryInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { name, code } = parsed.data
+  const { columns, placeholders, values } = buildInsert(parsed.data, ALLOWED)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
-      'insert into public.asset_categories (org_id, name, code) values (current_org_id(), $1, $2) returning *',
-      [name, code ?? null]
+      `insert into public.asset_categories (org_id, ${columns}) values (current_org_id(), ${placeholders}) returning *`,
+      values
     )
     const cat = rows[0]
     await writeAuditLog(c, { orgId: cat.org_id, actorId: req.claims!.sub, action: 'category.create', entityType: 'asset_category', entityId: cat.id, after: cat })

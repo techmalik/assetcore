@@ -4,6 +4,8 @@ import { healthRouter } from './health.js'
 import { sitesRouter } from './sites.js'
 import { categoriesRouter } from './categories.js'
 import { assetsRouter } from './assets.js'
+import { assetImportRouter } from './assetImport.js'
+import { documentsRouter } from './documents.js'
 import { workOrdersRouter } from './workOrders.js'
 import { pmSchedulesRouter } from './pmSchedules.js'
 import { pmTasksRouter } from './pmTasks.js'
@@ -28,7 +30,9 @@ apiRouter.use('/admin', adminRouter)
 apiRouter.use(healthRouter)
 apiRouter.use(sitesRouter)
 apiRouter.use(categoriesRouter)
+apiRouter.use(assetImportRouter)
 apiRouter.use(assetsRouter)
+apiRouter.use(documentsRouter)
 apiRouter.use(workOrdersRouter)
 apiRouter.use(pmSchedulesRouter)
 apiRouter.use(pmTasksRouter)
