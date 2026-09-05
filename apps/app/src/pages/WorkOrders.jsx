@@ -3,11 +3,14 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import {
   listWorkOrders, getWorkOrder, createWorkOrder, transitionWorkOrder, addWorkOrderComment,
+  addWorkOrderTask, updateWorkOrderTask, deleteWorkOrderTask,
+  addWorkOrderPart, deleteWorkOrderPart,
   uploadWorkOrderAttachment,
   WO_TRANSITIONS, WO_STATUS_LABEL, WO_PRIORITY_LABEL, WO_TYPE_LABEL,
 } from '../lib/db/workOrders'
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
+import { listSpareParts } from '../lib/db/spareParts'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { api } from '../lib/apiClient'
@@ -122,8 +125,282 @@ function NewWOModal({ sites, assets, onClose, onSave }) {
 }
 
 // ── WO Detail panel ───────────────────────────────────────────────────────────
-function WODetail({ woId, onClose, onUpdate, canTransition }) {
+
+function naira(cents) {
+  if (cents === null || cents === undefined || cents === '') return '—'
+  const n = Number(cents) / 100
+  if (!Number.isFinite(n)) return '—'
+  return `₦${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+}
+
+function SectionHead({ children, action }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--n500)', textTransform: 'uppercase', letterSpacing: '.05em', fontFamily: 'var(--ff-m)' }}>{children}</div>
+      {action}
+    </div>
+  )
+}
+
+// ── Task checklist ────────────────────────────────────────────────────────────
+// The steps the job is worked from. Ticking one records who and when.
+function Checklist({ wo, canEdit, onChanged }) {
+  const [adding, setAdding] = useState('')
+  const [busy, setBusy] = useState(false)
+  const tasks = wo.tasks || []
+  const done = tasks.filter((t) => t.done).length
+
+  async function toggle(task) {
+    setBusy(true)
+    try { await updateWorkOrderTask(wo.id, task.id, { done: !task.done }); await onChanged() }
+    catch (e) { alert(e.message) } finally { setBusy(false) }
+  }
+
+  async function add(e) {
+    e.preventDefault()
+    if (!adding.trim()) return
+    setBusy(true)
+    try { await addWorkOrderTask(wo.id, adding.trim()); setAdding(''); await onChanged() }
+    catch (e) { alert(e.message) } finally { setBusy(false) }
+  }
+
+  async function remove(task) {
+    setBusy(true)
+    try { await deleteWorkOrderTask(wo.id, task.id); await onChanged() }
+    catch (e) { alert(e.message) } finally { setBusy(false) }
+  }
+
+  return (
+    <div>
+      <SectionHead action={tasks.length > 0 && (
+        <span style={{ fontSize: 11, fontFamily: 'var(--ff-m)', color: done === tasks.length ? 'var(--sgt)' : 'var(--n500)' }}>{done}/{tasks.length} done</span>
+      )}>Checklist</SectionHead>
+
+      {tasks.length === 0 && !canEdit && <p style={{ fontSize: 12, color: 'var(--n400)' }}>No steps recorded.</p>}
+
+      {tasks.length > 0 && (
+        <div style={{ border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden', marginBottom: canEdit ? 8 : 0 }}>
+          {tasks.map((t) => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '8px 12px', borderBottom: 'var(--bdr)' }}>
+              <input type="checkbox" checked={t.done} disabled={!canEdit || busy} onChange={() => toggle(t)} style={{ marginTop: 2, cursor: canEdit ? 'pointer' : 'default' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, color: t.done ? 'var(--n500)' : 'var(--n800)', textDecoration: t.done ? 'line-through' : 'none', lineHeight: 1.45 }}>{t.description}</div>
+                {t.done && t.completed_by && (
+                  <div style={{ fontSize: 10.5, color: 'var(--n400)', fontFamily: 'var(--ff-m)', marginTop: 2 }}>
+                    {t.completed_by.full_name} · {new Date(t.done_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
+              </div>
+              {canEdit && (
+                <button onClick={() => remove(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)', padding: 2, display: 'flex' }}>
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canEdit && (
+        <form onSubmit={add} style={{ display: 'flex', gap: 6 }}>
+          <input className="input" value={adding} onChange={(e) => setAdding(e.target.value)} placeholder="Add a step…" style={{ flex: 1, height: 30, fontSize: 12 }} />
+          <button type="submit" disabled={!adding.trim() || busy} className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12, opacity: adding.trim() ? 1 : 0.5 }}>Add</button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+// pg returns numeric columns as strings, and "0.00" is truthy — so pick the
+// used quantity only when it is actually greater than zero.
+function lineQty(line) {
+  const used = Number(line.quantity_used)
+  return used > 0 ? used : Number(line.quantity_required)
+}
+
+// ── Parts drawn against the job ───────────────────────────────────────────────
+// Lines point at real stock. Nothing leaves the store until the job is closed,
+// which is when the deduction and the ledger entry happen together.
+function PartsSection({ wo, canEdit, onChanged }) {
+  const [parts, setParts] = useState([])
+  const [partId, setPartId] = useState('')
+  const [qty, setQty] = useState('1')
+  const [busy, setBusy] = useState(false)
+  const lines = wo.parts_lines || []
+
+  useEffect(() => { listSpareParts().then(setParts).catch(() => setParts([])) }, [])
+
+  async function add(e) {
+    e.preventDefault()
+    if (!partId || !Number(qty)) return
+    setBusy(true)
+    try { await addWorkOrderPart(wo.id, { part_id: partId, quantity_required: Number(qty) }); setPartId(''); setQty('1'); await onChanged() }
+    catch (e2) { alert(e2.message) } finally { setBusy(false) }
+  }
+
+  async function remove(line) {
+    setBusy(true)
+    try { await deleteWorkOrderPart(wo.id, line.id) ; await onChanged() }
+    catch (e) { alert(e.message === 'already_consumed' ? 'That part has already left the store. Reverse it with a stock adjustment instead.' : e.message) }
+    finally { setBusy(false) }
+  }
+
+  const total = lines.reduce((sum, l) => sum + (Number(l.unit_cost_cents) || 0) * lineQty(l), 0)
+
+  return (
+    <div>
+      <SectionHead action={lines.length > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--ff-m)', color: 'var(--n500)' }}>{naira(total)}</span>}>Parts</SectionHead>
+
+      {lines.length === 0 ? (
+        <p style={{ fontSize: 12, color: 'var(--n400)', marginBottom: canEdit ? 8 : 0 }}>No parts reserved for this job.</p>
+      ) : (
+        <div style={{ border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden', marginBottom: canEdit ? 8 : 0 }}>
+          {lines.map((l) => (
+            <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 12px', borderBottom: 'var(--bdr)' }}>
+              <span style={{ fontFamily: 'var(--ff-m)', fontSize: 12, color: 'var(--n800)', width: 34, flexShrink: 0 }}>
+                {lineQty(l)}×
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--n800)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {l.part ? l.part.name : l.description}
+                </div>
+                <div style={{ fontSize: 10.5, color: 'var(--n500)', fontFamily: 'var(--ff-m)' }}>
+                  {l.part ? `${l.part.part_number} · ${Number(l.part.quantity_in_stock)} in stock` : 'One-off item'}
+                </div>
+              </div>
+              {l.consumed_at
+                ? <span className="badge badge-g">Taken</span>
+                : <span className="badge badge-n">Reserved</span>}
+              {canEdit && !l.consumed_at && (
+                <button onClick={() => remove(l)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)', padding: 2, display: 'flex' }}>
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canEdit && wo.status !== 'closed' && (
+        <form onSubmit={add} style={{ display: 'flex', gap: 6 }}>
+          <select className="input" value={partId} onChange={(e) => setPartId(e.target.value)} style={{ flex: 1, height: 30, fontSize: 12, minWidth: 0 }}>
+            <option value="">Add a part…</option>
+            {parts.map((p) => <option key={p.id} value={p.id}>{p.part_number} — {p.name} ({Number(p.quantity_in_stock)} {p.unit})</option>)}
+          </select>
+          <input className="input" type="number" min="0.01" step="0.01" value={qty} onChange={(e) => setQty(e.target.value)} style={{ width: 62, height: 30, fontSize: 12, fontFamily: 'var(--ff-m)' }} />
+          <button type="submit" disabled={!partId || busy} className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12, opacity: partId ? 1 : 0.5 }}>Add</button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+// ── Close dialog ──────────────────────────────────────────────────────────────
+// Closing is the one moment the job's story can still be captured, so the
+// report is collected here rather than left to a free-text comment.
+function CloseDialog({ wo, onClose, onClosed }) {
+  const [f, setF] = useState({
+    completion_notes: '', root_cause: '', failure_mode: '', corrective_actions: '',
+    safety_observations: '', actual_hours: '', downtime_hours: '', cost_naira: '',
+  })
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const [shortfalls, setShortfalls] = useState(null)
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
+
+  const reserved = (wo.parts_lines || []).filter((l) => !l.consumed_at && l.part_id)
+
+  async function submit(e) {
+    e.preventDefault()
+    setErr(''); setShortfalls(null); setBusy(true)
+    const report = {
+      completion_notes: f.completion_notes.trim() || null,
+      root_cause: f.root_cause.trim() || null,
+      failure_mode: f.failure_mode.trim() || null,
+      corrective_actions: f.corrective_actions.trim() || null,
+      safety_observations: f.safety_observations.trim() || null,
+      actual_hours: f.actual_hours === '' ? null : Number(f.actual_hours),
+      downtime_hours: f.downtime_hours === '' ? null : Number(f.downtime_hours),
+      cost_cents: f.cost_naira === '' ? null : Math.round(Number(f.cost_naira) * 100),
+    }
+    for (const k of Object.keys(report)) if (report[k] === null) delete report[k]
+    try {
+      await transitionWorkOrder(wo.id, 'closed', f.completion_notes.trim() || 'Work order closed', report)
+      await onClosed()
+    } catch (ex) {
+      // The server rolled the close back rather than letting stock go negative.
+      if (ex.status === 409 && ex.payload?.shortfalls) setShortfalls(ex.payload.shortfalls)
+      else if (ex.status === 409) setErr('That status change is no longer valid — reload the work order.')
+      else setErr(ex.message || 'Could not close the work order.')
+      setBusy(false)
+    }
+  }
+
+  const F = ({ label, k, rows, hint, type }) => (
+    <div>
+      <label className="label" style={{ display: 'block', marginBottom: 5 }}>{label}</label>
+      {rows
+        ? <textarea className="input" rows={rows} value={f[k]} onChange={(e) => set(k, e.target.value)} style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
+        : <input className="input" type={type || 'text'} step="0.01" min="0" value={f[k]} onChange={(e) => set(k, e.target.value)} style={{ width: '100%', fontFamily: type === 'number' ? 'var(--ff-m)' : 'inherit' }} />}
+      {hint && <p style={{ fontSize: 11, color: 'var(--n500)', marginTop: 4 }}>{hint}</p>}
+    </div>
+  )
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
+      <form onSubmit={submit} style={{ position: 'relative', width: 600, maxHeight: '90vh', background: 'var(--n0)', borderRadius: 10, boxShadow: 'var(--sh-lg)', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '18px 24px', borderBottom: 'var(--bdr)' }}>
+          <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 18, fontWeight: 700, color: 'var(--n950)' }}>Close {wo.ref}</h3>
+          <p style={{ fontSize: 12, color: 'var(--n500)' }}>
+            {reserved.length > 0
+              ? `${reserved.length} reserved part${reserved.length === 1 ? '' : 's'} will be taken out of stock.`
+              : 'Everything here is optional, but it is what makes the history worth having.'}
+          </p>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <F label="Hours worked" k="actual_hours" type="number" hint={wo.estimated_hours ? `Estimated ${wo.estimated_hours}` : undefined} />
+            <F label="Downtime (hours)" k="downtime_hours" type="number" />
+            <F label="Actual cost (₦)" k="cost_naira" type="number" hint={wo.estimated_cost_cents ? `Est. ${naira(wo.estimated_cost_cents)}` : undefined} />
+          </div>
+          <F label="What was wrong (root cause)" k="root_cause" rows={2} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <F label="Failure mode" k="failure_mode" />
+            <F label="Safety observations" k="safety_observations" />
+          </div>
+          <F label="What was done" k="corrective_actions" rows={2} />
+          <F label="Closing notes" k="completion_notes" rows={2} hint="Posted to the activity thread as well." />
+
+          {shortfalls && (
+            <div style={{ background: 'var(--srb)', border: '1px solid var(--srbr)', borderRadius: 6, padding: '12px 14px', fontSize: 12.5, color: 'var(--srt)' }}>
+              <strong style={{ display: 'block', marginBottom: 6 }}>Not enough stock — nothing was closed or deducted.</strong>
+              {shortfalls.map((sf) => (
+                <div key={sf.part_number} style={{ fontFamily: 'var(--ff-m)', fontSize: 11.5 }}>
+                  {sf.part_number} — needs {sf.needed}, only {sf.in_stock} on hand
+                </div>
+              ))}
+              <div style={{ marginTop: 6 }}>Receive the stock in Spare Parts, then close this job again.</div>
+            </div>
+          )}
+          {err && <p style={{ fontSize: 12, color: 'var(--srt)' }}>{err}</p>}
+        </div>
+
+        <div style={{ padding: '14px 24px', borderTop: 'var(--bdr)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
+          <button type="submit" disabled={busy} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13, opacity: busy ? 0.7 : 1 }}>
+            {busy ? 'Closing…' : 'Close work order'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function WODetail({ woId, onClose, onUpdate, canTransition, canEdit }) {
   const [wo, setWo] = useState(null)
+  const [closing, setClosing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [comment, setComment] = useState('')
   const [posting, setPosting] = useState(false)
@@ -131,19 +408,33 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef(null)
 
+  // The detail payload carries part LINES under `parts`, while the work order
+  // row still has its legacy `parts` JSON column. Rename on the way in so the
+  // two never get confused.
+  const normalise = (d) => ({ ...d, parts_lines: d.parts || [] })
+
+  const reload = useCallback(async () => {
+    const fresh = await getWorkOrder(woId)
+    setWo(normalise(fresh))
+  }, [woId])
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    getWorkOrder(woId).then(d => { if (!cancelled) { setWo(d); setLoading(false) } }).catch(() => setLoading(false))
+    getWorkOrder(woId)
+      .then(d => { if (!cancelled) { setWo(normalise(d)); setLoading(false) } })
+      .catch(() => setLoading(false))
     return () => { cancelled = true }
   }, [woId])
 
   async function transition(newStatus) {
+    // Closing collects the completion report and draws parts out of stock, so
+    // it goes through its own dialog rather than a bare status change.
+    if (newStatus === 'closed') { setClosing(true); return }
     setTransitioning(true)
     try {
-      const updated = await transitionWorkOrder(wo.id, newStatus)
-      const fresh = await getWorkOrder(wo.id)
-      setWo(fresh)
+      await transitionWorkOrder(wo.id, newStatus)
+      await reload()
       onUpdate()
     } catch (e) { alert(e.message) }
     finally { setTransitioning(false) }
@@ -155,8 +446,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
     try {
       await addWorkOrderComment(wo.id, comment)
       setComment('')
-      const fresh = await getWorkOrder(wo.id)
-      setWo(fresh)
+      await reload()
     } catch (ex) { alert(ex.message) }
     finally { setPosting(false) }
   }
@@ -167,8 +457,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
     setUploading(true)
     try {
       await uploadWorkOrderAttachment(wo.id, file)
-      const fresh = await getWorkOrder(wo.id)
-      setWo(fresh)
+      await reload()
     } catch (ex) { alert(ex.message) }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
   }
@@ -211,6 +500,13 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
             ['Site', wo.site?.name || '—'],
             ['Asset', wo.asset ? `${wo.asset.ain} — ${wo.asset.name}` : '—'],
             ['SLA Due', wo.sla_due ? <SlaDue date={wo.sla_due} /> : '—'],
+            ['Planned', wo.planned_start ? `${wo.planned_start}${wo.planned_end ? ` → ${wo.planned_end}` : ''}` : '—'],
+            ['Hours', wo.actual_hours != null || wo.estimated_hours != null
+              ? `${wo.actual_hours != null ? wo.actual_hours : '—'} actual / ${wo.estimated_hours != null ? wo.estimated_hours : '—'} est`
+              : '—'],
+            ['Cost', wo.cost_cents != null || wo.estimated_cost_cents != null
+              ? `${naira(wo.cost_cents)} actual / ${naira(wo.estimated_cost_cents)} est`
+              : '—'],
           ].map(([k, v]) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: 'var(--bdr)', fontSize: 12 }}>
               <span style={{ color: 'var(--n500)', flexShrink: 0 }}>{k}</span>
@@ -235,6 +531,31 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
                   style={{ height: 30, padding: '0 12px', fontSize: 12, fontWeight: 500, border: '1px solid var(--b200)', borderRadius: 4, background: s === 'closed' ? 'var(--sgb)' : 'var(--b50)', color: s === 'closed' ? 'var(--sgt)' : 'var(--b700)', cursor: transitioning ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: transitioning ? .6 : 1 }}>
                   {WO_STATUS_LABEL[s]}
                 </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <Checklist wo={wo} canEdit={canEdit} onChanged={async () => { await reload(); onUpdate() }} />
+
+        <PartsSection wo={wo} canEdit={canEdit} onChanged={async () => { await reload(); onUpdate() }} />
+
+        {wo.status === 'closed' && (wo.root_cause || wo.corrective_actions || wo.completion_notes || wo.failure_mode || wo.safety_observations || wo.downtime_hours != null) && (
+          <div>
+            <SectionHead>Completion report</SectionHead>
+            <div style={{ border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden' }}>
+              {[
+                ['Root cause', wo.root_cause],
+                ['Failure mode', wo.failure_mode],
+                ['What was done', wo.corrective_actions],
+                ['Safety observations', wo.safety_observations],
+                ['Downtime', wo.downtime_hours != null ? `${wo.downtime_hours} hours` : null],
+                ['Notes', wo.completion_notes],
+              ].filter(([, v]) => v).map(([k, v]) => (
+                <div key={k} style={{ padding: '9px 12px', borderBottom: 'var(--bdr)' }}>
+                  <div style={{ fontSize: 10.5, color: 'var(--n500)', fontFamily: 'var(--ff-m)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3 }}>{k}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--n800)', lineHeight: 1.5 }}>{v}</div>
+                </div>
               ))}
             </div>
           </div>
@@ -276,6 +597,14 @@ function WODetail({ woId, onClose, onUpdate, canTransition }) {
         </div>
       </div>
 
+      {closing && (
+        <CloseDialog
+          wo={wo}
+          onClose={() => setClosing(false)}
+          onClosed={async () => { setClosing(false); await reload(); onUpdate() }}
+        />
+      )}
+
       <form onSubmit={postComment} style={{ borderTop: 'var(--bdr)', padding: '12px 18px', display: 'flex', gap: 8, flexShrink: 0 }}>
         <input value={comment} onChange={e => setComment(e.target.value)} className="input" placeholder="Add a comment…" style={{ flex: 1, height: 34, fontSize: 13 }} />
         <button type="submit" disabled={posting || !comment.trim()} className="btn btn-primary" style={{ height: 34, padding: '0 14px', fontSize: 13, flexShrink: 0, opacity: !comment.trim() ? .5 : 1 }}>Post</button>
@@ -289,6 +618,7 @@ export default function WorkOrders({ dark, toggleDark }) {
   const { roleKey } = useAuth()
   const canCreate     = can(roleKey, 'wo:create')
   const canTransition = can(roleKey, 'wo:transition')
+  const canEditWO     = can(roleKey, 'wo:update')
 
   const [wos, setWos] = useState([])
   const [sites, setSites] = useState([])
@@ -422,7 +752,7 @@ export default function WorkOrders({ dark, toggleDark }) {
           </div>
 
           {selectedId && (
-            <WODetail woId={selectedId} onClose={() => setSelectedId(null)} onUpdate={load} canTransition={canTransition} />
+            <WODetail woId={selectedId} onClose={() => setSelectedId(null)} onUpdate={load} canTransition={canTransition} canEdit={canEditWO} />
           )}
         </div>
       </div>

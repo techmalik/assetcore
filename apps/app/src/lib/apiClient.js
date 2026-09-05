@@ -68,6 +68,9 @@ async function request(method, path, body, { retry = true } = {}) {
   if (!res.ok) {
     const err = new Error(payload?.error || `Request failed (${res.status})`)
     err.status = res.status
+    // Some errors carry detail the caller needs to act on — which parts were
+    // short, which rows failed. The message alone throws that away.
+    err.payload = payload
     throw err
   }
   return payload

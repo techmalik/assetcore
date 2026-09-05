@@ -304,7 +304,8 @@ function AssetModal({ asset, sites, categories, members, onClose, onSave }) {
               </select>
             </Field>
             <p style={{ gridColumn: 'span 2', fontSize: 11.5, color: 'var(--n500)', margin: 0 }}>
-              Captured now, used by depreciation schedules in the next release. Net book value stays a figure you enter until then.
+              These feed the asset&rsquo;s depreciation schedule. Once a schedule is posted, net book value comes from it
+              instead of being entered by hand.
             </p>
           </Section>
 
@@ -680,7 +681,11 @@ export default function Assets({ dark, toggleDark }) {
                     <DetailRow k="Commissioned" v={selected.commission_date} mono />
                     <DetailRow k="Warranty expires" v={selected.warranty_expiry} mono />
                     <DetailRow k="Purchase value" v={formatNaira(selected.purchase_value_cents)} mono />
-                    <DetailRow k="NBV (entered)" v={formatNaira(selected.nbv_cents)} mono />
+                    <DetailRow
+                      k={selected.nbv_source === 'schedule' ? 'NBV (from schedule)' : 'NBV (entered)'}
+                      v={formatNaira(selected.nbv_cents)}
+                      mono
+                    />
                     <DetailRow k="Useful life" v={selected.useful_life_years ? `${selected.useful_life_years} years` : null} />
                     <DetailRow k="Parent asset" v={selected.parent_asset?.ain} mono />
                   </div>

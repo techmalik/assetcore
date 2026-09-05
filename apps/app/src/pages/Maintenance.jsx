@@ -31,24 +31,37 @@ function weekDays(refDate) {
 
 // ── Schedule Modal ────────────────────────────────────────────────────────────
 function ScheduleModal({ onClose, onSaved }) {
-  const [form, setForm] = useState({ title:'', frequency:'monthly', next_due:isoToday() })
+  const [form, setForm] = useState({ title:'', frequency:'monthly', next_due:isoToday(), interval_days:'', estimated_hours:'' })
+  // One step per line. This is what gets stamped onto every task the schedule
+  // generates — without it, a task's checklist results have nothing to record
+  // against.
+  const [checklist, setChecklist] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
 
   const set = (k,v) => setForm(f => ({...f,[k]:v}))
+  const steps = checklist.split('\n').map(l => l.trim()).filter(Boolean)
 
   const save = async () => {
     if (!form.title.trim()) return setErr('Title is required.')
     setSaving(true); setErr(null)
     try {
-      await createPMSchedule({ title:form.title.trim(), frequency:form.frequency, next_due:form.next_due, description:form.description||null })
+      await createPMSchedule({
+        title: form.title.trim(),
+        frequency: form.frequency,
+        next_due: form.next_due,
+        description: form.description || null,
+        checklist_template: steps,
+        interval_days: form.interval_days === '' ? null : Number(form.interval_days),
+        estimated_hours: form.estimated_hours === '' ? null : Number(form.estimated_hours),
+      })
       onSaved()
     } catch(e) { setErr(e.message) } finally { setSaving(false) }
   }
 
   return (
     <div style={{position:'fixed',inset:0,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,.35)'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:'24px',width:420,maxWidth:'90vw'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:'24px',width:480,maxWidth:'90vw',maxHeight:'88vh',overflowY:'auto'}}>
         <div style={{display:'flex',alignItems:'center',marginBottom:18}}>
           <h2 style={{fontFamily:'var(--ff-d)',fontSize:17,fontWeight:700,color:'var(--n950)',flex:1}}>New PM Schedule</h2>
           <button onClick={onClose} style={{width:28,height:28,border:'none',background:'none',cursor:'pointer',color:'var(--n500)',fontSize:20,lineHeight:1}}>×</button>
@@ -71,6 +84,25 @@ function ScheduleModal({ onClose, onSaved }) {
               <input type="date" value={form.next_due} onChange={e=>set('next_due',e.target.value)} style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',boxSizing:'border-box'}}/>
             </label>
           </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Custom interval (days)
+              <input type="number" min="1" value={form.interval_days} onChange={e=>set('interval_days',e.target.value)} placeholder="e.g. 45" style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,fontFamily:'var(--ff-m)',outline:'none',boxSizing:'border-box'}}/>
+              <span style={{display:'block',fontSize:11,color:'var(--n500)',marginTop:4,fontWeight:400}}>Overrides the frequency above.</span>
+            </label>
+            <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Estimated hours
+              <input type="number" min="0" step="0.5" value={form.estimated_hours} onChange={e=>set('estimated_hours',e.target.value)} style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,fontFamily:'var(--ff-m)',outline:'none',boxSizing:'border-box'}}/>
+            </label>
+          </div>
+          <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Checklist — one step per line
+            <textarea value={checklist} onChange={e=>setChecklist(e.target.value)} rows={5}
+              placeholder={'Verify differential pressure transmitter\nCheck filter dP and replace if >0.5 bar\nConfirm flow computer time sync'}
+              style={{marginTop:4,width:'100%',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',resize:'vertical',boxSizing:'border-box',lineHeight:1.6}}/>
+            <span style={{display:'block',fontSize:11,color:'var(--n500)',marginTop:4,fontWeight:400}}>
+              {steps.length === 0
+                ? 'Every task this schedule generates gets these steps to tick off.'
+                : `${steps.length} step${steps.length === 1 ? '' : 's'} will be copied onto every generated task.`}
+            </span>
+          </label>
         </div>
         <div style={{display:'flex',gap:8,marginTop:20,justifyContent:'flex-end'}}>
           <button onClick={onClose} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>Cancel</button>
