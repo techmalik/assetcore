@@ -42,8 +42,45 @@ export async function updateWorkOrder(id, patch) {
   return api.patch(`/work-orders/${id}`, patch)
 }
 
-export async function transitionWorkOrder(id, newStatus, comment = '') {
-  return api.post(`/work-orders/${id}/transition`, { status: newStatus, comment })
+// `report` is only read when closing: the completion fields the technician
+// filled in. Closing also draws the job's reserved parts out of stock, and
+// fails with { error: 'insufficient_stock', shortfalls } if any part is short.
+export async function transitionWorkOrder(id, newStatus, comment = '', report = undefined) {
+  return api.post(`/work-orders/${id}/transition`, { status: newStatus, comment, report })
+}
+
+// ── Task checklist ───────────────────────────────────────────────────────────
+export async function listWorkOrderTasks(id) {
+  return api.get(`/work-orders/${id}/tasks`)
+}
+
+export async function addWorkOrderTask(id, description) {
+  return api.post(`/work-orders/${id}/tasks`, { description })
+}
+
+export async function updateWorkOrderTask(id, taskId, patch) {
+  return api.patch(`/work-orders/${id}/tasks/${taskId}`, patch)
+}
+
+export async function deleteWorkOrderTask(id, taskId) {
+  await api.del(`/work-orders/${id}/tasks/${taskId}`)
+}
+
+// ── Parts drawn against the job ──────────────────────────────────────────────
+export async function listWorkOrderParts(id) {
+  return api.get(`/work-orders/${id}/parts`)
+}
+
+export async function addWorkOrderPart(id, line) {
+  return api.post(`/work-orders/${id}/parts`, line)
+}
+
+export async function updateWorkOrderPart(id, lineId, patch) {
+  return api.patch(`/work-orders/${id}/parts/${lineId}`, patch)
+}
+
+export async function deleteWorkOrderPart(id, lineId) {
+  await api.del(`/work-orders/${id}/parts/${lineId}`)
 }
 
 export async function addWorkOrderComment(workOrderId, body) {

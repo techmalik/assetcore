@@ -14,6 +14,8 @@ const icons = {
   dashboard: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" fill="var(--b100)"/></svg>,
   assets: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 7h10M3 10h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   workorders: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M6 6h4M6 9h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  spareParts: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5.2 2.9v5.8L8 13.4 2.8 10.5V4.7L8 1.8Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M2.8 4.7L8 7.6l5.2-2.9M8 7.6v5.8" stroke="currentColor" strokeWidth="1.2"/></svg>,
+  depreciation: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 3.5v9h11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M5 6.5l2.5 2.5 2-2 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   maintenance: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="3" y="4" width="10" height="9" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M5 4V3a1 1 0 012 0v1M9 4V3a1 1 0 012 0v1" stroke="currentColor" strokeWidth="1.3"/></svg>,
   inspections: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2l1 3h3.2l-2.6 1.9 1 3L8 8.2 5.4 9.9l1-3L3.8 5H7L8 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>,
   compliance: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.3"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
@@ -30,6 +32,8 @@ export default function Sidebar({ active }) {
   const { org, fullName, initials, roleKey } = useAuth()
   const { isOpen, close } = useSidebar()
   const canAdmin = can(roleKey, 'audit:read')
+  const canParts = can(roleKey, 'parts:read')
+  const canDepreciation = can(roleKey, 'depreciation:read')
 
   const go = (path) => { nav(path); close() }
 
@@ -63,12 +67,22 @@ export default function Sidebar({ active }) {
         <div className={`nav-item${active==='maintenance'?' active':''}`} onClick={() => go('/maintenance')}>
           {icons.maintenance} Maintenance
         </div>
+        {canParts && (
+          <div className={`nav-item${active==='spare-parts'?' active':''}`} onClick={() => go('/spare-parts')}>
+            {icons.spareParts} Spare Parts
+          </div>
+        )}
         <div className={`nav-item${active==='inspections'?' active':''}`} onClick={() => go('/inspections')}>
           {icons.inspections} Inspections
         </div>
         <div className={`nav-item${active==='compliance'?' active':''}`} onClick={() => go('/compliance')}>
           {icons.compliance} Compliance
         </div>
+        {canDepreciation && (
+          <div className={`nav-item${active==='depreciation'?' active':''}`} onClick={() => go('/depreciation')}>
+            {icons.depreciation} Depreciation
+          </div>
+        )}
         <div className={`nav-item${active==='reports'?' active':''}`} onClick={() => go('/reports')}>
           {icons.reports} Reports
         </div>

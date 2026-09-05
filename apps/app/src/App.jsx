@@ -19,6 +19,8 @@ import Assets from './pages/Assets.jsx'
 import Scan from './pages/Scan.jsx'
 import WorkOrders from './pages/WorkOrders.jsx'
 import Maintenance from './pages/Maintenance.jsx'
+import SpareParts from './pages/SpareParts.jsx'
+import Depreciation from './pages/Depreciation.jsx'
 import Compliance from './pages/Compliance.jsx'
 import Inspections from './pages/Inspections.jsx'
 import Devices from './pages/Devices.jsx'
@@ -88,6 +90,8 @@ function Routed() {
       <Route path="/scan" element={gate(<Scan {...props} />)} />
       <Route path="/work-orders" element={gate(<WorkOrders {...props} />)} />
       <Route path="/maintenance" element={gate(<Maintenance {...props} />)} />
+      <Route path="/spare-parts" element={gate(can(roleKey, 'parts:read') ? <SpareParts {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/depreciation" element={gate(can(roleKey, 'depreciation:read') ? <Depreciation {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/compliance" element={gate(<Compliance {...props} />)} />
       <Route path="/inspections" element={gate(<Inspections {...props} />)} />
       <Route path="/devices" element={gate(<Devices {...props} />)} />
