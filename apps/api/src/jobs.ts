@@ -4,12 +4,13 @@ import { logger } from './logger.js'
 import { config } from './config.js'
 
 // No pg_cron dependency on the client's box — node-cron drives these SQL
-// functions instead. All three are `security definer`, called here via the
+// functions instead. All of them are `security definer`, called here via the
 // owner pool.
 const jobs = [
   { name: 'generate_pm_tasks', schedule: '0 6 * * *', sql: 'select public.generate_pm_tasks()' },
   { name: 'mark_overdue_pm_tasks', schedule: '5 0 * * *', sql: 'select public.mark_overdue_pm_tasks()' },
   { name: 'check_licence_expiry', schedule: '0 7 * * *', sql: 'select public.check_licence_expiry()' },
+  { name: 'check_low_stock', schedule: '30 6 * * *', sql: 'select public.check_low_stock()' },
 ]
 
 export function startJobs(): void {

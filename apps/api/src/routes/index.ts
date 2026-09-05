@@ -7,6 +7,8 @@ import { assetsRouter } from './assets.js'
 import { assetImportRouter } from './assetImport.js'
 import { documentsRouter } from './documents.js'
 import { workOrdersRouter } from './workOrders.js'
+import { sparePartsRouter } from './spareParts.js'
+import { depreciationRouter } from './depreciation.js'
 import { pmSchedulesRouter } from './pmSchedules.js'
 import { pmTasksRouter } from './pmTasks.js'
 import { complianceRouter } from './compliance.js'
@@ -34,6 +36,8 @@ apiRouter.use(assetImportRouter)
 apiRouter.use(assetsRouter)
 apiRouter.use(documentsRouter)
 apiRouter.use(workOrdersRouter)
+apiRouter.use(sparePartsRouter)
+apiRouter.use(depreciationRouter)
 apiRouter.use(pmSchedulesRouter)
 apiRouter.use(pmTasksRouter)
 apiRouter.use(complianceRouter)

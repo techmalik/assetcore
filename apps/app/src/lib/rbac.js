@@ -2,8 +2,9 @@
 // boundaries via RLS + role checks. Keep capability strings in `entity:action`
 // form. '*' = all; '*:read' = read-only across entities.
 //
-// org:manage, user:manage, integration:manage are intentionally not listed
-// under any role below — they're owner-only, covered by owner's '*'. Defined
+// org:manage, user:manage, integration:manage and depreciation:manage are
+// intentionally not listed under any role below — they're owner-only, covered
+// by owner's '*'. Depreciation posting moves the books; only the owner signs it. Defined
 // here (and mirrored in apps/api/src/middleware/rbac.ts) so call sites use a
 // real capability name instead of a made-up one.
 const ROLE_CAPABILITIES = {
@@ -12,6 +13,8 @@ const ROLE_CAPABILITIES = {
     'asset:read', 'asset:create', 'asset:update',
     'wo:read', 'wo:create', 'wo:update', 'wo:assign', 'wo:transition',
     'pm:read', 'pm:create', 'pm:update',
+    'parts:read', 'parts:create', 'parts:update', 'parts:adjust',
+    'depreciation:read',
     'inspection:read', 'compliance:read',
     'report:read', 'report:create', 'audit:read', 'user:read',
   ],
@@ -19,18 +22,21 @@ const ROLE_CAPABILITIES = {
     'asset:read', 'asset:update',
     'wo:read', 'wo:update', 'wo:transition',
     'pm:read', 'pm:update', 'inspection:read', 'inspection:create',
+    'parts:read', 'parts:adjust',
     'report:read',
   ],
   field_tech: [
     'asset:read',
     'wo:read', 'wo:update', 'wo:transition',
     'pm:read', 'inspection:read', 'inspection:create',
+    'parts:read',
   ],
   hse_officer: [
     'asset:read',
     'wo:read',
     'inspection:read', 'inspection:create', 'inspection:update',
     'compliance:read', 'compliance:create', 'compliance:update',
+    'parts:read',
     'report:read', 'report:create',
   ],
   viewer: ['*:read'],

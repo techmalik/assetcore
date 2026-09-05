@@ -12,7 +12,10 @@ import { buildSet, buildInsert } from '../sqlUtil.js'
 export const pmSchedulesRouter = Router()
 pmSchedulesRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
-const ALLOWED = ['asset_id', 'site_id', 'title', 'description', 'frequency', 'estimated_hours', 'next_due', 'assignee_id', 'active']
+const ALLOWED = ['asset_id', 'site_id', 'title', 'description', 'frequency', 'estimated_hours', 'next_due', 'assignee_id', 'active',
+  // Phase 2 (0003): the checklist every generated task is stamped with, plus
+  // an interval for cycles the frequency enum can't express.
+  'checklist_template', 'estimated_cost_cents', 'interval_days']
 
 const SELECT = `
   select p.*,
@@ -35,7 +38,17 @@ const scheduleInput = z.object({
   next_due: z.string(),
   assignee_id: z.string().uuid().nullable().optional(),
   active: z.boolean().optional(),
+  checklist_template: z.array(z.string().min(1).max(300)).max(100).optional(),
+  estimated_cost_cents: z.number().int().nonnegative().nullable().optional(),
+  interval_days: z.number().int().positive().max(3650).nullable().optional(),
 })
+
+// checklist_template is a jsonb column. node-pg serialises a bare JS array as a
+// Postgres ARRAY literal ({a,b}), which jsonb rejects — so stringify it here.
+function encodeChecklist<T extends { checklist_template?: string[] }>(data: T): T {
+  if (!data.checklist_template) return data
+  return { ...data, checklist_template: JSON.stringify(data.checklist_template) as unknown as string[] }
+}
 
 pmSchedulesRouter.get('/pm-schedules', async (req, res) => {
   const activeOnly = req.query.activeOnly !== 'false'
@@ -51,7 +64,7 @@ pmSchedulesRouter.get('/pm-schedules', async (req, res) => {
 pmSchedulesRouter.post('/pm-schedules', requireCap('pm:create'), async (req, res) => {
   const parsed = scheduleInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { columns, placeholders, values } = buildInsert(parsed.data, ALLOWED)
+  const { columns, placeholders, values } = buildInsert(encodeChecklist(parsed.data), ALLOWED)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
@@ -69,7 +82,7 @@ pmSchedulesRouter.post('/pm-schedules', requireCap('pm:create'), async (req, res
 pmSchedulesRouter.patch('/pm-schedules/:id', requireCap('pm:update'), async (req, res) => {
   const parsed = scheduleInput.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { setSql, values } = buildSet(parsed.data, ALLOWED)
+  const { setSql, values } = buildSet(encodeChecklist(parsed.data), ALLOWED)
   if (!setSql) return res.status(400).json({ error: 'empty_patch' })
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
