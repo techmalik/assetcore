@@ -30,6 +30,17 @@ export function onTokenChange(fn) {
 
 let refreshPromise = null
 
+/**
+ * Exchanges the refresh cookie for a new access token, de-duplicating
+ * concurrent callers so a burst of 401s makes one refresh, not five.
+ *
+ * Exported because auth.js needs it directly: a token whose exp has already
+ * passed is worth refreshing without first spending a request proving it.
+ */
+export function refreshAccessToken() {
+  return refresh()
+}
+
 function refresh() {
   if (!refreshPromise) {
     refreshPromise = fetch(`${BASE}/auth/refresh`, { method: 'POST', credentials: 'include' })
