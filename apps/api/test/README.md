@@ -39,6 +39,17 @@ TEST_DATABASE_URL_OWNER=postgres://postgres:postgres@HOST:5432/assetcore_test \
 npm test -w @assetcore/api
 ```
 
+On a native install (Postgres.app, Homebrew) there is usually no `postgres`
+role — the superuser is named after your macOS account — so the owner URL has
+to be overridden or the run fails before the first test:
+
+```
+createdb assetcore_test
+TEST_DATABASE_URL=postgres://assetcore_app:assetcore_app@localhost:5432/assetcore_test \
+TEST_DATABASE_URL_OWNER=postgres://$USER@localhost:5432/assetcore_test \
+npm test
+```
+
 ## Layout
 
 - `fixtures.ts` — fixed-UUID fixture rows (2 orgs, 3 sites, 3 assets, one
