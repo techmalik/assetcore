@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import AuthImage from '../components/AuthImage.jsx'
+import Lightbox from '../components/Lightbox.jsx'
 import DocumentsPanel from '../components/DocumentsPanel.jsx'
 import ImportAssetsDialog from '../components/ImportAssetsDialog.jsx'
 import { AssetQrCode, PrintQrSheet } from '../components/AssetQr.jsx'
@@ -15,6 +16,7 @@ import { listCategories } from '../lib/db/categories'
 import { listOrgMembers } from '../lib/db/orgMembers'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
+import { useMoney, Money } from '../lib/money'
 
 // `status` is condition; `lifecycle_status` is where the asset is in its life.
 // They are separate axes — an in-service asset can be critical.
@@ -206,14 +208,6 @@ function HealthBar({ score, source }) {
   )
 }
 
-function formatNaira(cents) {
-  if (cents === null || cents === undefined || cents === '') return '—'
-  const n = Number(cents) / 100
-  if (!Number.isFinite(n)) return '—'
-  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`
-  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`
-  return `₦${n.toLocaleString()}`
-}
 
 function warrantyState(date) {
   if (!date) return null
@@ -506,6 +500,7 @@ function DetailRow({ k, v, mono }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Assets({ dark, toggleDark }) {
+  const { money } = useMoney()
   const { roleKey } = useAuth()
   const nav = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -524,6 +519,8 @@ export default function Assets({ dark, toggleDark }) {
   const [printing, setPrinting] = useState(false)
   const [showQr, setShowQr] = useState(false)
   const [photoBusy, setPhotoBusy] = useState(false)
+  // Which photo the lightbox is open on, or null when it is closed.
+  const [viewingPhoto, setViewingPhoto] = useState(null)
 
   const [filters, setFilters] = useState({
     status: 'all', criticality: 'all', lifecycle_status: 'all',
@@ -728,7 +725,7 @@ export default function Assets({ dark, toggleDark }) {
                         </td>
                         <td style={{ padding: '11px 14px' }}><StatusBadge status={a.status} /></td>
                         <td style={{ padding: '11px 14px' }}><HealthBar score={a.health_score} source={a.health_score_source} /></td>
-                        <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{formatNaira(a.nbv_cents)}</td>
+                        <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{money(a.nbv_cents)}</td>
                         <td style={{ padding: '11px 14px' }}>
                           {canEdit && !filters.archived && (
                             <button onClick={(e) => { e.stopPropagation(); setModal(a) }} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)', padding: 4 }}>
@@ -754,7 +751,7 @@ export default function Assets({ dark, toggleDark }) {
                     <div style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b600)', marginBottom: 2 }}>{selected.ain}</div>
                     <div style={{ fontFamily: 'var(--ff-d)', fontSize: 16, fontWeight: 700, color: 'var(--n950)', letterSpacing: '-.2px' }}>{selected.name}</div>
                   </div>
-                  <button onClick={() => setSelected(null)} style={{ width: 26, height: 26, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--n500)', flexShrink: 0 }}>
+                  <button onClick={() => { setSelected(null); setViewingPhoto(null) }} style={{ width: 26, height: 26, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--n500)', flexShrink: 0 }}>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
                   </button>
                 </div>
@@ -805,10 +802,10 @@ export default function Assets({ dark, toggleDark }) {
                     <DetailRow k="Purchased" v={selected.purchase_date} mono />
                     <DetailRow k="Commissioned" v={selected.commission_date} mono />
                     <DetailRow k="Warranty expires" v={selected.warranty_expiry} mono />
-                    <DetailRow k="Purchase value" v={formatNaira(selected.purchase_value_cents)} mono />
+                    <DetailRow k="Purchase value" v={<Money cents={selected.purchase_value_cents} />} mono />
                     <DetailRow
                       k={selected.nbv_source === 'schedule' ? 'NBV (from schedule)' : 'NBV (entered)'}
-                      v={formatNaira(selected.nbv_cents)}
+                      v={<Money cents={selected.nbv_cents} />}
                       mono
                     />
                     <DetailRow k="Useful life" v={selected.useful_life_years ? `${selected.useful_life_years} years` : null} />
@@ -828,7 +825,11 @@ export default function Assets({ dark, toggleDark }) {
                       {selected.photos?.length > 0 ? (
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: canEdit ? 10 : 0 }}>
                           {selected.photos.map((p, i) => (
-                            <AuthImage key={i} relPath={p} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--n200)' }} />
+                            <button key={i} type="button" onClick={() => setViewingPhoto(i)}
+                              title="View full size"
+                              style={{ padding: 0, border: '1px solid var(--n200)', borderRadius: 4, background: 'none', cursor: 'zoom-in', lineHeight: 0, overflow: 'hidden' }}>
+                              <AuthImage relPath={p} alt="" style={{ width: 64, height: 64, objectFit: 'cover', display: 'block' }} />
+                            </button>
                           ))}
                         </div>
                       ) : (
@@ -873,6 +874,13 @@ export default function Assets({ dark, toggleDark }) {
         />
       )}
       {importing && <ImportAssetsDialog onClose={() => setImporting(false)} onDone={load} />}
+      {viewingPhoto != null && selected?.photos?.length > 0 && (
+        <Lightbox
+          items={selected.photos.map((p, i) => ({ path: p, caption: `${selected.ain} — photo ${i + 1}` }))}
+          index={viewingPhoto}
+          onClose={() => setViewingPhoto(null)}
+        />
+      )}
       {printing && (
         <PrintQrSheet
           assets={selected && showQr ? [selected] : assets}

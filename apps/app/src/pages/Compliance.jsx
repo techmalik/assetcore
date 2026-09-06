@@ -8,6 +8,10 @@ import {
   listComplianceLicences, createComplianceLicence, updateComplianceLicence,
   softDeleteComplianceLicence, listAuthorities, checkLicenceExpiry,
   licenceStatus, daysUntilExpiry, uploadComplianceDocument,
+  listAudits, getAuditStats, getAudit, createAudit, updateAudit,
+  addFinding, updateFinding, raiseFindingDefect,
+  AUDIT_KINDS, AUDIT_OUTCOMES, OUTCOME_LABEL, OUTCOME_CLASS,
+  FINDING_SEVERITIES, FINDING_CLASS,
 } from '../lib/db/complianceLicences'
 import { listSites } from '../lib/db/sites'
 import { api } from '../lib/apiClient'
@@ -213,6 +217,7 @@ export default function Compliance({ dark, toggleDark }) {
   const [selected, setSelected]       = useState(null)
   const [modal, setModal]             = useState(null) // null | 'add' | licence-obj (edit)
   const [filter, setFilter]           = useState('all') // all|active|expiring|expired
+  const [tab, setTab]                 = useState('licences')
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
@@ -260,22 +265,32 @@ export default function Compliance({ dark, toggleDark }) {
             <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
               <div>
                 <h1 style={{fontFamily:'var(--ff-d)',fontSize:22,fontWeight:700,letterSpacing:'-.3px',color:'var(--n950)'}}>Compliance</h1>
-                <p style={{fontSize:12,color:'var(--n500)'}}>Licences, certificates & regulatory requirements</p>
+                <p style={{fontSize:12,color:'var(--n500)'}}>Licences and certificates, and the audits that check them</p>
               </div>
               <div style={{flex:1}}/>
-              <button onClick={handleRunExpiry} style={{height:32,padding:'0 14px',border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',fontSize:12,color:'var(--n600)',cursor:'pointer'}}>
-                Check Expiry Alerts
-              </button>
-              {canCreate && (
-                <button onClick={() => setModal('add')} style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',border:'none',borderRadius:4,fontSize:13,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                  Add Licence
-                </button>
+              {tab === 'licences' && (
+                <>
+                  <button onClick={handleRunExpiry} style={{height:32,padding:'0 14px',border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',fontSize:12,color:'var(--n600)',cursor:'pointer'}}>
+                    Check Expiry Alerts
+                  </button>
+                  {canCreate && (
+                    <button onClick={() => setModal('add')} style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',border:'none',borderRadius:4,fontSize:13,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                      Add Licence
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
-            {/* Summary strip */}
-            <div style={{display:'flex',gap:8}}>
+            <div style={{display:'flex',marginBottom: tab === 'licences' ? 10 : 0}}>
+              {[{k:'licences',l:`Licences (${counts.total})`},{k:'audits',l:'Audits'}].map(t => (
+                <button key={t.k} className={`tab-btn${tab===t.k?' active':''}`} onClick={() => { setTab(t.k); setSelected(null) }}>{t.l}</button>
+              ))}
+            </div>
+
+            {/* Summary strip — licence expiry states, so licences only. */}
+            <div style={{display:'flex',gap:8,...(tab === 'licences' ? {} : {display:'none'})}}>
               {[
                 { key:'all',      label:`All (${counts.total})`,          c:'var(--n700)',  bg:'var(--n100)', br:'var(--n200)' },
                 { key:'active',   label:`Active (${counts.active + counts.due_soon})`, c:'var(--sgt)', bg:'var(--sgb)', br:'var(--sgbr)' },
@@ -289,6 +304,15 @@ export default function Compliance({ dark, toggleDark }) {
             </div>
           </div>
 
+          {tab === 'audits' ? (
+            <AuditsTab
+              canCreate={canCreate}
+              canEdit={canEditDoc}
+              canRaiseDefect={can(roleKey, 'defect:create')}
+              authorities={authorities}
+              sites={sites}
+            />
+          ) : (
           <div style={{flex:1,overflow:'hidden',display:'flex'}}>
             {/* Table */}
             <div style={{flex:1,overflowY:'auto'}}>
@@ -350,6 +374,7 @@ export default function Compliance({ dark, toggleDark }) {
               />
             )}
           </div>
+          )}
         </div>
       </div>
 
@@ -373,6 +398,423 @@ function EmptyState({ canCreate, onAdd }) {
       <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>No licences or certificates yet</div>
       <div style={{fontSize:13,color:'var(--n500)',maxWidth:320}}>Track regulatory licences, certificates, and their renewal deadlines. Alerts fire at 90, 30, and 7 days before expiry.</div>
       {canCreate && <button onClick={onAdd} className="btn btn-primary" style={{marginTop:8,height:36,padding:'0 18px',fontSize:13}}>Add first licence</button>}
+    </div>
+  )
+}
+
+// ── Audits ────────────────────────────────────────────────────────────────────
+// Licences are documents with an expiry date; an audit is someone coming to
+// check. The outcome is the whole point, so the API refuses to complete one
+// without it and this tab leads with it.
+
+function AuditModal({ onClose, onSaved, authorities, sites }) {
+  const today = new Date().toISOString().slice(0, 10)
+  const [form, setForm] = useState({ title:'', kind:'internal', scheduled_date:today, authority_id:'', site_id:'', auditor:'', scope:'' })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState(null)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const save = async () => {
+    if (!form.title.trim()) return setErr('Give the audit a title.')
+    setSaving(true); setErr(null)
+    try {
+      await createAudit({
+        title: form.title.trim(), kind: form.kind, scheduled_date: form.scheduled_date,
+        authority_id: form.authority_id || null, site_id: form.site_id || null,
+        auditor: form.auditor.trim() || null, scope: form.scope.trim() || null,
+      })
+      onSaved()
+    } catch (e) { setErr(e.message); setSaving(false) }
+  }
+
+  const inp = { height:34, border:'1px solid var(--n200)', borderRadius:4, padding:'0 10px', fontSize:13, fontFamily:'var(--ff-u)', outline:'none', width:'100%', boxSizing:'border-box', background:'var(--n0)', color:'var(--n900)' }
+  const lbl = { fontSize:12, fontWeight:500, color:'var(--n800)', display:'flex', flexDirection:'column', gap:4 }
+
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,.35)'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:24,width:480,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:18}}>
+          <h2 style={{fontFamily:'var(--ff-d)',fontSize:17,fontWeight:700,color:'var(--n950)',flex:1}}>Schedule an audit</h2>
+          <button onClick={onClose} style={{width:28,height:28,border:'none',background:'none',cursor:'pointer',color:'var(--n500)',fontSize:20,lineHeight:1}}>×</button>
+        </div>
+        {err && <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'8px 12px',fontSize:12,color:'var(--srt)',marginBottom:12}}>{err}</div>}
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          <label style={lbl}>Title *
+            <input value={form.title} onChange={e=>set('title',e.target.value)} placeholder="Annual DPR facility audit" style={inp}/>
+          </label>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            <label style={lbl}>Kind
+              <select value={form.kind} onChange={e=>set('kind',e.target.value)} style={{...inp,appearance:'none'}}>
+                {AUDIT_KINDS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </label>
+            <label style={lbl}>Scheduled date *
+              <input type="date" value={form.scheduled_date} onChange={e=>set('scheduled_date',e.target.value)} style={inp}/>
+            </label>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            <label style={lbl}>Authority
+              <select value={form.authority_id} onChange={e=>set('authority_id',e.target.value)} style={{...inp,appearance:'none'}}>
+                <option value="">— None —</option>
+                {authorities.map(a => <option key={a.id} value={a.id}>{a.code || a.name}</option>)}
+              </select>
+            </label>
+            <label style={lbl}>Site
+              <select value={form.site_id} onChange={e=>set('site_id',e.target.value)} style={{...inp,appearance:'none'}}>
+                <option value="">— All sites —</option>
+                {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </label>
+          </div>
+          <label style={lbl}>Auditor
+            <input value={form.auditor} onChange={e=>set('auditor',e.target.value)} placeholder="Often an external firm" style={inp}/>
+          </label>
+          <label style={lbl}>Scope
+            <textarea value={form.scope} onChange={e=>set('scope',e.target.value)} rows={2} style={{...inp,height:'auto',padding:'8px 10px',resize:'vertical'}}/>
+          </label>
+        </div>
+        <div style={{display:'flex',gap:8,marginTop:20,justifyContent:'flex-end'}}>
+          <button onClick={onClose} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>Cancel</button>
+          <button onClick={save} disabled={saving} className="btn btn-primary" style={{height:34,padding:'0 18px',fontSize:13}}>{saving?'Saving…':'Schedule'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Completing an audit is recording how it went — the outcome is required, and
+ * the dialog says what each one means so two people pick the same word. */
+function CompleteAuditModal({ audit, onClose, onSaved }) {
+  const [outcome, setOutcome] = useState(audit.outcome || (audit.open_finding_count > 0 ? 'pass_with_findings' : 'pass'))
+  const [summary, setSummary] = useState(audit.summary || '')
+  const [nextDue, setNextDue] = useState(audit.next_due_date || '')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState(null)
+
+  const HINTS = {
+    pass: 'No non-conformities raised.',
+    pass_with_findings: 'Compliant overall, with findings to close out.',
+    fail: 'Non-compliant — a finding blocks certification or operation.',
+    not_applicable: 'The audit did not go ahead, or the scope did not apply.',
+  }
+
+  const save = async () => {
+    setSaving(true); setErr(null)
+    try {
+      await updateAudit(audit.id, {
+        status: 'completed', outcome,
+        summary: summary.trim() || null,
+        next_due_date: nextDue || null,
+      })
+      onSaved()
+    } catch (e) {
+      setErr(e.message === 'outcome_required' ? 'An outcome is required to complete an audit.' : e.message)
+      setSaving(false)
+    }
+  }
+
+  const inp = { width:'100%', border:'1px solid var(--n200)', borderRadius:4, padding:'8px 10px', fontSize:13, fontFamily:'var(--ff-u)', outline:'none', boxSizing:'border-box', background:'var(--n0)', color:'var(--n900)' }
+
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:210,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,.35)'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:24,width:480,maxWidth:'92vw'}}>
+        <h2 style={{fontFamily:'var(--ff-d)',fontSize:17,fontWeight:700,color:'var(--n950)'}}>Complete audit</h2>
+        <p style={{fontSize:12,color:'var(--n500)',marginBottom:16}}>{audit.ref} — {audit.title}</p>
+        {err && <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'8px 12px',fontSize:12,color:'var(--srt)',marginBottom:12}}>{err}</div>}
+
+        <label className="label" style={{display:'block',marginBottom:6}}>Outcome *</label>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
+          {AUDIT_OUTCOMES.map(([v,l]) => (
+            <button key={v} type="button" onClick={() => setOutcome(v)}
+              style={{textAlign:'left',padding:'9px 11px',borderRadius:5,cursor:'pointer',fontFamily:'inherit',
+                border:`1px solid ${outcome===v?'var(--b400)':'var(--n200)'}`,
+                background: outcome===v?'var(--slb)':'var(--n0)'}}>
+              <div style={{fontSize:12.5,fontWeight:600,color:outcome===v?'var(--slt)':'var(--n800)'}}>{l}</div>
+              <div style={{fontSize:11,color:'var(--n500)',lineHeight:1.4}}>{HINTS[v]}</div>
+            </button>
+          ))}
+        </div>
+        {audit.open_finding_count > 0 && outcome === 'pass' && (
+          <p style={{fontSize:11.5,color:'var(--sat)',marginBottom:12,lineHeight:1.5}}>
+            This audit has {audit.open_finding_count} open finding{audit.open_finding_count===1?'':'s'} — &ldquo;pass with findings&rdquo; is probably the honest word.
+          </p>
+        )}
+
+        <label className="label" style={{display:'block',marginBottom:5}}>Summary</label>
+        <textarea value={summary} onChange={e=>setSummary(e.target.value)} rows={3} style={{...inp,resize:'vertical',marginBottom:12}}/>
+        <label className="label" style={{display:'block',marginBottom:5}}>Next audit due</label>
+        <input type="date" value={nextDue} onChange={e=>setNextDue(e.target.value)} style={{...inp,height:34,padding:'0 10px'}}/>
+
+        <div style={{display:'flex',gap:8,marginTop:20,justifyContent:'flex-end'}}>
+          <button onClick={onClose} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>Cancel</button>
+          <button onClick={save} disabled={saving} className="btn btn-primary" style={{height:34,padding:'0 18px',fontSize:13}}>{saving?'Saving…':'Complete'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AuditsTab({ canCreate, canEdit, canRaiseDefect, authorities, sites }) {
+  const nav = useNavigate()
+  const [audits, setAudits] = useState([])
+  const [stats, setStats] = useState(null)
+  const [detail, setDetail] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState(null)
+  const [modal, setModal] = useState(null)
+  const [completing, setCompleting] = useState(null)
+  const [newFinding, setNewFinding] = useState({ clause:'', description:'', severity:'minor', due_date:'' })
+  const [addingFinding, setAddingFinding] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr(null)
+    try {
+      const [rows, s] = await Promise.all([listAudits(), getAuditStats()])
+      setAudits(rows); setStats(s)
+    } catch (e) { setErr(e.message) }
+    finally { setLoading(false) }
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  const openDetail = async (id) => {
+    setDetail({ id, loading:true })
+    try { setDetail(await getAudit(id)) } catch { setDetail(null) }
+  }
+
+  const addFindingNow = async () => {
+    if (!newFinding.description.trim()) return
+    await addFinding(detail.id, {
+      clause: newFinding.clause.trim() || null,
+      description: newFinding.description.trim(),
+      severity: newFinding.severity,
+      due_date: newFinding.due_date || null,
+    })
+    setNewFinding({ clause:'', description:'', severity:'minor', due_date:'' })
+    setAddingFinding(false)
+    openDetail(detail.id); load()
+  }
+
+  const toggleFinding = async (f) => {
+    await updateFinding(detail.id, f.id, { status: f.status === 'open' ? 'closed' : 'open' })
+    openDetail(detail.id); load()
+  }
+
+  const raiseDefect = async (f) => {
+    try {
+      await raiseFindingDefect(detail.id, f.id)
+      openDetail(detail.id)
+    } catch (e) {
+      if (e.message !== 'already_raised') alert(e.message)
+    }
+  }
+
+  const inp = { width:'100%', border:'1px solid var(--n200)', borderRadius:4, padding:'6px 9px', fontSize:12, fontFamily:'var(--ff-u)', outline:'none', boxSizing:'border-box', background:'var(--n0)', color:'var(--n900)' }
+
+  if (loading) return <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading audits…</div>
+  if (err) return <div style={{padding:24}}><div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>{err}</div></div>
+
+  return (
+    <div style={{flex:1,overflow:'hidden',display:'flex'}}>
+      <div style={{flex:1,overflowY:'auto'}}>
+        {stats && (
+          <div style={{display:'flex',border:'var(--bdr)',borderRadius:6,margin:'16px 24px 0',overflow:'hidden',background:'var(--n0)'}}>
+            {[
+              ['Upcoming', stats.upcoming, null],
+              ['Completed', stats.completed, null],
+              ['Failed', stats.failed, stats.failed > 0 ? 'var(--srt)' : null],
+              ['Open findings', stats.open_findings, stats.open_findings > 0 ? 'var(--sat)' : null],
+              ['Major or critical', stats.serious_findings, stats.serious_findings > 0 ? 'var(--srt)' : null],
+            ].map(([label, value, colour]) => (
+              <div key={label} style={{padding:'12px 16px',borderRight:'var(--bdr)',flex:1,minWidth:0}}>
+                <div style={{fontFamily:'var(--ff-m)',fontSize:20,fontWeight:500,color:colour || 'var(--n900)'}}>{value}</div>
+                <div style={{fontSize:11,color:'var(--n500)',marginTop:2}}>{label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 24px 10px'}}>
+          <p style={{fontSize:12.5,color:'var(--n600)',lineHeight:1.6,flex:1,maxWidth:640}}>
+            An audit is only worth recording if it ends in an outcome. A finding here can be raised onto the
+            defect register, where it becomes a work order like any other repair.
+          </p>
+          {canCreate && (
+            <button onClick={() => setModal('add')} className="btn btn-primary" style={{height:32,padding:'0 14px',fontSize:13,whiteSpace:'nowrap'}}>Schedule audit</button>
+          )}
+        </div>
+
+        {audits.length === 0 ? (
+          <div style={{padding:'48px 24px',textAlign:'center'}}>
+            <p style={{fontSize:14,fontWeight:600,color:'var(--n600)',marginBottom:6}}>No audits recorded</p>
+            <p style={{fontSize:13,color:'var(--n400)',maxWidth:420,margin:'0 auto 18px',lineHeight:1.6}}>
+              Internal reviews, regulator visits and certification bodies all end in a result somebody will
+              ask about later.
+            </p>
+            {canCreate && <button onClick={() => setModal('add')} className="btn btn-primary" style={{height:36,padding:'0 18px',fontSize:13}}>Schedule the first audit</button>}
+          </div>
+        ) : (
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead>
+              <tr style={{background:'var(--n50)',borderBottom:'var(--bdr)'}}>
+                {['Ref','Audit','Kind','Date','Findings','Outcome'].map(h => (
+                  <th key={h} style={{padding:'9px 14px',textAlign:'left',fontSize:10,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--n500)',whiteSpace:'nowrap',borderBottom:'var(--bdr)'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {audits.map(a => (
+                <tr key={a.id} className="row-hover" style={{borderBottom:'var(--bdr)',cursor:'pointer',background:detail?.id===a.id?'var(--b50)':'transparent'}} onClick={() => openDetail(a.id)}>
+                  <td style={{padding:'11px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:'var(--b700)',whiteSpace:'nowrap'}}>{a.ref}</td>
+                  <td style={{padding:'11px 14px'}}>
+                    <div style={{fontSize:13,fontWeight:500,color:'var(--n900)'}}>{a.title}</div>
+                    {a.auditor && <div style={{fontSize:11,color:'var(--n500)'}}>{a.auditor}</div>}
+                  </td>
+                  <td style={{padding:'11px 14px',fontSize:12,color:'var(--n600)',whiteSpace:'nowrap'}}>
+                    {(AUDIT_KINDS.find(([v]) => v === a.kind) || [null,a.kind])[1]}
+                  </td>
+                  <td style={{padding:'11px 14px',fontFamily:'var(--ff-m)',fontSize:11,color:'var(--n600)',whiteSpace:'nowrap'}}>{fmtDate(a.completed_date || a.scheduled_date)}</td>
+                  <td style={{padding:'11px 14px',fontSize:12,whiteSpace:'nowrap'}}>
+                    {a.finding_count === 0
+                      ? <span style={{color:'var(--n400)'}}>None</span>
+                      : <span style={{color: a.open_finding_count > 0 ? 'var(--sat)' : 'var(--sgt)'}}>{a.open_finding_count} open of {a.finding_count}</span>}
+                  </td>
+                  <td style={{padding:'11px 14px'}}>
+                    {a.outcome
+                      ? <span className={`badge ${OUTCOME_CLASS[a.outcome]}`}>{OUTCOME_LABEL[a.outcome]}</span>
+                      : <span className="badge badge-n" style={{textTransform:'capitalize'}}>{a.status.replace('_',' ')}</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {detail && (
+        <div style={{width:390,flexShrink:0,borderLeft:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          {detail.loading ? (
+            <div style={{padding:24,fontSize:13,color:'var(--n400)'}}>Loading…</div>
+          ) : (
+            <>
+              <div style={{padding:'16px 20px',borderBottom:'var(--bdr)',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontFamily:'var(--ff-m)',fontSize:11,color:'var(--b600)',marginBottom:2}}>{detail.ref}</div>
+                  <div style={{fontFamily:'var(--ff-d)',fontSize:16,fontWeight:700,color:'var(--n950)',letterSpacing:'-.2px'}}>{detail.title}</div>
+                </div>
+                <button onClick={() => setDetail(null)} style={{width:26,height:26,border:'1px solid var(--n200)',borderRadius:4,background:'var(--n0)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'var(--n500)',flexShrink:0}}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                </button>
+              </div>
+
+              <div style={{flex:1,overflowY:'auto',padding:'16px 20px',display:'flex',flexDirection:'column',gap:14}}>
+                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                  {detail.outcome
+                    ? <span className={`badge ${OUTCOME_CLASS[detail.outcome]}`}>{OUTCOME_LABEL[detail.outcome]}</span>
+                    : <span className="badge badge-n" style={{textTransform:'capitalize'}}>{detail.status.replace('_',' ')}</span>}
+                  <span className="badge badge-n">{(AUDIT_KINDS.find(([v]) => v === detail.kind) || [null,detail.kind])[1]}</span>
+                </div>
+
+                {detail.summary && (
+                  <div style={{background:'var(--n50)',border:'var(--bdr)',borderRadius:6,padding:'12px 14px',fontSize:12.5,color:'var(--n700)',lineHeight:1.55,whiteSpace:'pre-wrap'}}>{detail.summary}</div>
+                )}
+
+                <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:6,overflow:'hidden'}}>
+                  <div style={{padding:'10px 14px',borderBottom:'var(--bdr)',fontSize:11,fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--n500)',fontFamily:'var(--ff-m)'}}>Details</div>
+                  {[
+                    ['Scheduled', fmtDate(detail.scheduled_date)],
+                    ['Completed', detail.completed_date ? fmtDate(detail.completed_date) : null],
+                    ['Authority', detail.authority?.name],
+                    ['Site', detail.site?.name],
+                    ['Auditor', detail.auditor],
+                    ['Scope', detail.scope],
+                    ['Next due', detail.next_due_date ? fmtDate(detail.next_due_date) : null],
+                  ].map(([k,v]) => (
+                    <div key={k} style={{display:'flex',justifyContent:'space-between',gap:12,padding:'9px 14px',borderBottom:'var(--bdr)',fontSize:12}}>
+                      <span style={{color:'var(--n500)',flexShrink:0}}>{k}</span>
+                      <span style={{color:'var(--n800)',fontWeight:500,textAlign:'right'}}>{v || '—'}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:6,overflow:'hidden'}}>
+                  <div style={{padding:'10px 14px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{fontSize:11,fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--n500)',fontFamily:'var(--ff-m)'}}>Findings</span>
+                    <div style={{flex:1}}/>
+                    {canEdit && !addingFinding && (
+                      <button onClick={() => setAddingFinding(true)} style={{fontSize:11.5,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Add</button>
+                    )}
+                  </div>
+
+                  {(detail.findings || []).length === 0 && !addingFinding && (
+                    <div style={{padding:'12px 14px',fontSize:12,color:'var(--n400)'}}>Nothing raised against this audit.</div>
+                  )}
+
+                  {(detail.findings || []).map(f => (
+                    <div key={f.id} style={{padding:'10px 14px',borderBottom:'var(--bdr)'}}>
+                      <div style={{display:'flex',alignItems:'flex-start',gap:8}}>
+                        <span className={`badge ${FINDING_CLASS[f.severity]}`} style={{flexShrink:0}}>{f.severity}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          {f.clause && <div style={{fontFamily:'var(--ff-m)',fontSize:10.5,color:'var(--n500)'}}>{f.clause}</div>}
+                          <div style={{fontSize:12.5,color:'var(--n800)',lineHeight:1.5,textDecoration:f.status==='closed'?'line-through':'none',opacity:f.status==='closed'?0.65:1}}>{f.description}</div>
+                          {f.due_date && <div style={{fontSize:11,color:'var(--n500)',marginTop:2}}>Due {fmtDate(f.due_date)}</div>}
+                        </div>
+                      </div>
+                      <div style={{display:'flex',gap:6,marginTop:7,paddingLeft:4,alignItems:'center',flexWrap:'wrap'}}>
+                        {canEdit && (
+                          <button onClick={() => toggleFinding(f)} className="btn btn-secondary" style={{height:24,padding:'0 9px',fontSize:11}}>
+                            {f.status === 'open' ? 'Close' : 'Reopen'}
+                          </button>
+                        )}
+                        {f.defect
+                          ? <button onClick={() => nav('/defects')} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>
+                              {f.defect.ref} on the register
+                            </button>
+                          : canRaiseDefect && f.status === 'open' && (
+                              <button onClick={() => raiseDefect(f)} className="btn btn-secondary" style={{height:24,padding:'0 9px',fontSize:11}}>Raise a defect</button>
+                            )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {addingFinding && (
+                    <div style={{padding:'10px 14px',display:'flex',flexDirection:'column',gap:7,background:'var(--n50)'}}>
+                      <input value={newFinding.clause} onChange={e=>setNewFinding(f=>({...f,clause:e.target.value}))} placeholder="Clause (optional)" style={{...inp,fontFamily:'var(--ff-m)'}}/>
+                      <textarea value={newFinding.description} onChange={e=>setNewFinding(f=>({...f,description:e.target.value}))} rows={2} placeholder="What was found" style={{...inp,resize:'vertical'}}/>
+                      <div style={{display:'flex',gap:7}}>
+                        <select value={newFinding.severity} onChange={e=>setNewFinding(f=>({...f,severity:e.target.value}))} style={{...inp,flex:1}}>
+                          {FINDING_SEVERITIES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+                        </select>
+                        <input type="date" value={newFinding.due_date} onChange={e=>setNewFinding(f=>({...f,due_date:e.target.value}))} style={{...inp,flex:1}}/>
+                      </div>
+                      <div style={{display:'flex',gap:6}}>
+                        <button onClick={addFindingNow} disabled={!newFinding.description.trim()} className="btn btn-primary" style={{height:28,padding:'0 12px',fontSize:12}}>Add</button>
+                        <button onClick={() => setAddingFinding(false)} className="btn btn-secondary" style={{height:28,padding:'0 12px',fontSize:12}}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {canEdit && detail.status !== 'completed' && (
+                  <button onClick={() => setCompleting(detail)} className="btn btn-primary" style={{height:36,fontSize:13}}>Complete the audit</button>
+                )}
+                {canEdit && detail.status === 'completed' && (
+                  <button onClick={() => setCompleting(detail)} className="btn btn-secondary" style={{height:34,fontSize:13}}>Change the outcome</button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {modal === 'add' && (
+        <AuditModal authorities={authorities} sites={sites}
+          onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
+      )}
+      {completing && (
+        <CompleteAuditModal audit={completing}
+          onClose={() => setCompleting(null)}
+          onSaved={() => { setCompleting(null); load(); openDetail(completing.id) }}/>
+      )}
     </div>
   )
 }

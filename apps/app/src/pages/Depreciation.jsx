@@ -9,17 +9,10 @@ import {
 import { listAssets } from '../lib/db/assets'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
+import { useMoney, Money } from '../lib/money'
 
 const THIS_YEAR = new Date().getFullYear()
 
-function naira(cents) {
-  if (cents === null || cents === undefined || cents === '') return '—'
-  const n = Number(cents) / 100
-  if (!Number.isFinite(n)) return '—'
-  if (Math.abs(n) >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(2)}B`
-  if (Math.abs(n) >= 1_000_000) return `₦${(n / 1_000_000).toFixed(2)}M`
-  return `₦${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-}
 
 function exact(cents) {
   if (cents === null || cents === undefined) return '—'
@@ -211,6 +204,7 @@ function NewScheduleModal({ assets, onClose, onCreated }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Depreciation({ dark, toggleDark }) {
+  const { money } = useMoney()
   const { roleKey } = useAuth()
   const canManage = can(roleKey, 'depreciation:manage')
 
@@ -304,9 +298,9 @@ export default function Depreciation({ dark, toggleDark }) {
               <div style={{ display: 'flex', border: 'var(--bdr)', borderRadius: 6, marginBottom: 12, overflow: 'hidden' }}>
                 <Stat label="Active schedules" value={stats.schedules} />
                 <Stat label="Assets with a value but no schedule" value={stats.assets_without_schedule} tone={stats.assets_without_schedule > 0 ? 'warn' : undefined} />
-                <Stat label="Gross cost" value={naira(stats.gross_cost_cents)} />
-                <Stat label={`Charge posted for ${THIS_YEAR}`} value={naira(stats.charge_this_year_cents)} />
-                <Stat label="Accumulated to date" value={naira(stats.accumulated_cents)} />
+                <Stat label="Gross cost" value={<Money cents={stats.gross_cost_cents} />} />
+                <Stat label={`Charge posted for ${THIS_YEAR}`} value={<Money cents={stats.charge_this_year_cents} />} />
+                <Stat label="Accumulated to date" value={<Money cents={stats.accumulated_cents} />} />
               </div>
             )}
 
@@ -385,13 +379,13 @@ export default function Depreciation({ dark, toggleDark }) {
                           <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--n900)' }}>{s.asset?.name}</div>
                         </td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{METHOD_LABEL[s.method] || s.method}</td>
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{naira(s.cost_cents)}</td>
+                        <td style={{ padding: '11px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{money(s.cost_cents)}</td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{s.useful_life_years} yrs</td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>
                           {s.posted_count} / {s.entry_count}
                           {s.posted_count === 0 && <span className="badge badge-n" style={{ marginLeft: 8 }}>Nothing posted</span>}
                         </td>
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n800)', whiteSpace: 'nowrap' }}>{naira(s.asset?.nbv_cents)}</td>
+                        <td style={{ padding: '11px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n800)', whiteSpace: 'nowrap' }}>{money(s.asset?.nbv_cents)}</td>
                       </tr>
                     ))}
                   </tbody>

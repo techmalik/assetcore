@@ -46,6 +46,16 @@ export function AuthProvider({ children }) {
     return () => { cancelled = true }
   }, [orgId])
 
+  // Settings that every page reads off the org — currency above all — have to
+  // be refetched after they change, or half the app keeps formatting money in
+  // the old one until the next full load.
+  const refreshOrg = useCallback(async () => {
+    if (!isConfigured || !orgId) return null
+    const orgData = await api.get('/org')
+    setOrg(orgData || null)
+    return orgData
+  }, [orgId])
+
   const user = session?.user ?? null
   const fullName = user?.user_metadata?.full_name || user?.email || ''
 
@@ -63,6 +73,7 @@ export function AuthProvider({ children }) {
     mustChangePassword: Boolean(user?.must_change_password),
     signOut: doSignOut,
     refreshSession,
+    refreshOrg,
   }
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }

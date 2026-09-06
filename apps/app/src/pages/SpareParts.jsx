@@ -9,15 +9,8 @@ import {
 import { listAssets } from '../lib/db/assets'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
+import { useMoney, Money } from '../lib/money'
 
-function naira(cents) {
-  if (cents === null || cents === undefined || cents === '') return '—'
-  const n = Number(cents) / 100
-  if (!Number.isFinite(n)) return '—'
-  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(1)}B`
-  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`
-  return `₦${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-}
 
 // Stock is numeric so consumables can be issued in litres — but 13.00 reads
 // worse than 13 for the common whole-unit case.
@@ -240,6 +233,7 @@ function AdjustModal({ part, onClose, onSaved }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function SpareParts({ dark, toggleDark }) {
+  const { money } = useMoney()
   const { roleKey } = useAuth()
   const canCreate = can(roleKey, 'parts:create')
   const canEdit = can(roleKey, 'parts:update')
@@ -326,7 +320,7 @@ export default function SpareParts({ dark, toggleDark }) {
                 <Stat label="Parts tracked" value={stats.total} />
                 <Stat label="At or below reorder level" value={stats.low_stock} tone={stats.low_stock > 0 ? 'warn' : undefined} />
                 <Stat label="Out of stock" value={stats.out_of_stock} tone={stats.out_of_stock > 0 ? 'bad' : undefined} />
-                <Stat label="Stock value" value={naira(stats.stock_value_cents)} />
+                <Stat label="Stock value" value={<Money cents={stats.stock_value_cents} />} />
               </div>
             )}
 
@@ -382,7 +376,7 @@ export default function SpareParts({ dark, toggleDark }) {
                         </td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{p.category || '—'}</td>
                         <td style={{ padding: '11px 14px' }}><StockCell part={p} /></td>
-                        <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{naira(p.unit_cost_cents)}</td>
+                        <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{money(p.unit_cost_cents)}</td>
                         <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{p.storage_location || '—'}</td>
                         <td style={{ padding: '11px 14px', textAlign: 'right' }}>
                           {canAdjust && (
@@ -428,7 +422,7 @@ export default function SpareParts({ dark, toggleDark }) {
 
                       <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden' }}>
                         <div style={{ padding: '10px 14px', borderBottom: 'var(--bdr)', fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)' }}>Details</div>
-                        {[['Category', detail.category], ['Unit cost', naira(detail.unit_cost_cents)], ['Supplier', detail.supplier], ['Storage', detail.storage_location], ['Description', detail.description]].map(([k, v]) => (
+                        {[['Category', detail.category], ['Unit cost', <Money key="uc" cents={detail.unit_cost_cents} />], ['Supplier', detail.supplier], ['Storage', detail.storage_location], ['Description', detail.description]].map(([k, v]) => (
                           <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '9px 14px', borderBottom: 'var(--bdr)', fontSize: 12 }}>
                             <span style={{ color: 'var(--n500)', flexShrink: 0 }}>{k}</span>
                             <span style={{ color: 'var(--n800)', fontWeight: 500, textAlign: 'right' }}>{v || '—'}</span>

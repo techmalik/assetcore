@@ -14,6 +14,7 @@ import { listSpareParts } from '../lib/db/spareParts'
 import { listApprovals, submitApproval, APPROVAL_KINDS, KIND_LABEL, APPROVAL_STATUS_META } from '../lib/db/approvals'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
+import { useMoney } from '../lib/money'
 import { api } from '../lib/apiClient'
 
 const PRIORITY_STYLE = {
@@ -127,12 +128,6 @@ function NewWOModal({ sites, assets, onClose, onSave }) {
 
 // ── WO Detail panel ───────────────────────────────────────────────────────────
 
-function naira(cents) {
-  if (cents === null || cents === undefined || cents === '') return '—'
-  const n = Number(cents) / 100
-  if (!Number.isFinite(n)) return '—'
-  return `₦${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-}
 
 function SectionHead({ children, action }) {
   return (
@@ -223,6 +218,7 @@ function lineQty(line) {
 // Lines point at real stock. Nothing leaves the store until the job is closed,
 // which is when the deduction and the ledger entry happen together.
 function PartsSection({ wo, canEdit, onChanged }) {
+  const { money } = useMoney()
   const [parts, setParts] = useState([])
   const [partId, setPartId] = useState('')
   const [qty, setQty] = useState('1')
@@ -250,7 +246,7 @@ function PartsSection({ wo, canEdit, onChanged }) {
 
   return (
     <div>
-      <SectionHead action={lines.length > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--ff-m)', color: 'var(--n500)' }}>{naira(total)}</span>}>Parts</SectionHead>
+      <SectionHead action={lines.length > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--ff-m)', color: 'var(--n500)' }}>{money(total)}</span>}>Parts</SectionHead>
 
       {lines.length === 0 ? (
         <p style={{ fontSize: 12, color: 'var(--n400)', marginBottom: canEdit ? 8 : 0 }}>No parts reserved for this job.</p>
@@ -300,6 +296,7 @@ function PartsSection({ wo, canEdit, onChanged }) {
 // Closing is the one moment the job's story can still be captured, so the
 // report is collected here rather than left to a free-text comment.
 function CloseDialog({ wo, onClose, onClosed }) {
+  const { money } = useMoney()
   const [f, setF] = useState({
     completion_notes: '', root_cause: '', failure_mode: '', corrective_actions: '',
     safety_observations: '', actual_hours: '', downtime_hours: '', cost_naira: '',
@@ -364,7 +361,7 @@ function CloseDialog({ wo, onClose, onClosed }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <F label="Hours worked" k="actual_hours" type="number" hint={wo.estimated_hours ? `Estimated ${wo.estimated_hours}` : undefined} />
             <F label="Downtime (hours)" k="downtime_hours" type="number" />
-            <F label="Actual cost (₦)" k="cost_naira" type="number" hint={wo.estimated_cost_cents ? `Est. ${naira(wo.estimated_cost_cents)}` : undefined} />
+            <F label="Actual cost (₦)" k="cost_naira" type="number" hint={wo.estimated_cost_cents ? `Est. ${money(wo.estimated_cost_cents)}` : undefined} />
           </div>
           <F label="What was wrong (root cause)" k="root_cause" rows={2} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -531,6 +528,7 @@ function ApprovalsSection({ wo, canSubmit, canRead }) {
 }
 
 function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canSubmitApproval, canReadApproval }) {
+  const { money } = useMoney()
   const [wo, setWo] = useState(null)
   const [closing, setClosing] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -637,7 +635,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canSubmitAp
               ? `${wo.actual_hours != null ? wo.actual_hours : '—'} actual / ${wo.estimated_hours != null ? wo.estimated_hours : '—'} est`
               : '—'],
             ['Cost', wo.cost_cents != null || wo.estimated_cost_cents != null
-              ? `${naira(wo.cost_cents)} actual / ${naira(wo.estimated_cost_cents)} est`
+              ? `${money(wo.cost_cents)} actual / ${money(wo.estimated_cost_cents)} est`
               : '—'],
           ].map(([k, v]) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: 'var(--bdr)', fontSize: 12 }}>

@@ -9,15 +9,10 @@ import {
 } from '../lib/db/approvals'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can, ROLE_LABELS } from '../lib/rbac'
+import { useMoney, Money } from '../lib/money'
 
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS).filter(([k]) => k !== 'viewer')
 
-function naira(cents) {
-  if (cents === null || cents === undefined || cents === '') return null
-  const n = Number(cents) / 100
-  if (!Number.isFinite(n)) return null
-  return `₦${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-}
 
 function fmtWhen(ts) {
   if (!ts) return '—'
@@ -61,6 +56,7 @@ function LevelTrack({ approval }) {
 
 // ── Decision ─────────────────────────────────────────────────────────────────
 function DecisionModal({ approval, action, onClose, onDone }) {
+  const { money } = useMoney()
   const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -96,7 +92,7 @@ function DecisionModal({ approval, action, onClose, onDone }) {
         <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)' }}>{verb} request</h3>
         <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16, lineHeight: 1.55 }}>
           {approval.title || KIND_LABEL[approval.kind] || approval.kind}
-          {approval.amount_cents != null ? ` · ${naira(approval.amount_cents)}` : ''}
+          {approval.amount_cents != null ? ` · ${money(approval.amount_cents)}` : ''}
           {action === 'approve' && (lastStep
             ? ' — this is the final step; approving settles the request.'
             : ` — step ${approval.level} of ${approval.max_levels}; approving passes it to the next level.`)}
@@ -261,6 +257,7 @@ function RuleModal({ rule, onClose, onSave }) {
 }
 
 function MatrixTab({ canManage }) {
+  const { money } = useMoney()
   const [rules, setRules] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null)
@@ -274,8 +271,8 @@ function MatrixTab({ canManage }) {
   const retire = async (id) => { await retireApprovalRule(id); load() }
 
   const band = (r) => {
-    const from = naira(r.min_amount_cents)
-    const to = r.max_amount_cents == null ? null : naira(r.max_amount_cents)
+    const from = money(r.min_amount_cents)
+    const to = r.max_amount_cents == null ? null : money(r.max_amount_cents)
     if (Number(r.min_amount_cents) === 0 && to === null) return 'Any amount'
     return to === null ? `${from} and above` : `${from} — ${to}`
   }
@@ -361,6 +358,7 @@ function MatrixTab({ canManage }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Approvals({ dark, toggleDark }) {
+  const { money } = useMoney()
   const { roleKey, user } = useAuth()
   const userId = user?.id
   const canDecide = can(roleKey, 'approval:decide')
@@ -478,7 +476,7 @@ export default function Approvals({ dark, toggleDark }) {
                               <div style={{ fontSize: 11, color: 'var(--n500)' }}>by {a.requester?.full_name || '—'} · {fmtWhen(a.created_at)}</div>
                             </td>
                             <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{KIND_LABEL[a.kind] || a.kind}</td>
-                            <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}>{naira(a.amount_cents) || '—'}</td>
+                            <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}><Money cents={a.amount_cents} /></td>
                             <td style={{ padding: '11px 14px' }}><LevelTrack approval={a} /></td>
                             <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{a.current_role_label || '—'}</td>
                             <td style={{ padding: '11px 14px' }}><span className={`badge ${meta.cls}`}>{meta.label}</span></td>
@@ -525,7 +523,7 @@ export default function Approvals({ dark, toggleDark }) {
                         <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden' }}>
                           <div style={{ padding: '10px 14px', borderBottom: 'var(--bdr)', fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)' }}>Details</div>
                           {[
-                            ['Amount', naira(detail.amount_cents)],
+                            ['Amount', detail.amount_cents == null ? null : <Money key="amt" cents={detail.amount_cents} />],
                             ['Routed by', detail.rule?.name],
                             ['Now with', detail.current_role_label],
                             ['Submitted by', detail.requester?.full_name],

@@ -244,7 +244,132 @@ function OrgTab() {
         )}
       </div>
 
+      <CurrencyCard canEdit={canEdit} />
+
       <LicenceCard />
+    </div>
+  )
+}
+
+/**
+ * Currency.
+ *
+ * Every money figure in the product is stored in the base currency's minor
+ * units. The second currency is presentation only — a rate somebody typed in,
+ * shown beside the real figure and never instead of it. Deliberately not a
+ * live feed: an on-prem instance may have no route to the internet, and a
+ * converted number whose rate nobody can point at is worse than none.
+ */
+function CurrencyCard({ canEdit }) {
+  const { org, refreshOrg } = useAuth()
+  const [form, setForm] = useState({ base_currency: 'NGN', secondary_currency: '', fx_rate: '', fx_rate_at: '' })
+  const [saving, setSaving] = useState(false)
+  const [ok, setOk] = useState(null)
+  const [err, setErr] = useState(null)
+
+  useEffect(() => {
+    if (!org) return
+    setForm({
+      base_currency: org.base_currency || 'NGN',
+      secondary_currency: org.secondary_currency || '',
+      fx_rate: org.fx_rate != null ? String(org.fx_rate) : '',
+      fx_rate_at: org.fx_rate_at || '',
+    })
+  }, [org])
+
+  const save = async () => {
+    setSaving(true); setErr(null); setOk(null)
+    try {
+      const secondary = form.secondary_currency.trim().toUpperCase()
+      await api.patch('/org', secondary
+        ? {
+            base_currency: form.base_currency.trim().toUpperCase(),
+            secondary_currency: secondary,
+            fx_rate: form.fx_rate === '' ? null : Number(form.fx_rate),
+            fx_rate_at: form.fx_rate_at || null,
+          }
+        : {
+            base_currency: form.base_currency.trim().toUpperCase(),
+            secondary_currency: null,
+          })
+      // The org lives in AuthContext, and every money figure on every page
+      // reads its currency from there — so it has to be refetched, not just
+      // saved.
+      await refreshOrg()
+      setOk('Currency saved. Figures across the app now read in it.')
+      setSaving(false)
+    } catch (e) {
+      setErr(e.message === 'invalid_request' ? 'Currencies are 3-letter ISO codes, and a rate must be a positive number.' : e.message)
+      setSaving(false)
+    }
+  }
+
+  const inp = { height: 36, border: '1px solid var(--n200)', borderRadius: 4, padding: '0 10px', fontSize: 13, outline: 'none', background: canEdit ? 'var(--n0)' : 'var(--n50)', color: 'var(--n900)', width: '100%', boxSizing: 'border-box', fontFamily: 'var(--ff-u)' }
+  const lbl = { fontSize: 12, fontWeight: 500, color: 'var(--n700)', display: 'block', marginBottom: 4 }
+
+  return (
+    <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, padding: '20px 24px', marginBottom: 20 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--n800)', marginBottom: 4 }}>Currency</div>
+      <p style={{ fontSize: 12.5, color: 'var(--n500)', marginBottom: 16, lineHeight: 1.6 }}>
+        Amounts are held in the base currency. A second currency is shown alongside headline figures at the
+        rate below — it is a conversion for reading, not a revaluation, and nothing is recalculated when the
+        rate changes.
+      </p>
+      {!canEdit && (
+        <div style={{ background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 4, padding: '8px 14px', fontSize: 12, color: 'var(--n500)', marginBottom: 12 }}>
+          Only the Org Owner can change currency settings.
+        </div>
+      )}
+      <SuccessBanner msg={ok} />
+      <ErrorBanner msg={err} />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <label>
+          <span style={lbl}>Base currency</span>
+          <input value={form.base_currency} maxLength={3} disabled={!canEdit}
+            onChange={e => setForm(f => ({ ...f, base_currency: e.target.value.toUpperCase() }))}
+            style={{ ...inp, fontFamily: 'var(--ff-m)' }} />
+        </label>
+        <label>
+          <span style={lbl}>Second currency (optional)</span>
+          <input value={form.secondary_currency} maxLength={3} disabled={!canEdit} placeholder="USD"
+            onChange={e => setForm(f => ({ ...f, secondary_currency: e.target.value.toUpperCase() }))}
+            style={{ ...inp, fontFamily: 'var(--ff-m)' }} />
+        </label>
+      </div>
+
+      {form.secondary_currency && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+          <label>
+            <span style={lbl}>{form.secondary_currency} per 1 {form.base_currency}</span>
+            <input type="number" step="0.000001" min="0" value={form.fx_rate} disabled={!canEdit}
+              onChange={e => setForm(f => ({ ...f, fx_rate: e.target.value }))}
+              style={{ ...inp, fontFamily: 'var(--ff-m)' }} />
+          </label>
+          <label>
+            <span style={lbl}>Rate as at</span>
+            <input type="date" value={form.fx_rate_at} disabled={!canEdit}
+              onChange={e => setForm(f => ({ ...f, fx_rate_at: e.target.value }))}
+              style={inp} />
+          </label>
+        </div>
+      )}
+
+      {form.secondary_currency && form.fx_rate && (
+        <p style={{ fontSize: 11.5, color: 'var(--n500)', marginTop: 10, lineHeight: 1.55 }}>
+          A figure of 1,000,000 {form.base_currency} will read as
+          {' '}<strong style={{ color: 'var(--n800)' }}>
+            {Number(1_000_000 * Number(form.fx_rate)).toLocaleString(undefined, { maximumFractionDigits: 2 })} {form.secondary_currency}
+          </strong>
+          {form.fx_rate_at ? `, at the rate set on ${form.fx_rate_at}.` : '. Leave the date blank and today is recorded.'}
+        </p>
+      )}
+
+      {canEdit && (
+        <button onClick={save} disabled={saving} className="btn btn-primary" style={{ marginTop: 16, height: 36, padding: '0 20px', fontSize: 13 }}>
+          {saving ? 'Saving…' : 'Save currency'}
+        </button>
+      )}
     </div>
   )
 }
