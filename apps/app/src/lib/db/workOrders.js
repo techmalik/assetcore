@@ -86,3 +86,36 @@ export async function uploadWorkOrderAttachment(id, file) {
   form.append('file', file)
   return api.upload(`/work-orders/${id}/attachments`, form)
 }
+// ── Task checklist ───────────────────────────────────────────────────────────
+export async function listWorkOrderTasks(id) {
+  return api.get(`/work-orders/${id}/tasks`)
+}
+
+export async function addWorkOrderTask(id, description) {
+  return api.post(`/work-orders/${id}/tasks`, { description })
+}
+
+export async function updateWorkOrderTask(id, taskId, patch) {
+  return api.patch(`/work-orders/${id}/tasks/${taskId}`, patch)
+}
+
+export async function deleteWorkOrderTask(id, taskId) {
+  await api.del(`/work-orders/${id}/tasks/${taskId}`)
+}
+
+// ── Parts drawn against the job ──────────────────────────────────────────────
+export async function listWorkOrderParts(id) {
+  return api.get(`/work-orders/${id}/parts`)
+}
+
+export async function addWorkOrderPart(id, line) {
+  return api.post(`/work-orders/${id}/parts`, line)
+}
+
+export async function updateWorkOrderPart(id, lineId, patch) {
+  return api.patch(`/work-orders/${id}/parts/${lineId}`, patch)
+}
+
+export async function deleteWorkOrderPart(id, lineId) {
+  await api.del(`/work-orders/${id}/parts/${lineId}`)
+}
