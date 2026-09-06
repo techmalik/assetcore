@@ -32,7 +32,9 @@ const SIGNALS_SQL = `
     insp.rated_on,
     coalesce(def.counts, '{}'::jsonb)                      as open_defects,
     coalesce(od.overdue_pm, 0)                             as overdue_pm,
-    coalesce(od.overdue_work_orders, 0)                    as overdue_work_orders
+    coalesce(od.overdue_work_orders, 0)                    as overdue_work_orders,
+    risk.worst_risk_score,
+    risk.worst_risk_ref
   from public.assets a
   left join public.asset_categories cat on cat.id = a.category_id
   -- Latest completed inspection that actually recorded a rating. An inspection
@@ -64,6 +66,16 @@ const SIGNALS_SQL = `
         where w.asset_id = a.id and w.deleted_at is null
           and w.status <> 'closed' and w.sla_due is not null and w.sla_due < now()) as overdue_work_orders
   ) od on true
+  -- The worst live risk against the asset, residual where it has been rated.
+  -- An accepted risk still counts: accepting it does not make it smaller.
+  left join lateral (
+    select coalesce(r.residual_score, r.inherent_score) as worst_risk_score, r.ref as worst_risk_ref
+    from public.risk_assessments r
+    where r.asset_id = a.id and r.deleted_at is null
+      and r.status in ('open','mitigating','accepted')
+    order by coalesce(r.residual_score, r.inherent_score) desc, r.created_at desc
+    limit 1
+  ) risk on true
 `
 
 type SignalRow = {
@@ -79,6 +91,8 @@ type SignalRow = {
   open_defects: Record<string, number>
   overdue_pm: number
   overdue_work_orders: number
+  worst_risk_score: number | null
+  worst_risk_ref: string | null
 }
 
 function toSignals(row: SignalRow): HealthSignals {
@@ -89,6 +103,8 @@ function toSignals(row: SignalRow): HealthSignals {
     overdue_pm: Number(row.overdue_pm),
     overdue_work_orders: Number(row.overdue_work_orders),
     criticality: row.criticality,
+    worst_risk_score: row.worst_risk_score == null ? null : Number(row.worst_risk_score),
+    worst_risk_ref: row.worst_risk_ref,
     in_service_date: row.in_service_date,
     useful_life_years: row.useful_life_years == null ? null : Number(row.useful_life_years),
   }

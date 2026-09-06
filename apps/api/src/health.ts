@@ -11,7 +11,7 @@
  *   inspection   25   the last recorded condition rating
  *   defects      25   open defects, weighted by severity
  *   maintenance  20   overdue PM tasks and work orders past SLA
- *   risk         15   consequence of failure (asset criticality)
+ *   risk         15   the asset's worst live 5x5 assessment, else criticality
  *   age          15   elapsed life against useful life
  *
  * A signal with no evidence behind it is not scored zero — it is left out and
@@ -39,8 +39,10 @@ export const DEFECT_PENALTY: Record<string, number> = {
   critical: 40,
 }
 
-/** Consequence of failure, read from the asset's criticality. Phase 4's 5x5
- * risk matrix will supersede this input; the component itself stays. */
+/** Consequence of failure, read from the asset's criticality. Used only when
+ * the asset has no risk assessment against it — Phase 4's 5x5 matrix is the
+ * better input and takes precedence, but criticality is set on every asset by
+ * default and a matrix entry is not. */
 const RISK_SCORE: Record<string, number> = {
   low: 100,
   medium: 80,
@@ -61,6 +63,11 @@ export type HealthSignals = {
   overdue_pm: number
   overdue_work_orders: number
   criticality: string | null
+  /** Worst live risk assessment against the asset, 1-25 (0005). Residual where
+   * one has been rated, inherent otherwise. */
+  worst_risk_score: number | null
+  /** That assessment's reference, for the explanation line. */
+  worst_risk_ref: string | null
   /** Commission date, else purchase date (YYYY-MM-DD). */
   in_service_date: string | null
   /** From the asset, else its category default. */
@@ -145,17 +152,39 @@ function maintenanceComponent(s: HealthSignals): HealthComponent {
   return { ...base, score, points: (score * base.weight) / 100, detail: `${parts.join(', ')}.` }
 }
 
+/** 1-25 from the matrix onto 0-100, where 1 (trivial) is a full score and 25
+ * (near-certain and catastrophic) is nothing. */
+const riskScoreFromMatrix = (matrix: number) => clamp(Math.round(100 - ((matrix - 1) / 24) * 100))
+
+const bandOf = (score: number) =>
+  score >= 16 ? 'extreme' : score >= 11 ? 'high' : score >= 6 ? 'medium' : 'low'
+
 function riskComponent(s: HealthSignals): HealthComponent {
   const base = { key: 'risk' as const, label: 'Risk level', weight: HEALTH_WEIGHTS.risk }
+
+  // A real assessment beats an asset-level guess: criticality is consequence
+  // alone, while the matrix has weighed likelihood against it and accounted
+  // for whatever controls are in place.
+  if (s.worst_risk_score != null) {
+    const score = riskScoreFromMatrix(s.worst_risk_score)
+    const ref = s.worst_risk_ref ? `${s.worst_risk_ref} ` : ''
+    return {
+      ...base,
+      score,
+      points: (score * base.weight) / 100,
+      detail: `Worst live risk ${ref}scores ${s.worst_risk_score} of 25 (${bandOf(s.worst_risk_score)}).`,
+    }
+  }
+
   const score = s.criticality ? RISK_SCORE[s.criticality] : undefined
   if (score == null) {
-    return { ...base, score: null, points: null, detail: 'No criticality recorded for this asset.' }
+    return { ...base, score: null, points: null, detail: 'No risk assessment or criticality recorded for this asset.' }
   }
   return {
     ...base,
     score,
     points: (score * base.weight) / 100,
-    detail: `Criticality is ${s.criticality} — the consequence if this asset fails.`,
+    detail: `No risk assessment yet, so read from criticality (${s.criticality}) — the consequence if this asset fails.`,
   }
 }
 

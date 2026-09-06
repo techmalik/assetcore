@@ -12,6 +12,8 @@ import { depreciationRouter } from './depreciation.js'
 import { defectsRouter } from './defects.js'
 import { approvalsRouter } from './approvals.js'
 import { escalationsRouter } from './escalations.js'
+import { risksRouter } from './risks.js'
+import { analyticsRouter } from './analytics.js'
 import { pmSchedulesRouter } from './pmSchedules.js'
 import { pmTasksRouter } from './pmTasks.js'
 import { complianceRouter } from './compliance.js'
@@ -44,6 +46,8 @@ apiRouter.use(depreciationRouter)
 apiRouter.use(defectsRouter)
 apiRouter.use(approvalsRouter)
 apiRouter.use(escalationsRouter)
+apiRouter.use(risksRouter)
+apiRouter.use(analyticsRouter)
 apiRouter.use(pmSchedulesRouter)
 apiRouter.use(pmTasksRouter)
 apiRouter.use(complianceRouter)
