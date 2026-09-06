@@ -17,7 +17,11 @@ import StatusBadge from './StatusBadge.jsx'
 import AssignModal, { assignmentSummary } from './AssignModal.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
-import { listInspections, createInspection, updateInspection, uploadInspectionReport } from '../lib/db/inspections'
+import {
+  listInspections, createInspection, updateInspection, uploadInspectionReport,
+  listInspectionTemplates, CHECKLIST_RESULTS, CONDITION_RATINGS,
+} from '../lib/db/inspections'
+import { createDefect, DEFECT_SEVERITIES } from '../lib/db/defects'
 import { listSites } from '../lib/db/sites'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { api } from '../lib/apiClient'
@@ -52,9 +56,9 @@ function isOverdue(ins) {
 }
 
 // ── Create Modal ─────────────────────────────────────────────────────────────
-function InspectionModal({ onClose, onSaved, sites, users }) {
+function InspectionModal({ onClose, onSaved, sites, users, templates }) {
   const today = new Date().toISOString().slice(0,10)
-  const [form, setForm] = useState({ title:'', kind:'condition', scheduled_date:today, site_id:'', inspector_id:'', notes:'' })
+  const [form, setForm] = useState({ title:'', kind:'condition', scheduled_date:today, site_id:'', inspector_id:'', template_id:'', notes:'' })
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState(null)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -70,6 +74,7 @@ function InspectionModal({ onClose, onSaved, sites, users }) {
         scheduled_date: form.scheduled_date,
         site_id:        form.site_id || null,
         inspector_id:   form.inspector_id || null,
+        template_id:    form.template_id || null,
         notes:          form.notes   || null,
         status:         'scheduled',
       })
@@ -95,7 +100,7 @@ function InspectionModal({ onClose, onSaved, sites, users }) {
           </label>
           <div className="form-grid" style={{ gap:10 }}>
             <label style={lbl}>Type
-              <select value={form.kind} onChange={e=>set('kind',e.target.value)} style={{...inp,appearance:'none'}}>
+              <select value={form.kind} onChange={e=>{ set('kind', e.target.value); set('template_id','') }} style={{...inp,appearance:'none'}}>
                 {Object.entries(KIND_META).map(([k,m]) => <option key={k} value={k}>{m.label}</option>)}
               </select>
             </label>
@@ -103,6 +108,34 @@ function InspectionModal({ onClose, onSaved, sites, users }) {
               <input type="date" value={form.scheduled_date} onChange={e=>set('scheduled_date',e.target.value)} style={inp}/>
             </label>
           </div>
+          <label style={lbl}>Checklist
+            <select value={form.template_id} onChange={e=>set('template_id',e.target.value)} style={{...inp,appearance:'none'}}>
+              <option value="">— No checklist —</option>
+              {templates.filter(t => t.kind === form.kind).map(t => (
+                <option key={t.id} value={t.id}>{t.name} ({t.items.length} items)</option>
+              ))}
+            </select>
+          </label>
+          {(() => {
+            const picked = templates.find(t => t.id === form.template_id)
+            if (!picked) {
+              return (
+                <p style={{fontSize:11.5,color:'var(--n500)',lineHeight:1.5,marginTop:-6}}>
+                  Without a checklist the inspection records findings as free text only. An overall 1-5 condition
+                  rating is required either way — it is what the asset&apos;s score reads.
+                </p>
+              )
+            }
+            return (
+              <div style={{background:'var(--n50)',border:'var(--bdr)',borderRadius:6,padding:'9px 11px',marginTop:-6}}>
+                <div style={{fontSize:11,color:'var(--n500)',marginBottom:5}}>The inspector will work through:</div>
+                <ol style={{margin:0,paddingLeft:18,fontSize:12,color:'var(--n700)',lineHeight:1.65}}>
+                  {picked.items.map((it,i) => <li key={i}>{it}</li>)}
+                </ol>
+              </div>
+            )
+          })()}
+
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
             <label style={lbl}>Site
               <select value={form.site_id} onChange={e=>set('site_id',e.target.value)} style={{...inp,appearance:'none'}}>
@@ -136,16 +169,50 @@ function FindingsModal({ inspection, onClose, onSaved }) {
   const [notes, setNotes]       = useState(inspection.notes    || '')
   const [reportFile, setReportFile] = useState(null)
   const [reportUrl] = useState(inspection.report_url || null)
+  // The checklist the inspection was raised with, worked item by item.
+  const [items, setItems]       = useState(() => (inspection.checklist_results || []).map(i => ({ ...i })))
+  const [rating, setRating]     = useState(inspection.condition_rating ?? null)
+  // Failed items the inspector chose to put on the defect register.
+  const [raise, setRaise]       = useState({})
   const [saving, setSaving]     = useState(false)
   const [err, setErr]           = useState(null)
 
+  const setItem = (i, patch) => setItems(list => list.map((it, n) => n === i ? { ...it, ...patch } : it))
+  const failed = items.filter(it => it.result === 'fail')
+
   const save = async () => {
+    if (rating == null) return setErr('An overall condition rating is required — it is what the asset’s condition score reads.')
     setSaving(true); setErr(null)
     try {
-      await updateInspection(inspection.id, { status:'completed', findings, notes })
+      await updateInspection(inspection.id, {
+        status: 'completed',
+        condition_rating: rating,
+        findings,
+        notes,
+        ...(items.length ? { checklist_results: items } : {}),
+      })
       if (reportFile) await uploadInspectionReport(inspection.id, reportFile)
+      // A failed item the inspector escalated becomes a defect linked back to
+      // this inspection — the first half of the finding -> job chain.
+      for (const [idx, severity] of Object.entries(raise)) {
+        const item = items[Number(idx)]
+        if (!item || !severity) continue
+        await createDefect({
+          title: item.item,
+          description: item.notes || null,
+          severity,
+          asset_id: inspection.asset_id,
+          site_id: inspection.site_id,
+          inspection_id: inspection.id,
+        })
+      }
       onSaved()
-    } catch (e) { setErr(e.message || 'Failed to save.'); setSaving(false) }
+    } catch (e) {
+      setErr(e.message === 'condition_rating_required'
+        ? 'An overall condition rating is required.'
+        : e.message || 'Failed to save.')
+      setSaving(false)
+    }
   }
 
   async function viewReport() {
@@ -162,9 +229,71 @@ function FindingsModal({ inspection, onClose, onSaved }) {
           <button onClick={onClose} style={{width:28,height:28,border:'none',background:'none',cursor:'pointer',color:'var(--n500)',fontSize:20,lineHeight:1}}>×</button>
         </div>
         <div style={{fontSize:12,color:'var(--n600)',marginBottom:14}}>{inspection.title}</div>
-        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+        <div style={{display:'flex',flexDirection:'column',gap:14}}>
+          {items.length > 0 && (
+            <div>
+              <div style={{fontSize:11,fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--n500)',fontFamily:'var(--ff-m)',marginBottom:8}}>Checklist</div>
+              <div style={{border:'var(--bdr)',borderRadius:6,overflow:'hidden'}}>
+                {items.map((it, i) => (
+                  <div key={i} style={{padding:'9px 11px',borderBottom: i < items.length-1 ? 'var(--bdr)' : 'none', background: it.result === 'fail' ? 'var(--srb)' : 'var(--n0)'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{flex:1,fontSize:12.5,color:'var(--n800)'}}>{it.item}</span>
+                      <div style={{display:'flex',gap:4}}>
+                        {CHECKLIST_RESULTS.filter(([v]) => v !== 'pending').map(([v,l]) => (
+                          <button key={v} type="button" onClick={() => setItem(i, { result: v })}
+                            style={{height:24,padding:'0 9px',borderRadius:4,cursor:'pointer',fontFamily:'inherit',fontSize:11,
+                              border:`1px solid ${it.result===v ? 'var(--b400)' : 'var(--n200)'}`,
+                              background: it.result===v ? 'var(--slb)' : 'var(--n0)',
+                              color: it.result===v ? 'var(--slt)' : 'var(--n600)'}}>{l}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <input value={it.notes || ''} onChange={e => setItem(i, { notes: e.target.value })}
+                      placeholder={it.result === 'fail' ? 'What is wrong?' : 'Notes (optional)'}
+                      style={{...inp, height:28, padding:'0 9px', fontSize:12, marginTop:7, resize:'none'}}/>
+                    {it.result === 'fail' && (
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginTop:7}}>
+                        <span style={{fontSize:11.5,color:'var(--n600)'}}>Raise as a defect:</span>
+                        <select value={raise[i] || ''} onChange={e => setRaise(r => ({ ...r, [i]: e.target.value }))}
+                          style={{...inp, width:170, height:26, padding:'0 7px', fontSize:11.5, resize:'none'}}>
+                          <option value="">Not now</option>
+                          {DEFECT_SEVERITIES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {failed.length > 0 && (
+                <p style={{fontSize:11.5,color:'var(--n500)',marginTop:7,lineHeight:1.5}}>
+                  {failed.length} item{failed.length===1?'':'s'} failed. A defect raised here goes onto the register linked to this
+                  inspection, ready for a work order.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--n500)',fontFamily:'var(--ff-m)',marginBottom:7}}>Overall condition *</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(5, 1fr)',gap:5}}>
+              {CONDITION_RATINGS.map(([v,l,hint]) => (
+                <button key={v} type="button" onClick={() => setRating(v)} title={hint}
+                  style={{padding:'8px 4px',borderRadius:5,cursor:'pointer',fontFamily:'inherit',textAlign:'center',
+                    border:`1px solid ${rating===v ? 'var(--b400)' : 'var(--n200)'}`,
+                    background: rating===v ? 'var(--slb)' : 'var(--n0)'}}>
+                  <div style={{fontFamily:'var(--ff-m)',fontSize:14,fontWeight:600,color: rating===v ? 'var(--slt)' : 'var(--n700)'}}>{v}</div>
+                  <div style={{fontSize:10,color:'var(--n500)',marginTop:2,lineHeight:1.2}}>{l}</div>
+                </button>
+              ))}
+            </div>
+            <p style={{fontSize:11.5,color:'var(--n500)',marginTop:7,lineHeight:1.5}}>
+              A quarter of the asset&apos;s condition score. Required, because a score built on a rating nobody gave
+              would be a guess.
+            </p>
+          </div>
+
           <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Findings *
-            <textarea value={findings} onChange={e=>setFindings(e.target.value)} rows={4} placeholder="Describe what was observed, measured, or discovered…" style={inp}/>
+            <textarea value={findings} onChange={e=>setFindings(e.target.value)} rows={3} placeholder="Describe what was observed, measured, or discovered…" style={inp}/>
           </label>
           <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Additional notes
             <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} style={inp}/>
@@ -177,7 +306,7 @@ function FindingsModal({ inspection, onClose, onSaved }) {
         {err && <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'8px 12px',fontSize:12,color:'var(--srt)',marginTop:12}}>{err}</div>}
         <div style={{display:'flex',gap:8,marginTop:20,justifyContent:'flex-end'}}>
           <button onClick={onClose} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>Cancel</button>
-          <button onClick={save} disabled={saving||!findings.trim()} className="btn btn-primary" style={{height:34,padding:'0 18px',fontSize:13}}>{saving?'Saving…':'Mark Complete'}</button>
+          <button onClick={save} disabled={saving||!findings.trim()||rating==null} className="btn btn-primary" style={{height:34,padding:'0 18px',fontSize:13}}>{saving?'Saving…':'Mark Complete'}</button>
         </div>
       </div>
     </div>
@@ -198,6 +327,7 @@ export default function InspectionsPanel({ embedded = false, selectedId = null, 
   const [inspections, setInspections] = useState([])
   const [sites, setSites]             = useState([])
   const [users, setUsers]             = useState([])
+  const [templates, setTemplates]     = useState([])
   const [loading, setLoading]         = useState(true)
   const [err, setErr]                 = useState(null)
   const [modal, setModal]             = useState(null) // null|'create'|inspection-obj
@@ -209,12 +339,16 @@ export default function InspectionsPanel({ embedded = false, selectedId = null, 
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
     try {
-      const [insp, siteList, userList] = await Promise.all([
+      const [insp, siteList, userList, tpl] = await Promise.all([
         listInspections({ locationId: globalLocationId }), listSites(), listOrgUsers().catch(() => []),
+        // A missing checklist should not stop the page loading — it only means
+        // inspections here record free-text findings.
+        listInspectionTemplates().catch(() => []),
       ])
       setInspections(insp)
       setSites(siteList)
       setUsers(userList)
+      setTemplates(tpl)
     } catch (e) { setErr(e.message) }
     finally { setLoading(false) }
   }, [globalLocationId])
@@ -383,7 +517,7 @@ export default function InspectionsPanel({ embedded = false, selectedId = null, 
       </div>
 
       {modal === 'create' && (
-        <InspectionModal sites={sites} users={users} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
+        <InspectionModal sites={sites} users={users} templates={templates} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
       )}
       {modal && modal !== 'create' && (
         <FindingsModal inspection={modal} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
