@@ -15,6 +15,15 @@
 // also owner-only EXCEPT ops_manager, which is explicitly granted it so
 // operations managers can maintain the location/site hierarchy and asset
 // categories without full admin rights.
+//
+// depreciation:manage, approval:manage and escalation:manage are owner-only
+// for the same reason: posting depreciation moves the books, and the approval
+// matrix and escalation rules decide who gets to sign off and who gets woken
+// up. Nobody grants themselves those.
+//
+// approval:decide gates the endpoint; the approval's own current_role_key
+// decides whether this particular caller is the one being waited on. Both
+// checks have to pass, which is why the capability can be granted broadly.
 // ============================================================================
 
 export const ROLE_CAPABILITIES = {
@@ -24,6 +33,12 @@ export const ROLE_CAPABILITIES = {
     'wo:read', 'wo:create', 'wo:update', 'wo:assign', 'wo:transition',
     'pm:read', 'pm:create', 'pm:update', 'maintenance:complete',
     'inspection:read', 'compliance:read',
+    'parts:read', 'parts:create', 'parts:update', 'parts:adjust',
+    'depreciation:read',
+    'defect:read', 'defect:create', 'defect:update',
+    'risk:read', 'risk:create', 'risk:update',
+    'approval:read', 'approval:create', 'approval:decide',
+    'escalation:read',
     'report:read', 'report:create', 'audit:read', 'user:read',
     'org:manage',
   ],
@@ -31,18 +46,30 @@ export const ROLE_CAPABILITIES = {
     'asset:read', 'asset:update',
     'wo:read', 'wo:update', 'wo:transition',
     'pm:read', 'pm:update', 'maintenance:complete', 'inspection:read', 'inspection:create',
+    'parts:read', 'parts:adjust',
+    'defect:read', 'defect:create', 'defect:update',
+    'risk:read',
+    'approval:read', 'approval:create', 'approval:decide',
     'report:read',
   ],
   field_tech: [
     'asset:read',
     'wo:read', 'wo:update', 'wo:transition',
     'pm:read', 'inspection:read', 'inspection:create',
+    'parts:read',
+    'defect:read', 'defect:create',
+    'risk:read',
+    'approval:read', 'approval:create',
   ],
   hse_officer: [
     'asset:read',
     'wo:read',
     'inspection:read', 'inspection:create', 'inspection:update',
     'compliance:read', 'compliance:create', 'compliance:update',
+    'parts:read',
+    'defect:read', 'defect:create', 'defect:update',
+    'risk:read', 'risk:create', 'risk:update',
+    'approval:read', 'approval:create', 'approval:decide',
     'report:read', 'report:create',
   ],
   // Read-only across entities, plus audit visibility.
@@ -71,6 +98,10 @@ export const GRANTABLE_CAPS = [
   'pm:create', 'pm:update', 'maintenance:complete',
   'inspection:create', 'inspection:update',
   'compliance:create', 'compliance:update',
+  'parts:create', 'parts:update', 'parts:adjust',
+  'defect:create', 'defect:update',
+  'risk:create', 'risk:update',
+  'approval:create', 'approval:decide',
   'report:create', 'audit:read',
 ]
 

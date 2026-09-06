@@ -22,6 +22,15 @@ import { orgMembersRouter } from './orgMembers.js'
 import { profileRouter } from './profile.js'
 import { licenceRouter } from './licence.js'
 import { adminRouter } from './admin/index.js'
+import { assetImportRouter } from './assetImport.js'
+import { documentsRouter } from './documents.js'
+import { sparePartsRouter } from './spareParts.js'
+import { depreciationRouter } from './depreciation.js'
+import { defectsRouter } from './defects.js'
+import { risksRouter } from './risks.js'
+import { approvalsRouter } from './approvals.js'
+import { escalationsRouter } from './escalations.js'
+import { analyticsRouter } from './analytics.js'
 
 export const apiRouter = Router()
 
@@ -31,6 +40,7 @@ apiRouter.use(healthRouter)
 apiRouter.use(sitesRouter)
 apiRouter.use(locationsRouter)
 apiRouter.use(categoriesRouter)
+apiRouter.use(assetImportRouter)
 apiRouter.use(assetsRouter)
 apiRouter.use(workOrdersRouter)
 apiRouter.use(pmSchedulesRouter)
@@ -48,3 +58,11 @@ apiRouter.use(orgRouter)
 apiRouter.use(orgMembersRouter)
 apiRouter.use(profileRouter)
 apiRouter.use(licenceRouter)
+apiRouter.use(documentsRouter)
+apiRouter.use(sparePartsRouter)
+apiRouter.use(depreciationRouter)
+apiRouter.use(defectsRouter)
+apiRouter.use(risksRouter)
+apiRouter.use(approvalsRouter)
+apiRouter.use(escalationsRouter)
+apiRouter.use(analyticsRouter)

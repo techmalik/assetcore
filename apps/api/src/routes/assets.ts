@@ -6,7 +6,9 @@ import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
+import type { PoolClient } from 'pg'
 import { writeAuditLog } from '../audit.js'
+import { refreshAssetHealth, previewAssetHealth } from '../healthService.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadTo, guardedSingle, validateUploadOrCleanup, cleanupOrphanedUpload, deleteUploadedFile, IMAGE_MIME_TYPES, DOCUMENT_MIME_TYPES } from '../files.js'
 
@@ -43,9 +45,18 @@ const ALLOWED = [
   'assigned_operator_id', 'last_maintenance_at', 'next_maintenance_at',
   'purchase_date', 'install_date',
   'depreciation_method', 'useful_life_years', 'salvage_value_cents', 'declining_rate_pct',
+  // Nameplate and lifecycle (0021). lifecycle_status is where the asset is in
+  // its life; `status` above is its condition. Separate axes — an asset can be
+  // in_service and critical at once, which one column cannot express.
+  'lifecycle_status', 'criticality', 'manufacturer', 'model', 'serial_number',
+  'supplier', 'warranty_expiry', 'tags', 'notes',
 ]
 
-const DEPRECIATION_METHODS = ['none', 'straight_line', 'declining_balance'] as const
+// 0022 widened the column's check to admit sum-of-years' digits, which the
+// posted subledger supports.
+export const DEPRECIATION_METHODS = ['none', 'straight_line', 'declining_balance', 'sum_of_years_digits'] as const
+export const LIFECYCLE_STATUSES = ['planned', 'in_service', 'standby', 'under_maintenance', 'in_storage', 'disposed'] as const
+export const CRITICALITIES = ['low', 'medium', 'high', 'critical'] as const
 
 // Columns whose change invalidates the stored book value.
 const DEPRECIATION_INPUTS = [
@@ -89,6 +100,18 @@ const assetInput = z.object({
   salvage_value_cents: z.number().int().min(0).nullable().optional(),
   declining_rate_pct: z.number().gt(0).lt(100).nullable().optional(),
   assigned_operator_id: z.string().uuid().nullable().optional(),
+
+  // Nameplate and lifecycle (0021).
+  lifecycle_status: z.enum(LIFECYCLE_STATUSES).optional(),
+  criticality: z.enum(CRITICALITIES).optional(),
+  manufacturer: z.string().nullable().optional(),
+  model: z.string().nullable().optional(),
+  serial_number: z.string().nullable().optional(),
+  supplier: z.string().nullable().optional(),
+  warranty_expiry: z.string().nullable().optional(),
+  tags: z.array(z.string().min(1)).optional(),
+  notes: z.string().nullable().optional(),
+
   // Required on create (and never clearable via PATCH): without both dates
   // the asset is invisible to recompute_asset_health()'s daily decay pass —
   // it would sit at its initial health forever and never alert.
@@ -102,12 +125,18 @@ const assetInput = z.object({
 
 // Both derived figures, recomputed for one asset. Called after every write
 // that can move them so the response the client gets back is already correct.
-// recompute_asset_health_for() no-ops when the asset has no usable
-// maintenance window, and recompute_asset_depreciation_for() writes nulls
-// when there's no purchase value or start date — neither needs a guard here.
-type Queryable = { query: (sql: string, values?: unknown[]) => Promise<unknown> }
-async function recomputeDerived(c: Queryable, assetId: string, actorId: string): Promise<void> {
-  await c.query('select public.recompute_asset_health_for($1, $2)', [assetId, actorId])
+//
+// Health now comes from the five-signal engine (apps/api/src/health.ts), which
+// replaced recompute_asset_health_for()'s linear decay between the maintenance
+// dates. The decay is not lost — "overdue maintenance" is one of the five
+// inputs — and the score still goes through apply_asset_health(), so the 50%
+// and 30% crossings keep raising inspections and drafting work orders.
+//
+// recompute_asset_depreciation_for() writes nulls when there's no purchase
+// value or start date, and yields entirely to a posted subledger, so it needs
+// no guard here.
+async function recomputeDerived(c: PoolClient, assetId: string, actorId: string): Promise<void> {
+  await refreshAssetHealth(c, assetId, actorId)
   await c.query('select public.recompute_asset_depreciation_for($1)', [assetId])
 }
 

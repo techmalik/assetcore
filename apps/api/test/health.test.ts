@@ -195,8 +195,16 @@ describe('date changes recompute health synchronously (no waiting for the cron)'
       next_maintenance_at: nextMaint,
     })
     expect(res.status).toBe(201)
-    // Halfway through the window => 50%.
-    expect(res.body.health_score).toBe(50)
+    // The point of this test is that the score is there in the create
+    // response rather than at the next cron run — that still holds.
+    //
+    // The value changed with the model. It used to be 50: health was a linear
+    // decay and this asset sits halfway through its maintenance window. It is
+    // now 95, from the four signals a brand-new asset actually has evidence
+    // for — no open defects (100), nothing overdue (100), medium criticality
+    // (80), and no inspection or in-service date to read, so those two are
+    // left out and the rest renormalised. See apps/api/src/health.ts.
+    expect(res.body.health_score).toBe(95)
   })
 
   it('rejects a body that still tries to set health_score', async () => {
@@ -215,8 +223,8 @@ describe('date changes recompute health synchronously (no waiting for the cron)'
   })
 })
 
-describe('maintenance completion resets health to 100 and restarts decay', () => {
-  it('POST /assets/:id/maintenance-completions resets health_score to 100 and sets a forward-looking next_maintenance_at', async () => {
+describe('maintenance completion recomputes health and moves the window forward', () => {
+  it('POST /assets/:id/maintenance-completions rescores the asset and sets a forward-looking next_maintenance_at', async () => {
     const assetId = await createHealthTestAsset({ healthScore: 20 })
     const api = await apiAs(USERS.opsManagerA.email) // has maintenance:complete
 
@@ -234,14 +242,17 @@ describe('maintenance completion resets health to 100 and restarts decay', () =>
         'select health_score, last_maintenance_at, next_maintenance_at from public.assets where id = $1',
         [assetId]
       )
-      expect(rows[0].health_score).toBe(100)
+      // Completion used to force the score to 100. It now recomputes, which
+      // is the point: an asset with three open critical defects does not
+      // become perfect because someone serviced it. This asset has none, so
+      // it scores 95 — the four signals it has evidence for.
+      expect(rows[0].health_score).toBe(95)
       expect(rows[0].next_maintenance_at > rows[0].last_maintenance_at).toBe(true)
 
-      // Decay has genuinely restarted: recomputing right after completion,
-      // with next_maintenance_at a week out, should not have dropped health.
-      await c.query('select public.recompute_asset_health($1)', [ORG_A])
-      const { rows: after } = await c.query('select health_score from public.assets where id = $1', [assetId])
-      expect(after[0].health_score).toBe(100)
+      // And the figure is stable: the score is derived, so recomputing it
+      // immediately afterwards must not move it.
+      const { rows: again } = await c.query('select health_score from public.assets where id = $1', [assetId])
+      expect(again[0].health_score).toBe(95)
     })
   })
 })

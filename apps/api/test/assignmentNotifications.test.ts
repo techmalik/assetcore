@@ -176,7 +176,10 @@ describe('inspection_assigned + work_completed (site-scoped)', () => {
     expect(created.status).toBe(201)
     const inspId = created.body.id
 
-    const completeRes = await hseApi.patch(`/api/inspections/${inspId}`).send({ status: 'completed', findings: 'all clear' })
+    // condition_rating is required to complete an inspection (0023): the
+    // condition score reads it, and a score built on a rating nobody gave is
+    // a guess. This test is about the notification, so any valid rating does.
+    const completeRes = await hseApi.patch(`/api/inspections/${inspId}`).send({ status: 'completed', findings: 'all clear', condition_rating: 4 })
     expect(completeRes.status).toBe(200)
 
     const ownerNotifs = await ownerApi.get('/api/notifications?limit=200')
@@ -194,7 +197,7 @@ describe('inspection_assigned + work_completed (site-scoped)', () => {
     expect(created.status).toBe(201)
     const inspId = created.body.id
 
-    const completeRes = await ownerApi.patch(`/api/inspections/${inspId}`).send({ status: 'completed', findings: 'all clear' })
+    const completeRes = await ownerApi.patch(`/api/inspections/${inspId}`).send({ status: 'completed', findings: 'all clear', condition_rating: 4 })
     expect(completeRes.status).toBe(200)
 
     const hseNotifs = await hseApi.get('/api/notifications?limit=200')

@@ -7,6 +7,7 @@ import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
+import { refreshAssetHealth } from '../healthService.js'
 import { buildSet } from '../sqlUtil.js'
 import { uploadTo, cleanupOrphanedUpload } from '../files.js'
 import { notifyUsers, notifyRoleHolders } from '../notify.js'
@@ -140,11 +141,12 @@ pmTasksRouter.patch('/pm-tasks/:id', requireCap('pm:update'), async (req, res) =
           'update public.assets set last_maintenance_at = current_date, next_maintenance_at = $2 where id = $1',
           [task.asset_id, nextMaintenance]
         )
-        await c.query('select public.apply_asset_health($1, 100, $2)', [task.asset_id, req.claims!.sub])
+        // See maintenanceEvents.ts: a recompute, not a flat reset to 100.
+        await refreshAssetHealth(c, task.asset_id, req.claims!.sub)
         await c.query(
           `insert into public.asset_activity (org_id, asset_id, user_id, kind, body)
            values (current_org_id(), $1, current_user_id(), 'maintenance', $2)`,
-          [task.asset_id, `Maintenance completed (${task.title}) — health reset to 100%.`]
+          [task.asset_id, `Maintenance completed (${task.title}).`]
         )
       }
       await writeAuditLog(c, { orgId: task.org_id, actorId: req.claims!.sub, action: 'pm_task.complete', entityType: 'pm_task', entityId: task.id, after: task })

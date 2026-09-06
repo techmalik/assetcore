@@ -7,6 +7,7 @@ import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
+import { refreshAssetHealth } from '../healthService.js'
 import { uploadTo, guardedSingle, validateUploadOrCleanup, cleanupOrphanedUpload, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyRoleHolders, notifyWorkOrderClosed } from '../notify.js'
 
@@ -130,9 +131,13 @@ maintenanceEventsRouter.post(
         'update public.assets set last_maintenance_at = $2, next_maintenance_at = $3 where id = $1',
         [asset.id, completed_at, next_maintenance_at]
       )
-      await c.query('select public.apply_asset_health($1, 100, $2)', [asset.id, req.claims!.sub])
+      // Was apply_asset_health(asset, 100) — a flat reset. The score is now
+      // computed from five signals, so servicing an asset clears its overdue
+      // maintenance signal and the rest still counts. The crossings fire from
+      // inside the recompute exactly as before.
+      await refreshAssetHealth(c, asset.id, req.claims!.sub)
 
-      const activityBody = 'Maintenance completed — health reset to 100%.' + (notes ? ` ${notes}` : '')
+      const activityBody = 'Maintenance completed.' + (notes ? ` ${notes}` : '')
       await c.query(
         `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
          values (current_org_id(), $1, current_user_id(), 'maintenance', $2, $3::jsonb)`,
