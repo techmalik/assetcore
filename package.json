@@ -20,7 +20,8 @@
     "seed:dev": "node scripts/seed-dev.mjs",
     "provision": "node scripts/provision.mjs",
     "package": "node scripts/package.mjs",
-    "support-bundle": "node scripts/support-bundle.mjs"
+    "support-bundle": "node scripts/support-bundle.mjs",
+    "test": "npm run test -w @assetcore/api"
   },
   "dependencies": {
     "argon2": "^0.41.1",
