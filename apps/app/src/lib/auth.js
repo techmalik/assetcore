@@ -1,4 +1,4 @@
-import { api, isConfigured, getAccessToken, setAccessToken, onTokenChange } from './apiClient'
+import { api, isConfigured, getAccessToken, setAccessToken, onTokenChange, refreshAccessToken } from './apiClient'
 
 export { isConfigured }
 
@@ -24,10 +24,33 @@ function sessionFromToken(token, user) {
   }
 }
 
+// Treat a token as spent slightly before its exp, so one that dies in flight
+// isn't sent on a round trip that was always going to fail.
+const EXPIRY_SKEW_MS = 10_000
+
+/** True only when the token says so itself. A token with no exp claim is left
+ * for the server to judge — guessing on its behalf would sign people out. */
+function isExpired(token) {
+  const { exp } = decodeJwt(token)
+  if (typeof exp !== 'number') return false
+  return exp * 1000 - EXPIRY_SKEW_MS <= Date.now()
+}
+
 // --- session ---------------------------------------------------------------
 export async function getSession() {
-  const token = getAccessToken()
+  let token = getAccessToken()
   if (!token) return null
+
+  // An access token past its exp will 401 without fail, and the recovery is
+  // the refresh cookie either way. Going straight there saves a request that
+  // could only ever have failed — which is also the request that put a 401 in
+  // the console on the first load of every morning.
+  if (isExpired(token)) {
+    const refreshed = await refreshAccessToken()
+    if (!refreshed) { setAccessToken(null); return null }
+    token = getAccessToken()
+  }
+
   try {
     const me = await api.get('/auth/me')
     return sessionFromToken(token, {
