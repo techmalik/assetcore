@@ -8,6 +8,7 @@ import StatusBadge from '../components/StatusBadge.jsx'
 import {
   listAssets, createAsset, updateAsset, softDeleteAsset, restoreAsset, importAssets,
   uploadAssetPhoto, deleteAssetPhoto, uploadAssetDocument, deleteAssetDocument, listAssetActivity, addAssetComment,
+  getAssetHealth,
 } from '../lib/db/assets'
 import { listSites } from '../lib/db/sites'
 import { listLocations } from '../lib/db/locations'
@@ -69,6 +70,101 @@ const MAX_PHOTOS = 5
 function AssetStatusBadge({ status }) {
   const s = STATUS_STYLE[status] || STATUS_STYLE.offline
   return <StatusBadge tone={s} size="md" />
+}
+
+/**
+ * The condition score, with its working shown.
+ *
+ * The score used to be a linear decay between the maintenance dates, and this
+ * panel used to say so. It is now five weighted signals, so showing only the
+ * total would swap one unexplained figure for another — every component is
+ * listed with its own sub-score and the sentence saying where it came from,
+ * including the ones that had no evidence and were left out of the average.
+ *
+ * There is no manual override to offer: health is derived, and the form that
+ * used to accept a typed score was removed on purpose.
+ */
+function ConditionPanel({ asset }) {
+  const [health, setHealth] = useState(null)
+  const [err, setErr] = useState('')
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setHealth(null)
+    setErr('')
+    getAssetHealth(asset.id)
+      .then((h) => { if (!cancelled) setHealth(h) })
+      .catch((ex) => { if (!cancelled) setErr(ex.message || 'Could not read the score.') })
+    return () => { cancelled = true }
+  }, [asset.id])
+
+  const score = asset.health_score
+  const scored = health ? health.components.filter((c) => c.score != null).length : null
+
+  return (
+    <div style={{ background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 6, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
+          <svg viewBox="0 0 64 64" width="64" height="64">
+            <circle cx="32" cy="32" r="24" fill="none" stroke="var(--n200)" strokeWidth="7" />
+            <circle cx="32" cy="32" r="24" fill="none" stroke={healthColor(score)} strokeWidth="7"
+              strokeDasharray={`${150.8 * (score ?? 0) / 100} ${150.8}`} strokeLinecap="round" transform="rotate(-90 32 32)" />
+          </svg>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontFamily: 'var(--ff-m)', fontSize: 16, fontWeight: 500 }}>{score ?? '—'}</span>
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--n600)', lineHeight: 1.6, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, color: 'var(--n800)', marginBottom: 4 }}>{healthLabel(score)}</div>
+          <div style={{ fontSize: 11, color: 'var(--n500)' }}>
+            {health
+              ? `Calculated from ${scored} of ${health.components.length} signals${asset.health_score_computed_at ? `, last on ${fmtDate(asset.health_score_computed_at)}` : ''}.`
+              : err || 'Reading the signals…'}
+          </div>
+        </div>
+      </div>
+
+      {health && (
+        <>
+          <button onClick={() => setOpen((v) => !v)}
+            style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, cursor: 'pointer', font: 'inherit', fontSize: 11.5, color: 'var(--b600)' }}>
+            {open ? 'Hide the working' : 'Show the working'}
+          </button>
+
+          {open && (
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {health.components.map((c) => (
+                <div key={c.key} style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 5, padding: '8px 10px', opacity: c.score == null ? 0.7 : 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--n800)' }}>{c.label}</span>
+                    <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11.5, fontWeight: 500, color: c.score == null ? 'var(--n400)' : healthColor(c.score) }}>
+                      {c.score == null ? 'no data' : `${c.score}/100`}
+                    </span>
+                    <span style={{ fontFamily: 'var(--ff-m)', fontSize: 10.5, color: 'var(--n400)', width: 32, textAlign: 'right' }}>{c.weight}%</span>
+                  </div>
+                  {c.score != null && (
+                    <div style={{ height: 4, background: 'var(--n200)', borderRadius: 99, overflow: 'hidden', margin: '6px 0 5px' }}>
+                      <div style={{ width: `${c.score}%`, height: '100%', borderRadius: 99, background: healthColor(c.score) }} />
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11.5, color: 'var(--n500)', lineHeight: 1.5, marginTop: c.score != null ? 0 : 4 }}>{c.detail}</div>
+                </div>
+              ))}
+
+              {health.weight_applied < 100 && (
+                <p style={{ fontSize: 11.5, color: 'var(--n500)', lineHeight: 1.5 }}>
+                  Scored out of the {health.weight_applied}% of the weighting that had evidence behind it. A signal
+                  with nothing to read is left out rather than counted as zero — never inspected is not the same as
+                  in poor condition.
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
 }
 
 function HealthBar({ score }) {
@@ -881,31 +977,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
           {asset.site && <span className="badge badge-n">{asset.site.name}</span>}
         </div>
 
-        {/* Health */}
-        <div style={{ background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 6, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
-            <svg viewBox="0 0 64 64" width="64" height="64">
-              <circle cx="32" cy="32" r="24" fill="none" stroke="var(--n200)" strokeWidth="7" />
-              <circle cx="32" cy="32" r="24" fill="none" stroke={healthColor(asset.health_score)} strokeWidth="7" strokeDasharray={`${150.8 * (asset.health_score ?? 0) / 100} ${150.8}`} strokeLinecap="round" transform="rotate(-90 32 32)" />
-            </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontFamily: 'var(--ff-m)', fontSize: 16, fontWeight: 500 }}>{asset.health_score ?? 0}</span>
-            </div>
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--n600)', lineHeight: 1.6 }}>
-            <div style={{ fontWeight: 600, color: 'var(--n800)', marginBottom: 4 }}>{healthLabel(asset.health_score)}</div>
-            {/* Health used to be a number someone typed into the asset form
-                that the nightly decay then overwrote. Saying what drives it
-                makes the reading trustworthy instead of mysterious. */}
-            <div style={{ fontSize: 11, color: 'var(--n500)' }}>
-              Derived from the maintenance window
-              {asset.last_maintenance_at && asset.next_maintenance_at
-                ? ` (${fmtDate(asset.last_maintenance_at)} → ${fmtDate(asset.next_maintenance_at)})`
-                : ''}
-              . Resets to 100% on completion.
-            </div>
-          </div>
-        </div>
+        <ConditionPanel asset={asset} />
 
         {/* Financials */}
         <div>
