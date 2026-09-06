@@ -1,0 +1,1237 @@
+{
+  "app": "AssetCore",
+  "title": "AssetCore UAT",
+  "headline": "Work through it, mark what breaks",
+  "tagline": "Round 1: every workflow, every role, driven through the browser — nothing verified from a terminal.",
+  "round": 1,
+  "round_label": "Round 1",
+  "intro": "AssetCore is an asset-management and maintenance system for Nigeria Gas Marketing Limited (NGML). This round walks the full spine — inspection to finding to defect to work order — then the newer modules that shipped in Phases 1-4 and have had the least real use: approvals, escalations, compliance audits, the risk register, depreciation and currency. Every test names a real screen, a real account and a real button. Where a test expects a refusal, the refusal is the pass.",
+  "url_hint": "The app runs at <code>http://localhost:5174</code> and the API at <code>http://localhost:8787</code>. Ask Claude Code to start them both if the link is dead.",
+  "password": "UatPass123!",
+  "artifact_url": "https://claude.ai/code/artifact/cf07489b-e232-4cce-b93c-f9de90f236e7",
+  "theme": {
+    "accent": "#1272AB",
+    "brand": "#1A3A5C",
+    "display_font": "Bricolage Grotesque",
+    "body_font": "Inter",
+    "mono_font": "JetBrains Mono"
+  },
+  "accounts": [
+    {
+      "key": "owner",
+      "name": "Adaeze Okeke",
+      "email": "a.okeke@ngml.example",
+      "role": "System Admin (owner) — password Password123!"
+    },
+    {
+      "key": "ops",
+      "name": "UAT Ops Manager",
+      "email": "uat.ops@assetcore.test",
+      "role": "Operations Manager"
+    },
+    {
+      "key": "eng",
+      "name": "UAT Maintenance Engineer",
+      "email": "uat.eng@assetcore.test",
+      "role": "Maintenance Engineer"
+    },
+    {
+      "key": "tech",
+      "name": "UAT Field Technician",
+      "email": "uat.tech@assetcore.test",
+      "role": "Field Technician"
+    },
+    {
+      "key": "hse",
+      "name": "UAT HSE Officer",
+      "email": "uat.hse@assetcore.test",
+      "role": "HSE / Compliance Officer"
+    },
+    {
+      "key": "auditor",
+      "name": "UAT Auditor",
+      "email": "uat.auditor@assetcore.test",
+      "role": "Auditor (read-only + audit log)"
+    },
+    {
+      "key": "viewer",
+      "name": "UAT Viewer",
+      "email": "uat.viewer@assetcore.test",
+      "role": "Executive / Viewer (read-only)"
+    },
+    {
+      "key": "orphan",
+      "name": "Paul O",
+      "email": "paul.o@ngml.com",
+      "role": "Account exists in migration 0019 but has NO membership row — password NgmlDemo2026"
+    }
+  ],
+  "sections": [
+    {
+      "title": "Setup and accounts",
+      "blurb": "Get the app up, and build the six role accounts the rest of the plan signs in as. Everything downstream depends on this section passing.",
+      "tests": [
+        {
+          "title": "Start the app and sign in as the owner",
+          "roles": [
+            "Setup"
+          ],
+          "intro": "Confirms the two dev servers are up, the Vite proxy reaches the API, and the seeded owner account can authenticate. If this fails nothing else can run.",
+          "signin": [
+            "owner"
+          ],
+          "steps": [
+            "Ask Claude Code: <em>start the AssetCore app and API</em>.",
+            "Open <code>http://localhost:5174</code>.",
+            "Sign in as <code>a.okeke@ngml.example</code> / <code>Password123!</code>.",
+            "Watch the browser console while the dashboard loads."
+          ],
+          "expect": "The Operations Dashboard renders with the NGML org name, a Network Health score, asset counts and an Active Alerts list. No red errors in the console."
+        },
+        {
+          "title": "Invite a member, set their password from the link, and sign in as them",
+          "roles": [
+            "System Admin"
+          ],
+          "intro": "The whole invite chain in one test: create the member, get the set-password token, use it, then authenticate as the new person. SMTP is not configured in dev, so the modal is expected to print the link on screen rather than send an email.",
+          "signin": [
+            "owner"
+          ],
+          "steps": [
+            "Admin &rarr; <strong>Users &amp; Roles</strong> &rarr; <strong>Invite</strong>.",
+            "Full name <code>UAT Ops Manager</code>, email <code>uat.ops@assetcore.test</code>, role <strong>Operations Manager</strong>. Send Invite.",
+            "Copy the set-password link the modal shows, open it in the address bar.",
+            "Set the password to <code>UatPass123!</code>, then sign in as that account."
+          ],
+          "expect": "The modal shows an <code>/reset-password?token=&hellip;</code> link. The link opens a set-password form, accepts the password, and the new account signs in and lands on a dashboard scoped to NGML with the Operations Manager navigation."
+        },
+        {
+          "title": "Create the remaining five role accounts",
+          "roles": [
+            "System Admin"
+          ],
+          "intro": "Repeats the invite flow for every other role. The second and subsequent runs matter: invite flows commonly work once and then collide on a reference or a token.",
+          "signin": [
+            "owner"
+          ],
+          "steps": [
+            "Invite <code>uat.eng@assetcore.test</code> as <strong>Maintenance Engineer</strong>.",
+            "Invite <code>uat.tech@assetcore.test</code> as <strong>Field Technician</strong>.",
+            "Invite <code>uat.hse@assetcore.test</code> as <strong>HSE / Compliance Officer</strong>.",
+            "Invite <code>uat.auditor@assetcore.test</code> as <strong>Auditor</strong>.",
+            "Invite <code>uat.viewer@assetcore.test</code> as <strong>Executive / Viewer</strong>.",
+            "Set each password to <code>UatPass123!</code> via its own link, and sign in once as each."
+          ],
+          "expect": "All five invites produce a working link, all five passwords set, and all five accounts sign in. Each lands on a dashboard, not an error, and the Users &amp; Roles list shows seven members with the right role labels."
+        },
+        {
+          "title": "An account with no membership row signs in",
+          "roles": [
+            "Edge case"
+          ],
+          "intro": "<code>paul.o@ngml.com</code> was created by migration 0019 but its membership row was never inserted, so the session has a user and no organisation. This is a real hole in the data; the test is what the app does about it. A blank dashboard, a crash or a redirect loop are all failures — the pass is a clear explanation.",
+          "signin": [
+            "orphan"
+          ],
+          "steps": [
+            "Sign out.",
+            "Sign in as <code>paul.o@ngml.com</code> / <code>NgmlDemo2026</code>.",
+            "Watch what the screen does for a good ten seconds, and watch the console and network panel.",
+            "Try to reach <code>/dashboard</code> and <code>/assets</code> directly."
+          ],
+          "expect": "The app explains that the account has no organisation and offers a way out (sign out, or contact an admin). It must not hang on a spinner, loop between routes, throw an uncaught error, or show an empty dashboard chrome as if everything were fine."
+        },
+        {
+          "title": "Wrong password, and repeated failures",
+          "roles": [
+            "Edge case"
+          ],
+          "intro": "Sign-in refusals and whatever lockout the code implements.",
+          "steps": [
+            "Sign out. Sign in as <code>a.okeke@ngml.example</code> with <code>wrongpassword</code>.",
+            "Repeat with the wrong password five more times.",
+            "Then sign in with the correct password <code>Password123!</code>."
+          ],
+          "expect": "Each wrong attempt is refused with a message that does not reveal whether the email exists. Any lockout that trips says so plainly and names when it lifts. The correct password works afterwards (or the lockout is explained)."
+        }
+      ]
+    },
+    {
+      "title": "The spine: inspection to work order",
+      "blurb": "The chain the product exists for, walked end to end and then broken apart stage by stage.",
+      "tests": [
+        {
+          "title": "Raise an inspection against an asset",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "The start of the chain. An inspection is created and scheduled against a real asset.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "Inspections &rarr; <strong>New inspection</strong>.",
+            "Pick an asset, a template if one is offered, and a due date.",
+            "Save, then reopen it from the list."
+          ],
+          "expect": "The inspection saves, appears in the list with its asset and due date, and reopening shows exactly what was entered."
+        },
+        {
+          "title": "An inspection cannot be completed without a 1-5 condition rating",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "The API returns <code>422 condition_rating_required</code> when an inspection is completed with no rating. This is the domain rule that must never be violated — a completed inspection with no condition is a hole in the asset health calculation.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "Open the inspection from the previous test.",
+            "Work through the checklist items but leave the <strong>condition rating</strong> unset.",
+            "Press <strong>Complete</strong>.",
+            "Then set a rating of <strong>2</strong> and complete it again."
+          ],
+          "expect": "The first attempt is refused with a message naming the missing condition rating — not a generic error, and not a silent no-op. With the rating set, it completes and shows as Completed with condition 2."
+        },
+        {
+          "title": "Work the checklist and record a failed item as a finding",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "The checklist is how an inspection produces findings. A failed item should be capturable, not just tickable.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "Open a checklist-bearing inspection.",
+            "Mark at least one item as failed and add a note describing what was wrong.",
+            "Save, reopen, and confirm the failed item and note survived."
+          ],
+          "expect": "Failed items save with their notes, are visibly distinct from passed items, and the count of failures is reflected on the inspection summary."
+        },
+        {
+          "title": "Raise a defect from the inspection",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "The hand-off from inspection to the defect register.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "From the completed inspection, raise a defect for the failed item.",
+            "Give it a severity of <strong>major</strong> and a clear description.",
+            "Save, then open Defects and find it."
+          ],
+          "expect": "The defect appears on the defect register with its severity, its asset, and a visible link back to the inspection it came from."
+        },
+        {
+          "title": "Raise a work order from the defect",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "The second hand-off. The work order must carry its provenance — a WO with no trace back to the defect makes the register useless.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Defects &rarr; open the defect raised above &rarr; <strong>Raise work order</strong>.",
+            "Set priority <strong>high</strong> and save.",
+            "Open the new work order from the Work Orders list."
+          ],
+          "expect": "A work order is created with a new WO reference, priority high, and the work-order detail names the defect it came from. The defect shows that a work order now exists against it."
+        },
+        {
+          "title": "Assign the work order and see it from the technician's side",
+          "roles": [
+            "Operations Manager",
+            "Field Technician"
+          ],
+          "intro": "The hand-off between two people — the place multi-role apps actually fail. The receiving side has to be told.",
+          "signin": [
+            "ops",
+            "tech"
+          ],
+          "steps": [
+            "As the Operations Manager, assign the work order to <code>uat.tech@assetcore.test</code>.",
+            "Sign out and sign in as the Field Technician.",
+            "Look at the technician's own dashboard and work-order list, without typing a URL.",
+            "Check the notifications bell."
+          ],
+          "expect": "The work order appears in the technician's own list and on their dashboard as assigned work, and the technician is notified. Reaching it must not require typing a URL."
+        },
+        {
+          "title": "Drive the work order through its statuses",
+          "roles": [
+            "Field Technician"
+          ],
+          "intro": "Every arrow in the state machine: assigned &rarr; in_progress &rarr; awaiting_parts &rarr; in_progress &rarr; inspection &rarr; closed.",
+          "signin": [
+            "tech"
+          ],
+          "steps": [
+            "Move the work order to <strong>In Progress</strong>.",
+            "Move it to <strong>Awaiting Parts</strong>, then back to <strong>In Progress</strong>.",
+            "Move it to <strong>Inspection</strong>, then <strong>Closed</strong>.",
+            "After closing, try to move it back to In Progress."
+          ],
+          "expect": "Each allowed move succeeds and is timestamped. Closed is terminal — the app offers no way back, and if a transition is forced it is refused with an invalid-transition message rather than accepted."
+        },
+        {
+          "title": "Work-order task checklist and parts",
+          "roles": [
+            "Field Technician"
+          ],
+          "intro": "Shipped days ago. The checklist and the parts list on the work-order detail.",
+          "signin": [
+            "tech"
+          ],
+          "steps": [
+            "Open an open work order.",
+            "Add two checklist tasks, tick one.",
+            "Add a spare part to the work order and set a quantity.",
+            "Reload the page."
+          ],
+          "expect": "Tasks and parts persist across the reload, the ticked task stays ticked, and the parts line shows the part, quantity and its cost."
+        },
+        {
+          "title": "The whole chain again, in one sitting",
+          "roles": [
+            "HSE Officer",
+            "Operations Manager",
+            "Field Technician"
+          ],
+          "intro": "The per-stage tests find the bug; this one finds the hand-off. It is also the second time through, which is where references collide and counters fail to increment.",
+          "signin": [
+            "hse",
+            "ops",
+            "tech"
+          ],
+          "steps": [
+            "Raise a second inspection on a different asset, complete it with a condition rating of <strong>1</strong>.",
+            "Raise a defect from it, then a work order from the defect.",
+            "Assign, progress and close the work order.",
+            "Note every reference number generated along the way."
+          ],
+          "expect": "The full chain completes without a reload or a manual refresh. Every reference is new and distinct from the first run — no collisions, no repeated numbers."
+        }
+      ]
+    },
+    {
+      "title": "Asset health and condition",
+      "blurb": "The score the dashboard leads with, and the breakdown that has to justify it.",
+      "tests": [
+        {
+          "title": "Asset health score and its \"Show the working\" breakdown",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "A score nobody can explain is a score nobody trusts. The breakdown has to add up to the number shown.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Assets &rarr; open an asset with maintenance history.",
+            "Find the condition/health score and open <strong>Show the working</strong>.",
+            "Read each contributing factor and its weight.",
+            "Add the factors up and compare against the headline score."
+          ],
+          "expect": "The breakdown names each factor with its weight and contribution, and the components reconcile to the score displayed. No factor is blank, undefined or NaN."
+        },
+        {
+          "title": "A poor inspection rating moves the asset's health",
+          "roles": [
+            "HSE Officer",
+            "Operations Manager"
+          ],
+          "intro": "The link between the condition rating captured in the field and the score management reads.",
+          "signin": [
+            "hse",
+            "ops"
+          ],
+          "steps": [
+            "Note an asset's current health score.",
+            "Complete an inspection on that asset with a condition rating of <strong>1</strong>.",
+            "Return to the asset and re-read the score and its working."
+          ],
+          "expect": "The score moves down, and the breakdown shows the new inspection as a contributing factor. If the score only changes on a scheduled job, the page says so rather than showing a stale figure as current."
+        },
+        {
+          "title": "Network Health on the dashboard agrees with the assets underneath it",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Two queries disagreeing is the classic dashboard bug.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Read the Network Health donut: the counts for Healthy, Attention Required, Critical and Offline.",
+            "Go to Assets and filter by each of those conditions in turn.",
+            "Compare the row counts against the donut."
+          ],
+          "expect": "Each segment's count matches the number of assets the list returns for that condition, and the segments sum to the total asset count."
+        }
+      ]
+    },
+    {
+      "title": "Approvals",
+      "blurb": "The amount bands, who decides, and — the part that matters — who cannot.",
+      "tests": [
+        {
+          "title": "Write an approval rule with an amount band",
+          "roles": [
+            "System Admin"
+          ],
+          "intro": "Approval rules are owner-only. The band is validated: a maximum at or below the minimum is refused with <code>invalid_band</code>.",
+          "signin": [
+            "owner"
+          ],
+          "steps": [
+            "Find the approval matrix (Admin or Approvals &rarr; Rules).",
+            "Create a rule for <strong>work_order</strong> / <strong>wo_cost</strong>, minimum <code>100000</code>, maximum <code>5000000</code> (in minor units), deciding role <strong>Operations Manager</strong>.",
+            "Then try to save a second rule whose maximum is <em>below</em> its minimum."
+          ],
+          "expect": "The first rule saves and appears in the matrix with its band and deciding role. The second is refused with a message about the band being invalid — not a 500, and not silently accepted."
+        },
+        {
+          "title": "Raise a request inside the band and have the right role decide it",
+          "roles": [
+            "Maintenance Engineer",
+            "Operations Manager"
+          ],
+          "intro": "The gate genuinely opening. Note the API refuses self-approval, so this needs two people — raise as one role, decide as the role the band names.",
+          "signin": [
+            "eng",
+            "ops"
+          ],
+          "steps": [
+            "As the Maintenance Engineer, raise a cost approval on a work order for an amount inside the band you just created.",
+            "Sign out, sign in as the Operations Manager.",
+            "Approvals &rarr; find the pending request &rarr; <strong>Approve</strong>, with a comment."
+          ],
+          "expect": "The request is created as Pending and routed to the Operations Manager. The approval succeeds, the status becomes Approved, and it records who decided and when."
+        },
+        {
+          "title": "The wrong role cannot decide it",
+          "roles": [
+            "Field Technician",
+            "HSE Officer"
+          ],
+          "intro": "The refusal that matters. The API answers <code>403 wrong_approver</code>; the test is whether the app enforces it rather than merely hiding the button.",
+          "signin": [
+            "eng",
+            "tech",
+            "hse"
+          ],
+          "steps": [
+            "Raise a second cost approval inside the same band as the Maintenance Engineer.",
+            "Sign in as the Field Technician. Go to <code>/approvals</code> by typing the URL.",
+            "Try to approve the pending request — use whatever control is on screen, and if none is shown, confirm no other route reaches the action.",
+            "Repeat as the HSE Officer, who <em>does</em> hold <code>approval:decide</code> but is not the role this band names."
+          ],
+          "expect": "Neither role can approve it. The HSE Officer case is the important one: holding the capability is not enough when the band names a different role, and the refusal must say so rather than appearing to succeed."
+        },
+        {
+          "title": "Nobody approves their own request",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "The API refuses with <code>403 self_approval</code>. An approval matrix that lets the requester sign their own spend is not a control.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "As the Operations Manager — the role the band names — raise a cost approval yourself.",
+            "Then try to approve it from the Approvals page."
+          ],
+          "expect": "The app refuses, saying the requester cannot decide their own request. It must not be approvable through any control on the page."
+        },
+        {
+          "title": "An amount outside every band, and a duplicate request",
+          "roles": [
+            "Maintenance Engineer"
+          ],
+          "intro": "<code>422 no_matching_rule</code> and <code>409 already_pending</code> — two refusals a tester would never think to try but a real user hits in week one.",
+          "signin": [
+            "eng"
+          ],
+          "steps": [
+            "Raise a cost approval for an amount far above every configured band.",
+            "Then raise a second approval of the same kind on a work order that already has one pending."
+          ],
+          "expect": "The out-of-band request is refused with an explanation that no rule matches the amount. The duplicate is refused as already pending and points at the existing request — neither creates an orphaned record."
+        },
+        {
+          "title": "Recall a pending request, and reject one",
+          "roles": [
+            "Maintenance Engineer",
+            "Operations Manager"
+          ],
+          "intro": "The other two exits from Pending. Recall is limited to the requester (<code>403 not_requester</code>).",
+          "signin": [
+            "eng",
+            "ops"
+          ],
+          "steps": [
+            "As the Maintenance Engineer, raise a request and then <strong>recall</strong> it.",
+            "Raise another; as the Operations Manager, <strong>reject</strong> it with a reason.",
+            "Then try to approve the rejected one."
+          ],
+          "expect": "Recall returns the request to the requester and it leaves the pending queue. Reject records the reason and the decider. A decided request cannot be decided again — the second attempt is refused as not pending."
+        }
+      ]
+    },
+    {
+      "title": "Escalations",
+      "blurb": "Rules that wake people up. Written, run on demand, and checked from the recipient's account.",
+      "tests": [
+        {
+          "title": "Write an escalation rule",
+          "roles": [
+            "System Admin"
+          ],
+          "intro": "Escalation rules are owner-only. Not every trigger is valid for every entity — the API refuses <code>invalid_trigger_for_entity</code>, and the form should not offer the invalid pairs at all.",
+          "signin": [
+            "owner"
+          ],
+          "steps": [
+            "Admin &rarr; <strong>Escalations</strong> &rarr; new rule.",
+            "Entity <strong>work_order</strong>, trigger <strong>overdue</strong>, threshold <code>0</code> days, notify <strong>Operations Manager</strong>. Save.",
+            "Now open the entity dropdown and select <strong>compliance_licence</strong>; look at which triggers the form offers."
+          ],
+          "expect": "The rule saves and appears in the list with its trigger, threshold and notify role. For compliance_licence the form offers only <strong>overdue</strong> — the combinations the evaluator would silently skip are not offered."
+        },
+        {
+          "title": "Press \"Run now\" and check who was notified",
+          "roles": [
+            "System Admin",
+            "Operations Manager"
+          ],
+          "intro": "A scheduled job that cannot be triggered by hand cannot be tested. This checks it fires <em>and</em> that the notification lands in the recipient's account, not just in a counter.",
+          "signin": [
+            "owner",
+            "ops"
+          ],
+          "steps": [
+            "With the rule above in place, press <strong>Run now</strong>.",
+            "Read what the page reports: how many events fired.",
+            "Check the rule's fired count and last-fired time.",
+            "Sign in as the Operations Manager and open the notifications bell."
+          ],
+          "expect": "The run reports the number of escalations raised, the rule's fired count increases and its last-fired time updates. The Operations Manager has a notification naming the escalated work order, and its link lands on that work order."
+        },
+        {
+          "title": "Run it twice — the same thing is not escalated over and over",
+          "roles": [
+            "System Admin"
+          ],
+          "intro": "An escalation engine that re-fires on every run turns into a mail flood on day two.",
+          "signin": [
+            "owner"
+          ],
+          "steps": [
+            "Press <strong>Run now</strong> a second time straight away.",
+            "Compare the number of events raised against the first run.",
+            "Look at the escalation events list for duplicates against the same record."
+          ],
+          "expect": "The second run raises no new event for anything already escalated. If it does re-fire, that is a finding regardless of what the counter says."
+        }
+      ]
+    },
+    {
+      "title": "Compliance",
+      "blurb": "Audits through their lifecycle, findings, and the push onto the defect register.",
+      "tests": [
+        {
+          "title": "An audit walks scheduled to in progress to completed",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "The lifecycle, one arrow at a time.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "Compliance &rarr; Audits &rarr; create an audit, scheduled for today.",
+            "Move it to <strong>In Progress</strong>.",
+            "Move it to <strong>Completed</strong> with an outcome of <strong>Pass with observations</strong> (or the nearest option).",
+            "Reopen it from the list."
+          ],
+          "expect": "Each transition sticks and is timestamped. The completed audit shows its outcome on the list and on the detail."
+        },
+        {
+          "title": "An audit cannot be completed without an outcome",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "The API answers <code>422 outcome_required</code>. A completed audit with no outcome is a compliance record that says nothing.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "Create a second audit and move it to In Progress.",
+            "Try to complete it with the outcome left empty."
+          ],
+          "expect": "Refused, with a message naming the missing outcome. The audit stays In Progress rather than half-completing."
+        },
+        {
+          "title": "Add findings to an audit",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "Findings are what an audit produces.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "Open a completed audit and add two findings with different severities.",
+            "Edit one of them.",
+            "Reload and confirm both are there as entered."
+          ],
+          "expect": "Both findings save with their severities, the edit persists, and they are listed against the audit."
+        },
+        {
+          "title": "Push a finding onto the defect register",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "The hand-off from compliance into maintenance. Doing it twice is refused with <code>409 already_raised</code> — a finding that spawns two defects double-counts the backlog.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "From a finding, press <strong>Raise defect</strong>.",
+            "Open Defects and confirm it arrived, with a link back to the audit finding.",
+            "Return to the finding and try to raise a defect from it a second time."
+          ],
+          "expect": "The first push creates a defect carrying the finding's detail and severity. The second is refused as already raised and points at the existing defect rather than creating a duplicate."
+        },
+        {
+          "title": "Licence expiry alerts match the dashboard",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "The dashboard leads with a compliance alert count; it has to agree with the licence register.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "Read the Compliance Alerts figure on the dashboard and its expired/expiring split.",
+            "Go to Compliance &rarr; Licences and count expired and expiring rows.",
+            "Compare."
+          ],
+          "expect": "The counts agree, and every alert on the dashboard corresponds to a licence you can open."
+        }
+      ]
+    },
+    {
+      "title": "Risk register",
+      "blurb": "The 5x5 matrix, and the difference between inherent and residual.",
+      "tests": [
+        {
+          "title": "Raise a risk and place it on the 5x5 matrix",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "The matrix is the whole point of the register; a risk that lands in the wrong cell misinforms a decision.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "Risk &rarr; new risk. Set inherent likelihood <strong>4</strong> and inherent impact <strong>5</strong>.",
+            "Save, and find the risk on the matrix.",
+            "Check the cell it occupies and the score it shows."
+          ],
+          "expect": "The risk sits in the 4x5 cell, scores 20, and is coloured in the band that score belongs to."
+        },
+        {
+          "title": "Residual risk after controls differs from inherent",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "If residual and inherent are the same number the register is decorative. The two have to be separately captured and separately displayed.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "On the same risk, record a control and set residual likelihood <strong>2</strong>, impact <strong>3</strong>.",
+            "Save and reopen.",
+            "Look at the matrix view and any toggle between inherent and residual."
+          ],
+          "expect": "Residual shows as 6 and is plotted separately from the inherent 20. Switching the matrix between inherent and residual moves the risk to a different cell."
+        },
+        {
+          "title": "Matrix boundaries: 1x1 and 5x5",
+          "roles": [
+            "HSE Officer"
+          ],
+          "intro": "The corners of the grid, and whatever is outside it.",
+          "signin": [
+            "hse"
+          ],
+          "steps": [
+            "Create a risk at likelihood 1, impact 1.",
+            "Create another at likelihood 5, impact 5.",
+            "Try to enter a 0 or a 6 in either field."
+          ],
+          "expect": "Both corner risks place correctly and score 1 and 25. Values outside 1-5 are refused rather than plotted off the grid."
+        }
+      ]
+    },
+    {
+      "title": "Parts, depreciation and money",
+      "blurb": "Stock that moves, books that have to balance, and a second currency that has to follow.",
+      "tests": [
+        {
+          "title": "Create a spare part and adjust its stock",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Stock movements are the ledger of the parts store.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Spare Parts &rarr; new part, with a reorder level of <code>5</code> and an opening quantity of <code>10</code>.",
+            "Record a stock movement out of <code>3</code>.",
+            "Record a movement in of <code>1</code>.",
+            "Open the part's movement history."
+          ],
+          "expect": "The quantity reads 8 after both movements, and the history lists all three entries with who moved them and when. The arithmetic on screen matches the movements listed."
+        },
+        {
+          "title": "Stock below the reorder level raises a low-stock signal",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "There is a <code>check_low_stock</code> job; the signal it produces has to reach somebody.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Move stock out until the part is below its reorder level of 5.",
+            "Look at the parts list, the dashboard and the notifications bell."
+          ],
+          "expect": "The part is flagged as low stock in the list, and the flag is visible somewhere a manager would actually look rather than only inside the record."
+        },
+        {
+          "title": "Consuming a part on a work order moves the stock",
+          "roles": [
+            "Field Technician"
+          ],
+          "intro": "The join between the two modules. Parts consumed on a job that never leave the store is a stock system that lies.",
+          "signin": [
+            "tech"
+          ],
+          "steps": [
+            "Note a part's quantity.",
+            "Add that part to an open work order with quantity <code>2</code> and complete or save the parts line.",
+            "Return to Spare Parts and re-read the quantity and the movement history."
+          ],
+          "expect": "The quantity drops by 2 and a movement appears in the history naming the work order that consumed it."
+        },
+        {
+          "title": "Depreciation schedule and NBV provenance",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Net book value is either derived on the fly or read from a posted schedule, and the app has to say which. A figure whose origin is ambiguous is a figure an accountant cannot sign.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Depreciation &rarr; open an asset with a cost and a useful life.",
+            "Read the net book value and find where the page says whether it is <em>derived</em> or from a <em>posted schedule</em>.",
+            "Open the schedule and check the periods, the charge per period and the closing NBV.",
+            "Add the charges to the accumulated depreciation and compare against cost minus NBV."
+          ],
+          "expect": "The page states the provenance of the NBV explicitly. Cost minus accumulated depreciation equals the net book value shown, to the minor unit."
+        },
+        {
+          "title": "Set a second currency and a rate",
+          "roles": [
+            "System Admin"
+          ],
+          "intro": "Money is stored in the base currency's minor units; the secondary is a presentation layer over an FX rate. Clearing the secondary is meant to clear the rate with it, so a stale rate can never resurface.",
+          "signin": [
+            "owner"
+          ],
+          "steps": [
+            "Settings &rarr; Organisation. Note the base currency.",
+            "Set a secondary currency of <code>USD</code> with a rate and a rate date. Save.",
+            "Clear the secondary currency, save, then set it again.",
+            "Check whether the old rate came back."
+          ],
+          "expect": "The secondary currency and rate save with the date. Clearing it clears the rate and the date. Setting it again starts from empty — the previous rate does not resurface."
+        },
+        {
+          "title": "Money elsewhere in the app follows the currency setting",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Setting a currency in one screen and finding the old symbol everywhere else is the usual outcome. Check the places money actually appears.",
+          "signin": [
+            "owner",
+            "ops"
+          ],
+          "steps": [
+            "With the secondary currency set, visit: a work order with a cost, the approvals list, the depreciation page, a spare part's unit cost, and Analytics.",
+            "Note the symbol, the thousands separator and the number of decimals in each place.",
+            "Export or print one of them if the option exists and check the figures there too."
+          ],
+          "expect": "Every screen shows money in the same format, and the secondary currency appears wherever the setting says it should. No screen is left showing a hard-coded symbol or an unconverted figure."
+        }
+      ]
+    },
+    {
+      "title": "Analytics, reporting and the record",
+      "blurb": "The numbers management reads, and the log that says who did what.",
+      "tests": [
+        {
+          "title": "MTBF, MTTR and backlog buckets",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Reliability figures that are wrong are worse than absent, because they get quoted.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Analytics &rarr; read MTBF and MTTR, and note the period they cover.",
+            "Read the backlog buckets and their counts.",
+            "Cross-check one bucket against the Work Orders list filtered the same way.",
+            "Change the period selector and watch the figures move."
+          ],
+          "expect": "Every figure has a unit and a period. The bucket counts match the work-order list filtered the same way. Changing the period changes the numbers rather than leaving them stale."
+        },
+        {
+          "title": "Charts render and survive a resize",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Charts are where a page that renders still throws.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Open Analytics with the console visible.",
+            "Hover the data points, use any legend toggles.",
+            "Resize the window narrow and wide."
+          ],
+          "expect": "Charts draw with axes, labels and a legend, tooltips give real values, and nothing throws in the console at any width."
+        },
+        {
+          "title": "Generate a report and check the file against the screen",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "The export is what leaves the building; it has to agree with the screen and open in the application it claims to be for.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Dashboard &rarr; <strong>Generate Report</strong>, or Reports &rarr; run a report.",
+            "Note three figures on screen before exporting.",
+            "Download the file and open it.",
+            "Compare the three figures."
+          ],
+          "expect": "The file downloads with a sensible filename and extension, opens in the right application, and the three figures match the screen exactly. A file that renders as text in the browser instead of downloading is a failure."
+        },
+        {
+          "title": "The audit log records who did what",
+          "roles": [
+            "Auditor"
+          ],
+          "intro": "Every significant action in this run should be in the log, attributed and timestamped — and the log must not be editable by anyone, including the owner.",
+          "signin": [
+            "auditor",
+            "owner"
+          ],
+          "steps": [
+            "Sign in as the Auditor. Admin &rarr; <strong>Audit Log</strong>.",
+            "Find entries for: the approval decided, the escalation rule created, the work order closed, the currency changed.",
+            "Check each names the actor and the time.",
+            "Look for any control that edits or deletes an entry — as the Auditor and then as the owner."
+          ],
+          "expect": "All four actions appear, attributed to the account that performed them. No control anywhere edits or deletes a log entry, for any role."
+        },
+        {
+          "title": "Empty states",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "A filter that matches nothing is the closest a tester gets to a brand-new account.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "On Work Orders, Defects, Risk, Spare Parts and Inspections in turn, apply a filter or search that matches nothing.",
+            "Look at what each page shows."
+          ],
+          "expect": "Each shows a written explanation and, where relevant, the way to create the first record. None shows a broken grid, a bare zero, or a spinner that never resolves."
+        }
+      ]
+    },
+    {
+      "title": "The rest of the surface",
+      "blurb": "Calendar, map, QR, photos and import — the parts that only break when somebody goes looking.",
+      "tests": [
+        {
+          "title": "Calendar",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Scheduled work in date form. Timezone is Africa/Lagos, so a record created late in the evening is the test that matters.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Calendar &rarr; look at the current month.",
+            "Find a scheduled PM task or work order and open it from the calendar.",
+            "Move between months and back.",
+            "Check that anything created today shows on today's date."
+          ],
+          "expect": "Events appear on their correct dates, clicking one opens the record, month navigation works in both directions, and today's records are on today rather than a day out."
+        },
+        {
+          "title": "Asset map",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Maps fail quietly — no tiles, markers at (0,0), or a console full of errors behind a page that looks fine.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Open the asset map with the console visible.",
+            "Check markers are on plausible Nigerian locations.",
+            "Click a marker.",
+            "Check an asset with no coordinates."
+          ],
+          "expect": "Tiles load, markers sit in sensible places, clicking one identifies the asset and links to it, and an asset without coordinates is handled rather than dropped at the origin. Nothing throws."
+        },
+        {
+          "title": "QR sheets and the scan page",
+          "roles": [
+            "Operations Manager",
+            "Field Technician"
+          ],
+          "intro": "The field loop: print a code, scan it, land on the asset.",
+          "signin": [
+            "ops",
+            "tech"
+          ],
+          "steps": [
+            "Generate a QR sheet for several assets and open the print preview.",
+            "Check each code is labelled with its asset.",
+            "As the Field Technician, open <code>/scan</code>.",
+            "Follow what a scanned code resolves to."
+          ],
+          "expect": "The sheet lays out one labelled code per asset and is printable without cutting codes across pages. The scan page opens and explains itself even where a camera is unavailable, and a code resolves to its asset."
+        },
+        {
+          "title": "Photo upload and the lightbox",
+          "roles": [
+            "Field Technician"
+          ],
+          "intro": "Uploads, and the permission boundary on the file itself — the most-forgotten one in any app.",
+          "signin": [
+            "tech",
+            "viewer"
+          ],
+          "steps": [
+            "Attach a photo to a work order or inspection.",
+            "Open it in the lightbox; move between images if there are several; close it.",
+            "Copy the image URL.",
+            "Sign out, sign in as the Viewer, and paste the image URL directly.",
+            "Then try it signed out entirely."
+          ],
+          "expect": "The upload succeeds and thumbnails. The lightbox opens, navigates and closes on Escape. Signed out, the file URL is refused — an image that loads with no session is a data leak."
+        },
+        {
+          "title": "CSV import",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Bulk import is where bad data enters a system permanently. The refusals matter more than the happy path.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Find the CSV import and download the template if one is offered.",
+            "Import two valid rows.",
+            "Import a file with a missing required column.",
+            "Import a file with a valid header and one bad row among three good ones.",
+            "Rename a <code>.txt</code> file to <code>.csv</code> and import that."
+          ],
+          "expect": "Valid rows import and appear in the list. A missing column is refused naming the column. The part-bad file either imports the good rows and reports the bad one by line number, or refuses the lot — but says clearly which happened. The fake CSV is refused rather than half-imported."
+        }
+      ]
+    },
+    {
+      "title": "Permission boundaries",
+      "blurb": "For each role, the pages it must not reach — tested by typing the URL, not by checking the nav hides it.",
+      "tests": [
+        {
+          "title": "Viewer is read-only everywhere",
+          "roles": [
+            "Viewer"
+          ],
+          "intro": "The Viewer holds <code>*:read</code> and nothing else. Read-only has to mean read-only on every screen, not just where a button was hidden.",
+          "signin": [
+            "viewer"
+          ],
+          "steps": [
+            "Sign in as the Viewer and look at what the navigation offers.",
+            "Type each of these directly: <code>/assets</code>, <code>/work-orders</code>, <code>/defects</code>, <code>/risks</code>, <code>/spare-parts</code>, <code>/inspections</code>, <code>/compliance</code>.",
+            "On each page reachable, look for any create, edit, delete or transition control and try it.",
+            "Then type <code>/admin</code>."
+          ],
+          "expect": "Read-only pages may render, but no control creates, edits or transitions anything — and any attempt is refused rather than accepted. <code>/admin</code> does not open."
+        },
+        {
+          "title": "Auditor sees everything and changes nothing",
+          "roles": [
+            "Auditor"
+          ],
+          "intro": "The Auditor is read-only plus <code>audit:read</code>, which is the one thing that gets them into Admin — and only onto the Audit Log tab.",
+          "signin": [
+            "auditor"
+          ],
+          "steps": [
+            "Sign in as the Auditor and open <code>/admin</code>.",
+            "Note which Admin tabs are present.",
+            "Try to reach the Users &amp; Roles, Locations and Configuration tabs.",
+            "On the Audit Log, try to change anything."
+          ],
+          "expect": "Admin opens on the Audit Log alone. Users &amp; Roles, Locations and Configuration are not reachable. Nothing on the audit log can be altered."
+        },
+        {
+          "title": "Field Technician cannot reach management pages",
+          "roles": [
+            "Field Technician"
+          ],
+          "intro": "The technician has no <code>depreciation:read</code>, no <code>report:read</code>, no <code>risk:create</code> and no admin capability.",
+          "signin": [
+            "tech"
+          ],
+          "steps": [
+            "Sign in as the Field Technician.",
+            "Type each directly: <code>/depreciation</code>, <code>/analytics</code>, <code>/admin</code>, <code>/settings</code>.",
+            "Open <code>/risks</code> and try to create a risk.",
+            "Open a work order not assigned to them and try to edit it."
+          ],
+          "expect": "Depreciation, Analytics and Admin do not open — they redirect or refuse rather than rendering. The technician can read risks but not create one."
+        },
+        {
+          "title": "Maintenance Engineer cannot administer the org",
+          "roles": [
+            "Maintenance Engineer"
+          ],
+          "intro": "<code>org:manage</code>, <code>user:manage</code>, <code>approval:manage</code> and <code>escalation:manage</code> are owner-only (with <code>org:manage</code> also granted to the Operations Manager).",
+          "signin": [
+            "eng"
+          ],
+          "steps": [
+            "Sign in as the Maintenance Engineer and type <code>/admin</code>.",
+            "Try to reach the approval matrix and the escalation rules.",
+            "Open <code>/settings</code> and try to change the organisation's currency."
+          ],
+          "expect": "Admin does not open. The approval matrix and escalation rules are unreachable. The currency cannot be changed."
+        },
+        {
+          "title": "Operations Manager gets org:manage but not user:manage",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "The one deliberate asymmetry in the matrix: the Operations Manager maintains locations, sites and categories, but does not manage people, approvals or escalation rules.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Sign in as the Operations Manager and open <code>/admin</code>.",
+            "Confirm Locations, Sites and Asset Categories are usable — add a location and delete it again.",
+            "Try to reach Users &amp; Roles and invite somebody.",
+            "Try to create an approval rule and an escalation rule."
+          ],
+          "expect": "Locations, Sites and Categories work. Users &amp; Roles is not available, no invite can be sent, and neither an approval rule nor an escalation rule can be created."
+        },
+        {
+          "title": "Disabling a member locks them out",
+          "roles": [
+            "System Admin"
+          ],
+          "intro": "Removing access has to actually remove access, including for a session already open.",
+          "signin": [
+            "owner",
+            "viewer"
+          ],
+          "steps": [
+            "As the owner, Admin &rarr; Users &amp; Roles &rarr; disable <code>uat.viewer@assetcore.test</code>.",
+            "Sign in as the Viewer.",
+            "If a Viewer session is still open in another window, reload it.",
+            "Re-enable the account afterwards — later rounds need it."
+          ],
+          "expect": "The disabled account cannot sign in and is told why. An already-open session stops working on the next request rather than continuing until it expires."
+        }
+      ]
+    },
+    {
+      "title": "Input, sessions and the edges",
+      "blurb": "The cross-cutting checks that decide whether the app survives contact with real users.",
+      "tests": [
+        {
+          "title": "Required fields and bad input",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Refusals should name the field. A generic \"something went wrong\" on a required field is a finding.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "On the new-asset form, save with everything empty.",
+            "Put letters in a number field and a past date where a future one belongs.",
+            "On a work order, set a due date before the start date.",
+            "Enter a 500-character name."
+          ],
+          "expect": "Each refusal names the field and what is wrong with it. Nothing saves half a record, and nothing throws in the console."
+        },
+        {
+          "title": "Round trip with real characters",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Accents, apostrophes and non-Latin scripts are what people actually type. Losing them is a data-integrity bug, not a cosmetic one.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Create an asset named <code>Ọ̀kè Compressor &mdash; Warri &quot;A&quot; (test)</code> with a description containing an apostrophe and an emoji.",
+            "Save, reload the page, reopen it.",
+            "Search for it by a distinctive word.",
+            "Check how it renders in a list and in an export."
+          ],
+          "expect": "Everything comes back exactly as entered, in the record, the list, the search result and the export. No escaping artefacts, no dropped characters."
+        },
+        {
+          "title": "Double submit makes one record",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Pressing Save twice quickly is the most common way duplicates get into a system.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Fill in a new work order.",
+            "Press Save twice as fast as possible.",
+            "Look at the list."
+          ],
+          "expect": "Exactly one work order is created. The button disables or the request is de-duplicated."
+        },
+        {
+          "title": "Search, filter and sort agree with each other",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "A filter count that disagrees with its rows means two queries disagree.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "On Work Orders, filter by status and compare the count against the rows shown.",
+            "Search for something with an obvious hit, then something misspelled, then something that must return nothing.",
+            "Sort by two different columns and check the order actually changes.",
+            "Combine a filter and a search."
+          ],
+          "expect": "Counts match rows in every combination. The misspelling either returns nothing or a sensible near match, and the empty search says so rather than showing everything."
+        },
+        {
+          "title": "Sign out, back button and a stale form",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Session handling. The back button after signing out is the classic leak.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Sign in, open a work order, then sign out.",
+            "Press the browser back button.",
+            "Open a form, leave it sitting for several minutes, then submit it.",
+            "Reload the app with a session open."
+          ],
+          "expect": "The back button after sign-out shows the sign-in page, never the cached record. A stale form either submits cleanly against a refreshed token or says the session expired — it does not fail silently. Reloading keeps the session."
+        },
+        {
+          "title": "Phone width",
+          "roles": [
+            "Field Technician"
+          ],
+          "intro": "The technician is the role most likely to be on a phone, so this matters most for their screens.",
+          "signin": [
+            "tech"
+          ],
+          "steps": [
+            "Set the browser to 375px wide.",
+            "Visit the dashboard, work-order list, a work-order detail, the scan page and an inspection.",
+            "Check nothing scrolls sideways and every button is reachable.",
+            "Open the navigation."
+          ],
+          "expect": "No horizontal scrolling on the page body. Wide tables scroll inside their own box. The navigation opens and closes, and every action is reachable with a thumb."
+        },
+        {
+          "title": "Dark mode",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "The app has a dark toggle. Colour tokens defined only for light are the usual failure.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Turn on dark mode.",
+            "Visit the dashboard, Analytics, a work order, the risk matrix and Admin.",
+            "Look for anything unreadable: white boxes, invisible text, charts still on a light ground."
+          ],
+          "expect": "Every screen is legible in dark mode. Charts, the risk matrix and the health donut all adapt rather than keeping a light background."
+        },
+        {
+          "title": "Keyboard only",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "Tab to it, activate it, and see where focus went.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "From the dashboard, tab through the page.",
+            "Open a modal with the keyboard, then close it with Escape.",
+            "Tab through a form and submit with Enter."
+          ],
+          "expect": "Focus is always visible, tab order follows the page, modals trap focus and return it on close, and Escape closes them."
+        },
+        {
+          "title": "The console stays clean across the whole app",
+          "roles": [
+            "Operations Manager"
+          ],
+          "intro": "A page that renders but throws is a failure. This is the sweep that catches what the individual tests miss.",
+          "signin": [
+            "ops"
+          ],
+          "steps": [
+            "Open the console and clear it.",
+            "Visit every page in the navigation in turn, waiting for each to settle.",
+            "Note every error and warning, with the page it came from.",
+            "Check the network panel for any request returning 4xx or 5xx that the page did not surface to the user."
+          ],
+          "expect": "No uncaught errors on any page. Any failed request is either expected (a permission refusal) or surfaced to the user — never a silent failure behind a page that looks fine."
+        }
+      ]
+    }
+  ]
+}
