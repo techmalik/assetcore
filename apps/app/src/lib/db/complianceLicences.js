@@ -91,3 +91,45 @@ export function daysUntilExpiry(expiryDate) {
   const now = new Date(); now.setHours(0,0,0,0)
   return Math.floor((exp - now) / 86400000)
 }
+
+// ── Audit lifecycle and findings (0024) ──────────────────────────────────────
+// The ISO questionnaire above and this share one table: 0024 merged them, so
+// an audit records both what was asked and how it came out.
+
+export const AUDIT_OUTCOMES = [
+  ['pass', 'Pass', 'badge-g'],
+  ['pass_with_findings', 'Pass with findings', 'badge-a'],
+  ['fail', 'Fail', 'badge-r'],
+  ['not_applicable', 'Not applicable', 'badge-n'],
+]
+
+export const OUTCOME_LABEL = Object.fromEntries(AUDIT_OUTCOMES.map(([k, l]) => [k, l]))
+export const OUTCOME_CLASS = Object.fromEntries(AUDIT_OUTCOMES.map(([k, , c]) => [k, c]))
+
+export const FINDING_SEVERITIES = [
+  ['observation', 'Observation'],
+  ['minor', 'Minor'],
+  ['major', 'Major'],
+  ['critical', 'Critical'],
+]
+
+export const FINDING_CLASS = {
+  observation: 'badge-n', minor: 'badge-b', major: 'badge-a', critical: 'badge-r',
+}
+
+export async function getComplianceAudit(id) {
+  return api.get(`/compliance-audits/${id}`)
+}
+
+export async function addAuditFinding(auditId, input) {
+  return api.post(`/compliance-audits/${auditId}/findings`, input)
+}
+
+export async function updateAuditFinding(auditId, findingId, patch) {
+  return api.patch(`/compliance-audits/${auditId}/findings/${findingId}`, patch)
+}
+
+// Puts the finding on the defect register, where it can become a work order.
+export async function raiseFindingDefect(auditId, findingId, input = {}) {
+  return api.post(`/compliance-audits/${auditId}/findings/${findingId}/defect`, input)
+}

@@ -17,6 +17,8 @@ import {
   softDeleteComplianceLicence, listAuthorities, checkLicenceExpiry,
   licenceStatus, daysUntilExpiry, uploadComplianceDocument, deleteComplianceDocument,
   listComplianceAudits, createComplianceAudit, updateComplianceAudit, softDeleteComplianceAudit, uploadAuditDocument,
+  getComplianceAudit, addAuditFinding, updateAuditFinding, raiseFindingDefect,
+  AUDIT_OUTCOMES, OUTCOME_LABEL, OUTCOME_CLASS, FINDING_SEVERITIES, FINDING_CLASS,
   getPmCompliance,
 } from '../lib/db/complianceLicences'
 import { listSites } from '../lib/db/sites'
@@ -247,6 +249,128 @@ function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded })
   )
 }
 
+// ── Audit findings ────────────────────────────────────────────────────────────
+// A finding is a non-conformity against a clause. It can be pushed onto the
+// defect register, where it becomes a work order like any other repair — which
+// is what carries it from "the regulator wrote this down" to "we fixed it".
+function AuditFindingsModal({ audit, onClose, onChanged }) {
+  const toast = useToast()
+  const { roleKey, extraCaps } = useAuth()
+  const canEdit = can(roleKey, 'compliance:update', extraCaps)
+  const canRaise = can(roleKey, 'defect:create', extraCaps)
+  const [detail, setDetail] = useState(null)
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState({ clause: '', description: '', severity: 'minor', due_date: '' })
+
+  const load = useCallback(async () => {
+    try { setDetail(await getComplianceAudit(audit.id)) } catch (e) { toast.error(e.message) }
+  }, [audit.id, toast])
+  useEffect(() => { load() }, [load])
+
+  const add = async () => {
+    if (!form.description.trim()) return
+    try {
+      await addAuditFinding(audit.id, {
+        clause: form.clause.trim() || null,
+        description: form.description.trim(),
+        severity: form.severity,
+        due_date: form.due_date || null,
+      })
+      setForm({ clause: '', description: '', severity: 'minor', due_date: '' })
+      setAdding(false)
+      await load(); onChanged()
+    } catch (e) { toast.error(e.message) }
+  }
+
+  const toggle = async (f) => {
+    try {
+      await updateAuditFinding(audit.id, f.id, { status: f.status === 'open' ? 'closed' : 'open' })
+      await load(); onChanged()
+    } catch (e) { toast.error(e.message) }
+  }
+
+  const raise = async (f) => {
+    try {
+      const d = await raiseFindingDefect(audit.id, f.id)
+      toast.success(`Raised ${d.ref} on the defect register.`)
+      await load(); onChanged()
+    } catch (e) {
+      toast.error(e.message === 'already_raised' ? 'A defect has already been raised for this finding.' : e.message)
+    }
+  }
+
+  const inp = { width: '100%', border: '1px solid var(--n200)', borderRadius: 4, padding: '6px 9px', fontSize: 12, fontFamily: 'var(--ff-u)', outline: 'none', boxSizing: 'border-box', background: 'var(--n0)', color: 'var(--n900)' }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.35)', padding: 24 }}>
+      <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, width: 560, maxWidth: '94vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '18px 22px 14px', borderBottom: 'var(--bdr)' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)' }}>Findings</h2>
+            <p style={{ fontSize: 12, color: 'var(--n500)', marginTop: 2 }}>{audit.ref ? `${audit.ref} — ` : ''}{audit.title}</p>
+          </div>
+          {canEdit && !adding && (
+            <button onClick={() => setAdding(true)} className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12 }}>Add finding</button>
+          )}
+          <button onClick={onClose} style={{ width: 28, height: 28, marginLeft: 8, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--n500)', fontSize: 20, lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: 22 }}>
+          {adding && (
+            <div style={{ background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 6, padding: 12, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <input value={form.clause} onChange={(e) => setForm(f => ({ ...f, clause: e.target.value }))} placeholder="Clause (optional), e.g. ISO 55001 §8.2" style={{ ...inp, fontFamily: 'var(--ff-m)' }} />
+              <textarea value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder="What was found" style={{ ...inp, resize: 'vertical' }} />
+              <div style={{ display: 'flex', gap: 7 }}>
+                <select value={form.severity} onChange={(e) => setForm(f => ({ ...f, severity: e.target.value }))} style={{ ...inp, flex: 1 }}>
+                  {FINDING_SEVERITIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                <input type="date" value={form.due_date} onChange={(e) => setForm(f => ({ ...f, due_date: e.target.value }))} style={{ ...inp, flex: 1 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={add} disabled={!form.description.trim()} className="btn btn-primary" style={{ height: 28, padding: '0 12px', fontSize: 12 }}>Add</button>
+                <button onClick={() => setAdding(false)} className="btn btn-secondary" style={{ height: 28, padding: '0 12px', fontSize: 12 }}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {!detail ? (
+            <p style={{ fontSize: 13, color: 'var(--n400)' }}>Loading…</p>
+          ) : (detail.findings || []).length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--n400)' }}>Nothing raised against this audit.</p>
+          ) : (
+            <div style={{ border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden' }}>
+              {detail.findings.map((f, i) => (
+                <div key={f.id} style={{ padding: '11px 13px', borderBottom: i < detail.findings.length - 1 ? 'var(--bdr)' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <span className={`badge ${FINDING_CLASS[f.severity]}`} style={{ flexShrink: 0 }}>{f.severity}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {f.clause && <div style={{ fontFamily: 'var(--ff-m)', fontSize: 10.5, color: 'var(--n500)' }}>{f.clause}</div>}
+                      <div style={{ fontSize: 12.5, color: 'var(--n800)', lineHeight: 1.5, textDecoration: f.status === 'closed' ? 'line-through' : 'none', opacity: f.status === 'closed' ? 0.65 : 1 }}>{f.description}</div>
+                      {f.due_date && <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 2 }}>Due {fmtDate(f.due_date)}</div>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 7, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {canEdit && (
+                      <button onClick={() => toggle(f)} className="btn btn-secondary" style={{ height: 24, padding: '0 9px', fontSize: 11 }}>
+                        {f.status === 'open' ? 'Close' : 'Reopen'}
+                      </button>
+                    )}
+                    {f.defect
+                      ? <span style={{ fontSize: 11, color: 'var(--n600)' }}>On the register as <strong>{f.defect.ref}</strong></span>
+                      : canRaise && f.status === 'open' && (
+                          <button onClick={() => raise(f)} className="btn btn-secondary" style={{ height: 24, padding: '0 9px', fontSize: 11 }}>Raise a defect</button>
+                        )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Audit attestations ────────────────────────────────────────────────────────
 function YesNo({ value, onChange }) {
   return (
@@ -258,6 +382,13 @@ function YesNo({ value, onChange }) {
   )
 }
 
+const AUDIT_STATUSES = [
+  ['scheduled', 'Scheduled'],
+  ['in_progress', 'In progress'],
+  ['completed', 'Completed'],
+  ['cancelled', 'Cancelled'],
+]
+
 function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
   const toast = useToast()
   const editing = Boolean(audit)
@@ -268,6 +399,10 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
     asset_id: audit?.asset_id || '',
     routine_maintenance_complied: audit?.routine_maintenance_complied ?? null,
     iso_audit_conducted: audit?.iso_audit_conducted ?? null,
+    status: audit?.status || 'completed',
+    outcome: audit?.outcome || '',
+    summary: audit?.summary || '',
+    next_due_date: audit?.next_due_date || '',
     notes: audit?.notes || '',
   })
   const [reportFile, setReportFile] = useState(null)
@@ -275,9 +410,21 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
   const [err, setErr] = useState(null)
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
+  // Historic audits (0005's shape, backfilled as completed by 0024) carry no
+  // outcome, because one was never captured. Requiring one to save an edit
+  // would mean nobody could correct a typo on an old record without inventing
+  // a result — so the requirement bites only when an audit is being completed
+  // now. Already-completed rows with no outcome are flagged, not blocked.
+  const alreadyCompleted = audit?.status === 'completed'
+  const openFindings = audit?.open_finding_count ?? 0
+  const completingNow = form.status === 'completed' && !alreadyCompleted
+
   async function save() {
     if (!form.title.trim()) return setErr('Title is required.')
     if (!form.audit_date) return setErr('Audit date is required.')
+    if (completingNow && !form.outcome) {
+      return setErr('An outcome is required to complete an audit — a compliance record with a blank result is a diary entry.')
+    }
     setSaving(true); setErr(null)
     try {
       const payload = {
@@ -285,12 +432,23 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
         audit_date: form.audit_date, site_id: form.site_id || null, auditor_id: form.auditor_id || null,
         asset_id: form.asset_id || null,
         routine_maintenance_complied: form.routine_maintenance_complied, iso_audit_conducted: form.iso_audit_conducted, notes: form.notes || null,
+        outcome: form.outcome || null,
+        summary: form.summary.trim() || null,
+        next_due_date: form.next_due_date || null,
+        // Only sent when it actually changes: the API refuses any patch
+        // carrying status 'completed' without an outcome, so resending an
+        // unchanged 'completed' would block edits to historic rows.
+        ...(editing && form.status === audit.status ? {} : { status: form.status }),
+        ...(completingNow ? { completed_date: form.audit_date } : {}),
       }
       const saved = editing ? await updateComplianceAudit(audit.id, payload) : await createComplianceAudit(payload)
       if (reportFile) await uploadAuditDocument(saved?.id || audit.id, reportFile)
       toast.success(editing ? 'Audit updated.' : 'Audit recorded.')
       onSaved()
-    } catch (e) { setErr(e.message); setSaving(false) }
+    } catch (e) {
+      setErr(e.message === 'outcome_required' ? 'An outcome is required to complete an audit.' : e.message)
+      setSaving(false)
+    }
   }
 
   const labelStyle = { fontSize: 12, fontWeight: 500, color: 'var(--n800)', display: 'flex', flexDirection: 'column', gap: 4 }
@@ -352,6 +510,59 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
               <YesNo value={form.iso_audit_conducted} onChange={(v) => set('iso_audit_conducted', v)} />
             </div>
           </div>
+          <div style={{ background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 6, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label style={labelStyle}>Stage
+              <select value={form.status} onChange={(e) => set('status', e.target.value)} style={selectStyle}>
+                {AUDIT_STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </label>
+
+            {form.status === 'completed' && (
+              <>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--n800)', marginBottom: 6 }}>
+                    Outcome {completingNow && <span style={{ color: 'var(--srt)' }}>*</span>}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {AUDIT_OUTCOMES.map(([v, l]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => set('outcome', form.outcome === v ? '' : v)}
+                        style={{
+                          height: 30, padding: '0 12px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+                          border: form.outcome === v ? '1px solid var(--b600)' : '1px solid var(--n200)',
+                          background: form.outcome === v ? 'var(--b50)' : 'var(--n0)',
+                          color: form.outcome === v ? 'var(--b700)' : 'var(--n800)',
+                          fontWeight: form.outcome === v ? 600 : 400,
+                        }}
+                      >{l}</button>
+                    ))}
+                  </div>
+                  {alreadyCompleted && !form.outcome && (
+                    <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 6 }}>
+                      No outcome was recorded for this audit — it predates outcomes being captured. Set one if you know it.
+                    </div>
+                  )}
+                  {/* An audit cannot be a clean pass while its own findings are
+                      still open. Said, not enforced: the auditor's call is the
+                      auditor's, and the findings are visible either way. */}
+                  {form.outcome === 'pass' && openFindings > 0 && (
+                    <div style={{ fontSize: 11, color: 'var(--sat)', marginTop: 6 }}>
+                      {openFindings} finding{openFindings === 1 ? ' is' : 's are'} still open against this audit — “Pass with findings” may be the truer record.
+                    </div>
+                  )}
+                </div>
+                <label style={labelStyle}>Summary
+                  <textarea value={form.summary} onChange={(e) => set('summary', e.target.value)} rows={2}
+                    placeholder="What the auditor concluded, in their words." style={{ ...inputStyle, height: 'auto', padding: '8px 10px', resize: 'vertical' }} />
+                </label>
+                <label style={labelStyle}>Next audit due
+                  <input type="date" value={form.next_due_date} onChange={(e) => set('next_due_date', e.target.value)} style={inputStyle} />
+                </label>
+              </>
+            )}
+          </div>
           <label style={labelStyle}>Notes
             <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={2} style={{ ...inputStyle, height: 'auto', padding: '8px 10px', resize: 'vertical' }} />
           </label>
@@ -379,6 +590,8 @@ function AuditsPanel({ canCreate }) {
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(null)
   const [modal, setModal] = useState(null)
+  // Which audit's findings are open, if any.
+  const [findingsFor, setFindingsFor] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
@@ -426,7 +639,7 @@ function AuditsPanel({ canCreate }) {
         <div className="table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
-              {['Audit', 'Standard / Ref', 'Date', 'Routine maint.', 'ISO audit', 'Site', 'Asset', 'Doc', ''].map((h) => (
+              {['Audit', 'Standard / Ref', 'Date', 'Outcome', 'Findings', 'Routine maint.', 'ISO audit', 'Site', 'Doc', ''].map((h) => (
                 <th key={h} style={{ padding: '8px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
               ))}
             </tr>
@@ -436,14 +649,27 @@ function AuditsPanel({ canCreate }) {
               <tr key={a.id} style={{ borderBottom: 'var(--bdr)' }}>
                 <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: 'var(--n900)' }}>{a.title}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n700)' }}>{[a.standard, a.iso_reference].filter(Boolean).join(' · ') || '—'}</td>
-                <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{fmtDate(a.audit_date)}</td>
+                <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{fmtDate(a.completed_date || a.audit_date)}</td>
+                <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
+                  {a.outcome
+                    ? <span className={`badge ${OUTCOME_CLASS[a.outcome]}`}>{OUTCOME_LABEL[a.outcome]}</span>
+                    : <span className="badge badge-n" style={{ textTransform: 'capitalize' }}>{String(a.status || 'scheduled').replace('_', ' ')}</span>}
+                </td>
+                <td style={{ padding: '10px 14px', fontSize: 12, whiteSpace: 'nowrap' }}>
+                  {a.finding_count === 0
+                    ? <span style={{ color: 'var(--n400)' }}>None</span>
+                    : <button onClick={() => setFindingsFor(a)} className="row-action"
+                        style={{ fontSize: 12, color: a.open_finding_count > 0 ? 'var(--sat)' : 'var(--sgt)' }}>
+                        {a.open_finding_count} open of {a.finding_count}
+                      </button>}
+                </td>
                 <td style={{ padding: '10px 14px', fontSize: 12 }}>{yn(a.routine_maintenance_complied)}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12 }}>{yn(a.iso_audit_conducted)}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)' }}>{a.site?.name || '—'}</td>
-                <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)' }}>{a.asset?.name || '—'}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12 }}>{a.document_url ? <button onClick={() => api.download(`/files/${a.document_url}`, a.document_url.split('/').pop())} className="row-action" style={{ color: 'var(--b600)', fontSize: 12 }}>view</button> : '—'}</td>
                 <td style={{ padding: '10px 14px' }}>
                   <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setFindingsFor(a)} className="row-action" style={{ fontSize: 11, color: 'var(--b600)' }}>Findings</button>
                     <button onClick={() => setModal(a)} className="row-action" style={{ fontSize: 11, color: 'var(--b600)' }}>Edit</button>
                     <button onClick={() => remove(a.id)} className="row-action" style={{ fontSize: 11, color: 'var(--srt)' }}>Archive</button>
                   </div>
@@ -454,6 +680,7 @@ function AuditsPanel({ canCreate }) {
         </table></div>
       )}
       {modal && <AuditModal audit={modal === 'new' ? null : modal} sites={sites} users={users} assets={assets} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />}
+      {findingsFor && <AuditFindingsModal audit={findingsFor} onClose={() => setFindingsFor(null)} onChanged={load} />}
     </div>
   )
 }
