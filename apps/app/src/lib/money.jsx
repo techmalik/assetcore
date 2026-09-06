@@ -1,0 +1,124 @@
+import { useAuth } from './AuthContext'
+
+/**
+ * Single money formatter for the tenant app.
+ *
+ * Before this existed, Reports and Work Orders rendered ₦ while the asset form
+ * was labelled "Asset value (USD)" and the asset detail panel rendered $ — all
+ * three reading the same *_cents columns, and the XLSX exports headed them
+ * "(NGN)". Same number, three different currencies depending on where you
+ * looked.
+ *
+ * That was fixed by hardcoding NGN. This keeps the fix and removes the
+ * hardcoding: the currency now comes from the organisation (0024), because a
+ * licensed instance is not necessarily Nigerian. NGN remains the default, so
+ * nothing changes for an org that never sets one.
+ *
+ * Every money column in the schema is integer minor units in the org's BASE
+ * currency. The secondary currency is presentation only: a rate somebody typed
+ * in, on a date they typed it, shown beside the real figure — never instead of
+ * it, and never without saying when it was set.
+ */
+
+const SYMBOLS = {
+  NGN: '₦', USD: '$', GBP: '£', EUR: '€', JPY: '¥', ZAR: 'R',
+  GHS: '₵', KES: 'KSh', XOF: 'CFA', CAD: 'CA$', AUD: 'A$', CNY: 'CN¥',
+}
+
+/** The currency in force before an org has configured one. */
+export const CURRENCY_CODE = 'NGN'
+export const CURRENCY_SYMBOL = SYMBOLS[CURRENCY_CODE]
+
+/** A currency's symbol, or its ISO code when we don't have one — a code is
+ * always better than the wrong symbol. */
+export function currencySymbol(code) {
+  if (!code) return ''
+  return SYMBOLS[code] || `${code} `
+}
+
+/**
+ * Compact display for a cents value: ₦1.2B / ₦4.5M / ₦12,000.
+ * `zero` is what to render for null/undefined — pass '—' where a missing
+ * figure means "unknown" rather than "nothing".
+ */
+export function fmtMoney(cents, { zero = '₦0', code = CURRENCY_CODE } = {}) {
+  if (cents == null) return zero
+  const n = Number(cents) / 100
+  if (!Number.isFinite(n)) return zero
+  const sym = currencySymbol(code)
+  const sign = n < 0 ? '-' : ''
+  const abs = Math.abs(n)
+  if (abs >= 1_000_000_000) return `${sign}${sym}${(abs / 1_000_000_000).toFixed(1)}B`
+  if (abs >= 1_000_000) return `${sign}${sym}${(abs / 1_000_000).toFixed(1)}M`
+  return `${sign}${sym}${abs.toLocaleString()}`
+}
+
+/** Exact, non-abbreviated form for detail views: ₦1,234,567.89 */
+export function fmtMoneyExact(cents, { zero = '—', code = CURRENCY_CODE } = {}) {
+  if (cents == null) return zero
+  const n = Number(cents) / 100
+  if (!Number.isFinite(n)) return zero
+  return `${currencySymbol(code)}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+/** The converted figure in minor units, or null when no second currency is set. */
+export function convert(cents, org) {
+  if (!org?.secondary_currency || !org?.fx_rate) return null
+  if (cents == null) return null
+  const n = Number(cents)
+  if (!Number.isFinite(n)) return null
+  return n * Number(org.fx_rate)
+}
+
+/**
+ * The formatters bound to this org's currency settings.
+ *
+ * `money()` and `moneyFull()` return plain strings so they can go anywhere a
+ * string goes. `<Money>` is the component to reach for when the converted
+ * figure should show too, since that needs two pieces of markup and a tooltip
+ * explaining the rate.
+ */
+export function useMoney() {
+  const { org } = useAuth()
+  const base = org?.base_currency || CURRENCY_CODE
+
+  return {
+    base,
+    secondary: org?.secondary_currency || null,
+    fxRate: org?.fx_rate ? Number(org.fx_rate) : null,
+    fxRateAt: org?.fx_rate_at || null,
+    money: (cents) => fmtMoney(cents, { zero: '—', code: base }),
+    moneyFull: (cents) => fmtMoneyExact(cents, { code: base }),
+    secondaryOf: (cents) => {
+      const converted = convert(cents, org)
+      return converted == null ? null : fmtMoney(converted, { zero: '—', code: org.secondary_currency })
+    },
+    /** What the tooltip says, so nobody mistakes the conversion for live FX. */
+    rateNote: org?.secondary_currency && org?.fx_rate
+      ? `Converted at ${Number(org.fx_rate)} ${org.secondary_currency} per ${base}`
+        + `${org.fx_rate_at ? `, rate set ${org.fx_rate_at}` : ''}`
+      : null,
+  }
+}
+
+/**
+ * A figure in the org's base currency, with the secondary beside it when one
+ * is configured.
+ *
+ * The base figure is always the primary one: it is the number in the database
+ * and the number anyone will be held to. The conversion is a courtesy, styled
+ * as one.
+ */
+export function Money({ cents, full = false, style }) {
+  const { money, moneyFull, secondaryOf, rateNote } = useMoney()
+  const primary = full ? moneyFull(cents) : money(cents)
+  const second = secondaryOf(cents)
+
+  if (!second) return <span style={style}>{primary}</span>
+  return (
+    <span style={style} title={rateNote || undefined}>
+      {primary}
+      <span style={{ color: 'var(--n400)', fontSize: '0.85em', marginLeft: 5 }}>({second})</span>
+    </span>
+  )
+}

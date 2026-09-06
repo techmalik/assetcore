@@ -164,6 +164,32 @@ assetsRouter.get('/assets', async (req, res) => {
   res.json(rows)
 })
 
+// Asset tag lookup — what a QR scan resolves against. AIN is unique per org
+// and RLS scopes the query, so no org filter is needed here. Declared before
+// /assets/:id so the literal segment is not swallowed by the parameter.
+assetsRouter.get('/assets/by-ain/:ain', async (req, res) => {
+  const row = await withOrgContext(claimsFromReq(req), (c) =>
+    c.query(`${SELECT} where upper(a.ain) = upper($1) and a.deleted_at is null`, [req.params.ain])
+      .then((r) => r.rows[0])
+  )
+  if (!row) return res.status(404).json({ error: 'not_found' })
+  res.json(row)
+})
+
+/**
+ * The condition score, taken apart.
+ *
+ * Read-only: the score is derived and there is no manual override to offer.
+ * This exists so the asset panel can show the working — five weighted signals,
+ * each with its own sub-score and a sentence saying what it was read from —
+ * rather than restating a number nobody can interrogate.
+ */
+assetsRouter.get('/assets/:id/health', async (req, res) => {
+  const health = await withOrgContext(claimsFromReq(req), (c) => previewAssetHealth(c, String(req.params.id)))
+  if (!health) return res.status(404).json({ error: 'not_found' })
+  res.json(health)
+})
+
 assetsRouter.get('/assets/:id', async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(`${SELECT} where a.id = $1`, [req.params.id]).then((r) => r.rows[0])

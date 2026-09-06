@@ -188,7 +188,7 @@ analyticsRouter.get('/analytics/asset-map', async (req, res) => {
     const [{ rows: placed }, { rows: missing }] = await Promise.all([
       c.query(
         `select a.id, a.ain, a.name, a.lat, a.lng, a.status, a.criticality,
-           a.health_score, a.health_score_source, a.lifecycle_status,
+           a.health_score, a.lifecycle_status,
            case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name) end as site,
            (select count(*)::int from public.work_orders w
              where w.asset_id = a.id and w.deleted_at is null and w.status <> 'closed') as open_work_orders,

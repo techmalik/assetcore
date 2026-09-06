@@ -21,6 +21,13 @@ const icons = {
   integrations: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.3"/><circle cx="12" cy="8" r="2" stroke="currentColor" strokeWidth="1.3"/><path d="M6 8h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M4 4V3M4 13v-1M12 4V3M12 13v-1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
   notifications: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2a4 4 0 00-4 4v3l-1 1v.5h10V10l-1-1V6a4 4 0 00-4-4z" stroke="currentColor" strokeWidth="1.3"/><path d="M6.5 12.5a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.3"/></svg>,
   users: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.3"/><path d="M3 14c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  defects: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2.2l6 11.3H2L8 2.2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M8 6.5v3M8 11.3v.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  risks: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="2.5" width="11" height="11" rx="1.2" stroke="currentColor" strokeWidth="1.2"/><path d="M2.5 6.2h11M2.5 9.9h11M6.2 2.5v11M9.9 2.5v11" stroke="currentColor" strokeWidth="1"/><rect x="10" y="2.6" width="3.4" height="3.5" fill="currentColor" opacity=".45"/></svg>,
+  approvals: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.2l3 3 7-7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 13h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
+  spareParts: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5.2 2.9v5.8L8 13.4 2.8 10.5V4.7L8 1.8Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M2.8 4.7L8 7.6l5.2-2.9M8 7.6v5.8" stroke="currentColor" strokeWidth="1.2"/></svg>,
+  depreciation: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 3.5v9h11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M5 6.5l2.5 2.5 2-2 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  analytics: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 13.5V9M6.2 13.5V4M9.8 13.5V6.8M13.5 13.5V2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  calendar: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3.5" width="11" height="10" rx="1.3" stroke="currentColor" strokeWidth="1.3"/><path d="M2.5 6.5h11" stroke="currentColor" strokeWidth="1.3"/><path d="M5.5 2.2v2.4M10.5 2.2v2.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   settings: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2"/><path d="M6.8 2.1l-.5 1.5A4.6 4.6 0 005 4.4L3.5 4l-1.2 2 1.1 1.1a4.5 4.5 0 000 1.8L2.3 10l1.2 2 1.5-.4A4.6 4.6 0 006.3 12.4l.5 1.5h2.4l.5-1.5A4.6 4.6 0 0011 11.6l1.5.4 1.2-2-1.1-1.1a4.5 4.5 0 000-1.8l1.1-1.1-1.2-2-1.5.4A4.6 4.6 0 009.7 3.6L9.2 2.1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>,
 }
 
@@ -28,9 +35,16 @@ const OPERATIONS = [
   { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: icons.dashboard },
   { key: 'assets', label: 'Assets', path: '/assets', icon: icons.assets },
   { key: 'work-orders', label: 'Work Orders', path: '/work-orders', icon: icons.workorders },
-  { key: 'inspections', label: 'Inspections', path: '/inspections', icon: icons.inspections },
   { key: 'maintenance', label: 'Maintenance', path: '/maintenance', icon: icons.maintenance },
+  { key: 'calendar', label: 'Calendar', path: '/calendar', icon: icons.calendar },
+  { key: 'spare-parts', label: 'Spare Parts', path: '/spare-parts', icon: icons.spareParts, cap: 'parts:read' },
+  { key: 'inspections', label: 'Inspections', path: '/inspections', icon: icons.inspections },
+  { key: 'defects', label: 'Defects', path: '/defects', icon: icons.defects, cap: 'defect:read' },
+  { key: 'risks', label: 'Risk', path: '/risks', icon: icons.risks, cap: 'risk:read' },
+  { key: 'approvals', label: 'Approvals', path: '/approvals', icon: icons.approvals, cap: 'approval:read' },
   { key: 'compliance', label: 'Compliance', path: '/compliance', icon: icons.compliance },
+  { key: 'depreciation', label: 'Depreciation', path: '/depreciation', icon: icons.depreciation, cap: 'depreciation:read' },
+  { key: 'analytics', label: 'Analytics', path: '/analytics', icon: icons.analytics, cap: 'report:read' },
   { key: 'reports', label: 'Reports', path: '/reports', icon: icons.reports },
   { key: 'devices', label: 'Devices', path: '/devices', icon: icons.devices },
 ]
@@ -127,7 +141,7 @@ export default function Sidebar({ active }) {
       <nav style={{flex:1,padding:'8px 0',overflowY:'auto'}}>
         <div className="sidebar-section" style={{padding:'12px 16px 4px',fontSize:10,fontWeight:600,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--n400)',fontFamily:'var(--ff-m)'}}>Operations</div>
 
-        {OPERATIONS.map((item) => (
+        {OPERATIONS.filter((item) => !item.cap || can(roleKey, item.cap, extraCaps)).map((item) => (
           <NavItem key={item.key} item={item} count={item.key === 'work-orders' ? openWOCount : undefined} countColor="amber" />
         ))}
 

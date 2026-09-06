@@ -22,7 +22,6 @@ import { orgMembersRouter } from './orgMembers.js'
 import { profileRouter } from './profile.js'
 import { licenceRouter } from './licence.js'
 import { adminRouter } from './admin/index.js'
-import { assetImportRouter } from './assetImport.js'
 import { documentsRouter } from './documents.js'
 import { sparePartsRouter } from './spareParts.js'
 import { depreciationRouter } from './depreciation.js'
@@ -40,7 +39,6 @@ apiRouter.use(healthRouter)
 apiRouter.use(sitesRouter)
 apiRouter.use(locationsRouter)
 apiRouter.use(categoriesRouter)
-apiRouter.use(assetImportRouter)
 apiRouter.use(assetsRouter)
 apiRouter.use(workOrdersRouter)
 apiRouter.use(pmSchedulesRouter)

@@ -21,6 +21,14 @@ import Assets from './pages/Assets.jsx'
 import WorkOrders from './pages/WorkOrders.jsx'
 import Maintenance from './pages/Maintenance.jsx'
 import Compliance from './pages/Compliance.jsx'
+import Defects from './pages/Defects.jsx'
+import Risks from './pages/Risks.jsx'
+import Approvals from './pages/Approvals.jsx'
+import Analytics from './pages/Analytics.jsx'
+import Calendar from './pages/Calendar.jsx'
+import SpareParts from './pages/SpareParts.jsx'
+import Depreciation from './pages/Depreciation.jsx'
+import Scan from './pages/Scan.jsx'
 import Inspections from './pages/Inspections.jsx'
 import Devices from './pages/Devices.jsx'
 import Integrations from './pages/Integrations.jsx'
@@ -88,6 +96,14 @@ function Routed() {
       <Route path="/assets" element={gate(<Assets {...props} />)} />
       <Route path="/work-orders" element={gate(<WorkOrders {...props} />)} />
       <Route path="/maintenance" element={gate(<Maintenance {...props} />)} />
+      <Route path="/scan" element={gate(<Scan {...props} />)} />
+      <Route path="/calendar" element={gate(<Calendar {...props} />)} />
+      <Route path="/spare-parts" element={gate(can(roleKey, 'parts:read', extraCaps) ? <SpareParts {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/defects" element={gate(can(roleKey, 'defect:read', extraCaps) ? <Defects {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/risks" element={gate(can(roleKey, 'risk:read', extraCaps) ? <Risks {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/approvals" element={gate(can(roleKey, 'approval:read', extraCaps) ? <Approvals {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/depreciation" element={gate(can(roleKey, 'depreciation:read', extraCaps) ? <Depreciation {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/analytics" element={gate(can(roleKey, 'report:read', extraCaps) ? <Analytics {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/compliance" element={gate(<Compliance {...props} />)} />
       <Route path="/inspections" element={gate(<Inspections {...props} />)} />
       <Route path="/devices" element={gate(<Devices {...props} />)} />

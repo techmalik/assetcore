@@ -64,3 +64,17 @@ export async function listAssetActivity(id) {
 export async function addAssetComment(id, body) {
   return api.post(`/assets/${id}/activity`, { body })
 }
+
+// What a QR scan resolves against (the /scan page). AIN is unique per org and
+// RLS scopes the query, so no org filter is needed. Throws with status 404
+// when the tag is unknown.
+export async function getAssetByAin(ain) {
+  return api.get(`/assets/by-ain/${encodeURIComponent(ain)}`)
+}
+
+// The condition score taken apart, component by component. Always computed
+// live from the asset's current signals, so the panel explains the number
+// rather than restating it.
+export async function getAssetHealth(id) {
+  return api.get(`/assets/${id}/health`)
+}
