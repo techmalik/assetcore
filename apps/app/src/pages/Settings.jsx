@@ -6,6 +6,7 @@ import { can } from '../lib/rbac'
 import { api } from '../lib/apiClient'
 import { SUPPORT_EMAIL } from '../lib/instance'
 import { getLicence, licenceDaysRemaining } from '../lib/db/licence'
+import { CURRENCY_CODE, currencySymbol, fmtMoneyExact } from '../lib/money.jsx'
 
 function SuccessBanner({ msg }) {
   if (!msg) return null
@@ -182,6 +183,152 @@ function LicenceCard() {
 }
 
 // ── Organisation Tab ──────────────────────────────────────────────────────────
+
+// ── Currency ──────────────────────────────────────────────────────────────────
+/**
+ * Every money column in the schema is integer minor units in the org's BASE
+ * currency. The secondary currency is presentation only — a rate somebody
+ * typed in, on a date they typed it, shown beside the real figure.
+ *
+ * Deliberately no live FX feed: an on-prem instance may have no outbound
+ * internet at all, and a converted figure whose rate nobody can point at is
+ * worse than no converted figure.
+ */
+const CURRENCIES = [
+  ['NGN', 'Nigerian Naira'], ['USD', 'US Dollar'], ['GBP', 'Pound Sterling'],
+  ['EUR', 'Euro'], ['ZAR', 'South African Rand'], ['GHS', 'Ghanaian Cedi'],
+  ['KES', 'Kenyan Shilling'], ['XOF', 'West African CFA Franc'],
+  ['CAD', 'Canadian Dollar'], ['AUD', 'Australian Dollar'],
+  ['CNY', 'Chinese Yuan'], ['JPY', 'Japanese Yen'],
+]
+
+function CurrencyCard() {
+  const { org, roleKey, extraCaps, refreshOrg } = useAuth()
+  const canEdit = can(roleKey, 'org:manage', extraCaps)
+  const [form, setForm] = useState({ base_currency: CURRENCY_CODE, secondary_currency: '', fx_rate: '', fx_rate_at: '' })
+  const [saving, setSaving] = useState(false)
+  const [ok, setOk] = useState(null)
+  const [err, setErr] = useState(null)
+
+  useEffect(() => {
+    if (!org) return
+    setForm({
+      base_currency: org.base_currency || CURRENCY_CODE,
+      secondary_currency: org.secondary_currency || '',
+      fx_rate: org.fx_rate == null ? '' : String(Number(org.fx_rate)),
+      fx_rate_at: org.fx_rate_at || '',
+    })
+  }, [org])
+
+  const baseChanged = Boolean(org) && form.base_currency !== (org.base_currency || CURRENCY_CODE)
+  const rate = Number(form.fx_rate)
+
+  const save = async () => {
+    if (form.secondary_currency && !(rate > 0)) {
+      return setErr('A second currency needs a rate — without one there is nothing to convert with.')
+    }
+    if (form.secondary_currency === form.base_currency) {
+      return setErr('The second currency has to differ from the base currency.')
+    }
+    setSaving(true); setErr(null); setOk(null)
+    try {
+      await api.patch('/org', {
+        base_currency: form.base_currency,
+        // Clearing the secondary clears the rate and its date server-side, so
+        // a stale rate cannot resurface if one is set again later.
+        secondary_currency: form.secondary_currency || null,
+        fx_rate: form.secondary_currency ? rate : null,
+        // Omitted rather than nulled when left blank: the API dates an
+        // undated rate today, and sending an explicit null would keep the
+        // conversion undated — the one thing the column exists to prevent.
+        ...(form.secondary_currency && form.fx_rate_at ? { fx_rate_at: form.fx_rate_at } : {}),
+      })
+      await refreshOrg?.()
+      setOk('Currency saved.')
+    } catch (e) { setErr(e.message === 'forbidden' ? 'Only the Org Owner can change currency.' : e.message) }
+    finally { setSaving(false) }
+  }
+
+  const inp = { height: 36, border: '1px solid var(--n200)', borderRadius: 4, padding: '0 10px', fontSize: 13, outline: 'none', background: canEdit ? 'var(--n0)' : 'var(--n50)', color: 'var(--n900)', width: '100%', boxSizing: 'border-box', fontFamily: 'var(--ff-u)' }
+  const lbl = { fontSize: 12, fontWeight: 500, color: 'var(--n700)', display: 'block', marginBottom: 4 }
+
+  return (
+    <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, padding: '20px 24px', marginBottom: 20 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--n800)', marginBottom: 4 }}>Currency</div>
+      <div style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16, lineHeight: 1.6 }}>
+        Every figure in AssetCore — asset values, job costs, parts, book values — is held in the
+        base currency. A second currency is shown beside the real figure at a rate you state here;
+        nothing is fetched from the internet, so the rate is only as current as the date beside it.
+      </div>
+      <SuccessBanner msg={ok} />
+      <ErrorBanner msg={err} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <label>
+          <span style={lbl}>Base currency</span>
+          <select value={form.base_currency} disabled={!canEdit}
+            onChange={e => setForm(f => ({ ...f, base_currency: e.target.value }))} style={inp}>
+            {CURRENCIES.map(([c, n]) => <option key={c} value={c}>{c} — {n}</option>)}
+          </select>
+        </label>
+        {baseChanged && (
+          <div style={{ background: 'var(--sab)', border: '1px solid var(--sabr)', borderRadius: 4, padding: '8px 12px', fontSize: 12, color: 'var(--sat)', lineHeight: 1.6 }}>
+            Changing the base currency relabels every stored figure — it does not convert them.
+            A ₦4,500,000 asset becomes {currencySymbol(form.base_currency)}4,500,000. Only do this
+            if the numbers were always in {form.base_currency}.
+          </div>
+        )}
+
+        <div className="form-grid" style={{ gap: 10 }}>
+          <label>
+            <span style={lbl}>Second currency (optional)</span>
+            <select value={form.secondary_currency} disabled={!canEdit}
+              onChange={e => setForm(f => ({ ...f, secondary_currency: e.target.value }))} style={inp}>
+              <option value="">— None —</option>
+              {CURRENCIES.filter(([c]) => c !== form.base_currency).map(([c, n]) => <option key={c} value={c}>{c} — {n}</option>)}
+            </select>
+          </label>
+          {form.secondary_currency && (
+            <label>
+              <span style={lbl}>Rate ({form.secondary_currency} per 1 {form.base_currency})</span>
+              <input type="number" step="0.000001" min="0" value={form.fx_rate} disabled={!canEdit}
+                onChange={e => setForm(f => ({ ...f, fx_rate: e.target.value }))} style={inp} placeholder="e.g. 0.00065" />
+            </label>
+          )}
+        </div>
+
+        {form.secondary_currency && (
+          <>
+            <label>
+              <span style={lbl}>Rate set on</span>
+              <input type="date" value={form.fx_rate_at} disabled={!canEdit}
+                onChange={e => setForm(f => ({ ...f, fx_rate_at: e.target.value }))} style={{ ...inp, maxWidth: 200 }} />
+              <span style={{ fontSize: 11, color: 'var(--n400)', display: 'block', marginTop: 4 }}>
+                Shown in the tooltip beside every converted figure. Left blank, today's date is used.
+              </span>
+            </label>
+            {rate > 0 && (
+              <div style={{ background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 4, padding: '8px 12px', fontSize: 12, color: 'var(--n600)' }}>
+                A figure of {fmtMoneyExact(100_000_00, { code: form.base_currency })} will read{' '}
+                <strong style={{ color: 'var(--n800)' }}>
+                  {fmtMoneyExact(100_000_00, { code: form.base_currency })} ({fmtMoneyExact(100_000_00 * rate, { code: form.secondary_currency })})
+                </strong>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      {!canEdit && (
+        <div style={{ fontSize: 11, color: 'var(--n400)', marginTop: 10 }}>Only the Org Owner can change currency.</div>
+      )}
+      {canEdit && (
+        <button onClick={save} disabled={saving} className="btn btn-primary" style={{ marginTop: 16, height: 36, padding: '0 20px', fontSize: 13 }}>
+          {saving ? 'Saving…' : 'Save currency'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 function OrgTab() {
   const { org, roleKey, extraCaps } = useAuth()
   const canEdit = can(roleKey, 'org:manage', extraCaps)
@@ -237,6 +384,8 @@ function OrgTab() {
           </button>
         )}
       </div>
+
+      <CurrencyCard />
 
       <LicenceCard />
     </div>

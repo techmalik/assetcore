@@ -36,6 +36,15 @@ export function AuthProvider({ children }) {
     return s
   }, [])
 
+  // Re-fetches /org so a settings change — currency above all, which every
+  // money figure in the app reads through useMoney() — takes effect without a
+  // reload.
+  const refreshOrg = useCallback(async () => {
+    const o = await api.get('/org')
+    setOrg(o || null)
+    return o
+  }, [])
+
   const { orgId, roleKey, extraCaps } = getOrgRole(session)
 
   // Load org and check if onboarding is needed (no sites yet).
@@ -69,6 +78,7 @@ export function AuthProvider({ children }) {
     mustChangePassword: Boolean(user?.must_change_password),
     signOut: doSignOut,
     refreshSession,
+    refreshOrg,
   }
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }

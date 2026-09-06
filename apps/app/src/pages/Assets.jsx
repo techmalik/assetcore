@@ -15,7 +15,7 @@ import { listLocations } from '../lib/db/locations'
 import { listCategories } from '../lib/db/categories'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { getOrg } from '../lib/db/org'
-import { fmtMoneyExact } from '../lib/money'
+import { Money } from '../lib/money'
 import { actionLabel } from '../lib/auditLabels.js'
 import { createWorkOrder, listWorkOrders, WO_STATUS_LABEL, WO_TYPE_LABEL, WO_PRIORITY_LABEL } from '../lib/db/workOrders'
 import { listPMTasks, updatePMTask, uploadMaintenanceReport } from '../lib/db/pmTasks'
@@ -984,15 +984,20 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
           <div style={section}>Financials</div>
           <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden' }}>
             {[
-              ['Purchase value', fmtMoneyExact(asset.purchase_value_cents)],
-              ['Book value (NBV)', fmtMoneyExact(asset.nbv_cents)],
-              ['Accumulated depreciation', fmtMoneyExact(asset.accumulated_depreciation_cents)],
+              // <Money> rather than a bare formatter: these read the org's
+              // configured currency and carry the second one beside them, the
+              // same as every other figure in the app.
+              ['Purchase value', <Money key="pv" cents={asset.purchase_value_cents} full />],
+              ['Book value (NBV)', <Money key="nbv" cents={asset.nbv_cents} full />],
+              ['Accumulated depreciation', <Money key="acc" cents={asset.accumulated_depreciation_cents} full />],
               ['Method', DEPRECIATION_LABEL[asset.depreciation_method] || `${DEPRECIATION_LABEL[orgDepreciation?.method] || 'Straight-line'} (org default)`],
               ['In service', asset.install_date || asset.purchase_date ? fmtDate(asset.install_date || asset.purchase_date) : '—'],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 14px', borderBottom: 'var(--bdr)', fontSize: 12 }}>
                 <span style={{ color: 'var(--n500)', flexShrink: 0 }}>{k}</span>
-                <span style={{ color: 'var(--n800)', fontWeight: 500, textAlign: 'right' }}>{v}</span>
+                {/* minWidth:0 so a long figure with its converted amount beside
+                    it wraps inside the panel instead of running off the edge. */}
+                <span style={{ color: 'var(--n800)', fontWeight: 500, textAlign: 'right', minWidth: 0 }}>{v}</span>
               </div>
             ))}
           </div>

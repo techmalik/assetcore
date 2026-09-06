@@ -118,7 +118,11 @@ export function Money({ cents, full = false, style }) {
   return (
     <span style={style} title={rateNote || undefined}>
       {primary}
-      <span style={{ color: 'var(--n400)', fontSize: '0.85em', marginLeft: 5 }}>({second})</span>
+      {/* A real space, not just a margin: JSX drops the whitespace between
+          these two, leaving one unbreakable run that overflows narrow panels
+          instead of wrapping. The conversion itself never breaks apart. */}
+      {' '}
+      <span style={{ color: 'var(--n400)', fontSize: '0.85em', whiteSpace: 'nowrap' }}>({second})</span>
     </span>
   )
 }
