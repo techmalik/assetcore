@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
 <title>AssetCore UAT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -411,7 +412,7 @@
   <header class="mast">
     <p class="eyebrow">AssetCore &middot; user acceptance testing</p>
     <h1>Work through it, mark what breaks</h1>
-    <p class="standfirst">Round 1: every workflow, every role, driven through the browser — nothing verified from a terminal.</p>
+    <p class="standfirst">Round 2: every round-1 failure retested in the browser, the JS-driven passes re-clicked for real, and the first of the untested surface.</p>
     <p class="howto">
       Every test starts collapsed. Open one, work the steps, mark it, and write what you saw.
       <strong>Your marks are saved as you make them</strong>, so closing the tab loses nothing.
@@ -421,7 +422,7 @@
     <p class="saved" data-saved hidden><span class="saved-dot" aria-hidden="true"></span><span data-saved-text>Saved</span></p>
   </header><!--uat:head:end-->
   <div class="tabs" role="tablist" aria-label="Test rounds">
-<!--uat:tabs:start--><button type="button" class="tab" role="tab" data-round-tab="1" aria-selected="false">Round 1</button><!--uat:tabs:end-->
+<!--uat:tabs:start--><button type="button" class="tab" role="tab" data-round-tab="1" aria-selected="false">Round 1</button><button type="button" class="tab" role="tab" data-round-tab="2" aria-selected="false">Round 2</button><!--uat:tabs:end-->
   </div>
 <!--uat:rounds:start-->
   <div class="round" data-round="1" data-round-label="Round 1"
@@ -2415,6 +2416,1130 @@
           </div>
         </article>
       </section>
+  </div>
+  <div class="round" data-round="2" data-round-label="Round 2"
+       data-total="37">
+    <p class="round-intro">Round 1 found 13 failures and fixed none. This round fixes them and retests each one by repeating the exact test that failed, as a user, on screen. It also re-clicks the screens round 1 drove with JavaScript rather than real pointer input, and starts on the 22 tests round 1 never reached. Three things are recorded as <strong>not run</strong> rather than passed: they could not be driven by this session's browser tooling, and saying so is more useful than a mark nobody should trust.</p>
+    <nav class="nav" aria-label="Tests in this round"><div class="navgroup"><span class="navgroup-label">The round-1 failures, retested</span><div class="navchips"><button type="button" class="navchip" data-goto="r2t01" title="F8 — Work-order checklist and parts">01</button><button type="button" class="navchip" data-goto="r2t02" title="F1 — /reports leaked financials to every role">02</button><button type="button" class="navchip" data-goto="r2t03" title="F4 — The Viewer reached Admin and read the whole audit log">03</button><button type="button" class="navchip" data-goto="r2t04" title="F10 — Depreciation schedules could not be created: the preview 500&#x27;d">04</button><button type="button" class="navchip" data-goto="r2t05" title="F6 — An inspection could not be attached to an asset">05</button><button type="button" class="navchip" data-goto="r2t06" title="F14 — The orphaned account landed on a broken dashboard">06</button><button type="button" class="navchip" data-goto="r2t07" title="F13 — MTTR never computed">07</button><button type="button" class="navchip" data-goto="r2t08" title="F5, F10, F14, F15 — Raw API error codes shown to users">08</button><button type="button" class="navchip" data-goto="r2t09" title="F9 — Only one of five approval kinds could be raised">09</button><button type="button" class="navchip" data-goto="r2t10" title="F7 — A completed inspection had no detail view">10</button><button type="button" class="navchip" data-goto="r2t11" title="F11 — A new compliance audit defaulted to Completed">11</button><button type="button" class="navchip" data-goto="r2t12" title="F12 — Secondary-currency amounts rendered at three decimal places">12</button><button type="button" class="navchip" data-goto="r2t13" title="F15 — No sign-in rate limiting, and a raw error code">13</button><button type="button" class="navchip" data-goto="r2t14" title="F2 — An invite link opened while signed in silently redirected">14</button><button type="button" class="navchip" data-goto="r2t15" title="F3 — Enter does not submit the Invite form">15</button></div></div><div class="navgroup"><span class="navgroup-label">Re-clicked with real pointer input</span><div class="navchips"><button type="button" class="navchip" data-goto="r2t16" title="Asset health breakdown — “Show the working”">16</button><button type="button" class="navchip" data-goto="r2t17" title="Escalations — the rule list, Run now, and re-running">17</button><button type="button" class="navchip" data-goto="r2t18" title="Analytics period selector">18</button><button type="button" class="navchip" data-goto="r2t19" title="Currency settings">19</button><button type="button" class="navchip" data-goto="r2t20" title="Later permission checks — Field Technician and Viewer">20</button><button type="button" class="navchip" data-goto="r2t21" title="Compliance audit and findings">21</button><button type="button" class="navchip" data-goto="r2t22" title="Approval matrix, deferrals and their refusals">22</button><button type="button" class="navchip" data-goto="r2t23" title="Risk assessment and the 5×5 matrix">23</button></div></div><div class="navgroup"><span class="navgroup-label">Newly covered — from round 1&#x27;s 22 never-run tests</span><div class="navchips"><button type="button" class="navchip" data-goto="r2t24" title="Create a spare part and adjust its stock">24</button><button type="button" class="navchip" data-goto="r2t25" title="Stock below the reorder level raises a low-stock signal">25</button><button type="button" class="navchip" data-goto="r2t26" title="Calendar">26</button><button type="button" class="navchip" data-goto="r2t27" title="Asset map">27</button><button type="button" class="navchip" data-goto="r2t28" title="A file URL is refused without a session">28</button><button type="button" class="navchip" data-goto="r2t29" title="Photo upload and the lightbox">29</button><button type="button" class="navchip" data-goto="r2t30" title="QR sheets and the scan page">30</button><button type="button" class="navchip" data-goto="r2t31" title="CSV import">31</button><button type="button" class="navchip" data-goto="r2t32" title="Consuming a part on a work order moves the stock">32</button><button type="button" class="navchip" data-goto="r2t33" title="Input, sessions and the edges">33</button></div></div><div class="navgroup"><span class="navgroup-label">Regression cards for this round&#x27;s fixes</span><div class="navchips"><button type="button" class="navchip" data-goto="r2t34" title="The health score still agrees with the breakdown that explains it">34</button><button type="button" class="navchip" data-goto="r2t35" title="Error messages did not break the screens they were swept through">35</button><button type="button" class="navchip" data-goto="r2t36" title="The rbac carve-out did not strip capabilities it should not">36</button><button type="button" class="navchip" data-goto="r2t37" title="Report gating did not lock out the roles that should have reports">37</button></div></div></nav>
+    <div class="bar">
+      <div class="tally">
+        <span class="tally-item is-pass"><b data-count="pass">0</b> pass</span>
+        <span class="tally-item is-fail"><b data-count="fail">0</b> fail</span>
+        <span class="tally-item is-blocked"><b data-count="blocked">0</b> blocked</span>
+        <span class="tally-item"><b data-count="pending">37</b> not run</span>
+        <div class="meter" aria-hidden="true">
+          <span class="m-pass"></span><span class="m-fail"></span><span class="m-blocked"></span>
+        </div>
+      </div>
+      <div class="bar-actions">
+        <button type="button" class="btn" data-expand-all>Expand all</button>
+        <button type="button" class="btn" data-collapse-all>Collapse all</button>
+        <button type="button" class="btn" data-jump>Next unrun</button>
+        <button type="button" class="btn btn--primary" data-export>Export feedback</button>
+      </div>
+    </div>
+    
+      <section class="band">
+        <div class="band-head">
+          <h2>The round-1 failures, retested</h2>
+          <p>Each card repeats the exact test that failed in round 1, driven on screen. The fix is named, and the note says what was actually watched rather than that it passed.</p>
+        </div>
+        
+        <article class="card" data-test id="r2t01" data-result="pass"
+                 data-number="01" data-round="2"
+                 data-title="F8 — Work-order checklist and parts"
+                 data-roles="Field Technician, System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t01-body">
+            <span class="num">01</span>
+            <span class="card-head-main">
+              <span class="card-title">F8 — Work-order checklist and parts</span>
+              <span class="tags"><span class="chip">Field Technician</span><span class="chip">System Admin</span><span class="was was--fail">F8 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t01-body">
+            <p class="intro">Round 1's headline failure: every checklist and parts action threw a ReferenceError behind a native alert. The reported cause was five missing imports; three further defects were hiding behind it, invisible while nothing could be added.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>WO-2025-0041</code> (In Progress) from Work Orders.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type a step into <strong>Add a step…</strong> and press Add.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Tick the step, then delete it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Spare Parts &rarr; <strong>Add first part</strong>, create <code>SP-PT-1100</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Back on the work order, pick the part and press Add.</span></button></div>
+            <p class="expect"><span>Expect</span>Steps add, tick and delete without an alert. A reserved part appears on the job with its quantity and a running total.</p>
+            <div class="res-group" role="group" aria-label="Result for test 01"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Fixed and watched end to end. Added “Isolate and lock off the transmitter loop” — the checklist went to 0/1 done; ticking it struck it through and credited “Adaeze Okeke · 7 Sept, 13:14” and showed 1/1; deleting removed it. No alert, no ReferenceError. F8 turned out to be four defects, not one: (1) five missing imports from lib/db/workOrders — the reported cause; (2) PartsSection read wo.parts_lines, a key the API never sets (it returns parts), so reserved lines were written but never displayed; (3) lineQty() was called twice and defined nowhere — once lines rendered, the panel crashed to the error boundary with ‘lineQty is not defined’; (4) lineQty read quantity_used ?? quantity_required, but the column defaults to 0.00 rather than null, so every reserved line showed ‘0×’ and contributed ₦0 to the total. Defects 2-4 could not have been seen in round 1 because nothing could be added. After all four: two lines showed 1× each and a ₦370,000 total; deleting one left ₦185,000. Round 1&#x27;s separate note that the parts dropdown ‘renders with no options’ was not a bug — the spare parts table was simply empty (0 rows). Creating one part populated it.">
+              <label class="sr-only" for="r2t01-notes">Notes for test 01</label>
+              <textarea id="r2t01-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t02" data-result="pass"
+                 data-number="02" data-round="2"
+                 data-title="F1 — /reports leaked financials to every role"
+                 data-roles="Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t02-body">
+            <span class="num">02</span>
+            <span class="card-head-main">
+              <span class="card-title">F1 — /reports leaked financials to every role</span>
+              <span class="tags"><span class="chip">Field Technician</span><span class="was was--fail">F1 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t02-body">
+            <p class="intro">A server-side leak: the Field Technician, holding neither report:read nor depreciation:read, could read per-location total value and book value.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Field Technician</span><span class="who-mail">uat.tech@assetcore.test</span><span class="who-role">Field Technician</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Field Technician.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for <strong>Reports</strong> in the nav.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type <code>/reports</code> into the address bar directly.</span></button></div>
+            <p class="expect"><span>Expect</span>Reports is absent from the nav, and the URL does not open the page. The API refuses the underlying calls.</p>
+            <div class="res-group" role="group" aria-label="Result for test 02"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Reports is gone from the Field Technician&#x27;s nav, and typing /reports redirects to /dashboard. Fixed on both sides: the client route and the nav item now require report:read (App.jsx, Sidebar.jsx), and GET /reports and GET /reports/location-analytics now carry requireCap(&#x27;report:read&#x27;) — previously only the POSTs were gated. Book value is additionally withheld: location-analytics returns total_nbv_cents as null for a caller without depreciation:read, rather than the figure. The server half is proved by test rather than by screen — apps/api/test/uatRound2.test.ts asserts 403 for the field tech on both routes, 200 for the owner, and nulled book value for the HSE officer (who holds report:read but not depreciation:read).">
+              <label class="sr-only" for="r2t02-notes">Notes for test 02</label>
+              <textarea id="r2t02-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t03" data-result="pass"
+                 data-number="03" data-round="2"
+                 data-title="F4 — The Viewer reached Admin and read the whole audit log"
+                 data-roles="Executive / Viewer, Auditor">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t03-body">
+            <span class="num">03</span>
+            <span class="card-head-main">
+              <span class="card-title">F4 — The Viewer reached Admin and read the whole audit log</span>
+              <span class="tags"><span class="chip">Executive / Viewer</span><span class="chip">Auditor</span><span class="was was--fail">F4 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t03-body">
+            <p class="intro">can() returned true for any <code>:read</code> capability when a role held <code>*:read</code>, so the Viewer satisfied audit:read — which is in ADMIN_ENTRY_CAPS.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Viewer</span><span class="who-mail">uat.viewer@assetcore.test</span><span class="who-role">Executive / Viewer</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Viewer.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for <strong>Admin</strong> in the nav.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type <code>/admin</code> directly.</span></button></div>
+            <p class="expect"><span>Expect</span>Admin does not appear, and the URL does not open it. The Auditor still reaches the audit log.</p>
+            <div class="res-group" role="group" aria-label="Result for test 03"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Admin is gone from the Viewer&#x27;s nav and /admin redirects to /dashboard. Fixed in packages/rbac by adding EXPLICIT_ONLY_CAPS = [&#x27;audit:read&#x27;], which the &#x27;*:read&#x27; wildcard no longer satisfies. This follows the intent already visible in the file: auditor was written as [&#x27;*:read&#x27;,&#x27;audit:read&#x27;], a redundant grant that only makes sense if the author believed the wildcard did not cover it — it did, so the Auditor&#x27;s explicit grant was dead code and the Viewer inherited audit access by accident. Both are now true: the Auditor&#x27;s grant is live, the Viewer&#x27;s is gone. Covered by six assertions in uatRound2.test.ts including a 403 on GET /api/audit-log for the viewer. NOT changed: the Viewer still sees Depreciation, Analytics and Reports, which come from report:read and depreciation:read via the same wildcard. Those are defensible for an ‘Executive’ role and narrowing them would also strip the Auditor, so it is left as a product decision rather than folded into a bug fix.">
+              <label class="sr-only" for="r2t03-notes">Notes for test 03</label>
+              <textarea id="r2t03-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t04" data-result="pass"
+                 data-number="04" data-round="2"
+                 data-title="F10 — Depreciation schedules could not be created: the preview 500&#x27;d"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t04-body">
+            <span class="num">04</span>
+            <span class="card-head-main">
+              <span class="card-title">F10 — Depreciation schedules could not be created: the preview 500&#x27;d</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--fail">F10 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t04-body">
+            <p class="intro">Round 1 could not diagnose this without a database session. The cause is a column that does not exist.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Depreciation &rarr; <strong>Create first schedule</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Pick <code>NGML-CMP-0017</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Fill the basis and read the preview table.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <strong>Create schedule</strong>.</span></button></div>
+            <p class="expect"><span>Expect</span>The preview renders a schedule table rather than the word internal_error, and the schedule saves.</p>
+            <div class="res-group" role="group" aria-label="Result for test 04"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Root cause found and fixed. depreciation.ts selected commission_date; the assets table has no such column. Migration 0021 documents exactly this: the other branch called the field commission_date, ‘this lineage&#x27;s name wins’ — install_date. So every basis lookup threw ‘column commission_date does not exist’, escaped the typed 404/422 branches and surfaced as internal_error. Now: selecting CMP-0017 returns a typed 422 and the UI says “This asset is missing part of its basis. Fill it in below, or add it on the asset record.” Supplying cost ₦45,000,000 / salvage ₦4,500,000 / life 15 rendered the full 15-period table at ₦2,700,000 a year, which is (45,000,000 − 4,500,000) / 15 exactly. Created the schedule: the register shows 1 active schedule, Straight line, ₦45.0M, 15.0 yrs, 0/15 posted. The same fix corrected Scan.jsx, which rendered asset.commission_date and so always showed blank. This also unblocks r1t38.">
+              <label class="sr-only" for="r2t04-notes">Notes for test 04</label>
+              <textarea id="r2t04-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t05" data-result="pass"
+                 data-number="05" data-round="2"
+                 data-title="F6 — An inspection could not be attached to an asset"
+                 data-roles="HSE Officer, System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t05-body">
+            <span class="num">05</span>
+            <span class="card-head-main">
+              <span class="card-title">F6 — An inspection could not be attached to an asset</span>
+              <span class="tags"><span class="chip">HSE Officer</span><span class="chip">System Admin</span><span class="was was--fail">F6 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t05-body">
+            <p class="intro">The New Inspection form had no Asset field, so a UI-created inspection's 1-5 condition rating could never reach an asset's health score, and everything raised from it inherited a blank asset.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Inspections &rarr; <strong>New Inspection</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Pick an asset, give it a title, create it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Complete it with a condition rating of 2.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the asset and press <strong>Show the working</strong>.</span></button></div>
+            <p class="expect"><span>Expect</span>The form offers an Asset field, the inspection lists with its asset, and the rating appears as a signal in the asset's health breakdown.</p>
+            <div class="res-group" role="group" aria-label="Result for test 05"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Fixed and followed all the way through to the asset. The form now has an Asset select above Site; choosing one auto-fills the Site (they cannot disagree), and leaving it blank shows “Without an asset the condition rating has nowhere to go — it will not move any asset&#x27;s health score, and anything raised from this inspection inherits a blank asset.” The API already accepted asset_id; only the form was missing it. Created ‘UAT R2 - MTR-0042 condition check with asset attached’, which listed with ASSET NGML-MTR-0042 and SITE Lagos DS-04 where round 1&#x27;s two inspections both show ‘—’. Completed it at condition 2; the asset&#x27;s health breakdown then read “Inspection condition 25/100 · 25% · Rated 2 of 5 on 7 Sept 2026”. That is the chain round 1 said was broken at step one, now working end to end. Unblocks r1t16.">
+              <label class="sr-only" for="r2t05-notes">Notes for test 05</label>
+              <textarea id="r2t05-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t06" data-result="pass"
+                 data-number="06" data-round="2"
+                 data-title="F14 — The orphaned account landed on a broken dashboard"
+                 data-roles="Edge case">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t06-body">
+            <span class="num">06</span>
+            <span class="card-head-main">
+              <span class="card-title">F14 — The orphaned account landed on a broken dashboard</span>
+              <span class="tags"><span class="chip">Edge case</span><span class="was was--fail">F14 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t06-body">
+            <p class="intro">An account with no membership row signed in and got full app chrome, dashes in every tile and a red <code>no_org_context</code> banner.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Paul O</span><span class="who-mail">paul.o@ngml.com</span><span class="who-role">No membership row — password NgmlDemo2026</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as <code>paul.o@ngml.com</code> / <code>NgmlDemo2026</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read what the screen says.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try <code>/assets</code> and <code>/work-orders</code> directly.</span></button></div>
+            <p class="expect"><span>Expect</span>The app explains that the account has no organisation and offers a way out. No raw error code, no broken dashboard.</p>
+            <div class="res-group" role="group" aria-label="Result for test 06"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Fixed with a dedicated screen rather than a better error string. Signing in now lands on “This account is not in an organisation yet”, naming the account (paul.o@ngml.com), saying nothing is broken and nothing is lost, telling the reader to ask a System Admin to invite the address from Admin → Users &amp; Roles, and offering a Sign out button. /assets and /work-orders show the same screen instead of rendering chrome that then fails. Implemented in App.jsx&#x27;s gate(): with no org there is no scope, and every page below is org-scoped, so it is said once at the routing layer rather than by each page failing on its own. Safe to gate this way because members are invited and there is no self-signup path, so authed-with-no-org can only be a missing membership row.">
+              <label class="sr-only" for="r2t06-notes">Notes for test 06</label>
+              <textarea id="r2t06-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t07" data-result="pass"
+                 data-number="07" data-round="2"
+                 data-title="F13 — MTTR never computed"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t07-body">
+            <span class="num">07</span>
+            <span class="card-head-main">
+              <span class="card-title">F13 — MTTR never computed</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--fail">F13 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t07-body">
+            <p class="intro">A corrective job was driven to Closed through the UI and MTTR still read “Not known” in all three windows. Round 1 could not diagnose it without a database session.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Analytics &rarr; Performance.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the MTTR tile.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Change the period selector and watch the figures move.</span></button></div>
+            <p class="expect"><span>Expect</span>MTTR reports a figure and its sample size.</p>
+            <div class="res-group" role="group" aria-label="Result for test 07"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="MTTR now reads &lt;strong&gt;0.02 hours per repair — ‘From 1 job, all with both times recorded.’&lt;/strong&gt; That is WO-2026-0002, whose stamps are 00:12:06 and 00:13:06 — one minute, so 0.02 hours is right. Cause: analytics.ts compared actual_end::date against window bounds built from new Date().toISOString(), i.e. UTC dates, while the SQL cast resolved in the session timezone (Africa/Lagos). A job closed at 00:13 local on 7 Sept is 23:13 UTC on the 6th, so its local date landed a day past a UTC upper bound and the row was dropped. Both comparisons are now made in UTC. &lt;strong&gt;Honest caveat:&lt;/strong&gt; at the time of this retest (13:2x local) the local and UTC dates agree, so this browser pass shows MTTR computing but does &lt;em&gt;not&lt;/em&gt; isolate the boundary — unfixed code would also have shown a figure right now. The boundary itself is pinned by two tests in uatRound2.test.ts instead, which is the right place for a condition that only exists for an hour a day. Also checked: the period selector moves MTBF (2,620.8 → 892.8 operating hours, 13,104 → 4,464 hours) while MTTR correctly holds.">
+              <label class="sr-only" for="r2t07-notes">Notes for test 07</label>
+              <textarea id="r2t07-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t08" data-result="pass"
+                 data-number="08" data-round="2"
+                 data-title="F5, F10, F14, F15 — Raw API error codes shown to users"
+                 data-roles="All roles">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t08-body">
+            <span class="num">08</span>
+            <span class="card-head-main">
+              <span class="card-title">F5, F10, F14, F15 — Raw API error codes shown to users</span>
+              <span class="tags"><span class="chip">All roles</span><span class="was was--fail">F5 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t08-body">
+            <p class="intro">The cross-cutting one. <code>invalid_credentials</code>, <code>no_org_context</code>, <code>forbidden</code> and <code>internal_error</code> were all rendered to users verbatim, while a dozen screens did it properly with a sentence.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in with a wrong password.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the Viewer, open a work order and look at the comment box.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Trigger a depreciation basis error.</span></button></div>
+            <p class="expect"><span>Expect</span>Every refusal reads as a sentence. No screen prints a snake_case code.</p>
+            <div class="res-group" role="group" aria-label="Result for test 08"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Fixed centrally, not per screen. apiClient now carries the machine code on err.code separately from the message, and a new lib/errors.js maps ~60 API codes to sentences behind errorText(err, fallback). The sweep replaced the displayed expression at 113 call sites across 25 files, keeping every bespoke sentence that already existed and only replacing the raw-code fallback behind it; errorText falls back to the caller&#x27;s own wording for a code nobody has written copy for, rather than echoing the code. Watched on screen: a wrong password now reads “That email and password do not match an account.” instead of invalid_credentials; the depreciation basis error reads “This asset is missing part of its basis…” instead of internal_error; the orphaned account gets a whole screen instead of no_org_context. F5&#x27;s second half is also fixed: the Viewer&#x27;s work-order panel no longer offers an ‘Attach file’ link or a comment box at all — both post to routes gated on wo:update, so a read-only role was being handed controls that could only fail. Enforcement was always right; the affordance was the bug.">
+              <label class="sr-only" for="r2t08-notes">Notes for test 08</label>
+              <textarea id="r2t08-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t09" data-result="pass"
+                 data-number="09" data-round="2"
+                 data-title="F9 — Only one of five approval kinds could be raised"
+                 data-roles="System Admin, Operations Manager">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t09-body">
+            <span class="num">09</span>
+            <span class="card-head-main">
+              <span class="card-title">F9 — Only one of five approval kinds could be raised</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="chip">Operations Manager</span><span class="was was--fail">F9 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t09-body">
+            <p class="intro">An owner could build a work-order spend matrix that nothing would ever use: <code>submitApproval</code> had exactly one caller, the defect-deferral flow.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open a work order and set a Cost inside a configured band.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <strong>Request spend approval</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check Approvals shows it pending with the right role.</span></button></div>
+            <p class="expect"><span>Expect</span>A wo_cost request can be raised from the job and routes to the band's role.</p>
+            <div class="res-group" role="group" aria-label="Result for test 09"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Partially fixed — read the scope note. The work-order detail now has a &lt;strong&gt;Spend authorisation&lt;/strong&gt; section: it lists any existing request, and offers ‘Request spend approval’ to a holder of approval:create. Set WO-2025-0041&#x27;s cost to ₦25,000 (inside round 1&#x27;s ₦1,000–₦50,000 band), pressed it, and the panel now reads “With Operations Manager · ₦25,000 · Pending”; the Approvals page counts it under ‘Mine, still pending’ and ‘Pending across the org’. The API needed no change — POST /approvals was already generic over entity_type and kind, which is why this was a fix rather than a rewrite. &lt;strong&gt;Still out of scope and deliberately left:&lt;/strong&gt; wo_closure, licence_renewal and pm_signoff remain unraisable. Each needs its own control and its own place in a workflow (a closure gate that actually blocks closing, a renewal flow on the licence record, a sign-off step on a PM task) — that is feature work, not a repair, and building three of them unreviewed at the end of a UAT round would be worse than saying so. wo_cost was done because round 1 named it specifically: job spend above a threshold was never gated.">
+              <label class="sr-only" for="r2t09-notes">Notes for test 09</label>
+              <textarea id="r2t09-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t10" data-result="pass"
+                 data-number="10" data-round="2"
+                 data-title="F7 — A completed inspection had no detail view"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t10-body">
+            <span class="num">10</span>
+            <span class="card-head-main">
+              <span class="card-title">F7 — A completed inspection had no detail view</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--fail">F7 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t10-body">
+            <p class="intro">Clicking a completed inspection did nothing. There was no way to read back the checklist results, per-item notes, condition rating or full findings.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Inspections &rarr; <strong>Completed</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <strong>View</strong> on a completed inspection.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the checklist, the rating and the findings.</span></button></div>
+            <p class="expect"><span>Expect</span>A read-only record shows everything the completion captured, and offers no way to change it.</p>
+            <div class="res-group" role="group" aria-label="Result for test 10"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Fixed. Completed rows now carry a &lt;strong&gt;View&lt;/strong&gt; action where Complete used to sit, opening the completion modal in a new read-only mode. Opened round 1&#x27;s ‘UAT R1 — Lagos DS-04 metering integrity’: the record shows the title with ‘completed 6 Sept 26’, the checklist with per-item verdicts (‘Check gas leak detector — Fail’ on a red row, carrying its note ‘Detector fails bump test at 20% LEL’; two Pass rows), the 2/Poor rating highlighted with the other four dimmed, the findings text, ‘Inspection report: None uploaded.’, and a single Close button — no Save, no rating buttons, no raise-as-defect controls, since those belong to completion. Implemented as a readOnly prop on the existing modal rather than a second component, so the record and the completion form cannot drift apart.">
+              <label class="sr-only" for="r2t10-notes">Notes for test 10</label>
+              <textarea id="r2t10-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t11" data-result="pass"
+                 data-number="11" data-round="2"
+                 data-title="F11 — A new compliance audit defaulted to Completed"
+                 data-roles="System Admin, HSE Officer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t11-body">
+            <span class="num">11</span>
+            <span class="card-head-main">
+              <span class="card-title">F11 — A new compliance audit defaulted to Completed</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="chip">HSE Officer</span><span class="was was--fail">F11 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t11-body">
+            <p class="intro">The form opened with Status already Completed, so the first Save was always refused for a missing outcome.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compliance &rarr; Audits &rarr; <strong>+ New Audit</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the Stage field.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Give it a title and Save.</span></button></div>
+            <p class="expect"><span>Expect</span>Stage defaults to Scheduled and the first Save succeeds.</p>
+            <div class="res-group" role="group" aria-label="Result for test 11"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Fixed — one line, but it was on the normal path. Stage now defaults to &lt;strong&gt;Scheduled&lt;/strong&gt;. Created ‘UAT R2 - scheduled ISO 9001 surveillance audit’ with only a title: it saved on the first attempt with the toast “Audit recorded.” and lists with OUTCOME ‘Scheduled’. Round 1 had to undo the default before every first save.">
+              <label class="sr-only" for="r2t11-notes">Notes for test 11</label>
+              <textarea id="r2t11-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t12" data-result="pass"
+                 data-number="12" data-round="2"
+                 data-title="F12 — Secondary-currency amounts rendered at three decimal places"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t12-body">
+            <span class="num">12</span>
+            <span class="card-head-main">
+              <span class="card-title">F12 — Secondary-currency amounts rendered at three decimal places</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--fail">F12 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t12-body">
+            <p class="intro">With USD at 0.00065 the asset panel showed ₦150,066,666.67 ($97,543.333) — the base at 2 dp, the conversion at 3 on two lines and 0 on a third.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Set a second currency in Settings &rarr; Organisation.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open an asset and read the Financials block.</span></button></div>
+            <p class="expect"><span>Expect</span>Base and converted figures agree on precision. No three-decimal money.</p>
+            <div class="res-group" role="group" aria-label="Result for test 12"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Fixed and watched on NGML-MTR-0042, the same asset round 1 quoted. Financials now read ₦240,000,000.00 ($156,000.00) / ₦150,066,666.67 ($97,543.33) / ₦89,933,333.33 ($58,456.67) — all three conversions at exactly 2 dp, against round 1&#x27;s 0 dp, 3 dp, 3 dp. Two changes in lib/money.jsx: fmtMoney&#x27;s plain branch now caps at 2 fraction digits (a bare toLocaleString() passed the FX multiply&#x27;s full precision straight through), and the &amp;lt;Money&amp;gt; component now formats the conversion at the same precision as the base figure it sits beside, so an exact base gets an exact conversion instead of the two halves of one line rounding differently. Minor note, not a defect: compact table headers still read like ₦370,000 ($240.5) — that is the abbreviating formatter (the one that renders ₦1.5M), showing as many decimals as the number has up to two, consistently on both sides.">
+              <label class="sr-only" for="r2t12-notes">Notes for test 12</label>
+              <textarea id="r2t12-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t13" data-result="pass"
+                 data-number="13" data-round="2"
+                 data-title="F15 — No sign-in rate limiting, and a raw error code"
+                 data-roles="Edge case">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t13-body">
+            <span class="num">13</span>
+            <span class="card-head-main">
+              <span class="card-title">F15 — No sign-in rate limiting, and a raw error code</span>
+              <span class="tags"><span class="chip">Edge case</span><span class="was was--fail">F15 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t13-body">
+            <p class="intro">Round 1 reported no lockout after seven wrong passwords, and a bare <code>invalid_credentials</code> on each.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign out. Sign in with a wrong password repeatedly.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Keep going past ten attempts.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the message.</span></button></div>
+            <p class="expect"><span>Expect</span>Failures read as a sentence, and a lockout trips and says when it lifts.</p>
+            <div class="res-group" role="group" aria-label="Result for test 13"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Both halves resolved, and half of round 1&#x27;s finding was wrong. &lt;strong&gt;Rate limiting already existed&lt;/strong&gt; — express-rate-limit at 10 per 15 minutes on /auth/login (auth/routes.ts:31). Round 1 made seven attempts against a limit of ten, so it never tripped, and concluded there was none. Driven past the limit this round, the 11th attempt is refused with &lt;strong&gt;“Too many attempts. Wait about 15 minutes and try again.”&lt;/strong&gt; What was genuinely broken is the message: the limiter used the library&#x27;s default 429 body, a bare text string the fetch wrapper could not read a code from, so a locked-out user would have seen ‘Request failed (429)’. It now answers { error: &#x27;too_many_attempts&#x27; } in the same shape as every other refusal, and errors.js gives it that sentence. The wrong-password message is also fixed: “That email and password do not match an account.” instead of invalid_credentials — and still identical for an unknown address, so the form still does not leak which accounts exist.">
+              <label class="sr-only" for="r2t13-notes">Notes for test 13</label>
+              <textarea id="r2t13-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t14" data-result="pass"
+                 data-number="14" data-round="2"
+                 data-title="F2 — An invite link opened while signed in silently redirected"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t14-body">
+            <span class="num">14</span>
+            <span class="card-head-main">
+              <span class="card-title">F2 — An invite link opened while signed in silently redirected</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--fail">F2 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t14-body">
+            <p class="intro">The admin who generates an invite is holding the link and is signed in. Pasting it redirected to the dashboard with no message, so the token looked broken.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; Users &amp; Roles &rarr; Invite, and copy the link.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Paste it into the address bar while still signed in as the owner.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Set a password and sign in as the new account.</span></button></div>
+            <p class="expect"><span>Expect</span>The form opens, says whose session is active, and setting a password signs you out so the new account can sign in.</p>
+            <div class="res-group" role="group" aria-label="Result for test 14"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Fixed and driven end to end. Invited uat.enter@assetcore.test and opened its /reset-password?token=… link while still signed in as a.okeke. The form now opens (previously: silent redirect to /dashboard) and shows “You are signed in as &lt;strong&gt;a.okeke@ngml.example&lt;/strong&gt;. Setting a password here changes the account this link was issued for, not yours, and will sign you out.” Set the password, which ended the owner&#x27;s session and landed on the sign-in form; signed in as UAT R2 Enter Probe successfully, so the token really worked rather than the form merely navigating. The route now renders whenever a token is present regardless of session, and only redirects a signed-in visitor who arrives without one.">
+              <label class="sr-only" for="r2t14-notes">Notes for test 14</label>
+              <textarea id="r2t14-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t15" data-result="pending"
+                 data-number="15" data-round="2"
+                 data-title="F3 — Enter does not submit the Invite form"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t15-body">
+            <span class="num">15</span>
+            <span class="card-head-main">
+              <span class="card-title">F3 — Enter does not submit the Invite form</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--fail">F3 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t15-body">
+            <p class="intro">Round 1 filled the invite form, pressed Enter in the name field and nothing happened.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; Users &amp; Roles &rarr; Invite User.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Fill name and email.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <kbd>Enter</kbd> in the name field.</span></button></div>
+            <p class="expect"><span>Expect</span>The form submits, as a real form with a submit button should.</p>
+            <div class="res-group" role="group" aria-label="Result for test 15"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Not run — unprovable with this session&#x27;s tooling, in either direction.&lt;/strong&gt; Reproduced the symptom (Enter in the name field did nothing: no POST, no console error), then checked the DOM: one &amp;lt;form&amp;gt;, exactly one non-disabled &amp;lt;button type=&quot;submit&quot;&amp;gt; (‘Send Invite’), and every chip correctly type=&quot;button&quot; — so implicit submission ought to work. The discriminating test settled it: pressing Enter on the set-password form, the simplest form in the app, also did nothing, and clicking its button worked immediately. So this browser pane&#x27;s synthetic Return key does not trigger implicit form submission for &lt;em&gt;any&lt;/em&gt; form here, and neither a pass nor a fail can be claimed. Round 1 almost certainly hit the same limitation and read it as an app defect. This needs thirty seconds from a human with a real keyboard; it is the one card in this round that a person still has to run. No code was changed for it.">
+              <label class="sr-only" for="r2t15-notes">Notes for test 15</label>
+              <textarea id="r2t15-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Re-clicked with real pointer input</h2>
+          <p>Round 1 drove these with JavaScript-dispatched clicks after the browser pane went hidden. Those passes were real but unproven against overlay, z-index and pointer-events faults, so they are re-run here with actual hit-tested clicks. Two could not be reached this round and are marked not run.</p>
+        </div>
+        
+        <article class="card" data-test id="r2t16" data-result="pass"
+                 data-number="16" data-round="2"
+                 data-title="Asset health breakdown — “Show the working”"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t16-body">
+            <span class="num">16</span>
+            <span class="card-head-main">
+              <span class="card-title">Asset health breakdown — “Show the working”</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pass">R1-15 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t16-body">
+            <p class="intro">Round 1 called this out as notably well built. It is also the screen most likely to be broken by the health fix in this round, so it is re-clicked as both a re-check and a regression card.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; <strong>View</strong> on NGML-MTR-0042.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <strong>Show the working</strong> with a real click.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Add up the components and compare to the headline.</span></button></div>
+            <p class="expect"><span>Expect</span>Every signal names its score and weight, excluded signals are explained, and the total reconciles to the headline exactly.</p>
+            <div class="res-group" role="group" aria-label="Result for test 16"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Re-clicked with real pointer input, expands correctly. Reads: Inspection condition 25/100 (25%) “Rated 2 of 5 on 7 Sept 2026” — which is this round&#x27;s own inspection, arriving via the F6 fix; Open defects 80/100 (25%); Overdue maintenance 100/100 (20%); Risk level 80/100 (15%) explained as read from criticality with no assessment yet; Age against useful life excluded as ‘no data’ (10%), with the reason given. Header says ‘Calculated from 4 of 5 signals’. Reconciles exactly: (25×.25 + 80×.25 + 100×.20 + 80×.15) / 0.85 = 68.5 → the headline 69.">
+              <label class="sr-only" for="r2t16-notes">Notes for test 16</label>
+              <textarea id="r2t16-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t17" data-result="pass"
+                 data-number="17" data-round="2"
+                 data-title="Escalations — the rule list, Run now, and re-running"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t17-body">
+            <span class="num">17</span>
+            <span class="card-head-main">
+              <span class="card-title">Escalations — the rule list, Run now, and re-running</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pass">R1-25/26 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t17-body">
+            <p class="intro">Round 1 passed the escalation trigger narrowing and the “re-running does not re-fire” check by JS click.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; Escalations.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <strong>Run now</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the fired count and Recently escalated.</span></button></div>
+            <p class="expect"><span>Expect</span>The evaluator runs, says what it found, and does not re-fire an already-escalated record.</p>
+            <div class="res-group" role="group" aria-label="Result for test 17"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Re-clicked for real. The screen renders the round-1 rule ‘UAT R1 — overdue work orders chase Ops’ as Active, Work order / Past its due date, notifying Operations Manager, Fired 1 (7 Sept), with the Recently escalated list beneath. Pressed Run now: “Nothing met a rule.” and the fired count stayed at 1 — correct on both counts, since WO-2025-0038&#x27;s due date had just been restored (so nothing is overdue) and the already-escalated record is not re-fired. Note: I could not &lt;em&gt;retire&lt;/em&gt; the rule — the action is gated on a native confirm(), which this browser tooling auto-dismisses. That is a tooling limit, not an app defect; the rule is left Active and harmless.">
+              <label class="sr-only" for="r2t17-notes">Notes for test 17</label>
+              <textarea id="r2t17-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t18" data-result="pass"
+                 data-number="18" data-round="2"
+                 data-title="Analytics period selector"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t18-body">
+            <span class="num">18</span>
+            <span class="card-head-main">
+              <span class="card-title">Analytics period selector</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pass">R1-41 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t18-body">
+            <p class="intro">Round 1 confirmed the selector moved MTBF by JS click.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Analytics &rarr; Performance.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Change the period from Last 90 days to Last 30 days.</span></button></div>
+            <p class="expect"><span>Expect</span>The window figures move and the KPIs recompute.</p>
+            <div class="res-group" role="group" aria-label="Result for test 18"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Re-run for real. Switching 90 → 30 days moved MTBF from 2,620.8 to 892.8 operating hours and the stated basis from 13,104 to 4,464 hours, while MTTR correctly held at 0.02 (the one closed corrective job is inside both windows). Backlog buckets unchanged, as they should be — backlog is not window-scoped.">
+              <label class="sr-only" for="r2t18-notes">Notes for test 18</label>
+              <textarea id="r2t18-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t19" data-result="pass"
+                 data-number="19" data-round="2"
+                 data-title="Currency settings"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t19-body">
+            <span class="num">19</span>
+            <span class="card-head-main">
+              <span class="card-title">Currency settings</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pass">R1-39 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t19-body">
+            <p class="intro">Round 1 set the second currency by JS click; this re-clicks the same screen, clearing it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Settings &rarr; Organisation &rarr; Currency.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Change the second currency and Save.</span></button></div>
+            <p class="expect"><span>Expect</span>The setting saves and every money figure in the app follows it.</p>
+            <div class="res-group" role="group" aria-label="Result for test 19"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Re-clicked for real. Set the second currency back to ‘— None —’ and pressed Save currency: “Currency saved.” The rate and rate-date fields correctly disappear when no second currency is selected. Money across the app reverted to single-currency output, which is how the instance is now left.">
+              <label class="sr-only" for="r2t19-notes">Notes for test 19</label>
+              <textarea id="r2t19-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t20" data-result="pass"
+                 data-number="20" data-round="2"
+                 data-title="Later permission checks — Field Technician and Viewer"
+                 data-roles="Field Technician, Executive / Viewer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t20-body">
+            <span class="num">20</span>
+            <span class="card-head-main">
+              <span class="card-title">Later permission checks — Field Technician and Viewer</span>
+              <span class="tags"><span class="chip">Field Technician</span><span class="chip">Executive / Viewer</span><span class="was was--pass">R1-51/53 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t20-body">
+            <p class="intro">Round 1's role-boundary checks late in the run were JS-driven.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as each role.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compare the nav to the role's capabilities.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type a forbidden URL directly rather than trusting the hidden nav.</span></button></div>
+            <p class="expect"><span>Expect</span>The nav matches the role, and typing the URL is refused too.</p>
+            <div class="res-group" role="group" aria-label="Result for test 20"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Re-run for real with both accounts, including direct URL entry rather than only checking the nav. Field Technician: no Reports, Depreciation or Analytics; /reports redirects. Viewer: no Admin; /admin redirects; the work-order panel offers no Edit, no status transitions, no checklist or parts add-forms, no spend-approval button, and (newly) no attach-file link or comment box. Both signed in and out cleanly through the real menu.">
+              <label class="sr-only" for="r2t20-notes">Notes for test 20</label>
+              <textarea id="r2t20-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t21" data-result="pending"
+                 data-number="21" data-round="2"
+                 data-title="Compliance audit and findings"
+                 data-roles="HSE Officer, System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t21-body">
+            <span class="num">21</span>
+            <span class="card-head-main">
+              <span class="card-title">Compliance audit and findings</span>
+              <span class="tags"><span class="chip">HSE Officer</span><span class="chip">System Admin</span><span class="was was--pass">R1-27/29/30 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t21-body">
+            <p class="intro">Round 1 drove the audit lifecycle and its findings by JS click.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compliance &rarr; Audits.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Create an audit, then add findings and push one to the defect register.</span></button></div>
+            <p class="expect"><span>Expect</span>The audit walks its stages and a finding becomes a defect.</p>
+            <div class="res-group" role="group" aria-label="Result for test 21"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Partly re-clicked, and honestly incomplete.&lt;/strong&gt; Audit &lt;em&gt;creation&lt;/em&gt; was re-clicked for real as part of the F11 retest — the New Audit form, the Stage default and a successful first Save (‘Audit recorded.’). The findings half — adding findings to an audit and pushing one onto the defect register — was &lt;strong&gt;not&lt;/strong&gt; re-clicked this round; the session ran out of room before it. Round 1&#x27;s pass on those stands on its JS-driven evidence and is not re-confirmed here.">
+              <label class="sr-only" for="r2t21-notes">Notes for test 21</label>
+              <textarea id="r2t21-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t22" data-result="pending"
+                 data-number="22" data-round="2"
+                 data-title="Approval matrix, deferrals and their refusals"
+                 data-roles="System Admin, Operations Manager">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t22-body">
+            <span class="num">22</span>
+            <span class="card-head-main">
+              <span class="card-title">Approval matrix, deferrals and their refusals</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="chip">Operations Manager</span><span class="was was--pass">R1-18..23 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t22-body">
+            <p class="intro">Round 1 rated the approval routing and its refusals — self-approval, wrong-role, requester-only recall — as notably well built, all by JS click.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Approvals &rarr; Matrix.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Configure a band, raise a deferral, and try to decide it as the wrong role.</span></button></div>
+            <p class="expect"><span>Expect</span>Bands save with validation, and each refusal is refused for the right reason.</p>
+            <div class="res-group" role="group" aria-label="Result for test 22"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Not re-clicked — recorded as not run rather than carried over.&lt;/strong&gt; The Approvals page itself was opened for real and its tallies read correctly (‘Mine, still pending 1’, ‘Pending across the org 1’, ‘Approved 1’, and an empty ‘Waiting on me’ with a well-written explanation), and a new wo_cost request was raised and routed for real under F9. But the matrix band editor and the three refusal paths — self-approval, wrong-role decision, requester-only recall — were not re-driven with pointer input. Round 1&#x27;s passes on those remain JS-driven evidence. Worth noting that the rbac change in this round (audit:read) does not touch approval capabilities, so the risk of regression there is low.">
+              <label class="sr-only" for="r2t22-notes">Notes for test 22</label>
+              <textarea id="r2t22-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t23" data-result="pending"
+                 data-number="23" data-round="2"
+                 data-title="Risk assessment and the 5×5 matrix"
+                 data-roles="HSE Officer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t23-body">
+            <span class="num">23</span>
+            <span class="card-head-main">
+              <span class="card-title">Risk assessment and the 5×5 matrix</span>
+              <span class="tags"><span class="chip">HSE Officer</span><span class="was was--pass">R1-32/33 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t23-body">
+            <p class="intro">Round 1 raised a risk and placed it on the matrix by JS click.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT HSE Officer</span><span class="who-mail">uat.hse@assetcore.test</span><span class="who-role">HSE / Compliance Officer</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Risk &rarr; raise a risk with inherent and residual scores.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check its position on the matrix.</span></button></div>
+            <p class="expect"><span>Expect</span>The risk saves and lands in the right cell for its likelihood and consequence.</p>
+            <div class="res-group" role="group" aria-label="Result for test 23"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Not re-clicked this round — recorded as not run.&lt;/strong&gt; The session prioritised the fifteen failures and the untested surface over re-confirming round-1 passes. The round-1 risk (‘UAT R1 — uncontrolled gas release at the Lagos DS-04 inlet’, inherent 20 / residual 6) is still in the register and was seen referenced from the asset health breakdown&#x27;s risk signal, but the Risk screen itself was not driven with pointer input.">
+              <label class="sr-only" for="r2t23-notes">Notes for test 23</label>
+              <textarea id="r2t23-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Newly covered — from round 1&#x27;s 22 never-run tests</h2>
+          <p>Round 1 reached none of these. This round covers what it could and states plainly what it could not, including three that this browser tooling cannot drive at all.</p>
+        </div>
+        
+        <article class="card" data-test id="r2t24" data-result="pass"
+                 data-number="24" data-round="2"
+                 data-title="Create a spare part and adjust its stock"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t24-body">
+            <span class="num">24</span>
+            <span class="card-head-main">
+              <span class="card-title">Create a spare part and adjust its stock</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t24-body">
+            <p class="intro">The parts store was completely empty, which is also why round 1 read the work-order parts dropdown as broken.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Spare Parts &rarr; <strong>Add first part</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Create a part with a unit cost, reorder level and opening stock.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <strong>Adjust</strong> and issue some stock.</span></button></div>
+            <p class="expect"><span>Expect</span>The part saves, the store totals update, and the movement moves the balance.</p>
+            <div class="res-group" role="group" aria-label="Result for test 24"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Created SP-PT-1100 ‘Pressure transmitter 0-100 bar’, unit cost ₦185,000, reorder level 3, opening stock 8. The store went from a well-written empty state (“No parts in the store yet — Adding parts lets work orders draw from stock instead of listing them as free text”) to 1 part tracked, stock value ₦1.5M. The form explains that opening stock is recorded as a receipt so the first balance has a movement behind it like every later one — a good touch. Then adjusted: Issue 6, which showed a live preview “Stock moves to 2 each” before committing.">
+              <label class="sr-only" for="r2t24-notes">Notes for test 24</label>
+              <textarea id="r2t24-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t25" data-result="pass"
+                 data-number="25" data-round="2"
+                 data-title="Stock below the reorder level raises a low-stock signal"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t25-body">
+            <span class="num">25</span>
+            <span class="card-head-main">
+              <span class="card-title">Stock below the reorder level raises a low-stock signal</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t25-body">
+            <p class="intro">Whether the reorder level actually does anything once stock crosses it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">From the part list, Adjust &rarr; Issue enough to go below the reorder level.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the store tiles and the part row.</span></button></div>
+            <p class="expect"><span>Expect</span>The part is flagged, and the ‘at or below reorder level’ count moves.</p>
+            <div class="res-group" role="group" aria-label="Result for test 25"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Issued 6 against a reorder level of 3, taking stock 8 → 2. ‘At or below reorder level’ moved 0 → 1, the part row gained an amber &lt;strong&gt;Reorder&lt;/strong&gt; badge, and stock value fell ₦1.5M → ₦370,000. Correct on every figure.">
+              <label class="sr-only" for="r2t25-notes">Notes for test 25</label>
+              <textarea id="r2t25-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t26" data-result="pass"
+                 data-number="26" data-round="2"
+                 data-title="Calendar"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t26-body">
+            <span class="num">26</span>
+            <span class="card-head-main">
+              <span class="card-title">Calendar</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t26-body">
+            <p class="intro">Jobs, scheduled maintenance and inspections on one grid — never opened in round 1.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open Calendar.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Toggle the work-order / PM / inspection filters.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Move to the next month and back with Today.</span></button></div>
+            <p class="expect"><span>Expect</span>The grid shows the right items on the right days, filters remove them, and navigation works.</p>
+            <div class="res-group" role="group" aria-label="Result for test 26"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="September 2026 rendered with today (the 7th) marked, a legend carrying live counts (Work orders 5, PM tasks 0, Inspections 9, Overdue), overdue items in red, a ‘+1 more’ overflow on a busy day, and this round&#x27;s own new inspection appearing on the 7th. Unticking ‘Work orders’ removed exactly the work-order entries and left the rest. Next-month navigation moved to an empty October and Today returned. No console errors.">
+              <label class="sr-only" for="r2t26-notes">Notes for test 26</label>
+              <textarea id="r2t26-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t27" data-result="pass"
+                 data-number="27" data-round="2"
+                 data-title="Asset map"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t27-body">
+            <span class="num">27</span>
+            <span class="card-head-main">
+              <span class="card-title">Asset map</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t27-body">
+            <p class="intro">Never opened in round 1. No asset had coordinates, so the map had to be given one to be tested properly rather than only in its empty state.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Analytics &rarr; Map.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Add a latitude and longitude to an asset, then reopen the map.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Click the pin.</span></button></div>
+            <p class="expect"><span>Expect</span>Assets with coordinates are plotted, assets without are accounted for, and clicking a pin opens the asset.</p>
+            <div class="res-group" role="group" aria-label="Result for test 27"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Tested in both states. Empty: “No asset has coordinates yet — All 6 assets are missing a latitude and longitude. Add them on the asset record and they will appear here.” Then set NGML-MTR-0042 to 6.4531, 3.3958 through the asset form and reopened: a green pin (coloured by condition, with a ‘Colour by condition’ selector), a 50 m scale bar, and an honest footer — “Positions are plotted from each asset&#x27;s own coordinates — no basemap is loaded, so this works on a site with no internet access. &lt;strong&gt;5 assets are not shown&lt;/strong&gt;, having no coordinates recorded.” Clicking the pin opened the asset&#x27;s record as the caption promises. Saying how many assets are missing rather than silently plotting fewer is the right call.">
+              <label class="sr-only" for="r2t27-notes">Notes for test 27</label>
+              <textarea id="r2t27-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t28" data-result="pass"
+                 data-number="28" data-round="2"
+                 data-title="A file URL is refused without a session"
+                 data-roles="Signed out">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t28-body">
+            <span class="num">28</span>
+            <span class="card-head-main">
+              <span class="card-title">A file URL is refused without a session</span>
+              <span class="tags"><span class="chip">Signed out</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t28-body">
+            <p class="intro">Round 1 flagged this as the most likely place a real leak was still hiding: an unauthenticated file URL.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Get a stored file's URL.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open it directly with no session.</span></button></div>
+            <p class="expect"><span>Expect</span>The file is refused, not served.</p>
+            <div class="res-group" role="group" aria-label="Result for test 28"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Passed at the authentication boundary; deeper scoping is not covered.&lt;/strong&gt; Navigating the browser straight to &lt;code&gt;/api/files/assets/test.png&lt;/code&gt; — a plain GET with no Authorization header, which is exactly what someone holding a URL would have — returns &lt;code&gt;{&quot;error&quot;:&quot;missing_token&quot;}&lt;/code&gt; and no content. Reading files.ts, the guard is well built beyond that: requireAuth, the path resolved under the caller&#x27;s own org id, ‘..’ traversal rejected, a per-bucket ownership check joined through RLS so a site-scoped caller cannot fetch another site&#x27;s file by guessing a path, and unknown buckets default-denied. &lt;strong&gt;What is not tested:&lt;/strong&gt; cross-scope access to a real file, because nothing has ever been uploaded to this instance (0 files, no upload directory) and this browser tooling cannot drive a native file picker to create one. The authentication half is proved; the authorisation half is read but unproven.">
+              <label class="sr-only" for="r2t28-notes">Notes for test 28</label>
+              <textarea id="r2t28-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t29" data-result="pending"
+                 data-number="29" data-round="2"
+                 data-title="Photo upload and the lightbox"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t29-body">
+            <span class="num">29</span>
+            <span class="card-head-main">
+              <span class="card-title">Photo upload and the lightbox</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t29-body">
+            <p class="intro">Uploading an image to an asset and viewing it full-size.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open an asset, choose an image file, upload.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Click the thumbnail to open the lightbox.</span></button></div>
+            <p class="expect"><span>Expect</span>The image uploads, thumbnails, and opens full size.</p>
+            <div class="res-group" role="group" aria-label="Result for test 29"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Not run — this browser tooling cannot operate a native file picker&lt;/strong&gt;, and there is no upload API surface a user would reach any other way. Driving it with script would fabricate the input rather than test it, so it is left unrun rather than faked. This also blocks the cross-scope half of the file-access test above. It needs a human, or a tool with file-upload support.">
+              <label class="sr-only" for="r2t29-notes">Notes for test 29</label>
+              <textarea id="r2t29-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t30" data-result="pending"
+                 data-number="30" data-round="2"
+                 data-title="QR sheets and the scan page"
+                 data-roles="System Admin, Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t30-body">
+            <span class="num">30</span>
+            <span class="card-head-main">
+              <span class="card-title">QR sheets and the scan page</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="chip">Field Technician</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t30-body">
+            <p class="intro">Printable asset QR codes and the page a scan lands on.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Generate a QR sheet from the asset register.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the scan page for a tag.</span></button></div>
+            <p class="expect"><span>Expect</span>Codes generate and a scan resolves to the right asset.</p>
+            <div class="res-group" role="group" aria-label="Result for test 30"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Not run — the session ended first.&lt;/strong&gt; Untouched since round 1. One thing was fixed here in passing without being exercised: Scan.jsx rendered &lt;code&gt;asset.commission_date&lt;/code&gt;, a column that does not exist, so the ‘Commissioned’ field was always blank; it now reads install_date. That change is unverified on screen.">
+              <label class="sr-only" for="r2t30-notes">Notes for test 30</label>
+              <textarea id="r2t30-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t31" data-result="pending"
+                 data-number="31" data-round="2"
+                 data-title="CSV import"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t31-body">
+            <span class="num">31</span>
+            <span class="card-head-main">
+              <span class="card-title">CSV import</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t31-body">
+            <p class="intro">Bulk asset import from a file.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; Import CSV.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Import a small file and check the result report.</span></button></div>
+            <p class="expect"><span>Expect</span>Rows import, and bad rows are reported rather than silently dropped.</p>
+            <div class="res-group" role="group" aria-label="Result for test 31"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Not run.&lt;/strong&gt; Same file-picker limitation as photo upload — the Import CSV control opens a native file dialog this tooling cannot operate. The button is present on the Asset Registry and the page renders.">
+              <label class="sr-only" for="r2t31-notes">Notes for test 31</label>
+              <textarea id="r2t31-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t32" data-result="pending"
+                 data-number="32" data-round="2"
+                 data-title="Consuming a part on a work order moves the stock"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t32-body">
+            <span class="num">32</span>
+            <span class="card-head-main">
+              <span class="card-title">Consuming a part on a work order moves the stock</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t32-body">
+            <p class="intro">Closing a job with reserved parts should draw them out of the store.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reserve a part on an open job.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Close the job and check the part's balance.</span></button></div>
+            <p class="expect"><span>Expect</span>Stock falls by the reserved quantity and the line reads as taken.</p>
+            <div class="res-group" role="group" aria-label="Result for test 32"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Not run.&lt;/strong&gt; The reservation half is done and verified (a line on WO-2025-0041 reading ‘1× · Reserved · ₦185,000’), but the job was deliberately not closed — closing it would consume stock and end a work order that other cards in this round depend on. The consumption path is visible in the API (consumeParts, with shortfall handling that refuses to go negative) but was not exercised.">
+              <label class="sr-only" for="r2t32-notes">Notes for test 32</label>
+              <textarea id="r2t32-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t33" data-result="pending"
+                 data-number="33" data-round="2"
+                 data-title="Input, sessions and the edges"
+                 data-roles="All roles">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t33-body">
+            <span class="num">33</span>
+            <span class="card-head-main">
+              <span class="card-title">Input, sessions and the edges</span>
+              <span class="tags"><span class="chip">All roles</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t33-body">
+            <p class="intro">Required fields, odd characters, double submit, search and filter agreement, back button, phone width, dark mode, keyboard-only, console cleanliness.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Work through the section as written in round 1's plan.</span></button></div>
+            <p class="expect"><span>Expect</span>Each behaves as its card describes.</p>
+            <div class="res-group" role="group" aria-label="Result for test 33"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Not run as a section.&lt;/strong&gt; Fragments were covered incidentally and are worth recording: required-field validation refused an inspection completion without a condition rating and an audit without an outcome; the console stayed clean across every screen driven this round apart from two React Router v7 future-flag warnings, which are advisory; and no screen threw during the run except the one crash this round found and fixed (‘lineQty is not defined’). Phone width, dark mode, keyboard-only navigation, double-submit and search/filter/sort agreement were &lt;strong&gt;not&lt;/strong&gt; tested.">
+              <label class="sr-only" for="r2t33-notes">Notes for test 33</label>
+              <textarea id="r2t33-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Regression cards for this round&#x27;s fixes</h2>
+          <p>The fixes touched shared code — a capability function both sides read, the app's error display at 113 sites, the money formatter, and the asset health engine. These are the things most likely to have been broken by them.</p>
+        </div>
+        
+        <article class="card" data-test id="r2t34" data-result="pass"
+                 data-number="34" data-round="2"
+                 data-title="The health score still agrees with the breakdown that explains it"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t34-body">
+            <span class="num">34</span>
+            <span class="card-head-main">
+              <span class="card-title">The health score still agrees with the breakdown that explains it</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t34-body">
+            <p class="intro">A new defect found this round, not carried over from round 1: an ordinary asset edit rewrote the headline health score from a different engine than the breakdown, and the two stopped agreeing.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note an asset's health score and open Show the working.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Edit the asset — change anything and Save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Re-read the score and the breakdown.</span></button></div>
+            <p class="expect"><span>Expect</span>The score after the edit still reconciles with the components shown beneath it.</p>
+            <div class="res-group" role="group" aria-label="Result for test 34"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="&lt;strong&gt;Found, diagnosed and fixed in this round.&lt;/strong&gt; Adding coordinates to NGML-MTR-0042 dropped its health from 69 to 31 while the breakdown beneath it was unchanged and still summed to 69 — the exact reconciliation round 1 had praised. Cause: two health engines. The asset PATCH route called the legacy SQL &lt;code&gt;recompute_asset_health_for()&lt;/code&gt;, a linear decay between the maintenance dates that writes health_score and touches neither health_score_components nor health_score_computed_at; the five-signal engine that produces the breakdown had replaced it everywhere else. The edit form always submits both maintenance dates, so &lt;em&gt;every&lt;/em&gt; asset save took the legacy path. Confirmed in the database: score 31 against components timestamped several minutes earlier and summing to 68.5. Fixed by routing the PATCH through refreshAssetHealth() like every other write — the file already had a recomputeDerived() helper doing exactly that, and its own comment said the five-signal engine had replaced the decay. Re-ran the identical edit: health returned to &lt;strong&gt;69&lt;/strong&gt;, matching the breakdown, with the components timestamp now moving with the score. This also corrected a stale test — see the note in the round-2 results doc.">
+              <label class="sr-only" for="r2t34-notes">Notes for test 34</label>
+              <textarea id="r2t34-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t35" data-result="pass"
+                 data-number="35" data-round="2"
+                 data-title="Error messages did not break the screens they were swept through"
+                 data-roles="All roles">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t35-body">
+            <span class="num">35</span>
+            <span class="card-head-main">
+              <span class="card-title">Error messages did not break the screens they were swept through</span>
+              <span class="tags"><span class="chip">All roles</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t35-body">
+            <p class="intro">The error sweep rewrote the displayed expression at 113 call sites across 25 files. A bad rewrite would show a wrong message, or crash a catch block.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Trigger a refusal on several different screens.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check each reads as a sentence and nothing crashes.</span></button></div>
+            <p class="expect"><span>Expect</span>Refusals read as sentences; no screen throws; bespoke messages survive.</p>
+            <div class="res-group" role="group" aria-label="Result for test 35"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Spot-checked across sign-in, depreciation, work orders, compliance, spare parts, settings and the orphaned-account screen. Every refusal seen read as a sentence, and no catch block threw. The sweep was deliberately conservative: it replaced only the raw-code fallback and left every bespoke ternary in place, so messages like “The ceiling has to be above the floor.” and “An outcome is required to complete an audit.” are untouched. The app builds clean and 192 API tests pass. &lt;strong&gt;Not exhaustive&lt;/strong&gt; — 25 files were edited and only a subset of their error paths were reachable in one session.">
+              <label class="sr-only" for="r2t35-notes">Notes for test 35</label>
+              <textarea id="r2t35-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t36" data-result="pass"
+                 data-number="36" data-round="2"
+                 data-title="The rbac carve-out did not strip capabilities it should not"
+                 data-roles="Auditor, Executive / Viewer, System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t36-body">
+            <span class="num">36</span>
+            <span class="card-head-main">
+              <span class="card-title">The rbac carve-out did not strip capabilities it should not</span>
+              <span class="tags"><span class="chip">Auditor</span><span class="chip">Executive / Viewer</span><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t36-body">
+            <p class="intro">Making <code>*:read</code> stop covering audit:read could plausibly have broken the Auditor, who reads everything, or the owner.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as each role and check what they can still reach.</span></button></div>
+            <p class="expect"><span>Expect</span>Only audit access changes, and only for wildcard roles that never named it.</p>
+            <div class="res-group" role="group" aria-label="Result for test 36"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Covered by six assertions in uatRound2.test.ts: the viewer loses audit:read but keeps asset:read, wo:read and compliance:read; the auditor&#x27;s explicitly listed audit:read is now live rather than redundant; the owner&#x27;s &#x27;*&#x27; is unaffected; and a per-user extra grant still restores audit:read to a viewer, so an admin can still delegate it deliberately. The viewer is also refused GET /api/audit-log over HTTP. Verified on screen for the Viewer (Admin gone from nav, /admin redirects). &lt;strong&gt;Not verified on screen for the Auditor&lt;/strong&gt; — the account exists and the capability logic is tested, but nobody signed in as it this round.">
+              <label class="sr-only" for="r2t36-notes">Notes for test 36</label>
+              <textarea id="r2t36-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r2t37" data-result="pass"
+                 data-number="37" data-round="2"
+                 data-title="Report gating did not lock out the roles that should have reports"
+                 data-roles="System Admin, Operations Manager">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r2t37-body">
+            <span class="num">37</span>
+            <span class="card-head-main">
+              <span class="card-title">Report gating did not lock out the roles that should have reports</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="chip">Operations Manager</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r2t37-body">
+            <p class="intro">Adding requireCap to two GETs could refuse callers who legitimately hold report:read.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the owner and open Reports and its Analytics tab.</span></button></div>
+            <p class="expect"><span>Expect</span>Roles holding report:read still get the page and the rollup.</p>
+            <div class="res-group" role="group" aria-label="Result for test 37"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="Verified for the owner on screen (Reports opens, the Analytics tab renders) and by test for both the owner (200 on both routes) and the HSE officer (200, with book value nulled rather than refused). &lt;strong&gt;Not verified on screen&lt;/strong&gt; for the Operations Manager or Maintenance Engineer, who also hold report:read.">
+              <label class="sr-only" for="r2t37-notes">Notes for test 37</label>
+              <textarea id="r2t37-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
   </div><!--uat:rounds:end-->
   <p class="foot">
     Marks and notes live in this page and save as you go. Export gives the same thing as a note to
@@ -2813,3 +3938,5 @@
   }
 })();
 </script><!--uat:script:end-->
+
+</body></html>

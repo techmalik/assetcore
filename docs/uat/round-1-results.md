@@ -1,5 +1,45 @@
 # AssetCore — UAT round 1 results
 
+> **Round 2 outcome (7 September 2026).** Every failure below was fixed and retested in the
+> browser, except **F3**, which turned out to be unprovable with round 2's tooling. Two of
+> round 1's findings were themselves wrong and are corrected in place. The retest evidence is
+> in [round-2-results.md](round-2-results.md) and in the artifact's Round 2 tab.
+>
+> | | Outcome |
+> |---|---|
+> | F1 `/reports` leaks financials | **Fixed** — `requireCap('report:read')` on both GETs, client route + nav gated, book value withheld without `depreciation:read` |
+> | F2 Invite link while signed in | **Fixed** — the form opens with a token regardless of session, and signs the admin out on success |
+> | F3 Enter does not submit the invite form | **Not proven either way** — round 2's synthetic Return key does not trigger implicit submission for *any* form in the app, including the simplest one. Needs a human with a real keyboard. No code changed. |
+> | F4 Viewer reads the audit log | **Fixed** — `audit:read` removed from `*:read` coverage via `EXPLICIT_ONLY_CAPS` |
+> | F5 Read-only roles offered write controls | **Fixed** — comment box and Attach file gated on `wo:update`; message now a sentence |
+> | F6 Inspection cannot be attached to an asset | **Fixed** — Asset field added; rating now reaches the asset health breakdown |
+> | F7 No detail view for a completed inspection | **Fixed** — completed rows get a View action opening a read-only record |
+> | F8 Work-order checklist and parts dead | **Fixed** — and it was *four* defects, not one (see below) |
+> | F9 Only one of five approval kinds raisable | **Partly fixed** — work-order spend authorisation now raisable; the other three left as feature work, deliberately |
+> | F10 Depreciation preview 500s | **Fixed** — the basis SELECT named `commission_date`, a column that does not exist (0021 settled on `install_date`) |
+> | F11 New audit defaults to Completed | **Fixed** — defaults to Scheduled |
+> | F12 Secondary currency at 3 dp | **Fixed** — conversions follow the precision of the figure beside them, capped at 2 |
+> | F13 MTTR never computes | **Fixed** — UTC/local date boundary in the analytics window |
+> | F14 Orphaned account, broken dashboard | **Fixed** — a dedicated screen that names the account and offers a way out |
+> | F15 No rate limiting, raw error code | **Half wrong, half fixed** — rate limiting already existed (10 per 15 min); round 1 made 7 attempts and never tripped it. The 429 body was genuinely unreadable, and now is not. |
+>
+> **Two round-1 findings were mistaken**, and are corrected rather than left standing:
+> - *"No sign-in rate limiting"* (F15) — there is. Round 1 under-ran the test.
+> - *"The parts dropdown renders with no options"* (F8, r1t13, r1t37) — the spare parts table
+>   was empty. Not a bug.
+> - *"Oldest has been open 0 days"* (F13, r1t41) — correct. Backlog age is measured from
+>   `created_at`, and every seeded work order was created the day before. Round 1 compared it
+>   against an SLA due date, which is a different thing.
+>
+> **Three further defects were found behind F8**, invisible in round 1 because nothing could be
+> added: `wo.parts_lines` read a key the API never sets; `lineQty()` was called twice and
+> defined nowhere; and `lineQty` read `quantity_used ?? quantity_required` against a column
+> that defaults to `0.00`, so reserved parts showed as `0×` and cost nothing. A fifth, unrelated
+> defect was found in round 2 and fixed: **an ordinary asset edit rewrote the health score from
+> the legacy SQL decay while leaving the breakdown untouched**, so the headline and
+> "Show the working" stopped agreeing.
+
+
 **Artifact (live plan and results):** https://claude.ai/code/artifact/cf07489b-e232-4cce-b93c-f9de90f236e7
 **Branch:** `uat/round-1` (cut from `main` @ 77173e0)
 **Run date:** 6–7 September 2026

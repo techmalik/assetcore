@@ -1,0 +1,829 @@
+{
+ "app": "AssetCore",
+ "title": "AssetCore UAT",
+ "headline": "Work through it, mark what breaks",
+ "tagline": "Round 2: every round-1 failure retested in the browser, the JS-driven passes re-clicked for real, and the first of the untested surface.",
+ "round": 2,
+ "round_label": "Round 2",
+ "intro": "Round 1 found 13 failures and fixed none. This round fixes them and retests each one by repeating the exact test that failed, as a user, on screen. It also re-clicks the screens round 1 drove with JavaScript rather than real pointer input, and starts on the 22 tests round 1 never reached. Three things are recorded as <strong>not run</strong> rather than passed: they could not be driven by this session's browser tooling, and saying so is more useful than a mark nobody should trust.",
+ "url_hint": "The app runs at <code>http://localhost:5174</code> and the API at <code>http://localhost:8787</code>. Ask Claude Code to start them both if the link is dead.",
+ "password": "UatPass123!",
+ "artifact_url": "https://claude.ai/code/artifact/cf07489b-e232-4cce-b93c-f9de90f236e7",
+ "theme": {
+  "accent": "#1272AB",
+  "brand": "#1A3A5C",
+  "display_font": "Bricolage Grotesque",
+  "body_font": "Inter",
+  "mono_font": "JetBrains Mono"
+ },
+ "accounts": [
+  {
+   "key": "owner",
+   "name": "Adaeze Okeke",
+   "email": "a.okeke@ngml.example",
+   "role": "System Admin (owner) \u2014 password Password123!"
+  },
+  {
+   "key": "ops",
+   "name": "UAT Ops Manager",
+   "email": "uat.ops@assetcore.test",
+   "role": "Operations Manager"
+  },
+  {
+   "key": "eng",
+   "name": "UAT Maintenance Engineer",
+   "email": "uat.eng@assetcore.test",
+   "role": "Maintenance Engineer"
+  },
+  {
+   "key": "tech",
+   "name": "UAT Field Technician",
+   "email": "uat.tech@assetcore.test",
+   "role": "Field Technician"
+  },
+  {
+   "key": "hse",
+   "name": "UAT HSE Officer",
+   "email": "uat.hse@assetcore.test",
+   "role": "HSE / Compliance Officer"
+  },
+  {
+   "key": "auditor",
+   "name": "UAT Auditor",
+   "email": "uat.auditor@assetcore.test",
+   "role": "Auditor"
+  },
+  {
+   "key": "viewer",
+   "name": "UAT Viewer",
+   "email": "uat.viewer@assetcore.test",
+   "role": "Executive / Viewer"
+  },
+  {
+   "key": "orphan",
+   "name": "Paul O",
+   "email": "paul.o@ngml.com",
+   "role": "No membership row \u2014 password NgmlDemo2026"
+  },
+  {
+   "key": "enter",
+   "name": "UAT R2 Enter Probe",
+   "email": "uat.enter@assetcore.test",
+   "role": "Field Technician \u2014 created this round"
+  }
+ ],
+ "sections": [
+  {
+   "title": "The round-1 failures, retested",
+   "blurb": "Each card repeats the exact test that failed in round 1, driven on screen. The fix is named, and the note says what was actually watched rather than that it passed.",
+   "tests": [
+    {
+     "title": "F8 \u2014 Work-order checklist and parts",
+     "roles": [
+      "Field Technician",
+      "System Admin"
+     ],
+     "intro": "Round 1's headline failure: every checklist and parts action threw a ReferenceError behind a native alert. The reported cause was five missing imports; three further defects were hiding behind it, invisible while nothing could be added.",
+     "steps": [
+      "Open <code>WO-2025-0041</code> (In Progress) from Work Orders.",
+      "Type a step into <strong>Add a step\u2026</strong> and press Add.",
+      "Tick the step, then delete it.",
+      "Spare Parts &rarr; <strong>Add first part</strong>, create <code>SP-PT-1100</code>.",
+      "Back on the work order, pick the part and press Add."
+     ],
+     "expect": "Steps add, tick and delete without an alert. A reserved part appears on the job with its quantity and a running total.",
+     "result": "pass",
+     "notes": "Fixed and watched end to end. Added \u201cIsolate and lock off the transmitter loop\u201d \u2014 the checklist went to 0/1 done; ticking it struck it through and credited \u201cAdaeze Okeke \u00b7 7 Sept, 13:14\u201d and showed 1/1; deleting removed it. No alert, no ReferenceError. F8 turned out to be four defects, not one: (1) five missing imports from lib/db/workOrders \u2014 the reported cause; (2) PartsSection read wo.parts_lines, a key the API never sets (it returns parts), so reserved lines were written but never displayed; (3) lineQty() was called twice and defined nowhere \u2014 once lines rendered, the panel crashed to the error boundary with \u2018lineQty is not defined\u2019; (4) lineQty read quantity_used ?? quantity_required, but the column defaults to 0.00 rather than null, so every reserved line showed \u20180\u00d7\u2019 and contributed \u20a60 to the total. Defects 2-4 could not have been seen in round 1 because nothing could be added. After all four: two lines showed 1\u00d7 each and a \u20a6370,000 total; deleting one left \u20a6185,000. Round 1's separate note that the parts dropdown \u2018renders with no options\u2019 was not a bug \u2014 the spare parts table was simply empty (0 rows). Creating one part populated it.",
+     "was": {
+      "result": "fail",
+      "ref": "F8"
+     }
+    },
+    {
+     "title": "F1 \u2014 /reports leaked financials to every role",
+     "roles": [
+      "Field Technician"
+     ],
+     "intro": "A server-side leak: the Field Technician, holding neither report:read nor depreciation:read, could read per-location total value and book value.",
+     "steps": [
+      "Sign in as the Field Technician.",
+      "Look for <strong>Reports</strong> in the nav.",
+      "Type <code>/reports</code> into the address bar directly."
+     ],
+     "expect": "Reports is absent from the nav, and the URL does not open the page. The API refuses the underlying calls.",
+     "result": "pass",
+     "notes": "Reports is gone from the Field Technician's nav, and typing /reports redirects to /dashboard. Fixed on both sides: the client route and the nav item now require report:read (App.jsx, Sidebar.jsx), and GET /reports and GET /reports/location-analytics now carry requireCap('report:read') \u2014 previously only the POSTs were gated. Book value is additionally withheld: location-analytics returns total_nbv_cents as null for a caller without depreciation:read, rather than the figure. The server half is proved by test rather than by screen \u2014 apps/api/test/uatRound2.test.ts asserts 403 for the field tech on both routes, 200 for the owner, and nulled book value for the HSE officer (who holds report:read but not depreciation:read).",
+     "was": {
+      "result": "fail",
+      "ref": "F1"
+     },
+     "signin": [
+      "tech"
+     ]
+    },
+    {
+     "title": "F4 \u2014 The Viewer reached Admin and read the whole audit log",
+     "roles": [
+      "Executive / Viewer",
+      "Auditor"
+     ],
+     "intro": "can() returned true for any <code>:read</code> capability when a role held <code>*:read</code>, so the Viewer satisfied audit:read \u2014 which is in ADMIN_ENTRY_CAPS.",
+     "steps": [
+      "Sign in as the Viewer.",
+      "Look for <strong>Admin</strong> in the nav.",
+      "Type <code>/admin</code> directly."
+     ],
+     "expect": "Admin does not appear, and the URL does not open it. The Auditor still reaches the audit log.",
+     "result": "pass",
+     "notes": "Admin is gone from the Viewer's nav and /admin redirects to /dashboard. Fixed in packages/rbac by adding EXPLICIT_ONLY_CAPS = ['audit:read'], which the '*:read' wildcard no longer satisfies. This follows the intent already visible in the file: auditor was written as ['*:read','audit:read'], a redundant grant that only makes sense if the author believed the wildcard did not cover it \u2014 it did, so the Auditor's explicit grant was dead code and the Viewer inherited audit access by accident. Both are now true: the Auditor's grant is live, the Viewer's is gone. Covered by six assertions in uatRound2.test.ts including a 403 on GET /api/audit-log for the viewer. NOT changed: the Viewer still sees Depreciation, Analytics and Reports, which come from report:read and depreciation:read via the same wildcard. Those are defensible for an \u2018Executive\u2019 role and narrowing them would also strip the Auditor, so it is left as a product decision rather than folded into a bug fix.",
+     "was": {
+      "result": "fail",
+      "ref": "F4"
+     },
+     "signin": [
+      "viewer"
+     ]
+    },
+    {
+     "title": "F10 \u2014 Depreciation schedules could not be created: the preview 500'd",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Round 1 could not diagnose this without a database session. The cause is a column that does not exist.",
+     "steps": [
+      "Depreciation &rarr; <strong>Create first schedule</strong>.",
+      "Pick <code>NGML-CMP-0017</code>.",
+      "Fill the basis and read the preview table.",
+      "Press <strong>Create schedule</strong>."
+     ],
+     "expect": "The preview renders a schedule table rather than the word internal_error, and the schedule saves.",
+     "result": "pass",
+     "notes": "Root cause found and fixed. depreciation.ts selected commission_date; the assets table has no such column. Migration 0021 documents exactly this: the other branch called the field commission_date, \u2018this lineage's name wins\u2019 \u2014 install_date. So every basis lookup threw \u2018column commission_date does not exist\u2019, escaped the typed 404/422 branches and surfaced as internal_error. Now: selecting CMP-0017 returns a typed 422 and the UI says \u201cThis asset is missing part of its basis. Fill it in below, or add it on the asset record.\u201d Supplying cost \u20a645,000,000 / salvage \u20a64,500,000 / life 15 rendered the full 15-period table at \u20a62,700,000 a year, which is (45,000,000 \u2212 4,500,000) / 15 exactly. Created the schedule: the register shows 1 active schedule, Straight line, \u20a645.0M, 15.0 yrs, 0/15 posted. The same fix corrected Scan.jsx, which rendered asset.commission_date and so always showed blank. This also unblocks r1t38.",
+     "was": {
+      "result": "fail",
+      "ref": "F10"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "F6 \u2014 An inspection could not be attached to an asset",
+     "roles": [
+      "HSE Officer",
+      "System Admin"
+     ],
+     "intro": "The New Inspection form had no Asset field, so a UI-created inspection's 1-5 condition rating could never reach an asset's health score, and everything raised from it inherited a blank asset.",
+     "steps": [
+      "Inspections &rarr; <strong>New Inspection</strong>.",
+      "Pick an asset, give it a title, create it.",
+      "Complete it with a condition rating of 2.",
+      "Open the asset and press <strong>Show the working</strong>."
+     ],
+     "expect": "The form offers an Asset field, the inspection lists with its asset, and the rating appears as a signal in the asset's health breakdown.",
+     "result": "pass",
+     "notes": "Fixed and followed all the way through to the asset. The form now has an Asset select above Site; choosing one auto-fills the Site (they cannot disagree), and leaving it blank shows \u201cWithout an asset the condition rating has nowhere to go \u2014 it will not move any asset's health score, and anything raised from this inspection inherits a blank asset.\u201d The API already accepted asset_id; only the form was missing it. Created \u2018UAT R2 - MTR-0042 condition check with asset attached\u2019, which listed with ASSET NGML-MTR-0042 and SITE Lagos DS-04 where round 1's two inspections both show \u2018\u2014\u2019. Completed it at condition 2; the asset's health breakdown then read \u201cInspection condition 25/100 \u00b7 25% \u00b7 Rated 2 of 5 on 7 Sept 2026\u201d. That is the chain round 1 said was broken at step one, now working end to end. Unblocks r1t16.",
+     "was": {
+      "result": "fail",
+      "ref": "F6"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "F14 \u2014 The orphaned account landed on a broken dashboard",
+     "roles": [
+      "Edge case"
+     ],
+     "intro": "An account with no membership row signed in and got full app chrome, dashes in every tile and a red <code>no_org_context</code> banner.",
+     "steps": [
+      "Sign in as <code>paul.o@ngml.com</code> / <code>NgmlDemo2026</code>.",
+      "Read what the screen says.",
+      "Try <code>/assets</code> and <code>/work-orders</code> directly."
+     ],
+     "expect": "The app explains that the account has no organisation and offers a way out. No raw error code, no broken dashboard.",
+     "result": "pass",
+     "notes": "Fixed with a dedicated screen rather than a better error string. Signing in now lands on \u201cThis account is not in an organisation yet\u201d, naming the account (paul.o@ngml.com), saying nothing is broken and nothing is lost, telling the reader to ask a System Admin to invite the address from Admin \u2192 Users & Roles, and offering a Sign out button. /assets and /work-orders show the same screen instead of rendering chrome that then fails. Implemented in App.jsx's gate(): with no org there is no scope, and every page below is org-scoped, so it is said once at the routing layer rather than by each page failing on its own. Safe to gate this way because members are invited and there is no self-signup path, so authed-with-no-org can only be a missing membership row.",
+     "was": {
+      "result": "fail",
+      "ref": "F14"
+     },
+     "signin": [
+      "orphan"
+     ]
+    },
+    {
+     "title": "F13 \u2014 MTTR never computed",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "A corrective job was driven to Closed through the UI and MTTR still read \u201cNot known\u201d in all three windows. Round 1 could not diagnose it without a database session.",
+     "steps": [
+      "Analytics &rarr; Performance.",
+      "Read the MTTR tile.",
+      "Change the period selector and watch the figures move."
+     ],
+     "expect": "MTTR reports a figure and its sample size.",
+     "result": "pass",
+     "notes": "MTTR now reads <strong>0.02 hours per repair \u2014 \u2018From 1 job, all with both times recorded.\u2019</strong> That is WO-2026-0002, whose stamps are 00:12:06 and 00:13:06 \u2014 one minute, so 0.02 hours is right. Cause: analytics.ts compared actual_end::date against window bounds built from new Date().toISOString(), i.e. UTC dates, while the SQL cast resolved in the session timezone (Africa/Lagos). A job closed at 00:13 local on 7 Sept is 23:13 UTC on the 6th, so its local date landed a day past a UTC upper bound and the row was dropped. Both comparisons are now made in UTC. <strong>Honest caveat:</strong> at the time of this retest (13:2x local) the local and UTC dates agree, so this browser pass shows MTTR computing but does <em>not</em> isolate the boundary \u2014 unfixed code would also have shown a figure right now. The boundary itself is pinned by two tests in uatRound2.test.ts instead, which is the right place for a condition that only exists for an hour a day. Also checked: the period selector moves MTBF (2,620.8 \u2192 892.8 operating hours, 13,104 \u2192 4,464 hours) while MTTR correctly holds.",
+     "was": {
+      "result": "fail",
+      "ref": "F13"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "F5, F10, F14, F15 \u2014 Raw API error codes shown to users",
+     "roles": [
+      "All roles"
+     ],
+     "intro": "The cross-cutting one. <code>invalid_credentials</code>, <code>no_org_context</code>, <code>forbidden</code> and <code>internal_error</code> were all rendered to users verbatim, while a dozen screens did it properly with a sentence.",
+     "steps": [
+      "Sign in with a wrong password.",
+      "As the Viewer, open a work order and look at the comment box.",
+      "Trigger a depreciation basis error."
+     ],
+     "expect": "Every refusal reads as a sentence. No screen prints a snake_case code.",
+     "result": "pass",
+     "notes": "Fixed centrally, not per screen. apiClient now carries the machine code on err.code separately from the message, and a new lib/errors.js maps ~60 API codes to sentences behind errorText(err, fallback). The sweep replaced the displayed expression at 113 call sites across 25 files, keeping every bespoke sentence that already existed and only replacing the raw-code fallback behind it; errorText falls back to the caller's own wording for a code nobody has written copy for, rather than echoing the code. Watched on screen: a wrong password now reads \u201cThat email and password do not match an account.\u201d instead of invalid_credentials; the depreciation basis error reads \u201cThis asset is missing part of its basis\u2026\u201d instead of internal_error; the orphaned account gets a whole screen instead of no_org_context. F5's second half is also fixed: the Viewer's work-order panel no longer offers an \u2018Attach file\u2019 link or a comment box at all \u2014 both post to routes gated on wo:update, so a read-only role was being handed controls that could only fail. Enforcement was always right; the affordance was the bug.",
+     "was": {
+      "result": "fail",
+      "ref": "F5"
+     }
+    },
+    {
+     "title": "F9 \u2014 Only one of five approval kinds could be raised",
+     "roles": [
+      "System Admin",
+      "Operations Manager"
+     ],
+     "intro": "An owner could build a work-order spend matrix that nothing would ever use: <code>submitApproval</code> had exactly one caller, the defect-deferral flow.",
+     "steps": [
+      "Open a work order and set a Cost inside a configured band.",
+      "Press <strong>Request spend approval</strong>.",
+      "Check Approvals shows it pending with the right role."
+     ],
+     "expect": "A wo_cost request can be raised from the job and routes to the band's role.",
+     "result": "pass",
+     "notes": "Partially fixed \u2014 read the scope note. The work-order detail now has a <strong>Spend authorisation</strong> section: it lists any existing request, and offers \u2018Request spend approval\u2019 to a holder of approval:create. Set WO-2025-0041's cost to \u20a625,000 (inside round 1's \u20a61,000\u2013\u20a650,000 band), pressed it, and the panel now reads \u201cWith Operations Manager \u00b7 \u20a625,000 \u00b7 Pending\u201d; the Approvals page counts it under \u2018Mine, still pending\u2019 and \u2018Pending across the org\u2019. The API needed no change \u2014 POST /approvals was already generic over entity_type and kind, which is why this was a fix rather than a rewrite. <strong>Still out of scope and deliberately left:</strong> wo_closure, licence_renewal and pm_signoff remain unraisable. Each needs its own control and its own place in a workflow (a closure gate that actually blocks closing, a renewal flow on the licence record, a sign-off step on a PM task) \u2014 that is feature work, not a repair, and building three of them unreviewed at the end of a UAT round would be worse than saying so. wo_cost was done because round 1 named it specifically: job spend above a threshold was never gated.",
+     "was": {
+      "result": "fail",
+      "ref": "F9"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "F7 \u2014 A completed inspection had no detail view",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Clicking a completed inspection did nothing. There was no way to read back the checklist results, per-item notes, condition rating or full findings.",
+     "steps": [
+      "Inspections &rarr; <strong>Completed</strong>.",
+      "Press <strong>View</strong> on a completed inspection.",
+      "Read the checklist, the rating and the findings."
+     ],
+     "expect": "A read-only record shows everything the completion captured, and offers no way to change it.",
+     "result": "pass",
+     "notes": "Fixed. Completed rows now carry a <strong>View</strong> action where Complete used to sit, opening the completion modal in a new read-only mode. Opened round 1's \u2018UAT R1 \u2014 Lagos DS-04 metering integrity\u2019: the record shows the title with \u2018completed 6 Sept 26\u2019, the checklist with per-item verdicts (\u2018Check gas leak detector \u2014 Fail\u2019 on a red row, carrying its note \u2018Detector fails bump test at 20% LEL\u2019; two Pass rows), the 2/Poor rating highlighted with the other four dimmed, the findings text, \u2018Inspection report: None uploaded.\u2019, and a single Close button \u2014 no Save, no rating buttons, no raise-as-defect controls, since those belong to completion. Implemented as a readOnly prop on the existing modal rather than a second component, so the record and the completion form cannot drift apart.",
+     "was": {
+      "result": "fail",
+      "ref": "F7"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "F11 \u2014 A new compliance audit defaulted to Completed",
+     "roles": [
+      "System Admin",
+      "HSE Officer"
+     ],
+     "intro": "The form opened with Status already Completed, so the first Save was always refused for a missing outcome.",
+     "steps": [
+      "Compliance &rarr; Audits &rarr; <strong>+ New Audit</strong>.",
+      "Read the Stage field.",
+      "Give it a title and Save."
+     ],
+     "expect": "Stage defaults to Scheduled and the first Save succeeds.",
+     "result": "pass",
+     "notes": "Fixed \u2014 one line, but it was on the normal path. Stage now defaults to <strong>Scheduled</strong>. Created \u2018UAT R2 - scheduled ISO 9001 surveillance audit\u2019 with only a title: it saved on the first attempt with the toast \u201cAudit recorded.\u201d and lists with OUTCOME \u2018Scheduled\u2019. Round 1 had to undo the default before every first save.",
+     "was": {
+      "result": "fail",
+      "ref": "F11"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "F12 \u2014 Secondary-currency amounts rendered at three decimal places",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "With USD at 0.00065 the asset panel showed \u20a6150,066,666.67 ($97,543.333) \u2014 the base at 2 dp, the conversion at 3 on two lines and 0 on a third.",
+     "steps": [
+      "Set a second currency in Settings &rarr; Organisation.",
+      "Open an asset and read the Financials block."
+     ],
+     "expect": "Base and converted figures agree on precision. No three-decimal money.",
+     "result": "pass",
+     "notes": "Fixed and watched on NGML-MTR-0042, the same asset round 1 quoted. Financials now read \u20a6240,000,000.00 ($156,000.00) / \u20a6150,066,666.67 ($97,543.33) / \u20a689,933,333.33 ($58,456.67) \u2014 all three conversions at exactly 2 dp, against round 1's 0 dp, 3 dp, 3 dp. Two changes in lib/money.jsx: fmtMoney's plain branch now caps at 2 fraction digits (a bare toLocaleString() passed the FX multiply's full precision straight through), and the &lt;Money&gt; component now formats the conversion at the same precision as the base figure it sits beside, so an exact base gets an exact conversion instead of the two halves of one line rounding differently. Minor note, not a defect: compact table headers still read like \u20a6370,000 ($240.5) \u2014 that is the abbreviating formatter (the one that renders \u20a61.5M), showing as many decimals as the number has up to two, consistently on both sides.",
+     "was": {
+      "result": "fail",
+      "ref": "F12"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "F15 \u2014 No sign-in rate limiting, and a raw error code",
+     "roles": [
+      "Edge case"
+     ],
+     "intro": "Round 1 reported no lockout after seven wrong passwords, and a bare <code>invalid_credentials</code> on each.",
+     "steps": [
+      "Sign out. Sign in with a wrong password repeatedly.",
+      "Keep going past ten attempts.",
+      "Read the message."
+     ],
+     "expect": "Failures read as a sentence, and a lockout trips and says when it lifts.",
+     "result": "pass",
+     "notes": "Both halves resolved, and half of round 1's finding was wrong. <strong>Rate limiting already existed</strong> \u2014 express-rate-limit at 10 per 15 minutes on /auth/login (auth/routes.ts:31). Round 1 made seven attempts against a limit of ten, so it never tripped, and concluded there was none. Driven past the limit this round, the 11th attempt is refused with <strong>\u201cToo many attempts. Wait about 15 minutes and try again.\u201d</strong> What was genuinely broken is the message: the limiter used the library's default 429 body, a bare text string the fetch wrapper could not read a code from, so a locked-out user would have seen \u2018Request failed (429)\u2019. It now answers { error: 'too_many_attempts' } in the same shape as every other refusal, and errors.js gives it that sentence. The wrong-password message is also fixed: \u201cThat email and password do not match an account.\u201d instead of invalid_credentials \u2014 and still identical for an unknown address, so the form still does not leak which accounts exist.",
+     "was": {
+      "result": "fail",
+      "ref": "F15"
+     }
+    },
+    {
+     "title": "F2 \u2014 An invite link opened while signed in silently redirected",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "The admin who generates an invite is holding the link and is signed in. Pasting it redirected to the dashboard with no message, so the token looked broken.",
+     "steps": [
+      "Admin &rarr; Users &amp; Roles &rarr; Invite, and copy the link.",
+      "Paste it into the address bar while still signed in as the owner.",
+      "Set a password and sign in as the new account."
+     ],
+     "expect": "The form opens, says whose session is active, and setting a password signs you out so the new account can sign in.",
+     "result": "pass",
+     "notes": "Fixed and driven end to end. Invited uat.enter@assetcore.test and opened its /reset-password?token=\u2026 link while still signed in as a.okeke. The form now opens (previously: silent redirect to /dashboard) and shows \u201cYou are signed in as <strong>a.okeke@ngml.example</strong>. Setting a password here changes the account this link was issued for, not yours, and will sign you out.\u201d Set the password, which ended the owner's session and landed on the sign-in form; signed in as UAT R2 Enter Probe successfully, so the token really worked rather than the form merely navigating. The route now renders whenever a token is present regardless of session, and only redirects a signed-in visitor who arrives without one.",
+     "was": {
+      "result": "fail",
+      "ref": "F2"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "F3 \u2014 Enter does not submit the Invite form",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Round 1 filled the invite form, pressed Enter in the name field and nothing happened.",
+     "steps": [
+      "Admin &rarr; Users &amp; Roles &rarr; Invite User.",
+      "Fill name and email.",
+      "Press <kbd>Enter</kbd> in the name field."
+     ],
+     "expect": "The form submits, as a real form with a submit button should.",
+     "result": "pending",
+     "notes": "<strong>Not run \u2014 unprovable with this session's tooling, in either direction.</strong> Reproduced the symptom (Enter in the name field did nothing: no POST, no console error), then checked the DOM: one &lt;form&gt;, exactly one non-disabled &lt;button type=\"submit\"&gt; (\u2018Send Invite\u2019), and every chip correctly type=\"button\" \u2014 so implicit submission ought to work. The discriminating test settled it: pressing Enter on the set-password form, the simplest form in the app, also did nothing, and clicking its button worked immediately. So this browser pane's synthetic Return key does not trigger implicit form submission for <em>any</em> form here, and neither a pass nor a fail can be claimed. Round 1 almost certainly hit the same limitation and read it as an app defect. This needs thirty seconds from a human with a real keyboard; it is the one card in this round that a person still has to run. No code was changed for it.",
+     "was": {
+      "result": "fail",
+      "ref": "F3"
+     },
+     "signin": [
+      "owner"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Re-clicked with real pointer input",
+   "blurb": "Round 1 drove these with JavaScript-dispatched clicks after the browser pane went hidden. Those passes were real but unproven against overlay, z-index and pointer-events faults, so they are re-run here with actual hit-tested clicks. Two could not be reached this round and are marked not run.",
+   "tests": [
+    {
+     "title": "Asset health breakdown \u2014 \u201cShow the working\u201d",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Round 1 called this out as notably well built. It is also the screen most likely to be broken by the health fix in this round, so it is re-clicked as both a re-check and a regression card.",
+     "steps": [
+      "Assets &rarr; <strong>View</strong> on NGML-MTR-0042.",
+      "Press <strong>Show the working</strong> with a real click.",
+      "Add up the components and compare to the headline."
+     ],
+     "expect": "Every signal names its score and weight, excluded signals are explained, and the total reconciles to the headline exactly.",
+     "result": "pass",
+     "notes": "Re-clicked with real pointer input, expands correctly. Reads: Inspection condition 25/100 (25%) \u201cRated 2 of 5 on 7 Sept 2026\u201d \u2014 which is this round's own inspection, arriving via the F6 fix; Open defects 80/100 (25%); Overdue maintenance 100/100 (20%); Risk level 80/100 (15%) explained as read from criticality with no assessment yet; Age against useful life excluded as \u2018no data\u2019 (10%), with the reason given. Header says \u2018Calculated from 4 of 5 signals\u2019. Reconciles exactly: (25\u00d7.25 + 80\u00d7.25 + 100\u00d7.20 + 80\u00d7.15) / 0.85 = 68.5 \u2192 the headline 69.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-15"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Escalations \u2014 the rule list, Run now, and re-running",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Round 1 passed the escalation trigger narrowing and the \u201cre-running does not re-fire\u201d check by JS click.",
+     "steps": [
+      "Admin &rarr; Escalations.",
+      "Press <strong>Run now</strong>.",
+      "Check the fired count and Recently escalated."
+     ],
+     "expect": "The evaluator runs, says what it found, and does not re-fire an already-escalated record.",
+     "result": "pass",
+     "notes": "Re-clicked for real. The screen renders the round-1 rule \u2018UAT R1 \u2014 overdue work orders chase Ops\u2019 as Active, Work order / Past its due date, notifying Operations Manager, Fired 1 (7 Sept), with the Recently escalated list beneath. Pressed Run now: \u201cNothing met a rule.\u201d and the fired count stayed at 1 \u2014 correct on both counts, since WO-2025-0038's due date had just been restored (so nothing is overdue) and the already-escalated record is not re-fired. Note: I could not <em>retire</em> the rule \u2014 the action is gated on a native confirm(), which this browser tooling auto-dismisses. That is a tooling limit, not an app defect; the rule is left Active and harmless.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-25/26"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Analytics period selector",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Round 1 confirmed the selector moved MTBF by JS click.",
+     "steps": [
+      "Analytics &rarr; Performance.",
+      "Change the period from Last 90 days to Last 30 days."
+     ],
+     "expect": "The window figures move and the KPIs recompute.",
+     "result": "pass",
+     "notes": "Re-run for real. Switching 90 \u2192 30 days moved MTBF from 2,620.8 to 892.8 operating hours and the stated basis from 13,104 to 4,464 hours, while MTTR correctly held at 0.02 (the one closed corrective job is inside both windows). Backlog buckets unchanged, as they should be \u2014 backlog is not window-scoped.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-41"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Currency settings",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Round 1 set the second currency by JS click; this re-clicks the same screen, clearing it.",
+     "steps": [
+      "Settings &rarr; Organisation &rarr; Currency.",
+      "Change the second currency and Save."
+     ],
+     "expect": "The setting saves and every money figure in the app follows it.",
+     "result": "pass",
+     "notes": "Re-clicked for real. Set the second currency back to \u2018\u2014 None \u2014\u2019 and pressed Save currency: \u201cCurrency saved.\u201d The rate and rate-date fields correctly disappear when no second currency is selected. Money across the app reverted to single-currency output, which is how the instance is now left.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-39"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Later permission checks \u2014 Field Technician and Viewer",
+     "roles": [
+      "Field Technician",
+      "Executive / Viewer"
+     ],
+     "intro": "Round 1's role-boundary checks late in the run were JS-driven.",
+     "steps": [
+      "Sign in as each role.",
+      "Compare the nav to the role's capabilities.",
+      "Type a forbidden URL directly rather than trusting the hidden nav."
+     ],
+     "expect": "The nav matches the role, and typing the URL is refused too.",
+     "result": "pass",
+     "notes": "Re-run for real with both accounts, including direct URL entry rather than only checking the nav. Field Technician: no Reports, Depreciation or Analytics; /reports redirects. Viewer: no Admin; /admin redirects; the work-order panel offers no Edit, no status transitions, no checklist or parts add-forms, no spend-approval button, and (newly) no attach-file link or comment box. Both signed in and out cleanly through the real menu.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-51/53"
+     }
+    },
+    {
+     "title": "Compliance audit and findings",
+     "roles": [
+      "HSE Officer",
+      "System Admin"
+     ],
+     "intro": "Round 1 drove the audit lifecycle and its findings by JS click.",
+     "steps": [
+      "Compliance &rarr; Audits.",
+      "Create an audit, then add findings and push one to the defect register."
+     ],
+     "expect": "The audit walks its stages and a finding becomes a defect.",
+     "result": "pending",
+     "notes": "<strong>Partly re-clicked, and honestly incomplete.</strong> Audit <em>creation</em> was re-clicked for real as part of the F11 retest \u2014 the New Audit form, the Stage default and a successful first Save (\u2018Audit recorded.\u2019). The findings half \u2014 adding findings to an audit and pushing one onto the defect register \u2014 was <strong>not</strong> re-clicked this round; the session ran out of room before it. Round 1's pass on those stands on its JS-driven evidence and is not re-confirmed here.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-27/29/30"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Approval matrix, deferrals and their refusals",
+     "roles": [
+      "System Admin",
+      "Operations Manager"
+     ],
+     "intro": "Round 1 rated the approval routing and its refusals \u2014 self-approval, wrong-role, requester-only recall \u2014 as notably well built, all by JS click.",
+     "steps": [
+      "Approvals &rarr; Matrix.",
+      "Configure a band, raise a deferral, and try to decide it as the wrong role."
+     ],
+     "expect": "Bands save with validation, and each refusal is refused for the right reason.",
+     "result": "pending",
+     "notes": "<strong>Not re-clicked \u2014 recorded as not run rather than carried over.</strong> The Approvals page itself was opened for real and its tallies read correctly (\u2018Mine, still pending 1\u2019, \u2018Pending across the org 1\u2019, \u2018Approved 1\u2019, and an empty \u2018Waiting on me\u2019 with a well-written explanation), and a new wo_cost request was raised and routed for real under F9. But the matrix band editor and the three refusal paths \u2014 self-approval, wrong-role decision, requester-only recall \u2014 were not re-driven with pointer input. Round 1's passes on those remain JS-driven evidence. Worth noting that the rbac change in this round (audit:read) does not touch approval capabilities, so the risk of regression there is low.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-18..23"
+     },
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Risk assessment and the 5\u00d75 matrix",
+     "roles": [
+      "HSE Officer"
+     ],
+     "intro": "Round 1 raised a risk and placed it on the matrix by JS click.",
+     "steps": [
+      "Risk &rarr; raise a risk with inherent and residual scores.",
+      "Check its position on the matrix."
+     ],
+     "expect": "The risk saves and lands in the right cell for its likelihood and consequence.",
+     "result": "pending",
+     "notes": "<strong>Not re-clicked this round \u2014 recorded as not run.</strong> The session prioritised the fifteen failures and the untested surface over re-confirming round-1 passes. The round-1 risk (\u2018UAT R1 \u2014 uncontrolled gas release at the Lagos DS-04 inlet\u2019, inherent 20 / residual 6) is still in the register and was seen referenced from the asset health breakdown's risk signal, but the Risk screen itself was not driven with pointer input.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-32/33"
+     },
+     "signin": [
+      "hse"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Newly covered \u2014 from round 1's 22 never-run tests",
+   "blurb": "Round 1 reached none of these. This round covers what it could and states plainly what it could not, including three that this browser tooling cannot drive at all.",
+   "tests": [
+    {
+     "title": "Create a spare part and adjust its stock",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "The parts store was completely empty, which is also why round 1 read the work-order parts dropdown as broken.",
+     "steps": [
+      "Spare Parts &rarr; <strong>Add first part</strong>.",
+      "Create a part with a unit cost, reorder level and opening stock.",
+      "Press <strong>Adjust</strong> and issue some stock."
+     ],
+     "expect": "The part saves, the store totals update, and the movement moves the balance.",
+     "result": "pass",
+     "notes": "Created SP-PT-1100 \u2018Pressure transmitter 0-100 bar\u2019, unit cost \u20a6185,000, reorder level 3, opening stock 8. The store went from a well-written empty state (\u201cNo parts in the store yet \u2014 Adding parts lets work orders draw from stock instead of listing them as free text\u201d) to 1 part tracked, stock value \u20a61.5M. The form explains that opening stock is recorded as a receipt so the first balance has a movement behind it like every later one \u2014 a good touch. Then adjusted: Issue 6, which showed a live preview \u201cStock moves to 2 each\u201d before committing.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Stock below the reorder level raises a low-stock signal",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Whether the reorder level actually does anything once stock crosses it.",
+     "steps": [
+      "From the part list, Adjust &rarr; Issue enough to go below the reorder level.",
+      "Read the store tiles and the part row."
+     ],
+     "expect": "The part is flagged, and the \u2018at or below reorder level\u2019 count moves.",
+     "result": "pass",
+     "notes": "Issued 6 against a reorder level of 3, taking stock 8 \u2192 2. \u2018At or below reorder level\u2019 moved 0 \u2192 1, the part row gained an amber <strong>Reorder</strong> badge, and stock value fell \u20a61.5M \u2192 \u20a6370,000. Correct on every figure.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Calendar",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Jobs, scheduled maintenance and inspections on one grid \u2014 never opened in round 1.",
+     "steps": [
+      "Open Calendar.",
+      "Toggle the work-order / PM / inspection filters.",
+      "Move to the next month and back with Today."
+     ],
+     "expect": "The grid shows the right items on the right days, filters remove them, and navigation works.",
+     "result": "pass",
+     "notes": "September 2026 rendered with today (the 7th) marked, a legend carrying live counts (Work orders 5, PM tasks 0, Inspections 9, Overdue), overdue items in red, a \u2018+1 more\u2019 overflow on a busy day, and this round's own new inspection appearing on the 7th. Unticking \u2018Work orders\u2019 removed exactly the work-order entries and left the rest. Next-month navigation moved to an empty October and Today returned. No console errors.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Asset map",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Never opened in round 1. No asset had coordinates, so the map had to be given one to be tested properly rather than only in its empty state.",
+     "steps": [
+      "Analytics &rarr; Map.",
+      "Add a latitude and longitude to an asset, then reopen the map.",
+      "Click the pin."
+     ],
+     "expect": "Assets with coordinates are plotted, assets without are accounted for, and clicking a pin opens the asset.",
+     "result": "pass",
+     "notes": "Tested in both states. Empty: \u201cNo asset has coordinates yet \u2014 All 6 assets are missing a latitude and longitude. Add them on the asset record and they will appear here.\u201d Then set NGML-MTR-0042 to 6.4531, 3.3958 through the asset form and reopened: a green pin (coloured by condition, with a \u2018Colour by condition\u2019 selector), a 50 m scale bar, and an honest footer \u2014 \u201cPositions are plotted from each asset's own coordinates \u2014 no basemap is loaded, so this works on a site with no internet access. <strong>5 assets are not shown</strong>, having no coordinates recorded.\u201d Clicking the pin opened the asset's record as the caption promises. Saying how many assets are missing rather than silently plotting fewer is the right call.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "A file URL is refused without a session",
+     "roles": [
+      "Signed out"
+     ],
+     "intro": "Round 1 flagged this as the most likely place a real leak was still hiding: an unauthenticated file URL.",
+     "steps": [
+      "Get a stored file's URL.",
+      "Open it directly with no session."
+     ],
+     "expect": "The file is refused, not served.",
+     "result": "pass",
+     "notes": "<strong>Passed at the authentication boundary; deeper scoping is not covered.</strong> Navigating the browser straight to <code>/api/files/assets/test.png</code> \u2014 a plain GET with no Authorization header, which is exactly what someone holding a URL would have \u2014 returns <code>{\"error\":\"missing_token\"}</code> and no content. Reading files.ts, the guard is well built beyond that: requireAuth, the path resolved under the caller's own org id, \u2018..\u2019 traversal rejected, a per-bucket ownership check joined through RLS so a site-scoped caller cannot fetch another site's file by guessing a path, and unknown buckets default-denied. <strong>What is not tested:</strong> cross-scope access to a real file, because nothing has ever been uploaded to this instance (0 files, no upload directory) and this browser tooling cannot drive a native file picker to create one. The authentication half is proved; the authorisation half is read but unproven."
+    },
+    {
+     "title": "Photo upload and the lightbox",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Uploading an image to an asset and viewing it full-size.",
+     "steps": [
+      "Open an asset, choose an image file, upload.",
+      "Click the thumbnail to open the lightbox."
+     ],
+     "expect": "The image uploads, thumbnails, and opens full size.",
+     "result": "pending",
+     "notes": "<strong>Not run \u2014 this browser tooling cannot operate a native file picker</strong>, and there is no upload API surface a user would reach any other way. Driving it with script would fabricate the input rather than test it, so it is left unrun rather than faked. This also blocks the cross-scope half of the file-access test above. It needs a human, or a tool with file-upload support.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "QR sheets and the scan page",
+     "roles": [
+      "System Admin",
+      "Field Technician"
+     ],
+     "intro": "Printable asset QR codes and the page a scan lands on.",
+     "steps": [
+      "Generate a QR sheet from the asset register.",
+      "Open the scan page for a tag."
+     ],
+     "expect": "Codes generate and a scan resolves to the right asset.",
+     "result": "pending",
+     "notes": "<strong>Not run \u2014 the session ended first.</strong> Untouched since round 1. One thing was fixed here in passing without being exercised: Scan.jsx rendered <code>asset.commission_date</code>, a column that does not exist, so the \u2018Commissioned\u2019 field was always blank; it now reads install_date. That change is unverified on screen."
+    },
+    {
+     "title": "CSV import",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Bulk asset import from a file.",
+     "steps": [
+      "Assets &rarr; Import CSV.",
+      "Import a small file and check the result report."
+     ],
+     "expect": "Rows import, and bad rows are reported rather than silently dropped.",
+     "result": "pending",
+     "notes": "<strong>Not run.</strong> Same file-picker limitation as photo upload \u2014 the Import CSV control opens a native file dialog this tooling cannot operate. The button is present on the Asset Registry and the page renders.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Consuming a part on a work order moves the stock",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "Closing a job with reserved parts should draw them out of the store.",
+     "steps": [
+      "Reserve a part on an open job.",
+      "Close the job and check the part's balance."
+     ],
+     "expect": "Stock falls by the reserved quantity and the line reads as taken.",
+     "result": "pending",
+     "notes": "<strong>Not run.</strong> The reservation half is done and verified (a line on WO-2025-0041 reading \u20181\u00d7 \u00b7 Reserved \u00b7 \u20a6185,000\u2019), but the job was deliberately not closed \u2014 closing it would consume stock and end a work order that other cards in this round depend on. The consumption path is visible in the API (consumeParts, with shortfall handling that refuses to go negative) but was not exercised.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Input, sessions and the edges",
+     "roles": [
+      "All roles"
+     ],
+     "intro": "Required fields, odd characters, double submit, search and filter agreement, back button, phone width, dark mode, keyboard-only, console cleanliness.",
+     "steps": [
+      "Work through the section as written in round 1's plan."
+     ],
+     "expect": "Each behaves as its card describes.",
+     "result": "pending",
+     "notes": "<strong>Not run as a section.</strong> Fragments were covered incidentally and are worth recording: required-field validation refused an inspection completion without a condition rating and an audit without an outcome; the console stayed clean across every screen driven this round apart from two React Router v7 future-flag warnings, which are advisory; and no screen threw during the run except the one crash this round found and fixed (\u2018lineQty is not defined\u2019). Phone width, dark mode, keyboard-only navigation, double-submit and search/filter/sort agreement were <strong>not</strong> tested."
+    }
+   ]
+  },
+  {
+   "title": "Regression cards for this round's fixes",
+   "blurb": "The fixes touched shared code \u2014 a capability function both sides read, the app's error display at 113 sites, the money formatter, and the asset health engine. These are the things most likely to have been broken by them.",
+   "tests": [
+    {
+     "title": "The health score still agrees with the breakdown that explains it",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "A new defect found this round, not carried over from round 1: an ordinary asset edit rewrote the headline health score from a different engine than the breakdown, and the two stopped agreeing.",
+     "steps": [
+      "Note an asset's health score and open Show the working.",
+      "Edit the asset \u2014 change anything and Save.",
+      "Re-read the score and the breakdown."
+     ],
+     "expect": "The score after the edit still reconciles with the components shown beneath it.",
+     "result": "pass",
+     "notes": "<strong>Found, diagnosed and fixed in this round.</strong> Adding coordinates to NGML-MTR-0042 dropped its health from 69 to 31 while the breakdown beneath it was unchanged and still summed to 69 \u2014 the exact reconciliation round 1 had praised. Cause: two health engines. The asset PATCH route called the legacy SQL <code>recompute_asset_health_for()</code>, a linear decay between the maintenance dates that writes health_score and touches neither health_score_components nor health_score_computed_at; the five-signal engine that produces the breakdown had replaced it everywhere else. The edit form always submits both maintenance dates, so <em>every</em> asset save took the legacy path. Confirmed in the database: score 31 against components timestamped several minutes earlier and summing to 68.5. Fixed by routing the PATCH through refreshAssetHealth() like every other write \u2014 the file already had a recomputeDerived() helper doing exactly that, and its own comment said the five-signal engine had replaced the decay. Re-ran the identical edit: health returned to <strong>69</strong>, matching the breakdown, with the components timestamp now moving with the score. This also corrected a stale test \u2014 see the note in the round-2 results doc.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Error messages did not break the screens they were swept through",
+     "roles": [
+      "All roles"
+     ],
+     "intro": "The error sweep rewrote the displayed expression at 113 call sites across 25 files. A bad rewrite would show a wrong message, or crash a catch block.",
+     "steps": [
+      "Trigger a refusal on several different screens.",
+      "Check each reads as a sentence and nothing crashes."
+     ],
+     "expect": "Refusals read as sentences; no screen throws; bespoke messages survive.",
+     "result": "pass",
+     "notes": "Spot-checked across sign-in, depreciation, work orders, compliance, spare parts, settings and the orphaned-account screen. Every refusal seen read as a sentence, and no catch block threw. The sweep was deliberately conservative: it replaced only the raw-code fallback and left every bespoke ternary in place, so messages like \u201cThe ceiling has to be above the floor.\u201d and \u201cAn outcome is required to complete an audit.\u201d are untouched. The app builds clean and 192 API tests pass. <strong>Not exhaustive</strong> \u2014 25 files were edited and only a subset of their error paths were reachable in one session."
+    },
+    {
+     "title": "The rbac carve-out did not strip capabilities it should not",
+     "roles": [
+      "Auditor",
+      "Executive / Viewer",
+      "System Admin"
+     ],
+     "intro": "Making <code>*:read</code> stop covering audit:read could plausibly have broken the Auditor, who reads everything, or the owner.",
+     "steps": [
+      "Sign in as each role and check what they can still reach."
+     ],
+     "expect": "Only audit access changes, and only for wildcard roles that never named it.",
+     "result": "pass",
+     "notes": "Covered by six assertions in uatRound2.test.ts: the viewer loses audit:read but keeps asset:read, wo:read and compliance:read; the auditor's explicitly listed audit:read is now live rather than redundant; the owner's '*' is unaffected; and a per-user extra grant still restores audit:read to a viewer, so an admin can still delegate it deliberately. The viewer is also refused GET /api/audit-log over HTTP. Verified on screen for the Viewer (Admin gone from nav, /admin redirects). <strong>Not verified on screen for the Auditor</strong> \u2014 the account exists and the capability logic is tested, but nobody signed in as it this round."
+    },
+    {
+     "title": "Report gating did not lock out the roles that should have reports",
+     "roles": [
+      "System Admin",
+      "Operations Manager"
+     ],
+     "intro": "Adding requireCap to two GETs could refuse callers who legitimately hold report:read.",
+     "steps": [
+      "Sign in as the owner and open Reports and its Analytics tab."
+     ],
+     "expect": "Roles holding report:read still get the page and the rollup.",
+     "result": "pass",
+     "notes": "Verified for the owner on screen (Reports opens, the Analytics tab renders) and by test for both the owner (200 on both routes) and the HSE officer (200, with book value nulled rather than refused). <strong>Not verified on screen</strong> for the Operations Manager or Maintenance Engineer, who also hold report:read.",
+     "signin": [
+      "owner"
+     ]
+    }
+   ]
+  }
+ ]
+}
