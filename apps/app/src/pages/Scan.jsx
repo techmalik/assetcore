@@ -4,6 +4,7 @@ import jsQR from 'jsqr'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { getAssetByAin } from '../lib/db/assets'
+import { errorText } from '../lib/errors'
 
 const CRITICALITY_CLASS = { critical: 'badge-r', high: 'badge-a', medium: 'badge-b', low: 'badge-n' }
 const STATUS_CLASS = { critical: 'badge-r', attention: 'badge-a', operational: 'badge-g', offline: 'badge-n' }
@@ -52,7 +53,7 @@ export default function Scan({ dark, toggleDark }) {
     try {
       setAsset(await getAssetByAin(tag))
     } catch (e) {
-      setError(e.status === 404 ? `No asset with tag "${tag}" in this organisation.` : e.message || 'Lookup failed.')
+      setError(e.status === 404 ? `No asset with tag "${tag}" in this organisation.` : errorText(e, 'Lookup failed.'))
     } finally {
       setLooking(false)
     }
@@ -195,7 +196,7 @@ export default function Scan({ dark, toggleDark }) {
                 <Field label="Category" value={asset.category?.name} />
                 <Field label="Manufacturer" value={[asset.manufacturer, asset.model].filter(Boolean).join(' ')} />
                 <Field label="Serial number" value={asset.serial_number} mono />
-                <Field label="Commissioned" value={asset.commission_date} mono />
+                <Field label="Installed" value={asset.install_date} mono />
                 <Field label="Warranty expires" value={asset.warranty_expiry} mono />
                 <Field label="Custodian" value={asset.custodian?.full_name} />
                 <div style={{ padding: 14 }}>

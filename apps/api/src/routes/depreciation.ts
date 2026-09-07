@@ -52,7 +52,7 @@ function resolveBasis(
     salvage_value_cents: string | number | null
     useful_life_years: string | number | null
     depreciation_method: string | null
-    commission_date: string | null
+    install_date: string | null
     purchase_date: string | null
   }
 ): Resolved | { missing: string } {
@@ -62,8 +62,8 @@ function resolveBasis(
   const life = input.useful_life_years ?? (asset.useful_life_years == null ? null : Number(asset.useful_life_years))
   if (life == null || life <= 0) return { missing: 'useful life in years' }
 
-  const start = input.start_date ?? asset.commission_date ?? asset.purchase_date
-  if (!start) return { missing: 'a commission or purchase date' }
+  const start = input.start_date ?? asset.install_date ?? asset.purchase_date
+  if (!start) return { missing: 'an install or purchase date' }
 
   const method = input.method ?? (asset.depreciation_method as Resolved['method'] | null) ?? 'straight_line'
 
@@ -77,8 +77,12 @@ function resolveBasis(
   }
 }
 
+// install_date, not commission_date: migration 0021 records that the two
+// branches named the same field differently and that install_date won. This
+// list still asked for the losing name, so every basis lookup threw
+// "column commission_date does not exist" and the preview 500'd.
 const ASSET_BASIS_COLUMNS = `purchase_value_cents, salvage_value_cents, useful_life_years,
-  depreciation_method, commission_date, purchase_date`
+  depreciation_method, install_date, purchase_date`
 
 depreciationRouter.get('/depreciation/schedules', requireCap('depreciation:read'), async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
