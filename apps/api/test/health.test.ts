@@ -154,15 +154,30 @@ describe('threshold crossing: maintenance / auto work order (configurable, defau
   })
 })
 
-// Health is derived from the maintenance window, so the maintenance dates are
-// the only lever a user has on it. These replace an older test that PATCHed
-// health_score directly — that path is gone (see below).
+// These replace an older test that PATCHed health_score directly — that path
+// is gone (see below). Note that the maintenance dates are no longer the lever
+// on health they were under the SQL decay; see the note inside the first test.
 describe('date changes recompute health synchronously (no waiting for the cron)', () => {
-  it('PATCHing next_maintenance_at into the near future drafts the auto-WO within the same request/response cycle', async () => {
+  // This used to assert health_score === 5 and an auto-WO, both read straight
+  // off recompute_asset_health_for()'s linear decay: 95 days elapsed of a
+  // 100-day window => 5%. That was only ever true because the asset PATCH
+  // route still called the legacy SQL decay after the five-signal engine had
+  // replaced it everywhere else — and because it did, the same request wrote
+  // health_score without refreshing health_score_components, so the number and
+  // the "Show the working" breakdown that is supposed to explain it drifted
+  // apart on every ordinary save (UAT round 2).
+  //
+  // The route now goes through refreshAssetHealth() like every other write, so
+  // the decay is one weighted signal among five rather than the whole score,
+  // and pinning an exact 5 would pin the bug back in place. What this test is
+  // actually named for — the recompute happening inside the request rather
+  // than at 01:00 tomorrow — is asserted directly instead, together with the
+  // score and its breakdown agreeing. The 30% auto-WO crossing keeps its own
+  // coverage in the apply_asset_health tests above.
+  it('PATCHing the maintenance window rescores the asset within the same request/response cycle', async () => {
     const assetId = await createHealthTestAsset({ healthScore: 40 })
     const api = await apiAs(USERS.ownerA.email)
 
-    // A window 95 days elapsed with 5 to go => 5% health, under both thresholds.
     const lastMaint = new Date(Date.now() - 95 * 86400000).toISOString().slice(0, 10)
     const nextMaint = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10)
 
@@ -173,12 +188,34 @@ describe('date changes recompute health synchronously (no waiting for the cron)'
     // No delay, no cron wait — assert immediately after the response returns.
     await withClient(async (c) => {
       const { rows } = await c.query(
-        `select count(*)::int as n from public.work_orders where asset_id = $1 and title like 'Auto:%' and status <> 'closed'`,
+        'select health_score, health_score_computed_at, health_score_components from public.assets where id = $1',
         [assetId]
       )
-      expect(rows[0].n).toBe(1)
-      const { rows: asset } = await c.query('select health_score from public.assets where id = $1', [assetId])
-      expect(asset[0].health_score).toBe(5)
+      const asset = rows[0]
+
+      // Rescored by this request, not left at the seeded 40.
+      expect(asset.health_score_computed_at).not.toBeNull()
+      expect(asset.health_score).not.toBe(40)
+
+      // And the breakdown was written by the same pass, so it explains the
+      // number printed above it.
+      const breakdown = asset.health_score_components
+      expect(breakdown?.components?.length).toBeGreaterThan(0)
+      const points = breakdown.components.reduce(
+        (sum: number, comp: { points: number | null }) => sum + (comp.points ?? 0), 0
+      )
+      expect(Math.round((points / breakdown.weight_applied) * 100)).toBe(asset.health_score)
+
+      // Worth stating plainly, because the block comment above this test used
+      // to claim the opposite: under the five-signal engine the asset's own
+      // maintenance dates are not a health input at all. The "Overdue
+      // maintenance" signal reads overdue PM tasks and work orders past SLA
+      // (health.ts:13), so moving these dates triggers the recompute without
+      // being one of the things it measures. That is why nothing here asserts
+      // a particular score — only that the recompute ran and agrees with
+      // itself.
+      const maintenance = breakdown.components.find((comp: { key: string }) => comp.key === 'maintenance')
+      expect(maintenance).toBeTruthy()
     })
   })
 

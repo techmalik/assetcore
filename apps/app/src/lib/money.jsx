@@ -50,7 +50,11 @@ export function fmtMoney(cents, { zero = '₦0', code = CURRENCY_CODE } = {}) {
   const abs = Math.abs(n)
   if (abs >= 1_000_000_000) return `${sign}${sym}${(abs / 1_000_000_000).toFixed(1)}B`
   if (abs >= 1_000_000) return `${sign}${sym}${(abs / 1_000_000).toFixed(1)}M`
-  return `${sign}${sym}${abs.toLocaleString()}`
+  // Cap at 2: money has two decimal places. A bare toLocaleString() here let a
+  // converted figure through at whatever precision the FX multiply produced,
+  // which is how a secondary currency rendered as $97,543.333 next to a base
+  // figure of ₦150,066,666.67.
+  return `${sign}${sym}${abs.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
 }
 
 /** Exact, non-abbreviated form for detail views: ₦1,234,567.89 */
@@ -89,9 +93,16 @@ export function useMoney() {
     fxRateAt: org?.fx_rate_at || null,
     money: (cents) => fmtMoney(cents, { zero: '—', code: base }),
     moneyFull: (cents) => fmtMoneyExact(cents, { code: base }),
-    secondaryOf: (cents) => {
+    // `full` mirrors the base figure's own formatting: an exact base figure
+    // gets an exact conversion, a compact one gets a compact conversion. Left
+    // to itself the pair disagreed — ₦150,066,666.67 ($97,543.333) — with the
+    // two halves of one line rounded to different numbers of places.
+    secondaryOf: (cents, { full = false } = {}) => {
       const converted = convert(cents, org)
-      return converted == null ? null : fmtMoney(converted, { zero: '—', code: org.secondary_currency })
+      if (converted == null) return null
+      return full
+        ? fmtMoneyExact(converted, { zero: '—', code: org.secondary_currency })
+        : fmtMoney(converted, { zero: '—', code: org.secondary_currency })
     },
     /** What the tooltip says, so nobody mistakes the conversion for live FX. */
     rateNote: org?.secondary_currency && org?.fx_rate
@@ -112,7 +123,7 @@ export function useMoney() {
 export function Money({ cents, full = false, style }) {
   const { money, moneyFull, secondaryOf, rateNote } = useMoney()
   const primary = full ? moneyFull(cents) : money(cents)
-  const second = secondaryOf(cents)
+  const second = secondaryOf(cents, { full })
 
   if (!second) return <span style={style}>{primary}</span>
   return (
