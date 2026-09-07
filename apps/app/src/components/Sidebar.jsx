@@ -45,7 +45,7 @@ const OPERATIONS = [
   { key: 'compliance', label: 'Compliance', path: '/compliance', icon: icons.compliance },
   { key: 'depreciation', label: 'Depreciation', path: '/depreciation', icon: icons.depreciation, cap: 'depreciation:read' },
   { key: 'analytics', label: 'Analytics', path: '/analytics', icon: icons.analytics, cap: 'report:read' },
-  { key: 'reports', label: 'Reports', path: '/reports', icon: icons.reports },
+  { key: 'reports', label: 'Reports', path: '/reports', icon: icons.reports, cap: 'report:read' },
   { key: 'devices', label: 'Devices', path: '/devices', icon: icons.devices },
 ]
 

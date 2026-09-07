@@ -77,6 +77,20 @@ export const ROLE_CAPABILITIES = {
   viewer: ['*:read'],
 }
 
+// Read capabilities that '*:read' deliberately does NOT satisfy — they have
+// to be granted by name. The audit log records who did what to whom across
+// the whole organisation, including who invited which member; "read-only
+// across entities" is a statement about business data, not a licence to read
+// the org's own security record.
+//
+// The auditor role already listed 'audit:read' alongside '*:read', which only
+// makes sense if the author believed the wildcard did not cover it. It did,
+// so that explicit grant was dead and every '*:read' role — viewer included —
+// silently inherited audit access, and with it an Admin tab (audit:read is in
+// ADMIN_ENTRY_CAPS). This list makes the wildcard mean what it was written to
+// mean and brings the auditor's explicit grant back to life.
+export const EXPLICIT_ONLY_CAPS = ['audit:read']
+
 /** Role → capability check. Per-user grants (extraCaps) sit on top of the
  * role baseline. */
 export function can(roleKey, capability, extraCaps = []) {
@@ -85,7 +99,7 @@ export function can(roleKey, capability, extraCaps = []) {
   if (!caps) return false
   if (caps.includes('*')) return true
   if (caps.includes(capability)) return true
-  if (capability.endsWith(':read') && caps.includes('*:read')) return true
+  if (capability.endsWith(':read') && caps.includes('*:read') && !EXPLICIT_ONLY_CAPS.includes(capability)) return true
   return false
 }
 

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
 import { isConfigured } from './lib/apiClient'
 import { AuthProvider, useAuth } from './lib/AuthContext'
@@ -15,6 +15,7 @@ import Auth from './pages/Auth.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import Onboarding from './pages/Onboarding.jsx'
+import NoOrganisation from './pages/NoOrganisation.jsx'
 import ForcePasswordChange from './pages/ForcePasswordChange.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Assets from './pages/Assets.jsx'
@@ -48,8 +49,22 @@ function Splash() {
   )
 }
 
+/**
+ * A set-password link works on its own token, not on whoever happens to be
+ * signed in — and the person holding it is usually the admin who just
+ * generated it. Redirecting an authenticated visitor to the dashboard made
+ * the link look broken and gave no hint that signing out first was the trick.
+ * With a token present the form is shown to anyone; without one there is
+ * nothing to do here, so a signed-in visitor still goes to the app.
+ */
+function ResetPasswordRoute({ authed, to }) {
+  const [params] = useSearchParams()
+  if (!params.get('token') && authed) return <Navigate to={to} replace />
+  return <ResetPassword />
+}
+
 function Routed() {
-  const { loading, authed, needsOnboarding, mustChangePassword, roleKey, extraCaps } = useAuth()
+  const { loading, authed, orgId, needsOnboarding, mustChangePassword, roleKey, extraCaps } = useAuth()
   const [dark, setDark] = useState(false)
 
   const toggleDark = () => {
@@ -71,6 +86,12 @@ function Routed() {
   const gate = (el) => {
     if (!authed) return <Navigate to="/auth" replace />
     if (mustChangePassword) return <Navigate to="/force-password-change" replace />
+    // No organisation means no scope: every page below is org-scoped and the
+    // API answers all of them with no_org_context. Say so once, here, instead
+    // of letting each page render its chrome and then fail on its own.
+    // Members are invited, never self-signed-up, so this can only be an
+    // account whose membership row is missing.
+    if (!orgId) return <NoOrganisation />
     if (needsOnboarding) return <Navigate to="/onboarding" replace />
     return el
   }
@@ -81,7 +102,7 @@ function Routed() {
       <Route path="/" element={<Navigate to={authed ? postAuthPath() : '/auth'} replace />} />
       <Route path="/auth" element={authed ? <Navigate to={postAuthPath()} replace /> : <Auth />} />
       <Route path="/forgot-password" element={authed ? <Navigate to={postAuthPath()} replace /> : <ForgotPassword />} />
-      <Route path="/reset-password" element={authed ? <Navigate to={postAuthPath()} replace /> : <ResetPassword />} />
+      <Route path="/reset-password" element={<ResetPasswordRoute authed={authed} to={postAuthPath()} />} />
       <Route path="/force-password-change" element={
         !authed ? <Navigate to="/auth" replace />
         : mustChangePassword ? <ForcePasswordChange />
@@ -110,7 +131,7 @@ function Routed() {
       <Route path="/integrations" element={gate(<Integrations {...props} />)} />
       <Route path="/notifications" element={gate(<Notifications {...props} />)} />
       <Route path="/settings" element={gate(<Settings {...props} />)} />
-      <Route path="/reports" element={gate(<Reports {...props} />)} />
+      <Route path="/reports" element={gate(can(roleKey, 'report:read', extraCaps) ? <Reports {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/admin" element={gate(ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c, extraCaps)) ? <Admin {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

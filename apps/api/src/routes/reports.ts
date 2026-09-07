@@ -9,7 +9,7 @@ import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
-import { requireCap } from '../middleware/rbac.js'
+import { requireCap, hasCap } from '../middleware/rbac.js'
 import { config } from '../config.js'
 import { buildReportData, REPORT_KINDS, type ReportKind } from '../reportBuilders.js'
 
@@ -23,7 +23,7 @@ const SELECT = `
   left join public.users u on u.id = r.created_by
 `
 
-reportsRouter.get('/reports', async (req, res) => {
+reportsRouter.get('/reports', requireCap('report:read'), async (req, res) => {
   const limit = Number(req.query.limit) || 50
   const rows = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(`${SELECT} order by r.created_at desc limit $1`, [limit]).then((r) => r.rows)
@@ -38,7 +38,12 @@ reportsRouter.get('/reports', async (req, res) => {
 // site), silently inflating sum(purchase_value_cents)/sum(cost_cents). RLS
 // (via withOrgContext) already scopes every table here to the caller's org
 // and site access, so no separate scoping logic is needed.
-reportsRouter.get('/reports/location-analytics', async (req, res) => {
+reportsRouter.get('/reports/location-analytics', requireCap('report:read'), async (req, res) => {
+  // Book value is depreciation data, and this rollup is the only place it was
+  // reachable without depreciation:read — /analytics and /depreciation both
+  // gate it. Withheld as null rather than zero so the client can say "not
+  // shown" instead of rendering a confident, wrong ₦0.
+  const showNbv = hasCap(req, 'depreciation:read')
   const data = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows: locations } = await c.query(`
       with asset_agg as (
@@ -90,7 +95,10 @@ reportsRouter.get('/reports/location-analytics', async (req, res) => {
       order by count desc
     `)
 
-    return { locations, categories }
+    return {
+      locations: showNbv ? locations : locations.map(({ total_nbv_cents, ...rest }) => ({ ...rest, total_nbv_cents: null })),
+      categories,
+    }
   })
   res.json(data)
 })
