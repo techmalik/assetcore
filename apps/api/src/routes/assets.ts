@@ -421,9 +421,17 @@ assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) =
     const { rows } = await c.query(`update public.assets set ${setSql} where id = $1 returning id`, [req.params.id, ...values])
     if (!rows[0]) return null
     if (touchesHealth) {
+      // The five-signal engine, not recompute_asset_health_for(). The legacy
+      // SQL decay writes health_score from the maintenance window alone and
+      // leaves health_score_components and health_score_computed_at untouched,
+      // so every asset edit — the form always submits both maintenance dates —
+      // overwrote the headline with a number the stored breakdown does not
+      // explain. "Show the working" then reconciled to a different total than
+      // the score printed above it.
+      //
       // Attributed to the caller, so the resulting asset_activity alert names
       // whoever moved the dates rather than looking like a cron event.
-      await c.query('select public.recompute_asset_health_for($1, $2)', [req.params.id, req.claims!.sub])
+      await refreshAssetHealth(c, req.params.id as string, req.claims!.sub)
     }
     if (touchesDepreciation) {
       await c.query('select public.recompute_asset_depreciation_for($1)', [req.params.id])
