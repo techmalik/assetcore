@@ -6,6 +6,8 @@ import StatusBadge from '../components/StatusBadge.jsx'
 import {
   listWorkOrders, getWorkOrder, createWorkOrder, updateWorkOrder, transitionWorkOrder, addWorkOrderComment,
   uploadWorkOrderAttachment,
+  addWorkOrderTask, updateWorkOrderTask, deleteWorkOrderTask,
+  addWorkOrderPart, deleteWorkOrderPart,
   WO_TRANSITIONS, WO_STATUS_LABEL, WO_PRIORITY_LABEL, WO_TYPE_LABEL, WO_PRIORITY_STYLE, woStatusStyle,
 } from '../lib/db/workOrders'
 import { listSites } from '../lib/db/sites'
@@ -17,7 +19,9 @@ import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useMoney } from '../lib/money'
 import { listSpareParts } from '../lib/db/spareParts'
+import { listApprovals, submitApproval, APPROVAL_STATUS_META } from '../lib/db/approvals'
 import { useLocationFilter } from '../lib/LocationFilterContext'
+import { errorText } from '../lib/errors'
 
 const STATUS_COL_ORDER = ['draft', 'new', 'assigned', 'in_progress', 'awaiting_parts', 'inspection', 'closed']
 
@@ -70,7 +74,7 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
       })
       toast.success(`Work order ${wo.ref} created.`)
       onSave()
-    } catch (ex) { setErr(ex.message || 'Create failed.'); setSaving(false) }
+    } catch (ex) { setErr(errorText(ex, 'Create failed.')); setSaving(false) }
   }
 
   return (
@@ -191,7 +195,7 @@ function EditWOModal({ wo, users, canAssign, onClose, onSaved }) {
       await updateWorkOrder(wo.id, patch)
       toast.success('Work order updated.')
       onSaved()
-    } catch (ex) { setErr(ex.message || 'Save failed.'); setSaving(false) }
+    } catch (ex) { setErr(errorText(ex, 'Save failed.')); setSaving(false) }
   }
 
   return (
@@ -278,7 +282,7 @@ function Checklist({ wo, canEdit, onChanged }) {
   async function toggle(task) {
     setBusy(true)
     try { await updateWorkOrderTask(wo.id, task.id, { done: !task.done }); await onChanged() }
-    catch (e) { alert(e.message) } finally { setBusy(false) }
+    catch (e) { alert(errorText(e)) } finally { setBusy(false) }
   }
 
   async function add(e) {
@@ -286,13 +290,13 @@ function Checklist({ wo, canEdit, onChanged }) {
     if (!adding.trim()) return
     setBusy(true)
     try { await addWorkOrderTask(wo.id, adding.trim()); setAdding(''); await onChanged() }
-    catch (e) { alert(e.message) } finally { setBusy(false) }
+    catch (e) { alert(errorText(e)) } finally { setBusy(false) }
   }
 
   async function remove(task) {
     setBusy(true)
     try { await deleteWorkOrderTask(wo.id, task.id); await onChanged() }
-    catch (e) { alert(e.message) } finally { setBusy(false) }
+    catch (e) { alert(errorText(e)) } finally { setBusy(false) }
   }
 
   return (
@@ -336,13 +340,125 @@ function Checklist({ wo, canEdit, onChanged }) {
   )
 }
 
+/**
+ * Spend authorisation for a job.
+ *
+ * The approval matrix has always let an owner configure work_order/wo_cost
+ * bands, and the API has always accepted the request — but nothing in the app
+ * ever raised one, so `submitApproval` had a single caller (defect deferral)
+ * and a spend-authorisation matrix was a form that decided nothing. Setting a
+ * Cost still does not gate anything on its own; this is the control that puts
+ * the figure in front of whoever the band routes it to.
+ */
+function SpendApproval({ wo, canRead, canSubmit, onChanged }) {
+  const { money } = useMoney()
+  const [rows, setRows] = useState([])
+  const [asking, setAsking] = useState(false)
+  const [notes, setNotes] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const load = useCallback(async () => {
+    if (!canRead) return
+    try { setRows(await listApprovals({ entity_type: 'work_order', entity_id: wo.id })) }
+    catch { /* section stays empty rather than breaking the panel */ }
+  }, [wo.id, canRead])
+  useEffect(() => { load() }, [load])
+
+  if (!canRead) return null
+
+  const amount = Number(wo.cost_cents ?? wo.estimated_cost_cents ?? 0)
+
+  const submit = async () => {
+    setErr(''); setBusy(true)
+    try {
+      await submitApproval({
+        entity_type: 'work_order', entity_id: wo.id, kind: 'wo_cost',
+        title: `${wo.ref} — spend authorisation`,
+        amount_cents: amount,
+        notes: notes.trim() || null,
+      })
+      setAsking(false); setNotes(''); await load(); if (onChanged) await onChanged()
+    } catch (ex) {
+      setErr(ex.code === 'no_matching_rule'
+        ? 'No approval rule covers job spend at this amount yet. An owner adds one on Approvals → Matrix.'
+        : ex.code === 'already_pending' ? 'A spend request is already waiting on this job.'
+        : errorText(ex, 'Could not send the request.'))
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <div>
+      <SectionHead>Spend authorisation</SectionHead>
+      {rows.length > 0 && rows.map((a) => {
+        const meta = APPROVAL_STATUS_META[a.status] || APPROVAL_STATUS_META.pending
+        return (
+          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 4 }}>
+            <span style={{ flex: 1, color: 'var(--n700)' }}>
+              {a.status === 'pending' ? `With ${a.current_role_label || '—'}` : 'Decided'}
+              {a.amount_cents != null ? ` · ${money(a.amount_cents)}` : ''}
+            </span>
+            <span className={`badge ${meta.cls}`}>{meta.label}</span>
+          </div>
+        )
+      })}
+
+      {rows.length === 0 && !asking && (
+        <p style={{ fontSize: 12, color: 'var(--n400)', marginBottom: canSubmit ? 8 : 0 }}>
+          No spend authorisation has been requested for this job.
+        </p>
+      )}
+
+      {err && <div style={{ fontSize: 12, color: 'var(--srt)', marginBottom: 8 }}>{err}</div>}
+
+      {canSubmit && !asking && wo.status !== 'closed' && (
+        <button onClick={() => setAsking(true)} className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12 }}>
+          Request spend approval
+        </button>
+      )}
+
+      {canSubmit && asking && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <p style={{ fontSize: 11.5, color: 'var(--n500)', lineHeight: 1.5, margin: 0 }}>
+            {amount > 0
+              ? <>Sending <strong>{money(amount)}</strong> for authorisation — the band this falls in decides who it goes to.</>
+              : <>This job has no cost on it yet, so it will be sent as {money(0)} and will only match a band that starts at zero.</>}
+          </p>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Why this spend is needed (optional)"
+            className="input" style={{ height: 'auto', padding: '8px 10px', fontSize: 12, resize: 'vertical' }} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={submit} disabled={busy} className="btn btn-primary" style={{ height: 30, padding: '0 14px', fontSize: 12 }}>
+              {busy ? 'Sending…' : 'Send for approval'}
+            </button>
+            <button onClick={() => { setAsking(false); setErr('') }} className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12 }}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** What a reserved line actually costs against: what was used once someone
+ * recorded it, and what was reserved until then. Referenced twice in the parts
+ * table but never defined — the list only ever rendered empty, so the
+ * ReferenceError had nowhere to fire until reserved lines started showing. */
+// consumed_at, not a null check on quantity_used: the column defaults to 0.00
+// rather than null, so `quantity_used ?? quantity_required` reads 0 on every
+// line that has not been consumed yet — a reserved part showed as "0x" and
+// contributed nothing to the total.
+const lineQty = (l) => Number(l.consumed_at ? l.quantity_used : l.quantity_required) || 0
+
 function PartsSection({ wo, canEdit, onChanged }) {
   const { money } = useMoney()
   const [parts, setParts] = useState([])
   const [partId, setPartId] = useState('')
   const [qty, setQty] = useState('1')
   const [busy, setBusy] = useState(false)
-  const lines = wo.parts_lines || []
+  // `parts`, not `parts_lines`: GET /work-orders/:id returns { ...wo, activity,
+  // tasks, parts, defects }, the joined line rows overriding the work order's
+  // own legacy free-text `parts` column. Reading a key nothing ever sets meant
+  // reserved parts were written but never shown back.
+  const lines = wo.parts || []
 
   useEffect(() => { listSpareParts().then(setParts).catch(() => setParts([])) }, [])
 
@@ -351,13 +467,13 @@ function PartsSection({ wo, canEdit, onChanged }) {
     if (!partId || !Number(qty)) return
     setBusy(true)
     try { await addWorkOrderPart(wo.id, { part_id: partId, quantity_required: Number(qty) }); setPartId(''); setQty('1'); await onChanged() }
-    catch (e2) { alert(e2.message) } finally { setBusy(false) }
+    catch (e2) { alert(errorText(e2)) } finally { setBusy(false) }
   }
 
   async function remove(line) {
     setBusy(true)
     try { await deleteWorkOrderPart(wo.id, line.id) ; await onChanged() }
-    catch (e) { alert(e.message === 'already_consumed' ? 'That part has already left the store. Reverse it with a stock adjustment instead.' : e.message) }
+    catch (e) { alert(e.message === 'already_consumed' ? 'That part has already left the store. Reverse it with a stock adjustment instead.' : errorText(e)) }
     finally { setBusy(false) }
   }
 
@@ -413,6 +529,7 @@ function PartsSection({ wo, canEdit, onChanged }) {
 
 function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, users }) {
   const toast = useToast()
+  const { roleKey, extraCaps } = useAuth()
   const [wo, setWo] = useState(null)
   const [loading, setLoading] = useState(true)
   const [comment, setComment] = useState('')
@@ -444,7 +561,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
       setWo(fresh)
       onUpdate()
       toast.success(`Work order moved to ${WO_STATUS_LABEL[newStatus] || newStatus}.`)
-    } catch (e) { toast.error(e.message || 'Failed to update work order status.') }
+    } catch (e) { toast.error(errorText(e, 'Failed to update work order status.')) }
     finally { setTransitioning(false) }
   }
 
@@ -456,7 +573,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
       setComment('')
       const fresh = await getWorkOrder(wo.id)
       setWo(fresh)
-    } catch (ex) { toast.error(ex.message || 'Failed to post comment.') }
+    } catch (ex) { toast.error(errorText(ex, 'Failed to post comment.')) }
     finally { setPosting(false) }
   }
 
@@ -469,13 +586,13 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
       const fresh = await getWorkOrder(wo.id)
       setWo(fresh)
       toast.success('Attachment uploaded.')
-    } catch (ex) { toast.error(ex.message || 'Failed to upload attachment.') }
+    } catch (ex) { toast.error(errorText(ex, 'Failed to upload attachment.')) }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
   }
 
   async function downloadAttachment(att) {
     try { await api.download(`/files/${att.url}`, att.name) }
-    catch (ex) { toast.error(ex.message || 'Failed to download file.') }
+    catch (ex) { toast.error(errorText(ex, 'Failed to download file.')) }
   }
 
   if (loading) return (
@@ -566,6 +683,9 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
 
         <PartsSection wo={wo} canEdit={canEdit} onChanged={reload} />
 
+        <SpendApproval wo={wo} canRead={can(roleKey, 'approval:read', extraCaps)}
+          canSubmit={can(roleKey, 'approval:create', extraCaps)} onChanged={reload} />
+
         {wo.defects?.length > 0 && (
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--n500)', textTransform: 'uppercase', letterSpacing: '.05em', fontFamily: 'var(--ff-m)', marginBottom: 8 }}>Raised from</div>
@@ -585,10 +705,16 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--n500)', textTransform: 'uppercase', letterSpacing: '.05em', fontFamily: 'var(--ff-m)' }}>Activity</div>
-            <label style={{ fontSize: 11, color: 'var(--b600)', cursor: uploading ? 'not-allowed' : 'pointer' }}>
-              {uploading ? 'Uploading…' : 'Attach file'}
-              <input ref={fileRef} type="file" onChange={handleAttach} disabled={uploading} style={{ display: 'none' }} />
-            </label>
+            {/* Both this and the comment box below post to routes gated on
+                wo:update. Offering them to a read-only role produced a control
+                that always failed — enforcement was right, the affordance was
+                the bug. */}
+            {canEdit && (
+              <label style={{ fontSize: 11, color: 'var(--b600)', cursor: uploading ? 'not-allowed' : 'pointer' }}>
+                {uploading ? 'Uploading…' : 'Attach file'}
+                <input ref={fileRef} type="file" onChange={handleAttach} disabled={uploading} style={{ display: 'none' }} />
+              </label>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(wo.activity || []).length === 0 && <p style={{ fontSize: 12, color: 'var(--n400)' }}>No activity yet.</p>}
@@ -618,10 +744,12 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
         </div>
       </div>
 
-      <form onSubmit={postComment} style={{ borderTop: 'var(--bdr)', padding: '12px 18px', display: 'flex', gap: 8, flexShrink: 0 }}>
-        <input value={comment} onChange={e => setComment(e.target.value)} className="input" placeholder="Add a comment…" style={{ flex: 1, height: 34, fontSize: 13 }} />
-        <button type="submit" disabled={posting || !comment.trim()} className="btn btn-primary" style={{ height: 34, padding: '0 14px', fontSize: 13, flexShrink: 0, opacity: !comment.trim() ? .5 : 1 }}>Post</button>
-      </form>
+      {canEdit && (
+        <form onSubmit={postComment} style={{ borderTop: 'var(--bdr)', padding: '12px 18px', display: 'flex', gap: 8, flexShrink: 0 }}>
+          <input value={comment} onChange={e => setComment(e.target.value)} className="input" placeholder="Add a comment…" style={{ flex: 1, height: 34, fontSize: 13 }} />
+          <button type="submit" disabled={posting || !comment.trim()} className="btn btn-primary" style={{ height: 34, padding: '0 14px', fontSize: 13, flexShrink: 0, opacity: !comment.trim() ? .5 : 1 }}>Post</button>
+        </form>
+      )}
 
       {editing && (
         <EditWOModal wo={wo} users={users} canAssign={canAssign}
@@ -680,7 +808,7 @@ export default function WorkOrders({ dark, toggleDark }) {
       ])
       setWos(filterStatus === 'open' ? w.filter(x => x.status !== 'closed') : w)
       setSites(s); setAssets(a); setUsers(u)
-    } catch (e) { setError(e.message || 'Failed to load work orders.') }
+    } catch (e) { setError(errorText(e, 'Failed to load work orders.')) }
     finally { setLoading(false) }
   }, [filterStatus, globalLocationId])
 
