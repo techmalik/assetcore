@@ -452,7 +452,7 @@
           <p>Get the app up, and build the six role accounts the rest of the plan signs in as. Everything downstream depends on this section passing.</p>
         </div>
         
-        <article class="card" data-test id="r1t01" data-result=""
+        <article class="card" data-test id="r1t01" data-result="pass"
                  data-number="01" data-round="1"
                  data-title="Start the app and sign in as the owner"
                  data-roles="Setup">
@@ -474,14 +474,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Ask Claude Code: <em>start the AssetCore app and API</em>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>http://localhost:5174</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as <code>a.okeke@ngml.example</code> / <code>Password123!</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Watch the browser console while the dashboard loads.</span></button></div>
             <p class="expect"><span>Expect</span>The Operations Dashboard renders with the NGML org name, a Network Health score, asset counts and an Active Alerts list. No red errors in the console.</p>
             <div class="res-group" role="group" aria-label="Result for test 01"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Owner signed in at http://localhost:5174; Operations Dashboard rendered for Nigeria Gas Marketing Limited with Network Health 68, 6 assets (83% operational), 6 open work orders and 10 active alerts. No console errors.">
               <label class="sr-only" for="r1t01-notes">Notes for test 01</label>
               <textarea id="r1t01-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t02" data-result=""
+        <article class="card" data-test id="r1t02" data-result="pass"
                  data-number="02" data-round="1"
                  data-title="Invite a member, set their password from the link, and sign in as them"
                  data-roles="System Admin">
@@ -503,14 +503,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; <strong>Users &amp; Roles</strong> &rarr; <strong>Invite</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Full name <code>UAT Ops Manager</code>, email <code>uat.ops@assetcore.test</code>, role <strong>Operations Manager</strong>. Send Invite.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Copy the set-password link the modal shows, open it in the address bar.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Set the password to <code>UatPass123!</code>, then sign in as that account.</span></button></div>
             <p class="expect"><span>Expect</span>The modal shows an <code>/reset-password?token=&hellip;</code> link. The link opens a set-password form, accepts the password, and the new account signs in and lands on a dashboard scoped to NGML with the Operations Manager navigation.</p>
             <div class="res-group" role="group" aria-label="Result for test 02"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Invited UAT Ops Manager; the modal printed http://localhost:5174/reset-password?token=7d528acafb… on screen. Set UatPass123! and signed in — landed on the NGML dashboard with the Operations Manager nav. NOTE: the link only works signed out; opening it while still signed in as the owner silently redirects to /dashboard (see failure F2).">
               <label class="sr-only" for="r1t02-notes">Notes for test 02</label>
               <textarea id="r1t02-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t03" data-result=""
+        <article class="card" data-test id="r1t03" data-result="pass"
                  data-number="03" data-round="1"
                  data-title="Create the remaining five role accounts"
                  data-roles="System Admin">
@@ -532,14 +532,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Invite <code>uat.eng@assetcore.test</code> as <strong>Maintenance Engineer</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Invite <code>uat.tech@assetcore.test</code> as <strong>Field Technician</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Invite <code>uat.hse@assetcore.test</code> as <strong>HSE / Compliance Officer</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Invite <code>uat.auditor@assetcore.test</code> as <strong>Auditor</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Invite <code>uat.viewer@assetcore.test</code> as <strong>Executive / Viewer</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Set each password to <code>UatPass123!</code> via its own link, and sign in once as each.</span></button></div>
             <p class="expect"><span>Expect</span>All five invites produce a working link, all five passwords set, and all five accounts sign in. Each lands on a dashboard, not an error, and the Users &amp; Roles list shows seven members with the right role labels.</p>
             <div class="res-group" role="group" aria-label="Result for test 03"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="All five invited in sequence (eng, tech, hse, auditor, viewer), each producing a distinct token — no collisions on the 2nd-6th run. All five passwords set and all five signed in. Users &amp; Roles then listed all seven members Active with the correct role labels.">
               <label class="sr-only" for="r1t03-notes">Notes for test 03</label>
               <textarea id="r1t03-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t04" data-result=""
+        <article class="card" data-test id="r1t04" data-result="fail"
                  data-number="04" data-round="1"
                  data-title="An account with no membership row signs in"
                  data-roles="Edge case">
@@ -561,14 +561,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign out.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as <code>paul.o@ngml.com</code> / <code>NgmlDemo2026</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Watch what the screen does for a good ten seconds, and watch the console and network panel.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try to reach <code>/dashboard</code> and <code>/assets</code> directly.</span></button></div>
             <p class="expect"><span>Expect</span>The app explains that the account has no organisation and offers a way out (sign out, or contact an admin). It must not hang on a spinner, loop between routes, throw an uncaught error, or show an empty dashboard chrome as if everything were fine.</p>
             <div class="res-group" role="group" aria-label="Result for test 04"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="REPRODUCED. paul.o@ngml.com / NgmlDemo2026 authenticates and lands on /dashboard with full app chrome: org name and initial render as &#x27;—&#x27; and &#x27;?&#x27;, the header sticks on &#x27;Network health overview · Loading…&#x27;, a red banner reads &#x27;Failed to load dashboard data: no_org_context&#x27;, and every tile shows &#x27;—&#x27;. /assets, /work-orders and /compliance all render and fail the same way with the same raw string. No crash and no redirect loop, and Sign out does work (returns to /auth) — but nothing explains the problem or offers a way forward, so the pass condition is not met. The nav is also silently truncated because with no membership the role key is undefined.">
               <label class="sr-only" for="r1t04-notes">Notes for test 04</label>
               <textarea id="r1t04-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t05" data-result=""
+        <article class="card" data-test id="r1t05" data-result="fail"
                  data-number="05" data-round="1"
                  data-title="Wrong password, and repeated failures"
                  data-roles="Edge case">
@@ -590,7 +590,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign out. Sign in as <code>a.okeke@ngml.example</code> with <code>wrongpassword</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Repeat with the wrong password five more times.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Then sign in with the correct password <code>Password123!</code>.</span></button></div>
             <p class="expect"><span>Expect</span>Each wrong attempt is refused with a message that does not reveal whether the email exists. Any lockout that trips says so plainly and names when it lifts. The correct password works afterwards (or the lockout is explained).</p>
             <div class="res-group" role="group" aria-label="Result for test 05"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Seven consecutive wrong-password attempts on a.okeke@ngml.example were all refused with no lockout, delay or captcha, and the correct password then worked normally — no brute-force protection. Each failure shows the bare string &#x27;invalid_credentials&#x27; rather than a sentence. Good news: an unknown address returns the identical message, so the form does not leak which accounts exist.">
               <label class="sr-only" for="r1t05-notes">Notes for test 05</label>
               <textarea id="r1t05-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -604,7 +604,7 @@
           <p>The chain the product exists for, walked end to end and then broken apart stage by stage.</p>
         </div>
         
-        <article class="card" data-test id="r1t06" data-result=""
+        <article class="card" data-test id="r1t06" data-result="fail"
                  data-number="06" data-round="1"
                  data-title="Raise an inspection against an asset"
                  data-roles="HSE Officer">
@@ -626,14 +626,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Inspections &rarr; <strong>New inspection</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Pick an asset, a template if one is offered, and a due date.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Save, then reopen it from the list.</span></button></div>
             <p class="expect"><span>Expect</span>The inspection saves, appears in the list with its asset and due date, and reopening shows exactly what was entered.</p>
             <div class="res-group" role="group" aria-label="Result for test 06"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="The New Inspection form has Title, Type, Scheduled date, Checklist, Site, Inspector and Notes — and NO asset field. Both inspections I created show ASSET &#x27;—&#x27; while every seeded one names an asset. An inspection therefore cannot be raised against an asset at all, which breaks the rest of the chain (see F6).">
               <label class="sr-only" for="r1t06-notes">Notes for test 06</label>
               <textarea id="r1t06-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t07" data-result=""
+        <article class="card" data-test id="r1t07" data-result="pass"
                  data-number="07" data-round="1"
                  data-title="An inspection cannot be completed without a 1-5 condition rating"
                  data-roles="HSE Officer">
@@ -655,14 +655,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the inspection from the previous test.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Work through the checklist items but leave the <strong>condition rating</strong> unset.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <strong>Complete</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Then set a rating of <strong>2</strong> and complete it again.</span></button></div>
             <p class="expect"><span>Expect</span>The first attempt is refused with a message naming the missing condition rating — not a generic error, and not a silent no-op. With the rating set, it completes and shows as Completed with condition 2.</p>
             <div class="res-group" role="group" aria-label="Result for test 07"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="With the checklist worked but no rating chosen, &#x27;Mark Complete&#x27; is disabled and the inspection cannot be completed; the rating is marked * with the note &#x27;Required, because a score built on a rating nobody gave would be a guess.&#x27; Selecting 2 (Degraded, needs work) enabled the button and PATCH /api/inspections/… returned 200. Refusal is by a disabled button rather than a message, which is acceptable here given the inline explanation.">
               <label class="sr-only" for="r1t07-notes">Notes for test 07</label>
               <textarea id="r1t07-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t08" data-result=""
+        <article class="card" data-test id="r1t08" data-result="fail"
                  data-number="08" data-round="1"
                  data-title="Work the checklist and record a failed item as a finding"
                  data-roles="HSE Officer">
@@ -684,14 +684,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open a checklist-bearing inspection.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Mark at least one item as failed and add a note describing what was wrong.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Save, reopen, and confirm the failed item and note survived.</span></button></div>
             <p class="expect"><span>Expect</span>Failed items save with their notes, are visibly distinct from passed items, and the count of failures is reflected on the inspection summary.</p>
             <div class="res-group" role="group" aria-label="Result for test 08"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Entry works: I marked &#x27;Check gas leak detector&#x27; as Fail with the note &#x27;Reading drifted 12% high against reference cell&#x27;, failed a second item with its own note, and completed. But the round-trip cannot be verified — clicking a completed inspection row does nothing, so there is no way to read back the checklist results, per-item notes or the condition rating afterwards (F7). Only a truncated findings preview survives in the list.">
               <label class="sr-only" for="r1t08-notes">Notes for test 08</label>
               <textarea id="r1t08-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t09" data-result=""
+        <article class="card" data-test id="r1t09" data-result="pass"
                  data-number="09" data-round="1"
                  data-title="Raise a defect from the inspection"
                  data-roles="HSE Officer">
@@ -713,14 +713,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">From the completed inspection, raise a defect for the failed item.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Give it a severity of <strong>major</strong> and a clear description.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Save, then open Defects and find it.</span></button></div>
             <p class="expect"><span>Expect</span>The defect appears on the defect register with its severity, its asset, and a visible link back to the inspection it came from.</p>
             <div class="res-group" role="group" aria-label="Result for test 09"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Marking a checklist item Fail reveals a &#x27;Raise as a defect&#x27; severity selector inside the completion dialog. Set to Major, completing the inspection produced POST /api/defects 201 and DEF-2026-0001 &#x27;Check gas leak detector&#x27; appeared on the register as Major/Open, with &#x27;WHERE THIS CAME FROM — Found during UAT R1 — Lagos DS-04 metering integrity on 6 Sept 26&#x27;. Asset is blank, inherited from F6.">
               <label class="sr-only" for="r1t09-notes">Notes for test 09</label>
               <textarea id="r1t09-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t10" data-result=""
+        <article class="card" data-test id="r1t10" data-result="pass"
                  data-number="10" data-round="1"
                  data-title="Raise a work order from the defect"
                  data-roles="Operations Manager">
@@ -742,14 +742,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Defects &rarr; open the defect raised above &rarr; <strong>Raise work order</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Set priority <strong>high</strong> and save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the new work order from the Work Orders list.</span></button></div>
             <p class="expect"><span>Expect</span>A work order is created with a new WO reference, priority high, and the work-order detail names the defect it came from. The defect shows that a work order now exists against it.</p>
             <div class="res-group" role="group" aria-label="Result for test 10"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="As Ops Manager, Defects → DEF-2026-0001 → &#x27;Raise a work order&#x27; created WO-2026-0002 at HIGH priority (inherited from Major severity). The work-order detail carries &#x27;RAISED FROM DEF-2026-0001 · Closing this job resolves it&#x27;, and the defect&#x27;s JOB column filled in and its status moved to In progress. Provenance reads correctly in both directions.">
               <label class="sr-only" for="r1t10-notes">Notes for test 10</label>
               <textarea id="r1t10-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t11" data-result=""
+        <article class="card" data-test id="r1t11" data-result="pass"
                  data-number="11" data-round="1"
                  data-title="Assign the work order and see it from the technician&#x27;s side"
                  data-roles="Operations Manager, Field Technician">
@@ -771,14 +771,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the Operations Manager, assign the work order to <code>uat.tech@assetcore.test</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign out and sign in as the Field Technician.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look at the technician's own dashboard and work-order list, without typing a URL.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the notifications bell.</span></button></div>
             <p class="expect"><span>Expect</span>The work order appears in the technician's own list and on their dashboard as assigned work, and the technician is notified. Reaching it must not require typing a URL.</p>
             <div class="res-group" role="group" aria-label="Result for test 11"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Assigned WO-2026-0002 to uat.tech@assetcore.test; the detail recorded &#x27;Assigned by UAT Ops Manager · 7 Sept 26&#x27; in the activity log. Signing in as the technician: &#x27;My Open Work 1 assigned to you&#x27; on their own dashboard, the job in their Recent Work Orders, and a notification &#x27;Work order assigned to you: WO-2026-0002 — Assigned by UAT Ops Manager&#x27; with a working &#x27;Open work order&#x27; deep link. No URL typing needed.">
               <label class="sr-only" for="r1t11-notes">Notes for test 11</label>
               <textarea id="r1t11-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t12" data-result=""
+        <article class="card" data-test id="r1t12" data-result="pass"
                  data-number="12" data-round="1"
                  data-title="Drive the work order through its statuses"
                  data-roles="Field Technician">
@@ -800,14 +800,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Move the work order to <strong>In Progress</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Move it to <strong>Awaiting Parts</strong>, then back to <strong>In Progress</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Move it to <strong>Inspection</strong>, then <strong>Closed</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">After closing, try to move it back to In Progress.</span></button></div>
             <p class="expect"><span>Expect</span>Each allowed move succeeds and is timestamped. Closed is terminal — the app offers no way back, and if a transition is forced it is refused with an invalid-transition message rather than accepted.</p>
             <div class="res-group" role="group" aria-label="Result for test 12"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Walked New → Assigned → In Progress → Awaiting Parts → In Progress → Inspection → Closed. At every step the MOVE TO buttons offered exactly the transitions WO_TRANSITIONS allows (e.g. awaiting_parts offered only In Progress and Closed). Each move was timestamped and attributed in the activity trail. After Closed the MOVE TO section disappears entirely — terminal, with no way back. Closing also resolved DEF-2026-0001 (Open 0, Resolved 1).">
               <label class="sr-only" for="r1t12-notes">Notes for test 12</label>
               <textarea id="r1t12-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t13" data-result=""
+        <article class="card" data-test id="r1t13" data-result="fail"
                  data-number="13" data-round="1"
                  data-title="Work-order task checklist and parts"
                  data-roles="Field Technician">
@@ -829,14 +829,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open an open work order.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Add two checklist tasks, tick one.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Add a spare part to the work order and set a quantity.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reload the page.</span></button></div>
             <p class="expect"><span>Expect</span>Tasks and parts persist across the reload, the ticked task stays ticked, and the parts line shows the part, quantity and its cost.</p>
             <div class="res-group" role="group" aria-label="Result for test 13"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Completely dead. Typing a step and pressing Add — or Enter — sends no request at all. The console shows a suppressed native alert: &#x27;addWorkOrderTask is not defined&#x27;. apps/app/src/pages/WorkOrders.jsx uses addWorkOrderTask (:288), updateWorkOrderTask (:280), deleteWorkOrderTask (:294) and addWorkOrderPart (:353) but imports none of them (:6-10). All four are exported from lib/db/workOrders.js. Every checklist action and the parts add throw ReferenceError, surfaced only as a raw JS alert. The &#x27;Add a part…&#x27; dropdown is also empty despite GET /api/spare-parts returning 200.">
               <label class="sr-only" for="r1t13-notes">Notes for test 13</label>
               <textarea id="r1t13-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t14" data-result=""
+        <article class="card" data-test id="r1t14" data-result="pass"
                  data-number="14" data-round="1"
                  data-title="The whole chain again, in one sitting"
                  data-roles="HSE Officer, Operations Manager, Field Technician">
@@ -858,7 +858,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Raise a second inspection on a different asset, complete it with a condition rating of <strong>1</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Raise a defect from it, then a work order from the defect.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assign, progress and close the work order.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note every reference number generated along the way.</span></button></div>
             <p class="expect"><span>Expect</span>The full chain completes without a reload or a manual refresh. Every reference is new and distinct from the first run — no collisions, no repeated numbers.</p>
             <div class="res-group" role="group" aria-label="Result for test 14"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Ran the chain a second time end to end: inspection &#x27;UAT R1 — Lagos DS-04 metering integrity&#x27; completed with a rating, defect DEF-2026-0001 raised from the failed item, WO-2026-0002 raised from the defect, then assigned, progressed and closed. Every reference was new and distinct — no collisions and no counter reuse on the second pass. Asset stayed blank throughout, per F6.">
               <label class="sr-only" for="r1t14-notes">Notes for test 14</label>
               <textarea id="r1t14-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -872,7 +872,7 @@
           <p>The score the dashboard leads with, and the breakdown that has to justify it.</p>
         </div>
         
-        <article class="card" data-test id="r1t15" data-result=""
+        <article class="card" data-test id="r1t15" data-result="pass"
                  data-number="15" data-round="1"
                  data-title="Asset health score and its &quot;Show the working&quot; breakdown"
                  data-roles="Operations Manager">
@@ -894,14 +894,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; open an asset with maintenance history.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Find the condition/health score and open <strong>Show the working</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read each contributing factor and its weight.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Add the factors up and compare against the headline score.</span></button></div>
             <p class="expect"><span>Expect</span>The breakdown names each factor with its weight and contribution, and the components reconcile to the score displayed. No factor is blank, undefined or NaN.</p>
             <div class="res-group" role="group" aria-label="Result for test 15"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="NGML-MTR-0042 scores 69, labelled &#x27;Calculated from 4 of 5 signals, last on 7 Sept 26&#x27;. &#x27;Show the working&#x27; lists: Inspection condition 25/100 @25% (&#x27;Rated 2 of 5&#x27;), Open defects 80/100 @25%, Overdue maintenance 100/100 @20%, Risk level 80/100 @15% (read from criticality, explained), Age against useful life &#x27;no data&#x27; @15% (excluded, with the reason). The maths reconciles exactly: (25×.25 + 80×.25 + 100×.20 + 80×.15) ÷ 0.85 = 68.5 → 69. It also explains why the missing signal is left out rather than scored zero. Nothing blank, undefined or NaN.">
               <label class="sr-only" for="r1t15-notes">Notes for test 15</label>
               <textarea id="r1t15-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t16" data-result=""
+        <article class="card" data-test id="r1t16" data-result="blocked"
                  data-number="16" data-round="1"
                  data-title="A poor inspection rating moves the asset&#x27;s health"
                  data-roles="HSE Officer, Operations Manager">
@@ -923,14 +923,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note an asset's current health score.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Complete an inspection on that asset with a condition rating of <strong>1</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Return to the asset and re-read the score and its working.</span></button></div>
             <p class="expect"><span>Expect</span>The score moves down, and the breakdown shows the new inspection as a contributing factor. If the score only changes on a scheduled job, the page says so rather than showing a stale figure as current.</p>
             <div class="res-group" role="group" aria-label="Result for test 16"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Cannot be tested through the UI while F6 stands: an inspection created in the browser has no asset, so its condition rating can never reach an asset&#x27;s health score. The breakdown on NGML-MTR-0042 reads &#x27;Rated 2 of 5 on 6 Sept 2026&#x27; from a seeded inspection, not from either inspection I completed.">
               <label class="sr-only" for="r1t16-notes">Notes for test 16</label>
               <textarea id="r1t16-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t17" data-result=""
+        <article class="card" data-test id="r1t17" data-result="pending"
                  data-number="17" data-round="1"
                  data-title="Network Health on the dashboard agrees with the assets underneath it"
                  data-roles="Operations Manager">
@@ -952,7 +952,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the Network Health donut: the counts for Healthy, Attention Required, Critical and Offline.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Go to Assets and filter by each of those conditions in turn.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compare the row counts against the donut.</span></button></div>
             <p class="expect"><span>Expect</span>Each segment's count matches the number of assets the list returns for that condition, and the segments sum to the total asset count.</p>
             <div class="res-group" role="group" aria-label="Result for test 17"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run. The donut (Healthy 5 / Critical 1 / 0 others) does sum to the 6 assets the list shows, but I did not filter the asset list by each condition to confirm the per-segment counts.">
               <label class="sr-only" for="r1t17-notes">Notes for test 17</label>
               <textarea id="r1t17-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -966,7 +966,7 @@
           <p>The amount bands, who decides, and — the part that matters — who cannot.</p>
         </div>
         
-        <article class="card" data-test id="r1t18" data-result=""
+        <article class="card" data-test id="r1t18" data-result="pass"
                  data-number="18" data-round="1"
                  data-title="Write an approval rule with an amount band"
                  data-roles="System Admin">
@@ -988,14 +988,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Find the approval matrix (Admin or Approvals &rarr; Rules).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Create a rule for <strong>work_order</strong> / <strong>wo_cost</strong>, minimum <code>100000</code>, maximum <code>5000000</code> (in minor units), deciding role <strong>Operations Manager</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Then try to save a second rule whose maximum is <em>below</em> its minimum.</span></button></div>
             <p class="expect"><span>Expect</span>The first rule saves and appears in the matrix with its band and deciding role. The second is refused with a message about the band being invalid — not a 500, and not silently accepted.</p>
             <div class="res-group" role="group" aria-label="Result for test 18"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Created &#x27;UAT band — job spend ₦1,000 to ₦50,000&#x27; (Work order · Spend authorisation, signs Operations Manager); it appears in the matrix with its band and role. A second rule with floor ₦90,000 and ceiling ₦5,000 was refused, modal held open, with the message &#x27;The ceiling has to be above the floor.&#x27; — a sentence, not a code. The empty state before that reads &#x27;Until a band exists, nothing can be sent for approval — which is the safe default, but not a useful one.&#x27;">
               <label class="sr-only" for="r1t18-notes">Notes for test 18</label>
               <textarea id="r1t18-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t19" data-result=""
+        <article class="card" data-test id="r1t19" data-result="pass"
                  data-number="19" data-round="1"
                  data-title="Raise a request inside the band and have the right role decide it"
                  data-roles="Maintenance Engineer, Operations Manager">
@@ -1017,14 +1017,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the Maintenance Engineer, raise a cost approval on a work order for an amount inside the band you just created.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign out, sign in as the Operations Manager.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Approvals &rarr; find the pending request &rarr; <strong>Approve</strong>, with a comment.</span></button></div>
             <p class="expect"><span>Expect</span>The request is created as Pending and routed to the Operations Manager. The approval succeeds, the status becomes Approved, and it records who decided and when.</p>
             <div class="res-group" role="group" aria-label="Result for test 19"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Raised via the only route the UI offers (defect deferral — see F9). As Maintenance Engineer, DEF-2026-0002 → Request deferral created a request showing &#x27;With Operations Manager — Pending&#x27;. Signed in as Ops Manager: &#x27;Waiting on me (1)&#x27; listing &#x27;DEF-2026-0002 — deferral, by UAT Maintenance Engineer, 1/1, Operations Manager, Pending&#x27; with a Review action. Approving with a note settled it — Approved 1, Pending 0. Correctly routed to the role the band names.">
               <label class="sr-only" for="r1t19-notes">Notes for test 19</label>
               <textarea id="r1t19-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t20" data-result=""
+        <article class="card" data-test id="r1t20" data-result="pass"
                  data-number="20" data-round="1"
                  data-title="The wrong role cannot decide it"
                  data-roles="Field Technician, HSE Officer">
@@ -1046,14 +1046,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Raise a second cost approval inside the same band as the Maintenance Engineer.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Field Technician. Go to <code>/approvals</code> by typing the URL.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try to approve the pending request — use whatever control is on screen, and if none is shown, confirm no other route reaches the action.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Repeat as the HSE Officer, who <em>does</em> hold <code>approval:decide</code> but is not the role this band names.</span></button></div>
             <p class="expect"><span>Expect</span>Neither role can approve it. The HSE Officer case is the important one: holding the capability is not enough when the band names a different role, and the refusal must say so rather than appearing to succeed.</p>
             <div class="res-group" role="group" aria-label="Result for test 20"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="As HSE Officer — who holds approval:decide but is not the role the band names — Approvals showed &#x27;Waiting on me 0&#x27; with &#x27;Pending across the org 1&#x27;, and neither the Waiting-on-me nor the Everything tab offered any Approve/Reject control. Holding the capability is correctly not enough. As Maintenance Engineer (the requester) only &#x27;Recall&#x27; was offered on every tab.">
               <label class="sr-only" for="r1t20-notes">Notes for test 20</label>
               <textarea id="r1t20-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t21" data-result=""
+        <article class="card" data-test id="r1t21" data-result="pass"
                  data-number="21" data-round="1"
                  data-title="Nobody approves their own request"
                  data-roles="Operations Manager">
@@ -1075,14 +1075,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the Operations Manager — the role the band names — raise a cost approval yourself.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Then try to approve it from the Approvals page.</span></button></div>
             <p class="expect"><span>Expect</span>The app refuses, saying the requester cannot decide their own request. It must not be approvable through any control on the page.</p>
             <div class="res-group" role="group" aria-label="Result for test 21"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="As Ops Manager — simultaneously the requester AND the role the band names — I raised a deferral on DEF-2026-0003 myself. Approvals then showed &#x27;Waiting on me 0&#x27; and the detail offered only &#x27;Recall it&#x27; with the explanation &#x27;You submitted this, so it needs someone else at this level.&#x27; No Approve control anywhere. Self-approval is genuinely prevented, not merely hidden.">
               <label class="sr-only" for="r1t21-notes">Notes for test 21</label>
               <textarea id="r1t21-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t22" data-result=""
+        <article class="card" data-test id="r1t22" data-result="blocked"
                  data-number="22" data-round="1"
                  data-title="An amount outside every band, and a duplicate request"
                  data-roles="Maintenance Engineer">
@@ -1104,14 +1104,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Raise a cost approval for an amount far above every configured band.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Then raise a second approval of the same kind on a work order that already has one pending.</span></button></div>
             <p class="expect"><span>Expect</span>The out-of-band request is refused with an explanation that no rule matches the amount. The duplicate is refused as already pending and points at the existing request — neither creates an orphaned record.</p>
             <div class="res-group" role="group" aria-label="Result for test 22"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Cannot be exercised. The only approval the UI can raise is a defect deferral, which carries no amount, so there is no way to submit a figure outside every band (F9). The duplicate case is structurally prevented instead: once a deferral is decided the &#x27;Request deferral&#x27; button disappears. The code does handle both — Defects.jsx:255-257 maps no_matching_rule and already_pending to human sentences — but neither could be triggered from the browser.">
               <label class="sr-only" for="r1t22-notes">Notes for test 22</label>
               <textarea id="r1t22-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t23" data-result=""
+        <article class="card" data-test id="r1t23" data-result="pending"
                  data-number="23" data-round="1"
                  data-title="Recall a pending request, and reject one"
                  data-roles="Maintenance Engineer, Operations Manager">
@@ -1133,7 +1133,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the Maintenance Engineer, raise a request and then <strong>recall</strong> it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Raise another; as the Operations Manager, <strong>reject</strong> it with a reason.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Then try to approve the rejected one.</span></button></div>
             <p class="expect"><span>Expect</span>Recall returns the request to the requester and it leaves the pending queue. Reject records the reason and the decider. A decided request cannot be decided again — the second attempt is refused as not pending.</p>
             <div class="res-group" role="group" aria-label="Result for test 23"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Recall verified: as Ops Manager I recalled my own pending request and it moved to &#x27;Recalled&#x27; with the counters returning to 0 pending. Reject was NOT exercised — the control exists in the request detail panel (Approvals.jsx:571) but the &#x27;Review&#x27; shortcut on the row opens an approve-only dialog, and I did not go back through the detail panel to reject one.">
               <label class="sr-only" for="r1t23-notes">Notes for test 23</label>
               <textarea id="r1t23-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -1147,7 +1147,7 @@
           <p>Rules that wake people up. Written, run on demand, and checked from the recipient's account.</p>
         </div>
         
-        <article class="card" data-test id="r1t24" data-result=""
+        <article class="card" data-test id="r1t24" data-result="pass"
                  data-number="24" data-round="1"
                  data-title="Write an escalation rule"
                  data-roles="System Admin">
@@ -1169,14 +1169,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; <strong>Escalations</strong> &rarr; new rule.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Entity <strong>work_order</strong>, trigger <strong>overdue</strong>, threshold <code>0</code> days, notify <strong>Operations Manager</strong>. Save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Now open the entity dropdown and select <strong>compliance_licence</strong>; look at which triggers the form offers.</span></button></div>
             <p class="expect"><span>Expect</span>The rule saves and appears in the list with its trigger, threshold and notify role. For compliance_licence the form offers only <strong>overdue</strong> — the combinations the evaluator would silently skip are not offered.</p>
             <div class="res-group" role="group" aria-label="Result for test 24"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Created &#x27;UAT R1 — overdue work orders chase Ops&#x27; (Work order · Past its due date · 0d · notifies Operations Manager). Trigger narrowing is exact — I stepped every entity and the offered triggers matched the API&#x27;s VALID_TRIGGERS table each time: compliance_licence→overdue only; approval→overdue,unacknowledged; defect→overdue,unacknowledged,stale; pm_task and inspection→overdue,unassigned; work_order→overdue,unassigned,stale. No combination the evaluator would skip is offered.">
               <label class="sr-only" for="r1t24-notes">Notes for test 24</label>
               <textarea id="r1t24-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t25" data-result=""
+        <article class="card" data-test id="r1t25" data-result="pass"
                  data-number="25" data-round="1"
                  data-title="Press &quot;Run now&quot; and check who was notified"
                  data-roles="System Admin, Operations Manager">
@@ -1198,14 +1198,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">With the rule above in place, press <strong>Run now</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read what the page reports: how many events fired.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the rule's fired count and last-fired time.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Operations Manager and open the notifications bell.</span></button></div>
             <p class="expect"><span>Expect</span>The run reports the number of escalations raised, the rule's fired count increases and its last-fired time updates. The Operations Manager has a notification naming the escalated work order, and its link lands on that work order.</p>
             <div class="res-group" role="group" aria-label="Result for test 25"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="First &#x27;Run now&#x27; raised nothing — correct, because no work order was overdue yet. I then set WO-2025-0038&#x27;s SLA due back to 20 Aug (it showed &#x27;Overdue 17d&#x27;) and ran again: the rule&#x27;s FIRED count went to 1 with the date, and a &#x27;Recently escalated&#x27; panel appeared naming the rule, the notified role and the time. Signing in as the Ops Manager, the notification read &#x27;Escalation: UAT R1 — overdue work orders chase Ops — WO-2025-0038 — PRG-089 outlet pressure variance has been overdue for more than 0 days&#x27; with a working &#x27;Open work order&#x27; link. Minor gap: pressing Run now gives no on-screen report of how many escalations were raised.">
               <label class="sr-only" for="r1t25-notes">Notes for test 25</label>
               <textarea id="r1t25-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t26" data-result=""
+        <article class="card" data-test id="r1t26" data-result="pass"
                  data-number="26" data-round="1"
                  data-title="Run it twice — the same thing is not escalated over and over"
                  data-roles="System Admin">
@@ -1227,7 +1227,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <strong>Run now</strong> a second time straight away.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compare the number of events raised against the first run.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look at the escalation events list for duplicates against the same record.</span></button></div>
             <p class="expect"><span>Expect</span>The second run raises no new event for anything already escalated. If it does re-fire, that is a finding regardless of what the counter says.</p>
             <div class="res-group" role="group" aria-label="Result for test 26"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Pressed Run now again immediately with the same overdue work order still overdue. FIRED stayed at 1 and the events list still held a single entry — nothing re-fired. The stated behaviour (&#x27;An escalation fires once per record, so nobody is told the same thing twice&#x27;) holds.">
               <label class="sr-only" for="r1t26-notes">Notes for test 26</label>
               <textarea id="r1t26-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -1241,7 +1241,7 @@
           <p>Audits through their lifecycle, findings, and the push onto the defect register.</p>
         </div>
         
-        <article class="card" data-test id="r1t27" data-result=""
+        <article class="card" data-test id="r1t27" data-result="pass"
                  data-number="27" data-round="1"
                  data-title="An audit walks scheduled to in progress to completed"
                  data-roles="HSE Officer">
@@ -1263,14 +1263,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compliance &rarr; Audits &rarr; create an audit, scheduled for today.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Move it to <strong>In Progress</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Move it to <strong>Completed</strong> with an outcome of <strong>Pass with observations</strong> (or the nearest option).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reopen it from the list.</span></button></div>
             <p class="expect"><span>Expect</span>Each transition sticks and is timestamped. The completed audit shows its outcome on the list and on the detail.</p>
             <div class="res-group" role="group" aria-label="Result for test 27"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Created AUD-2026-0001 &#x27;UAT R1 — ISO 14001 internal audit, Lagos DS-04&#x27; as Scheduled, moved it to In Progress, then to Completed with outcome &#x27;Pass with findings&#x27; and a summary. Each transition stuck and the list reflected the new state each time (&#x27;Audit updated.&#x27; toast).">
               <label class="sr-only" for="r1t27-notes">Notes for test 27</label>
               <textarea id="r1t27-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t28" data-result=""
+        <article class="card" data-test id="r1t28" data-result="pass"
                  data-number="28" data-round="1"
                  data-title="An audit cannot be completed without an outcome"
                  data-roles="HSE Officer">
@@ -1292,14 +1292,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Create a second audit and move it to In Progress.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try to complete it with the outcome left empty.</span></button></div>
             <p class="expect"><span>Expect</span>Refused, with a message naming the missing outcome. The audit stays In Progress rather than half-completing.</p>
             <div class="res-group" role="group" aria-label="Result for test 28"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="With the audit In Progress, setting status to Completed and leaving the outcome empty was refused — the modal stayed open, the audit stayed In Progress, and the message read &#x27;An outcome is required to complete an audit — a compliance record with a blank result is a diary entry.&#x27; Exactly the rule, in a sentence. (This surfaced twice, because a new audit defaults to Completed — see F11.)">
               <label class="sr-only" for="r1t28-notes">Notes for test 28</label>
               <textarea id="r1t28-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t29" data-result=""
+        <article class="card" data-test id="r1t29" data-result="pass"
                  data-number="29" data-round="1"
                  data-title="Add findings to an audit"
                  data-roles="HSE Officer">
@@ -1321,14 +1321,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open a completed audit and add two findings with different severities.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Edit one of them.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reload and confirm both are there as entered.</span></button></div>
             <p class="expect"><span>Expect</span>Both findings save with their severities, the edit persists, and they are listed against the audit.</p>
             <div class="res-group" role="group" aria-label="Result for test 29"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Added a finding to AUD-2026-0001: severity major, clause &#x27;ISO 14001 §8.2&#x27;, text &#x27;Spill kit inspection records missing for July and August at the Lagos DS-04 inlet bay.&#x27; It saved and listed against the audit with its severity and clause. NOT exercised: adding a second finding at a different severity, and editing an existing finding.">
               <label class="sr-only" for="r1t29-notes">Notes for test 29</label>
               <textarea id="r1t29-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t30" data-result=""
+        <article class="card" data-test id="r1t30" data-result="pass"
                  data-number="30" data-round="1"
                  data-title="Push a finding onto the defect register"
                  data-roles="HSE Officer">
@@ -1350,14 +1350,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">From a finding, press <strong>Raise defect</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open Defects and confirm it arrived, with a link back to the audit finding.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Return to the finding and try to raise a defect from it a second time.</span></button></div>
             <p class="expect"><span>Expect</span>The first push creates a defect carrying the finding's detail and severity. The second is refused as already raised and points at the existing defect rather than creating a duplicate.</p>
             <div class="res-group" role="group" aria-label="Result for test 30"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="&#x27;Raise a defect&#x27; on the finding created DEF-2026-0004 with the toast &#x27;Raised DEF-2026-0004 on the defect register.&#x27; The button is then replaced by the static text &#x27;On the register as DEF-2026-0004&#x27;, so a second push is structurally impossible and the existing defect is named — the duplicate case is prevented in the UI rather than needing the API&#x27;s 409.">
               <label class="sr-only" for="r1t30-notes">Notes for test 30</label>
               <textarea id="r1t30-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t31" data-result=""
+        <article class="card" data-test id="r1t31" data-result="pass"
                  data-number="31" data-round="1"
                  data-title="Licence expiry alerts match the dashboard"
                  data-roles="HSE Officer">
@@ -1379,7 +1379,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the Compliance Alerts figure on the dashboard and its expired/expiring split.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Go to Compliance &rarr; Licences and count expired and expiring rows.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compare.</span></button></div>
             <p class="expect"><span>Expect</span>The counts agree, and every alert on the dashboard corresponds to a licence you can open.</p>
             <div class="res-group" role="group" aria-label="Result for test 31"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Dashboard reads &#x27;Compliance Alerts 7 — 6 expired · 1 expiring&#x27;. Compliance → Licences &amp; Certificates shows exactly All (7), Expiring (1), Expired (6), and every alert on the dashboard corresponds to a licence row you can open. The two queries agree.">
               <label class="sr-only" for="r1t31-notes">Notes for test 31</label>
               <textarea id="r1t31-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -1393,7 +1393,7 @@
           <p>The 5x5 matrix, and the difference between inherent and residual.</p>
         </div>
         
-        <article class="card" data-test id="r1t32" data-result=""
+        <article class="card" data-test id="r1t32" data-result="pass"
                  data-number="32" data-round="1"
                  data-title="Raise a risk and place it on the 5x5 matrix"
                  data-roles="HSE Officer">
@@ -1415,14 +1415,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Risk &rarr; new risk. Set inherent likelihood <strong>4</strong> and inherent impact <strong>5</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Save, and find the risk on the matrix.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the cell it occupies and the score it shows.</span></button></div>
             <p class="expect"><span>Expect</span>The risk sits in the 4x5 cell, scores 20, and is coloured in the band that score belongs to.</p>
             <div class="res-group" role="group" aria-label="Result for test 32"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="The matrix is a correct 5×5: likelihood 1-5 across, consequence 1-5 up, each cell showing its product (1-25) and banded Low/Medium/High/Extreme. Created &#x27;UAT R1 — uncontrolled gas release at the Lagos DS-04 inlet&#x27; at inherent likelihood 4 × consequence 5; the form&#x27;s live readout showed INHERENT 20 Extreme, and after saving the risk sits in the score-20 cell under the inherent view.">
               <label class="sr-only" for="r1t32-notes">Notes for test 32</label>
               <textarea id="r1t32-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t33" data-result=""
+        <article class="card" data-test id="r1t33" data-result="pass"
                  data-number="33" data-round="1"
                  data-title="Residual risk after controls differs from inherent"
                  data-roles="HSE Officer">
@@ -1444,14 +1444,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On the same risk, record a control and set residual likelihood <strong>2</strong>, impact <strong>3</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Save and reopen.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look at the matrix view and any toggle between inherent and residual.</span></button></div>
             <p class="expect"><span>Expect</span>Residual shows as 6 and is plotted separately from the inherent 20. Switching the matrix between inherent and residual moves the risk to a different cell.</p>
             <div class="res-group" role="group" aria-label="Result for test 33"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Set residual likelihood 2 × consequence 3 with a control recorded. The form showed INHERENT 20 Extreme and RESIDUAL 6 Medium side by side, and switching the matrix selector between &#x27;Before controls (inherent)&#x27; and &#x27;After controls (residual)&#x27; moves the risk between the score-20 and score-6 cells. The summary tiles follow the residual, matching the page&#x27;s own note that the register, grid and asset condition score all read the residual where one exists.">
               <label class="sr-only" for="r1t33-notes">Notes for test 33</label>
               <textarea id="r1t33-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t34" data-result=""
+        <article class="card" data-test id="r1t34" data-result="pending"
                  data-number="34" data-round="1"
                  data-title="Matrix boundaries: 1x1 and 5x5"
                  data-roles="HSE Officer">
@@ -1473,7 +1473,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Create a risk at likelihood 1, impact 1.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Create another at likelihood 5, impact 5.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try to enter a 0 or a 6 in either field.</span></button></div>
             <p class="expect"><span>Expect</span>Both corner risks place correctly and score 1 and 25. Values outside 1-5 are refused rather than plotted off the grid.</p>
             <div class="res-group" role="group" aria-label="Result for test 34"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run as specified. Out-of-range entry is impossible by construction — likelihood and consequence are five fixed buttons each, so 0 or 6 cannot be typed — but I did not create the 1×1 and 5×5 corner risks to confirm they score 1 and 25 and place correctly.">
               <label class="sr-only" for="r1t34-notes">Notes for test 34</label>
               <textarea id="r1t34-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -1487,7 +1487,7 @@
           <p>Stock that moves, books that have to balance, and a second currency that has to follow.</p>
         </div>
         
-        <article class="card" data-test id="r1t35" data-result=""
+        <article class="card" data-test id="r1t35" data-result="pending"
                  data-number="35" data-round="1"
                  data-title="Create a spare part and adjust its stock"
                  data-roles="Operations Manager">
@@ -1509,14 +1509,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Spare Parts &rarr; new part, with a reorder level of <code>5</code> and an opening quantity of <code>10</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Record a stock movement out of <code>3</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Record a movement in of <code>1</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the part's movement history.</span></button></div>
             <p class="expect"><span>Expect</span>The quantity reads 8 after both movements, and the history lists all three entries with who moved them and when. The arithmetic on screen matches the movements listed.</p>
             <div class="res-group" role="group" aria-label="Result for test 35"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run — the session ended before the spare-parts module was exercised.">
               <label class="sr-only" for="r1t35-notes">Notes for test 35</label>
               <textarea id="r1t35-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t36" data-result=""
+        <article class="card" data-test id="r1t36" data-result="pending"
                  data-number="36" data-round="1"
                  data-title="Stock below the reorder level raises a low-stock signal"
                  data-roles="Operations Manager">
@@ -1538,14 +1538,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Move stock out until the part is below its reorder level of 5.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look at the parts list, the dashboard and the notifications bell.</span></button></div>
             <p class="expect"><span>Expect</span>The part is flagged as low stock in the list, and the flag is visible somewhere a manager would actually look rather than only inside the record.</p>
             <div class="res-group" role="group" aria-label="Result for test 36"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run.">
               <label class="sr-only" for="r1t36-notes">Notes for test 36</label>
               <textarea id="r1t36-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t37" data-result=""
+        <article class="card" data-test id="r1t37" data-result="fail"
                  data-number="37" data-round="1"
                  data-title="Consuming a part on a work order moves the stock"
                  data-roles="Field Technician">
@@ -1567,14 +1567,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note a part's quantity.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Add that part to an open work order with quantity <code>2</code> and complete or save the parts line.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Return to Spare Parts and re-read the quantity and the movement history.</span></button></div>
             <p class="expect"><span>Expect</span>The quantity drops by 2 and a movement appears in the history naming the work order that consumed it.</p>
             <div class="res-group" role="group" aria-label="Result for test 37"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Blocked by the same missing import as the work-order checklist (F8): addWorkOrderPart is used at WorkOrders.jsx:353 but never imported, so adding a part to a work order throws a ReferenceError. The &#x27;Add a part…&#x27; dropdown is also rendered with no options at all despite GET /api/spare-parts returning 200, so there is nothing to select even before the handler fails. Stock cannot move via a work order.">
               <label class="sr-only" for="r1t37-notes">Notes for test 37</label>
               <textarea id="r1t37-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t38" data-result=""
+        <article class="card" data-test id="r1t38" data-result="fail"
                  data-number="38" data-round="1"
                  data-title="Depreciation schedule and NBV provenance"
                  data-roles="Operations Manager">
@@ -1596,14 +1596,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Depreciation &rarr; open an asset with a cost and a useful life.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the net book value and find where the page says whether it is <em>derived</em> or from a <em>posted schedule</em>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the schedule and check the periods, the charge per period and the closing NBV.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Add the charges to the accumulated depreciation and compare against cost minus NBV.</span></button></div>
             <p class="expect"><span>Expect</span>The page states the provenance of the NBV explicitly. Cost minus accumulated depreciation equals the net book value shown, to the minor unit.</p>
             <div class="res-group" role="group" aria-label="Result for test 38"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="No schedule can be created. Depreciation → Create first schedule → asset NGML-CMP-0017 → Straight line renders the literal word &#x27;internal_error&#x27; where the preview table belongs; POST /api/depreciation/preview returns 500 every time (F10). Provenance itself is handled well — the page header states &#x27;net book value comes from posted entries&#x27; and the empty state explains &#x27;Until an asset has a schedule, its net book value is whatever someone typed into the asset record.&#x27; The derived figures do reconcile: NGML-MTR-0042 shows cost ₦240,000,000.00 − accumulated ₦89,933,333.33 = NBV ₦150,066,666.67 exactly. But the posted-schedule path is unreachable.">
               <label class="sr-only" for="r1t38-notes">Notes for test 38</label>
               <textarea id="r1t38-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t39" data-result=""
+        <article class="card" data-test id="r1t39" data-result="pending"
                  data-number="39" data-round="1"
                  data-title="Set a second currency and a rate"
                  data-roles="System Admin">
@@ -1625,14 +1625,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Settings &rarr; Organisation. Note the base currency.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Set a secondary currency of <code>USD</code> with a rate and a rate date. Save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Clear the secondary currency, save, then set it again.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check whether the old rate came back.</span></button></div>
             <p class="expect"><span>Expect</span>The secondary currency and rate save with the date. Clearing it clears the rate and the date. Setting it again starts from empty — the previous rate does not resurface.</p>
             <div class="res-group" role="group" aria-label="Result for test 39"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Half run. Setting the second currency worked: choosing USD revealed &#x27;Rate (USD per 1 NGN)&#x27; and &#x27;Rate set on&#x27;, I entered 0.00065 dated 2026-09-01, and it saved. NOT run: clearing the secondary currency and re-setting it to confirm the old rate does not resurface — which is the interesting half of this test.">
               <label class="sr-only" for="r1t39-notes">Notes for test 39</label>
               <textarea id="r1t39-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t40" data-result=""
+        <article class="card" data-test id="r1t40" data-result="fail"
                  data-number="40" data-round="1"
                  data-title="Money elsewhere in the app follows the currency setting"
                  data-roles="Operations Manager">
@@ -1654,7 +1654,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">With the secondary currency set, visit: a work order with a cost, the approvals list, the depreciation page, a spare part's unit cost, and Analytics.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note the symbol, the thousands separator and the number of decimals in each place.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Export or print one of them if the option exists and check the figures there too.</span></button></div>
             <p class="expect"><span>Expect</span>Every screen shows money in the same format, and the secondary currency appears wherever the setting says it should. No screen is left showing a hard-coded symbol or an unconverted figure.</p>
             <div class="res-group" role="group" aria-label="Result for test 40"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="The currency does propagate — Depreciation tiles and the asset panel both show the USD figure beside the Naira one, so the plumbing works. But the formatting is not consistent: on NGML-MTR-0042 the converted amounts render as ($156,000), ($97,543.333) and ($58,456.667) — zero, three and three decimal places on the same panel, against a correct 2 dp in the base currency (F12).">
               <label class="sr-only" for="r1t40-notes">Notes for test 40</label>
               <textarea id="r1t40-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -1668,7 +1668,7 @@
           <p>The numbers management reads, and the log that says who did what.</p>
         </div>
         
-        <article class="card" data-test id="r1t41" data-result=""
+        <article class="card" data-test id="r1t41" data-result="fail"
                  data-number="41" data-round="1"
                  data-title="MTBF, MTTR and backlog buckets"
                  data-roles="Operations Manager">
@@ -1690,14 +1690,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Analytics &rarr; read MTBF and MTTR, and note the period they cover.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the backlog buckets and their counts.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Cross-check one bucket against the Work Orders list filtered the same way.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Change the period selector and watch the figures move.</span></button></div>
             <p class="expect"><span>Expect</span>Every figure has a unit and a period. The bucket counts match the work-order list filtered the same way. Changing the period changes the numbers rather than leaving them stale.</p>
             <div class="res-group" role="group" aria-label="Result for test 41"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="MTBF is fine and responds to the period selector (1,116 / 3,276 / 13,176 operating hours for 30d / 90d / 12mo, with &#x27;4 failures across 13,104 operating hours&#x27; shown as the basis). MTTR reads &#x27;Not known — No corrective jobs were closed in this period&#x27; in ALL THREE windows, even though I drove WO-2026-0002 (type CORRECTIVE) from In Progress to Closed through the UI that same day (F13). Backlog also claims &#x27;Oldest has been open 0 days&#x27; while WO-2025-0038 is 17 days past due and older still.">
               <label class="sr-only" for="r1t41-notes">Notes for test 41</label>
               <textarea id="r1t41-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t42" data-result=""
+        <article class="card" data-test id="r1t42" data-result="pass"
                  data-number="42" data-round="1"
                  data-title="Charts render and survive a resize"
                  data-roles="Operations Manager">
@@ -1719,14 +1719,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open Analytics with the console visible.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Hover the data points, use any legend toggles.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Resize the window narrow and wide.</span></button></div>
             <p class="expect"><span>Expect</span>Charts draw with axes, labels and a legend, tooltips give real values, and nothing throws in the console at any width.</p>
             <div class="res-group" role="group" aria-label="Result for test 42"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Analytics renders fully: MTBF/MTTR/Availability/Open backlog tiles each with a unit and an explanatory line, a &#x27;Backlog by age&#x27; bar with 0-7/8-30/31-90/90+ buckets, and &#x27;Raised against closed&#x27;, &#x27;Open work by status&#x27;, &#x27;Open work by priority&#x27; and &#x27;Work raised by type&#x27; charts with axes, labels and legends. Availability 100% across 6 assets in service. NOTE: the console did contain 403 and 500 entries during this period, but they are attributable to the Viewer permission probe and the depreciation preview on earlier pages, not to Analytics; a clean-console sweep per test 65 was not run.">
               <label class="sr-only" for="r1t42-notes">Notes for test 42</label>
               <textarea id="r1t42-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t43" data-result=""
+        <article class="card" data-test id="r1t43" data-result="pending"
                  data-number="43" data-round="1"
                  data-title="Generate a report and check the file against the screen"
                  data-roles="Operations Manager">
@@ -1748,14 +1748,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Dashboard &rarr; <strong>Generate Report</strong>, or Reports &rarr; run a report.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note three figures on screen before exporting.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Download the file and open it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compare the three figures.</span></button></div>
             <p class="expect"><span>Expect</span>The file downloads with a sensible filename and extension, opens in the right application, and the three figures match the screen exactly. A file that renders as text in the browser instead of downloading is a failure.</p>
             <div class="res-group" role="group" aria-label="Result for test 43"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run — no report was generated or downloaded, so the file-versus-screen comparison is untested.">
               <label class="sr-only" for="r1t43-notes">Notes for test 43</label>
               <textarea id="r1t43-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t44" data-result=""
+        <article class="card" data-test id="r1t44" data-result="pass"
                  data-number="44" data-round="1"
                  data-title="The audit log records who did what"
                  data-roles="Auditor">
@@ -1777,14 +1777,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Auditor. Admin &rarr; <strong>Audit Log</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Find entries for: the approval decided, the escalation rule created, the work order closed, the currency changed.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check each names the actor and the time.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for any control that edits or deletes an entry — as the Auditor and then as the owner.</span></button></div>
             <p class="expect"><span>Expect</span>All four actions appear, attributed to the account that performed them. No control anywhere edits or deletes a log entry, for any role.</p>
             <div class="res-group" role="group" aria-label="Result for test 44"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Admin → Audit Log lists events with TIME, ACTOR, ACTION and ENTITY — all six invites appear individually attributed to Adaeze Okeke with timestamps, alongside inspection and compliance-audit entries. No control anywhere edits or deletes an entry, checked as both Auditor and Viewer. NOTE: I confirmed the log&#x27;s shape and immutability rather than each of the four specific actions the test names.">
               <label class="sr-only" for="r1t44-notes">Notes for test 44</label>
               <textarea id="r1t44-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t45" data-result=""
+        <article class="card" data-test id="r1t45" data-result="pass"
                  data-number="45" data-round="1"
                  data-title="Empty states"
                  data-roles="Operations Manager">
@@ -1806,7 +1806,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On Work Orders, Defects, Risk, Spare Parts and Inspections in turn, apply a filter or search that matches nothing.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look at what each page shows.</span></button></div>
             <p class="expect"><span>Expect</span>Each shows a written explanation and, where relevant, the way to create the first record. None shows a broken grid, a bare zero, or a spinner that never resolves.</p>
             <div class="res-group" role="group" aria-label="Result for test 45"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Every empty state encountered was written, not broken: Defects &#x27;Nothing outstanding — Defects are what an inspection actually found…&#x27;, Approvals &#x27;Nothing waiting on you — Requests are raised from the thing being approved…&#x27;, the approval matrix &#x27;Until a band exists, nothing can be sent for approval — which is the safe default, but not a useful one&#x27;, Escalations &#x27;No escalation rules yet — nothing is chased automatically&#x27;, Depreciation &#x27;Until an asset has a schedule, its net book value is whatever someone typed into the asset record&#x27;, Reports &#x27;No reports yet&#x27;. No bare zeros, broken grids or hanging spinners.">
               <label class="sr-only" for="r1t45-notes">Notes for test 45</label>
               <textarea id="r1t45-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -1820,7 +1820,7 @@
           <p>Calendar, map, QR, photos and import — the parts that only break when somebody goes looking.</p>
         </div>
         
-        <article class="card" data-test id="r1t46" data-result=""
+        <article class="card" data-test id="r1t46" data-result="pending"
                  data-number="46" data-round="1"
                  data-title="Calendar"
                  data-roles="Operations Manager">
@@ -1842,14 +1842,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Calendar &rarr; look at the current month.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Find a scheduled PM task or work order and open it from the calendar.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Move between months and back.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check that anything created today shows on today's date.</span></button></div>
             <p class="expect"><span>Expect</span>Events appear on their correct dates, clicking one opens the record, month navigation works in both directions, and today's records are on today rather than a day out.</p>
             <div class="res-group" role="group" aria-label="Result for test 46"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run — the session ended before the calendar was exercised.">
               <label class="sr-only" for="r1t46-notes">Notes for test 46</label>
               <textarea id="r1t46-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t47" data-result=""
+        <article class="card" data-test id="r1t47" data-result="pending"
                  data-number="47" data-round="1"
                  data-title="Asset map"
                  data-roles="Operations Manager">
@@ -1871,14 +1871,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the asset map with the console visible.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check markers are on plausible Nigerian locations.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Click a marker.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check an asset with no coordinates.</span></button></div>
             <p class="expect"><span>Expect</span>Tiles load, markers sit in sensible places, clicking one identifies the asset and links to it, and an asset without coordinates is handled rather than dropped at the origin. Nothing throws.</p>
             <div class="res-group" role="group" aria-label="Result for test 47"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run.">
               <label class="sr-only" for="r1t47-notes">Notes for test 47</label>
               <textarea id="r1t47-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t48" data-result=""
+        <article class="card" data-test id="r1t48" data-result="pending"
                  data-number="48" data-round="1"
                  data-title="QR sheets and the scan page"
                  data-roles="Operations Manager, Field Technician">
@@ -1900,14 +1900,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Generate a QR sheet for several assets and open the print preview.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check each code is labelled with its asset.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the Field Technician, open <code>/scan</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Follow what a scanned code resolves to.</span></button></div>
             <p class="expect"><span>Expect</span>The sheet lays out one labelled code per asset and is printable without cutting codes across pages. The scan page opens and explains itself even where a camera is unavailable, and a code resolves to its asset.</p>
             <div class="res-group" role="group" aria-label="Result for test 48"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run.">
               <label class="sr-only" for="r1t48-notes">Notes for test 48</label>
               <textarea id="r1t48-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t49" data-result=""
+        <article class="card" data-test id="r1t49" data-result="pending"
                  data-number="49" data-round="1"
                  data-title="Photo upload and the lightbox"
                  data-roles="Field Technician">
@@ -1929,14 +1929,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Attach a photo to a work order or inspection.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open it in the lightbox; move between images if there are several; close it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Copy the image URL.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign out, sign in as the Viewer, and paste the image URL directly.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Then try it signed out entirely.</span></button></div>
             <p class="expect"><span>Expect</span>The upload succeeds and thumbnails. The lightbox opens, navigates and closes on Escape. Signed out, the file URL is refused — an image that loads with no session is a data leak.</p>
             <div class="res-group" role="group" aria-label="Result for test 49"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run — this includes the signed-out file-URL check, which is the permission boundary most worth closing in round 2.">
               <label class="sr-only" for="r1t49-notes">Notes for test 49</label>
               <textarea id="r1t49-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t50" data-result=""
+        <article class="card" data-test id="r1t50" data-result="pending"
                  data-number="50" data-round="1"
                  data-title="CSV import"
                  data-roles="Operations Manager">
@@ -1958,7 +1958,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Find the CSV import and download the template if one is offered.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Import two valid rows.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Import a file with a missing required column.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Import a file with a valid header and one bad row among three good ones.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Rename a <code>.txt</code> file to <code>.csv</code> and import that.</span></button></div>
             <p class="expect"><span>Expect</span>Valid rows import and appear in the list. A missing column is refused naming the column. The part-bad file either imports the good rows and reports the bad one by line number, or refuses the lot — but says clearly which happened. The fake CSV is refused rather than half-imported.</p>
             <div class="res-group" role="group" aria-label="Result for test 50"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run.">
               <label class="sr-only" for="r1t50-notes">Notes for test 50</label>
               <textarea id="r1t50-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -1972,7 +1972,7 @@
           <p>For each role, the pages it must not reach — tested by typing the URL, not by checking the nav hides it.</p>
         </div>
         
-        <article class="card" data-test id="r1t51" data-result=""
+        <article class="card" data-test id="r1t51" data-result="fail"
                  data-number="51" data-round="1"
                  data-title="Viewer is read-only everywhere"
                  data-roles="Viewer">
@@ -1994,14 +1994,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Viewer and look at what the navigation offers.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type each of these directly: <code>/assets</code>, <code>/work-orders</code>, <code>/defects</code>, <code>/risks</code>, <code>/spare-parts</code>, <code>/inspections</code>, <code>/compliance</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On each page reachable, look for any create, edit, delete or transition control and try it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Then type <code>/admin</code>.</span></button></div>
             <p class="expect"><span>Expect</span>Read-only pages may render, but no control creates, edits or transitions anything — and any attempt is refused rather than accepted. <code>/admin</code> does not open.</p>
             <div class="res-group" role="group" aria-label="Result for test 51"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Read-only enforcement itself holds: the Viewer&#x27;s work-order panel offers a comment box and &#x27;Attach file&#x27;, and posting a comment is correctly refused by the server — but the toast reads just &#x27;forbidden&#x27;, a raw code, and the controls should not be offered at all (F5). The test fails on its last clause: /admin DOES open for the Viewer, showing Escalations and the full Audit Log with every organisational event (F4). The Viewer&#x27;s nav also carries Depreciation and Analytics.">
               <label class="sr-only" for="r1t51-notes">Notes for test 51</label>
               <textarea id="r1t51-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t52" data-result=""
+        <article class="card" data-test id="r1t52" data-result="pass"
                  data-number="52" data-round="1"
                  data-title="Auditor sees everything and changes nothing"
                  data-roles="Auditor">
@@ -2023,14 +2023,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Auditor and open <code>/admin</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note which Admin tabs are present.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try to reach the Users &amp; Roles, Locations and Configuration tabs.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On the Audit Log, try to change anything.</span></button></div>
             <p class="expect"><span>Expect</span>Admin opens on the Audit Log alone. Users &amp; Roles, Locations and Configuration are not reachable. Nothing on the audit log can be altered.</p>
             <div class="res-group" role="group" aria-label="Result for test 52"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Admin opens for the Auditor showing only Escalations and Audit Log — no Users &amp; Roles, Locations, Sites, Asset Categories or Configuration. Nothing on the audit log can be altered. Slight deviation from the expectation as written: an Escalations tab appears alongside the Audit Log (read-only, captioned &#x27;Only a System Admin can add or change escalation rules&#x27;), because *:read satisfies escalation:read.">
               <label class="sr-only" for="r1t52-notes">Notes for test 52</label>
               <textarea id="r1t52-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t53" data-result=""
+        <article class="card" data-test id="r1t53" data-result="fail"
                  data-number="53" data-round="1"
                  data-title="Field Technician cannot reach management pages"
                  data-roles="Field Technician">
@@ -2052,14 +2052,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Field Technician.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type each directly: <code>/depreciation</code>, <code>/analytics</code>, <code>/admin</code>, <code>/settings</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>/risks</code> and try to create a risk.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open a work order not assigned to them and try to edit it.</span></button></div>
             <p class="expect"><span>Expect</span>Depreciation, Analytics and Admin do not open — they redirect or refuse rather than rendering. The technician can read risks but not create one.</p>
             <div class="res-group" role="group" aria-label="Result for test 53"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Two of the three boundaries hold: typing /depreciation, /analytics and /admin as the Field Technician each redirects to /dashboard. But /reports opens fully, and its Analytics tab renders per-location financials — Total value ₦1.4B, Book value ₦609.4M, WO cost and average health — for a role with no report:read and no depreciation:read. GET /api/reports and GET /api/reports/location-analytics both return 200, so this is a server-side leak, not just an unguarded route (F1). /settings correctly opens read-only with &#x27;Only the Org Owner can edit organisation details.&#x27; and every field disabled.">
               <label class="sr-only" for="r1t53-notes">Notes for test 53</label>
               <textarea id="r1t53-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t54" data-result=""
+        <article class="card" data-test id="r1t54" data-result="pending"
                  data-number="54" data-round="1"
                  data-title="Maintenance Engineer cannot administer the org"
                  data-roles="Maintenance Engineer">
@@ -2081,14 +2081,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Maintenance Engineer and type <code>/admin</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try to reach the approval matrix and the escalation rules.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>/settings</code> and try to change the organisation's currency.</span></button></div>
             <p class="expect"><span>Expect</span>Admin does not open. The approval matrix and escalation rules are unreachable. The currency cannot be changed.</p>
             <div class="res-group" role="group" aria-label="Result for test 54"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run by URL. The Maintenance Engineer&#x27;s nav does omit Depreciation and Admin, but I did not type the blocked URLs directly or attempt the approval-matrix, escalation-rule and currency writes.">
               <label class="sr-only" for="r1t54-notes">Notes for test 54</label>
               <textarea id="r1t54-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t55" data-result=""
+        <article class="card" data-test id="r1t55" data-result="pending"
                  data-number="55" data-round="1"
                  data-title="Operations Manager gets org:manage but not user:manage"
                  data-roles="Operations Manager">
@@ -2110,14 +2110,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Operations Manager and open <code>/admin</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Confirm Locations, Sites and Asset Categories are usable — add a location and delete it again.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try to reach Users &amp; Roles and invite somebody.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try to create an approval rule and an escalation rule.</span></button></div>
             <p class="expect"><span>Expect</span>Locations, Sites and Categories work. Users &amp; Roles is not available, no invite can be sent, and neither an approval rule nor an escalation rule can be created.</p>
             <div class="res-group" role="group" aria-label="Result for test 55"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run. The Ops Manager&#x27;s nav does include Admin (correct — they hold org:manage), but I did not verify which Admin tabs they get, nor confirm that Users &amp; Roles is absent and that approval and escalation rules cannot be created.">
               <label class="sr-only" for="r1t55-notes">Notes for test 55</label>
               <textarea id="r1t55-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t56" data-result=""
+        <article class="card" data-test id="r1t56" data-result="pending"
                  data-number="56" data-round="1"
                  data-title="Disabling a member locks them out"
                  data-roles="System Admin">
@@ -2139,7 +2139,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the owner, Admin &rarr; Users &amp; Roles &rarr; disable <code>uat.viewer@assetcore.test</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Viewer.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">If a Viewer session is still open in another window, reload it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Re-enable the account afterwards — later rounds need it.</span></button></div>
             <p class="expect"><span>Expect</span>The disabled account cannot sign in and is told why. An already-open session stops working on the next request rather than continuing until it expires.</p>
             <div class="res-group" role="group" aria-label="Result for test 56"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run — no member was disabled, so lockout of a new sign-in and of an already-open session is untested. The demo members were deliberately left enabled for session 2.">
               <label class="sr-only" for="r1t56-notes">Notes for test 56</label>
               <textarea id="r1t56-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -2153,7 +2153,7 @@
           <p>The cross-cutting checks that decide whether the app survives contact with real users.</p>
         </div>
         
-        <article class="card" data-test id="r1t57" data-result=""
+        <article class="card" data-test id="r1t57" data-result="pending"
                  data-number="57" data-round="1"
                  data-title="Required fields and bad input"
                  data-roles="Operations Manager">
@@ -2175,14 +2175,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On the new-asset form, save with everything empty.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Put letters in a number field and a past date where a future one belongs.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On a work order, set a due date before the start date.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Enter a 500-character name.</span></button></div>
             <p class="expect"><span>Expect</span>Each refusal names the field and what is wrong with it. Nothing saves half a record, and nothing throws in the console.</p>
             <div class="res-group" role="group" aria-label="Result for test 57"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run systematically.">
               <label class="sr-only" for="r1t57-notes">Notes for test 57</label>
               <textarea id="r1t57-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t58" data-result=""
+        <article class="card" data-test id="r1t58" data-result="pending"
                  data-number="58" data-round="1"
                  data-title="Round trip with real characters"
                  data-roles="Operations Manager">
@@ -2204,14 +2204,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Create an asset named <code>Ọ̀kè Compressor &mdash; Warri &quot;A&quot; (test)</code> with a description containing an apostrophe and an emoji.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Save, reload the page, reopen it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Search for it by a distinctive word.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check how it renders in a list and in an export.</span></button></div>
             <p class="expect"><span>Expect</span>Everything comes back exactly as entered, in the record, the list, the search result and the export. No escaping artefacts, no dropped characters.</p>
             <div class="res-group" role="group" aria-label="Result for test 58"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run.">
               <label class="sr-only" for="r1t58-notes">Notes for test 58</label>
               <textarea id="r1t58-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t59" data-result=""
+        <article class="card" data-test id="r1t59" data-result="pending"
                  data-number="59" data-round="1"
                  data-title="Double submit makes one record"
                  data-roles="Operations Manager">
@@ -2233,14 +2233,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Fill in a new work order.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press Save twice as fast as possible.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look at the list.</span></button></div>
             <p class="expect"><span>Expect</span>Exactly one work order is created. The button disables or the request is de-duplicated.</p>
             <div class="res-group" role="group" aria-label="Result for test 59"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run.">
               <label class="sr-only" for="r1t59-notes">Notes for test 59</label>
               <textarea id="r1t59-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t60" data-result=""
+        <article class="card" data-test id="r1t60" data-result="pending"
                  data-number="60" data-round="1"
                  data-title="Search, filter and sort agree with each other"
                  data-roles="Operations Manager">
@@ -2262,14 +2262,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On Work Orders, filter by status and compare the count against the rows shown.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Search for something with an obvious hit, then something misspelled, then something that must return nothing.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sort by two different columns and check the order actually changes.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Combine a filter and a search.</span></button></div>
             <p class="expect"><span>Expect</span>Counts match rows in every combination. The misspelling either returns nothing or a sensible near match, and the empty search says so rather than showing everything.</p>
             <div class="res-group" role="group" aria-label="Result for test 60"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run.">
               <label class="sr-only" for="r1t60-notes">Notes for test 60</label>
               <textarea id="r1t60-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t61" data-result=""
+        <article class="card" data-test id="r1t61" data-result="pending"
                  data-number="61" data-round="1"
                  data-title="Sign out, back button and a stale form"
                  data-roles="Operations Manager">
@@ -2291,14 +2291,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in, open a work order, then sign out.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press the browser back button.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open a form, leave it sitting for several minutes, then submit it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reload the app with a session open.</span></button></div>
             <p class="expect"><span>Expect</span>The back button after sign-out shows the sign-in page, never the cached record. A stale form either submits cleanly against a refreshed token or says the session expired — it does not fail silently. Reloading keeps the session.</p>
             <div class="res-group" role="group" aria-label="Result for test 61"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Partly run. Sign-out was exercised many times and always lands on /auth, including for the orphaned account. The back button after sign-out, the stale-token form and the reload-keeps-session case were not tested.">
               <label class="sr-only" for="r1t61-notes">Notes for test 61</label>
               <textarea id="r1t61-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t62" data-result=""
+        <article class="card" data-test id="r1t62" data-result="pending"
                  data-number="62" data-round="1"
                  data-title="Phone width"
                  data-roles="Field Technician">
@@ -2320,14 +2320,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Set the browser to 375px wide.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Visit the dashboard, work-order list, a work-order detail, the scan page and an inspection.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check nothing scrolls sideways and every button is reachable.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the navigation.</span></button></div>
             <p class="expect"><span>Expect</span>No horizontal scrolling on the page body. Wide tables scroll inside their own box. The navigation opens and closes, and every action is reachable with a thumb.</p>
             <div class="res-group" role="group" aria-label="Result for test 62"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run.">
               <label class="sr-only" for="r1t62-notes">Notes for test 62</label>
               <textarea id="r1t62-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t63" data-result=""
+        <article class="card" data-test id="r1t63" data-result="pending"
                  data-number="63" data-round="1"
                  data-title="Dark mode"
                  data-roles="Operations Manager">
@@ -2349,14 +2349,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Turn on dark mode.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Visit the dashboard, Analytics, a work order, the risk matrix and Admin.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for anything unreadable: white boxes, invisible text, charts still on a light ground.</span></button></div>
             <p class="expect"><span>Expect</span>Every screen is legible in dark mode. Charts, the risk matrix and the health donut all adapt rather than keeping a light background.</p>
             <div class="res-group" role="group" aria-label="Result for test 63"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Not run.">
               <label class="sr-only" for="r1t63-notes">Notes for test 63</label>
               <textarea id="r1t63-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t64" data-result=""
+        <article class="card" data-test id="r1t64" data-result="fail"
                  data-number="64" data-round="1"
                  data-title="Keyboard only"
                  data-roles="Operations Manager">
@@ -2378,14 +2378,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">From the dashboard, tab through the page.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open a modal with the keyboard, then close it with Escape.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Tab through a form and submit with Enter.</span></button></div>
             <p class="expect"><span>Expect</span>Focus is always visible, tab order follows the page, modals trap focus and return it on close, and Escape closes them.</p>
             <div class="res-group" role="group" aria-label="Result for test 64"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Enter does not submit the &#x27;Invite a team member&#x27; form: with name, email and role filled, pressing Enter in the name field did nothing and the invite had to be sent by clicking the button (F3). It is a real &lt;form&gt; with a submit button, so Enter should work. The rest of the keyboard sweep — focus visibility, tab order, modal focus trapping, Escape to close — was not run.">
               <label class="sr-only" for="r1t64-notes">Notes for test 64</label>
               <textarea id="r1t64-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r1t65" data-result=""
+        <article class="card" data-test id="r1t65" data-result="fail"
                  data-number="65" data-round="1"
                  data-title="The console stays clean across the whole app"
                  data-roles="Operations Manager">
@@ -2407,7 +2407,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the console and clear it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Visit every page in the navigation in turn, waiting for each to settle.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note every error and warning, with the page it came from.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the network panel for any request returning 4xx or 5xx that the page did not surface to the user.</span></button></div>
             <p class="expect"><span>Expect</span>No uncaught errors on any page. Any failed request is either expected (a permission refusal) or surfaced to the user — never a silent failure behind a page that looks fine.</p>
             <div class="res-group" role="group" aria-label="Result for test 65"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="The console does not stay clean. Confirmed during the run: a suppressed native alert &#x27;addWorkOrderTask is not defined&#x27; on every work-order checklist action (F8); repeated 500s from POST /api/depreciation/preview surfaced to the user as &#x27;internal_error&#x27; (F10); and 403s from the Viewer write probe. React Router v7 future-flag warnings appear on every page load. A full page-by-page sweep with a cleared console was not run, so this is a floor on the problem, not a complete list.">
               <label class="sr-only" for="r1t65-notes">Notes for test 65</label>
               <textarea id="r1t65-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>

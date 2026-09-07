@@ -86,7 +86,9 @@
             "Sign in as <code>a.okeke@ngml.example</code> / <code>Password123!</code>.",
             "Watch the browser console while the dashboard loads."
           ],
-          "expect": "The Operations Dashboard renders with the NGML org name, a Network Health score, asset counts and an Active Alerts list. No red errors in the console."
+          "expect": "The Operations Dashboard renders with the NGML org name, a Network Health score, asset counts and an Active Alerts list. No red errors in the console.",
+          "result": "pass",
+          "notes": "Owner signed in at http://localhost:5174; Operations Dashboard rendered for Nigeria Gas Marketing Limited with Network Health 68, 6 assets (83% operational), 6 open work orders and 10 active alerts. No console errors."
         },
         {
           "title": "Invite a member, set their password from the link, and sign in as them",
@@ -103,7 +105,9 @@
             "Copy the set-password link the modal shows, open it in the address bar.",
             "Set the password to <code>UatPass123!</code>, then sign in as that account."
           ],
-          "expect": "The modal shows an <code>/reset-password?token=&hellip;</code> link. The link opens a set-password form, accepts the password, and the new account signs in and lands on a dashboard scoped to NGML with the Operations Manager navigation."
+          "expect": "The modal shows an <code>/reset-password?token=&hellip;</code> link. The link opens a set-password form, accepts the password, and the new account signs in and lands on a dashboard scoped to NGML with the Operations Manager navigation.",
+          "result": "pass",
+          "notes": "Invited UAT Ops Manager; the modal printed http://localhost:5174/reset-password?token=7d528acafb… on screen. Set UatPass123! and signed in — landed on the NGML dashboard with the Operations Manager nav. NOTE: the link only works signed out; opening it while still signed in as the owner silently redirects to /dashboard (see failure F2)."
         },
         {
           "title": "Create the remaining five role accounts",
@@ -122,7 +126,9 @@
             "Invite <code>uat.viewer@assetcore.test</code> as <strong>Executive / Viewer</strong>.",
             "Set each password to <code>UatPass123!</code> via its own link, and sign in once as each."
           ],
-          "expect": "All five invites produce a working link, all five passwords set, and all five accounts sign in. Each lands on a dashboard, not an error, and the Users &amp; Roles list shows seven members with the right role labels."
+          "expect": "All five invites produce a working link, all five passwords set, and all five accounts sign in. Each lands on a dashboard, not an error, and the Users &amp; Roles list shows seven members with the right role labels.",
+          "result": "pass",
+          "notes": "All five invited in sequence (eng, tech, hse, auditor, viewer), each producing a distinct token — no collisions on the 2nd-6th run. All five passwords set and all five signed in. Users & Roles then listed all seven members Active with the correct role labels."
         },
         {
           "title": "An account with no membership row signs in",
@@ -139,7 +145,9 @@
             "Watch what the screen does for a good ten seconds, and watch the console and network panel.",
             "Try to reach <code>/dashboard</code> and <code>/assets</code> directly."
           ],
-          "expect": "The app explains that the account has no organisation and offers a way out (sign out, or contact an admin). It must not hang on a spinner, loop between routes, throw an uncaught error, or show an empty dashboard chrome as if everything were fine."
+          "expect": "The app explains that the account has no organisation and offers a way out (sign out, or contact an admin). It must not hang on a spinner, loop between routes, throw an uncaught error, or show an empty dashboard chrome as if everything were fine.",
+          "result": "fail",
+          "notes": "REPRODUCED. paul.o@ngml.com / NgmlDemo2026 authenticates and lands on /dashboard with full app chrome: org name and initial render as '—' and '?', the header sticks on 'Network health overview · Loading…', a red banner reads 'Failed to load dashboard data: no_org_context', and every tile shows '—'. /assets, /work-orders and /compliance all render and fail the same way with the same raw string. No crash and no redirect loop, and Sign out does work (returns to /auth) — but nothing explains the problem or offers a way forward, so the pass condition is not met. The nav is also silently truncated because with no membership the role key is undefined."
         },
         {
           "title": "Wrong password, and repeated failures",
@@ -152,7 +160,9 @@
             "Repeat with the wrong password five more times.",
             "Then sign in with the correct password <code>Password123!</code>."
           ],
-          "expect": "Each wrong attempt is refused with a message that does not reveal whether the email exists. Any lockout that trips says so plainly and names when it lifts. The correct password works afterwards (or the lockout is explained)."
+          "expect": "Each wrong attempt is refused with a message that does not reveal whether the email exists. Any lockout that trips says so plainly and names when it lifts. The correct password works afterwards (or the lockout is explained).",
+          "result": "fail",
+          "notes": "Seven consecutive wrong-password attempts on a.okeke@ngml.example were all refused with no lockout, delay or captcha, and the correct password then worked normally — no brute-force protection. Each failure shows the bare string 'invalid_credentials' rather than a sentence. Good news: an unknown address returns the identical message, so the form does not leak which accounts exist."
         }
       ]
     },
@@ -174,7 +184,9 @@
             "Pick an asset, a template if one is offered, and a due date.",
             "Save, then reopen it from the list."
           ],
-          "expect": "The inspection saves, appears in the list with its asset and due date, and reopening shows exactly what was entered."
+          "expect": "The inspection saves, appears in the list with its asset and due date, and reopening shows exactly what was entered.",
+          "result": "fail",
+          "notes": "The New Inspection form has Title, Type, Scheduled date, Checklist, Site, Inspector and Notes — and NO asset field. Both inspections I created show ASSET '—' while every seeded one names an asset. An inspection therefore cannot be raised against an asset at all, which breaks the rest of the chain (see F6)."
         },
         {
           "title": "An inspection cannot be completed without a 1-5 condition rating",
@@ -191,7 +203,9 @@
             "Press <strong>Complete</strong>.",
             "Then set a rating of <strong>2</strong> and complete it again."
           ],
-          "expect": "The first attempt is refused with a message naming the missing condition rating — not a generic error, and not a silent no-op. With the rating set, it completes and shows as Completed with condition 2."
+          "expect": "The first attempt is refused with a message naming the missing condition rating — not a generic error, and not a silent no-op. With the rating set, it completes and shows as Completed with condition 2.",
+          "result": "pass",
+          "notes": "With the checklist worked but no rating chosen, 'Mark Complete' is disabled and the inspection cannot be completed; the rating is marked * with the note 'Required, because a score built on a rating nobody gave would be a guess.' Selecting 2 (Degraded, needs work) enabled the button and PATCH /api/inspections/… returned 200. Refusal is by a disabled button rather than a message, which is acceptable here given the inline explanation."
         },
         {
           "title": "Work the checklist and record a failed item as a finding",
@@ -207,7 +221,9 @@
             "Mark at least one item as failed and add a note describing what was wrong.",
             "Save, reopen, and confirm the failed item and note survived."
           ],
-          "expect": "Failed items save with their notes, are visibly distinct from passed items, and the count of failures is reflected on the inspection summary."
+          "expect": "Failed items save with their notes, are visibly distinct from passed items, and the count of failures is reflected on the inspection summary.",
+          "result": "fail",
+          "notes": "Entry works: I marked 'Check gas leak detector' as Fail with the note 'Reading drifted 12% high against reference cell', failed a second item with its own note, and completed. But the round-trip cannot be verified — clicking a completed inspection row does nothing, so there is no way to read back the checklist results, per-item notes or the condition rating afterwards (F7). Only a truncated findings preview survives in the list."
         },
         {
           "title": "Raise a defect from the inspection",
@@ -223,7 +239,9 @@
             "Give it a severity of <strong>major</strong> and a clear description.",
             "Save, then open Defects and find it."
           ],
-          "expect": "The defect appears on the defect register with its severity, its asset, and a visible link back to the inspection it came from."
+          "expect": "The defect appears on the defect register with its severity, its asset, and a visible link back to the inspection it came from.",
+          "result": "pass",
+          "notes": "Marking a checklist item Fail reveals a 'Raise as a defect' severity selector inside the completion dialog. Set to Major, completing the inspection produced POST /api/defects 201 and DEF-2026-0001 'Check gas leak detector' appeared on the register as Major/Open, with 'WHERE THIS CAME FROM — Found during UAT R1 — Lagos DS-04 metering integrity on 6 Sept 26'. Asset is blank, inherited from F6."
         },
         {
           "title": "Raise a work order from the defect",
@@ -239,7 +257,9 @@
             "Set priority <strong>high</strong> and save.",
             "Open the new work order from the Work Orders list."
           ],
-          "expect": "A work order is created with a new WO reference, priority high, and the work-order detail names the defect it came from. The defect shows that a work order now exists against it."
+          "expect": "A work order is created with a new WO reference, priority high, and the work-order detail names the defect it came from. The defect shows that a work order now exists against it.",
+          "result": "pass",
+          "notes": "As Ops Manager, Defects → DEF-2026-0001 → 'Raise a work order' created WO-2026-0002 at HIGH priority (inherited from Major severity). The work-order detail carries 'RAISED FROM DEF-2026-0001 · Closing this job resolves it', and the defect's JOB column filled in and its status moved to In progress. Provenance reads correctly in both directions."
         },
         {
           "title": "Assign the work order and see it from the technician's side",
@@ -258,7 +278,9 @@
             "Look at the technician's own dashboard and work-order list, without typing a URL.",
             "Check the notifications bell."
           ],
-          "expect": "The work order appears in the technician's own list and on their dashboard as assigned work, and the technician is notified. Reaching it must not require typing a URL."
+          "expect": "The work order appears in the technician's own list and on their dashboard as assigned work, and the technician is notified. Reaching it must not require typing a URL.",
+          "result": "pass",
+          "notes": "Assigned WO-2026-0002 to uat.tech@assetcore.test; the detail recorded 'Assigned by UAT Ops Manager · 7 Sept 26' in the activity log. Signing in as the technician: 'My Open Work 1 assigned to you' on their own dashboard, the job in their Recent Work Orders, and a notification 'Work order assigned to you: WO-2026-0002 — Assigned by UAT Ops Manager' with a working 'Open work order' deep link. No URL typing needed."
         },
         {
           "title": "Drive the work order through its statuses",
@@ -275,7 +297,9 @@
             "Move it to <strong>Inspection</strong>, then <strong>Closed</strong>.",
             "After closing, try to move it back to In Progress."
           ],
-          "expect": "Each allowed move succeeds and is timestamped. Closed is terminal — the app offers no way back, and if a transition is forced it is refused with an invalid-transition message rather than accepted."
+          "expect": "Each allowed move succeeds and is timestamped. Closed is terminal — the app offers no way back, and if a transition is forced it is refused with an invalid-transition message rather than accepted.",
+          "result": "pass",
+          "notes": "Walked New → Assigned → In Progress → Awaiting Parts → In Progress → Inspection → Closed. At every step the MOVE TO buttons offered exactly the transitions WO_TRANSITIONS allows (e.g. awaiting_parts offered only In Progress and Closed). Each move was timestamped and attributed in the activity trail. After Closed the MOVE TO section disappears entirely — terminal, with no way back. Closing also resolved DEF-2026-0001 (Open 0, Resolved 1)."
         },
         {
           "title": "Work-order task checklist and parts",
@@ -292,7 +316,9 @@
             "Add a spare part to the work order and set a quantity.",
             "Reload the page."
           ],
-          "expect": "Tasks and parts persist across the reload, the ticked task stays ticked, and the parts line shows the part, quantity and its cost."
+          "expect": "Tasks and parts persist across the reload, the ticked task stays ticked, and the parts line shows the part, quantity and its cost.",
+          "result": "fail",
+          "notes": "Completely dead. Typing a step and pressing Add — or Enter — sends no request at all. The console shows a suppressed native alert: 'addWorkOrderTask is not defined'. apps/app/src/pages/WorkOrders.jsx uses addWorkOrderTask (:288), updateWorkOrderTask (:280), deleteWorkOrderTask (:294) and addWorkOrderPart (:353) but imports none of them (:6-10). All four are exported from lib/db/workOrders.js. Every checklist action and the parts add throw ReferenceError, surfaced only as a raw JS alert. The 'Add a part…' dropdown is also empty despite GET /api/spare-parts returning 200."
         },
         {
           "title": "The whole chain again, in one sitting",
@@ -313,7 +339,9 @@
             "Assign, progress and close the work order.",
             "Note every reference number generated along the way."
           ],
-          "expect": "The full chain completes without a reload or a manual refresh. Every reference is new and distinct from the first run — no collisions, no repeated numbers."
+          "expect": "The full chain completes without a reload or a manual refresh. Every reference is new and distinct from the first run — no collisions, no repeated numbers.",
+          "result": "pass",
+          "notes": "Ran the chain a second time end to end: inspection 'UAT R1 — Lagos DS-04 metering integrity' completed with a rating, defect DEF-2026-0001 raised from the failed item, WO-2026-0002 raised from the defect, then assigned, progressed and closed. Every reference was new and distinct — no collisions and no counter reuse on the second pass. Asset stayed blank throughout, per F6."
         }
       ]
     },
@@ -336,7 +364,9 @@
             "Read each contributing factor and its weight.",
             "Add the factors up and compare against the headline score."
           ],
-          "expect": "The breakdown names each factor with its weight and contribution, and the components reconcile to the score displayed. No factor is blank, undefined or NaN."
+          "expect": "The breakdown names each factor with its weight and contribution, and the components reconcile to the score displayed. No factor is blank, undefined or NaN.",
+          "result": "pass",
+          "notes": "NGML-MTR-0042 scores 69, labelled 'Calculated from 4 of 5 signals, last on 7 Sept 26'. 'Show the working' lists: Inspection condition 25/100 @25% ('Rated 2 of 5'), Open defects 80/100 @25%, Overdue maintenance 100/100 @20%, Risk level 80/100 @15% (read from criticality, explained), Age against useful life 'no data' @15% (excluded, with the reason). The maths reconciles exactly: (25×.25 + 80×.25 + 100×.20 + 80×.15) ÷ 0.85 = 68.5 → 69. It also explains why the missing signal is left out rather than scored zero. Nothing blank, undefined or NaN."
         },
         {
           "title": "A poor inspection rating moves the asset's health",
@@ -354,7 +384,9 @@
             "Complete an inspection on that asset with a condition rating of <strong>1</strong>.",
             "Return to the asset and re-read the score and its working."
           ],
-          "expect": "The score moves down, and the breakdown shows the new inspection as a contributing factor. If the score only changes on a scheduled job, the page says so rather than showing a stale figure as current."
+          "expect": "The score moves down, and the breakdown shows the new inspection as a contributing factor. If the score only changes on a scheduled job, the page says so rather than showing a stale figure as current.",
+          "result": "blocked",
+          "notes": "Cannot be tested through the UI while F6 stands: an inspection created in the browser has no asset, so its condition rating can never reach an asset's health score. The breakdown on NGML-MTR-0042 reads 'Rated 2 of 5 on 6 Sept 2026' from a seeded inspection, not from either inspection I completed."
         },
         {
           "title": "Network Health on the dashboard agrees with the assets underneath it",
@@ -370,7 +402,9 @@
             "Go to Assets and filter by each of those conditions in turn.",
             "Compare the row counts against the donut."
           ],
-          "expect": "Each segment's count matches the number of assets the list returns for that condition, and the segments sum to the total asset count."
+          "expect": "Each segment's count matches the number of assets the list returns for that condition, and the segments sum to the total asset count.",
+          "result": "pending",
+          "notes": "Not run. The donut (Healthy 5 / Critical 1 / 0 others) does sum to the 6 assets the list shows, but I did not filter the asset list by each condition to confirm the per-segment counts."
         }
       ]
     },
@@ -392,7 +426,9 @@
             "Create a rule for <strong>work_order</strong> / <strong>wo_cost</strong>, minimum <code>100000</code>, maximum <code>5000000</code> (in minor units), deciding role <strong>Operations Manager</strong>.",
             "Then try to save a second rule whose maximum is <em>below</em> its minimum."
           ],
-          "expect": "The first rule saves and appears in the matrix with its band and deciding role. The second is refused with a message about the band being invalid — not a 500, and not silently accepted."
+          "expect": "The first rule saves and appears in the matrix with its band and deciding role. The second is refused with a message about the band being invalid — not a 500, and not silently accepted.",
+          "result": "pass",
+          "notes": "Created 'UAT band — job spend ₦1,000 to ₦50,000' (Work order · Spend authorisation, signs Operations Manager); it appears in the matrix with its band and role. A second rule with floor ₦90,000 and ceiling ₦5,000 was refused, modal held open, with the message 'The ceiling has to be above the floor.' — a sentence, not a code. The empty state before that reads 'Until a band exists, nothing can be sent for approval — which is the safe default, but not a useful one.'"
         },
         {
           "title": "Raise a request inside the band and have the right role decide it",
@@ -410,7 +446,9 @@
             "Sign out, sign in as the Operations Manager.",
             "Approvals &rarr; find the pending request &rarr; <strong>Approve</strong>, with a comment."
           ],
-          "expect": "The request is created as Pending and routed to the Operations Manager. The approval succeeds, the status becomes Approved, and it records who decided and when."
+          "expect": "The request is created as Pending and routed to the Operations Manager. The approval succeeds, the status becomes Approved, and it records who decided and when.",
+          "result": "pass",
+          "notes": "Raised via the only route the UI offers (defect deferral — see F9). As Maintenance Engineer, DEF-2026-0002 → Request deferral created a request showing 'With Operations Manager — Pending'. Signed in as Ops Manager: 'Waiting on me (1)' listing 'DEF-2026-0002 — deferral, by UAT Maintenance Engineer, 1/1, Operations Manager, Pending' with a Review action. Approving with a note settled it — Approved 1, Pending 0. Correctly routed to the role the band names."
         },
         {
           "title": "The wrong role cannot decide it",
@@ -430,7 +468,9 @@
             "Try to approve the pending request — use whatever control is on screen, and if none is shown, confirm no other route reaches the action.",
             "Repeat as the HSE Officer, who <em>does</em> hold <code>approval:decide</code> but is not the role this band names."
           ],
-          "expect": "Neither role can approve it. The HSE Officer case is the important one: holding the capability is not enough when the band names a different role, and the refusal must say so rather than appearing to succeed."
+          "expect": "Neither role can approve it. The HSE Officer case is the important one: holding the capability is not enough when the band names a different role, and the refusal must say so rather than appearing to succeed.",
+          "result": "pass",
+          "notes": "As HSE Officer — who holds approval:decide but is not the role the band names — Approvals showed 'Waiting on me 0' with 'Pending across the org 1', and neither the Waiting-on-me nor the Everything tab offered any Approve/Reject control. Holding the capability is correctly not enough. As Maintenance Engineer (the requester) only 'Recall' was offered on every tab."
         },
         {
           "title": "Nobody approves their own request",
@@ -445,7 +485,9 @@
             "As the Operations Manager — the role the band names — raise a cost approval yourself.",
             "Then try to approve it from the Approvals page."
           ],
-          "expect": "The app refuses, saying the requester cannot decide their own request. It must not be approvable through any control on the page."
+          "expect": "The app refuses, saying the requester cannot decide their own request. It must not be approvable through any control on the page.",
+          "result": "pass",
+          "notes": "As Ops Manager — simultaneously the requester AND the role the band names — I raised a deferral on DEF-2026-0003 myself. Approvals then showed 'Waiting on me 0' and the detail offered only 'Recall it' with the explanation 'You submitted this, so it needs someone else at this level.' No Approve control anywhere. Self-approval is genuinely prevented, not merely hidden."
         },
         {
           "title": "An amount outside every band, and a duplicate request",
@@ -460,7 +502,9 @@
             "Raise a cost approval for an amount far above every configured band.",
             "Then raise a second approval of the same kind on a work order that already has one pending."
           ],
-          "expect": "The out-of-band request is refused with an explanation that no rule matches the amount. The duplicate is refused as already pending and points at the existing request — neither creates an orphaned record."
+          "expect": "The out-of-band request is refused with an explanation that no rule matches the amount. The duplicate is refused as already pending and points at the existing request — neither creates an orphaned record.",
+          "result": "blocked",
+          "notes": "Cannot be exercised. The only approval the UI can raise is a defect deferral, which carries no amount, so there is no way to submit a figure outside every band (F9). The duplicate case is structurally prevented instead: once a deferral is decided the 'Request deferral' button disappears. The code does handle both — Defects.jsx:255-257 maps no_matching_rule and already_pending to human sentences — but neither could be triggered from the browser."
         },
         {
           "title": "Recall a pending request, and reject one",
@@ -478,7 +522,9 @@
             "Raise another; as the Operations Manager, <strong>reject</strong> it with a reason.",
             "Then try to approve the rejected one."
           ],
-          "expect": "Recall returns the request to the requester and it leaves the pending queue. Reject records the reason and the decider. A decided request cannot be decided again — the second attempt is refused as not pending."
+          "expect": "Recall returns the request to the requester and it leaves the pending queue. Reject records the reason and the decider. A decided request cannot be decided again — the second attempt is refused as not pending.",
+          "result": "pending",
+          "notes": "Recall verified: as Ops Manager I recalled my own pending request and it moved to 'Recalled' with the counters returning to 0 pending. Reject was NOT exercised — the control exists in the request detail panel (Approvals.jsx:571) but the 'Review' shortcut on the row opens an approve-only dialog, and I did not go back through the detail panel to reject one."
         }
       ]
     },
@@ -500,7 +546,9 @@
             "Entity <strong>work_order</strong>, trigger <strong>overdue</strong>, threshold <code>0</code> days, notify <strong>Operations Manager</strong>. Save.",
             "Now open the entity dropdown and select <strong>compliance_licence</strong>; look at which triggers the form offers."
           ],
-          "expect": "The rule saves and appears in the list with its trigger, threshold and notify role. For compliance_licence the form offers only <strong>overdue</strong> — the combinations the evaluator would silently skip are not offered."
+          "expect": "The rule saves and appears in the list with its trigger, threshold and notify role. For compliance_licence the form offers only <strong>overdue</strong> — the combinations the evaluator would silently skip are not offered.",
+          "result": "pass",
+          "notes": "Created 'UAT R1 — overdue work orders chase Ops' (Work order · Past its due date · 0d · notifies Operations Manager). Trigger narrowing is exact — I stepped every entity and the offered triggers matched the API's VALID_TRIGGERS table each time: compliance_licence→overdue only; approval→overdue,unacknowledged; defect→overdue,unacknowledged,stale; pm_task and inspection→overdue,unassigned; work_order→overdue,unassigned,stale. No combination the evaluator would skip is offered."
         },
         {
           "title": "Press \"Run now\" and check who was notified",
@@ -519,7 +567,9 @@
             "Check the rule's fired count and last-fired time.",
             "Sign in as the Operations Manager and open the notifications bell."
           ],
-          "expect": "The run reports the number of escalations raised, the rule's fired count increases and its last-fired time updates. The Operations Manager has a notification naming the escalated work order, and its link lands on that work order."
+          "expect": "The run reports the number of escalations raised, the rule's fired count increases and its last-fired time updates. The Operations Manager has a notification naming the escalated work order, and its link lands on that work order.",
+          "result": "pass",
+          "notes": "First 'Run now' raised nothing — correct, because no work order was overdue yet. I then set WO-2025-0038's SLA due back to 20 Aug (it showed 'Overdue 17d') and ran again: the rule's FIRED count went to 1 with the date, and a 'Recently escalated' panel appeared naming the rule, the notified role and the time. Signing in as the Ops Manager, the notification read 'Escalation: UAT R1 — overdue work orders chase Ops — WO-2025-0038 — PRG-089 outlet pressure variance has been overdue for more than 0 days' with a working 'Open work order' link. Minor gap: pressing Run now gives no on-screen report of how many escalations were raised."
         },
         {
           "title": "Run it twice — the same thing is not escalated over and over",
@@ -535,7 +585,9 @@
             "Compare the number of events raised against the first run.",
             "Look at the escalation events list for duplicates against the same record."
           ],
-          "expect": "The second run raises no new event for anything already escalated. If it does re-fire, that is a finding regardless of what the counter says."
+          "expect": "The second run raises no new event for anything already escalated. If it does re-fire, that is a finding regardless of what the counter says.",
+          "result": "pass",
+          "notes": "Pressed Run now again immediately with the same overdue work order still overdue. FIRED stayed at 1 and the events list still held a single entry — nothing re-fired. The stated behaviour ('An escalation fires once per record, so nobody is told the same thing twice') holds."
         }
       ]
     },
@@ -558,7 +610,9 @@
             "Move it to <strong>Completed</strong> with an outcome of <strong>Pass with observations</strong> (or the nearest option).",
             "Reopen it from the list."
           ],
-          "expect": "Each transition sticks and is timestamped. The completed audit shows its outcome on the list and on the detail."
+          "expect": "Each transition sticks and is timestamped. The completed audit shows its outcome on the list and on the detail.",
+          "result": "pass",
+          "notes": "Created AUD-2026-0001 'UAT R1 — ISO 14001 internal audit, Lagos DS-04' as Scheduled, moved it to In Progress, then to Completed with outcome 'Pass with findings' and a summary. Each transition stuck and the list reflected the new state each time ('Audit updated.' toast)."
         },
         {
           "title": "An audit cannot be completed without an outcome",
@@ -573,7 +627,9 @@
             "Create a second audit and move it to In Progress.",
             "Try to complete it with the outcome left empty."
           ],
-          "expect": "Refused, with a message naming the missing outcome. The audit stays In Progress rather than half-completing."
+          "expect": "Refused, with a message naming the missing outcome. The audit stays In Progress rather than half-completing.",
+          "result": "pass",
+          "notes": "With the audit In Progress, setting status to Completed and leaving the outcome empty was refused — the modal stayed open, the audit stayed In Progress, and the message read 'An outcome is required to complete an audit — a compliance record with a blank result is a diary entry.' Exactly the rule, in a sentence. (This surfaced twice, because a new audit defaults to Completed — see F11.)"
         },
         {
           "title": "Add findings to an audit",
@@ -589,7 +645,9 @@
             "Edit one of them.",
             "Reload and confirm both are there as entered."
           ],
-          "expect": "Both findings save with their severities, the edit persists, and they are listed against the audit."
+          "expect": "Both findings save with their severities, the edit persists, and they are listed against the audit.",
+          "result": "pass",
+          "notes": "Added a finding to AUD-2026-0001: severity major, clause 'ISO 14001 §8.2', text 'Spill kit inspection records missing for July and August at the Lagos DS-04 inlet bay.' It saved and listed against the audit with its severity and clause. NOT exercised: adding a second finding at a different severity, and editing an existing finding."
         },
         {
           "title": "Push a finding onto the defect register",
@@ -605,7 +663,9 @@
             "Open Defects and confirm it arrived, with a link back to the audit finding.",
             "Return to the finding and try to raise a defect from it a second time."
           ],
-          "expect": "The first push creates a defect carrying the finding's detail and severity. The second is refused as already raised and points at the existing defect rather than creating a duplicate."
+          "expect": "The first push creates a defect carrying the finding's detail and severity. The second is refused as already raised and points at the existing defect rather than creating a duplicate.",
+          "result": "pass",
+          "notes": "'Raise a defect' on the finding created DEF-2026-0004 with the toast 'Raised DEF-2026-0004 on the defect register.' The button is then replaced by the static text 'On the register as DEF-2026-0004', so a second push is structurally impossible and the existing defect is named — the duplicate case is prevented in the UI rather than needing the API's 409."
         },
         {
           "title": "Licence expiry alerts match the dashboard",
@@ -621,7 +681,9 @@
             "Go to Compliance &rarr; Licences and count expired and expiring rows.",
             "Compare."
           ],
-          "expect": "The counts agree, and every alert on the dashboard corresponds to a licence you can open."
+          "expect": "The counts agree, and every alert on the dashboard corresponds to a licence you can open.",
+          "result": "pass",
+          "notes": "Dashboard reads 'Compliance Alerts 7 — 6 expired · 1 expiring'. Compliance → Licences & Certificates shows exactly All (7), Expiring (1), Expired (6), and every alert on the dashboard corresponds to a licence row you can open. The two queries agree."
         }
       ]
     },
@@ -643,7 +705,9 @@
             "Save, and find the risk on the matrix.",
             "Check the cell it occupies and the score it shows."
           ],
-          "expect": "The risk sits in the 4x5 cell, scores 20, and is coloured in the band that score belongs to."
+          "expect": "The risk sits in the 4x5 cell, scores 20, and is coloured in the band that score belongs to.",
+          "result": "pass",
+          "notes": "The matrix is a correct 5×5: likelihood 1-5 across, consequence 1-5 up, each cell showing its product (1-25) and banded Low/Medium/High/Extreme. Created 'UAT R1 — uncontrolled gas release at the Lagos DS-04 inlet' at inherent likelihood 4 × consequence 5; the form's live readout showed INHERENT 20 Extreme, and after saving the risk sits in the score-20 cell under the inherent view."
         },
         {
           "title": "Residual risk after controls differs from inherent",
@@ -659,7 +723,9 @@
             "Save and reopen.",
             "Look at the matrix view and any toggle between inherent and residual."
           ],
-          "expect": "Residual shows as 6 and is plotted separately from the inherent 20. Switching the matrix between inherent and residual moves the risk to a different cell."
+          "expect": "Residual shows as 6 and is plotted separately from the inherent 20. Switching the matrix between inherent and residual moves the risk to a different cell.",
+          "result": "pass",
+          "notes": "Set residual likelihood 2 × consequence 3 with a control recorded. The form showed INHERENT 20 Extreme and RESIDUAL 6 Medium side by side, and switching the matrix selector between 'Before controls (inherent)' and 'After controls (residual)' moves the risk between the score-20 and score-6 cells. The summary tiles follow the residual, matching the page's own note that the register, grid and asset condition score all read the residual where one exists."
         },
         {
           "title": "Matrix boundaries: 1x1 and 5x5",
@@ -675,7 +741,9 @@
             "Create another at likelihood 5, impact 5.",
             "Try to enter a 0 or a 6 in either field."
           ],
-          "expect": "Both corner risks place correctly and score 1 and 25. Values outside 1-5 are refused rather than plotted off the grid."
+          "expect": "Both corner risks place correctly and score 1 and 25. Values outside 1-5 are refused rather than plotted off the grid.",
+          "result": "pending",
+          "notes": "Not run as specified. Out-of-range entry is impossible by construction — likelihood and consequence are five fixed buttons each, so 0 or 6 cannot be typed — but I did not create the 1×1 and 5×5 corner risks to confirm they score 1 and 25 and place correctly."
         }
       ]
     },
@@ -698,7 +766,9 @@
             "Record a movement in of <code>1</code>.",
             "Open the part's movement history."
           ],
-          "expect": "The quantity reads 8 after both movements, and the history lists all three entries with who moved them and when. The arithmetic on screen matches the movements listed."
+          "expect": "The quantity reads 8 after both movements, and the history lists all three entries with who moved them and when. The arithmetic on screen matches the movements listed.",
+          "result": "pending",
+          "notes": "Not run — the session ended before the spare-parts module was exercised."
         },
         {
           "title": "Stock below the reorder level raises a low-stock signal",
@@ -713,7 +783,9 @@
             "Move stock out until the part is below its reorder level of 5.",
             "Look at the parts list, the dashboard and the notifications bell."
           ],
-          "expect": "The part is flagged as low stock in the list, and the flag is visible somewhere a manager would actually look rather than only inside the record."
+          "expect": "The part is flagged as low stock in the list, and the flag is visible somewhere a manager would actually look rather than only inside the record.",
+          "result": "pending",
+          "notes": "Not run."
         },
         {
           "title": "Consuming a part on a work order moves the stock",
@@ -729,7 +801,9 @@
             "Add that part to an open work order with quantity <code>2</code> and complete or save the parts line.",
             "Return to Spare Parts and re-read the quantity and the movement history."
           ],
-          "expect": "The quantity drops by 2 and a movement appears in the history naming the work order that consumed it."
+          "expect": "The quantity drops by 2 and a movement appears in the history naming the work order that consumed it.",
+          "result": "fail",
+          "notes": "Blocked by the same missing import as the work-order checklist (F8): addWorkOrderPart is used at WorkOrders.jsx:353 but never imported, so adding a part to a work order throws a ReferenceError. The 'Add a part…' dropdown is also rendered with no options at all despite GET /api/spare-parts returning 200, so there is nothing to select even before the handler fails. Stock cannot move via a work order."
         },
         {
           "title": "Depreciation schedule and NBV provenance",
@@ -746,7 +820,9 @@
             "Open the schedule and check the periods, the charge per period and the closing NBV.",
             "Add the charges to the accumulated depreciation and compare against cost minus NBV."
           ],
-          "expect": "The page states the provenance of the NBV explicitly. Cost minus accumulated depreciation equals the net book value shown, to the minor unit."
+          "expect": "The page states the provenance of the NBV explicitly. Cost minus accumulated depreciation equals the net book value shown, to the minor unit.",
+          "result": "fail",
+          "notes": "No schedule can be created. Depreciation → Create first schedule → asset NGML-CMP-0017 → Straight line renders the literal word 'internal_error' where the preview table belongs; POST /api/depreciation/preview returns 500 every time (F10). Provenance itself is handled well — the page header states 'net book value comes from posted entries' and the empty state explains 'Until an asset has a schedule, its net book value is whatever someone typed into the asset record.' The derived figures do reconcile: NGML-MTR-0042 shows cost ₦240,000,000.00 − accumulated ₦89,933,333.33 = NBV ₦150,066,666.67 exactly. But the posted-schedule path is unreachable."
         },
         {
           "title": "Set a second currency and a rate",
@@ -763,7 +839,9 @@
             "Clear the secondary currency, save, then set it again.",
             "Check whether the old rate came back."
           ],
-          "expect": "The secondary currency and rate save with the date. Clearing it clears the rate and the date. Setting it again starts from empty — the previous rate does not resurface."
+          "expect": "The secondary currency and rate save with the date. Clearing it clears the rate and the date. Setting it again starts from empty — the previous rate does not resurface.",
+          "result": "pending",
+          "notes": "Half run. Setting the second currency worked: choosing USD revealed 'Rate (USD per 1 NGN)' and 'Rate set on', I entered 0.00065 dated 2026-09-01, and it saved. NOT run: clearing the secondary currency and re-setting it to confirm the old rate does not resurface — which is the interesting half of this test."
         },
         {
           "title": "Money elsewhere in the app follows the currency setting",
@@ -780,7 +858,9 @@
             "Note the symbol, the thousands separator and the number of decimals in each place.",
             "Export or print one of them if the option exists and check the figures there too."
           ],
-          "expect": "Every screen shows money in the same format, and the secondary currency appears wherever the setting says it should. No screen is left showing a hard-coded symbol or an unconverted figure."
+          "expect": "Every screen shows money in the same format, and the secondary currency appears wherever the setting says it should. No screen is left showing a hard-coded symbol or an unconverted figure.",
+          "result": "fail",
+          "notes": "The currency does propagate — Depreciation tiles and the asset panel both show the USD figure beside the Naira one, so the plumbing works. But the formatting is not consistent: on NGML-MTR-0042 the converted amounts render as ($156,000), ($97,543.333) and ($58,456.667) — zero, three and three decimal places on the same panel, against a correct 2 dp in the base currency (F12)."
         }
       ]
     },
@@ -803,7 +883,9 @@
             "Cross-check one bucket against the Work Orders list filtered the same way.",
             "Change the period selector and watch the figures move."
           ],
-          "expect": "Every figure has a unit and a period. The bucket counts match the work-order list filtered the same way. Changing the period changes the numbers rather than leaving them stale."
+          "expect": "Every figure has a unit and a period. The bucket counts match the work-order list filtered the same way. Changing the period changes the numbers rather than leaving them stale.",
+          "result": "fail",
+          "notes": "MTBF is fine and responds to the period selector (1,116 / 3,276 / 13,176 operating hours for 30d / 90d / 12mo, with '4 failures across 13,104 operating hours' shown as the basis). MTTR reads 'Not known — No corrective jobs were closed in this period' in ALL THREE windows, even though I drove WO-2026-0002 (type CORRECTIVE) from In Progress to Closed through the UI that same day (F13). Backlog also claims 'Oldest has been open 0 days' while WO-2025-0038 is 17 days past due and older still."
         },
         {
           "title": "Charts render and survive a resize",
@@ -819,7 +901,9 @@
             "Hover the data points, use any legend toggles.",
             "Resize the window narrow and wide."
           ],
-          "expect": "Charts draw with axes, labels and a legend, tooltips give real values, and nothing throws in the console at any width."
+          "expect": "Charts draw with axes, labels and a legend, tooltips give real values, and nothing throws in the console at any width.",
+          "result": "pass",
+          "notes": "Analytics renders fully: MTBF/MTTR/Availability/Open backlog tiles each with a unit and an explanatory line, a 'Backlog by age' bar with 0-7/8-30/31-90/90+ buckets, and 'Raised against closed', 'Open work by status', 'Open work by priority' and 'Work raised by type' charts with axes, labels and legends. Availability 100% across 6 assets in service. NOTE: the console did contain 403 and 500 entries during this period, but they are attributable to the Viewer permission probe and the depreciation preview on earlier pages, not to Analytics; a clean-console sweep per test 65 was not run."
         },
         {
           "title": "Generate a report and check the file against the screen",
@@ -836,7 +920,9 @@
             "Download the file and open it.",
             "Compare the three figures."
           ],
-          "expect": "The file downloads with a sensible filename and extension, opens in the right application, and the three figures match the screen exactly. A file that renders as text in the browser instead of downloading is a failure."
+          "expect": "The file downloads with a sensible filename and extension, opens in the right application, and the three figures match the screen exactly. A file that renders as text in the browser instead of downloading is a failure.",
+          "result": "pending",
+          "notes": "Not run — no report was generated or downloaded, so the file-versus-screen comparison is untested."
         },
         {
           "title": "The audit log records who did what",
@@ -854,7 +940,9 @@
             "Check each names the actor and the time.",
             "Look for any control that edits or deletes an entry — as the Auditor and then as the owner."
           ],
-          "expect": "All four actions appear, attributed to the account that performed them. No control anywhere edits or deletes a log entry, for any role."
+          "expect": "All four actions appear, attributed to the account that performed them. No control anywhere edits or deletes a log entry, for any role.",
+          "result": "pass",
+          "notes": "Admin → Audit Log lists events with TIME, ACTOR, ACTION and ENTITY — all six invites appear individually attributed to Adaeze Okeke with timestamps, alongside inspection and compliance-audit entries. No control anywhere edits or deletes an entry, checked as both Auditor and Viewer. NOTE: I confirmed the log's shape and immutability rather than each of the four specific actions the test names."
         },
         {
           "title": "Empty states",
@@ -869,7 +957,9 @@
             "On Work Orders, Defects, Risk, Spare Parts and Inspections in turn, apply a filter or search that matches nothing.",
             "Look at what each page shows."
           ],
-          "expect": "Each shows a written explanation and, where relevant, the way to create the first record. None shows a broken grid, a bare zero, or a spinner that never resolves."
+          "expect": "Each shows a written explanation and, where relevant, the way to create the first record. None shows a broken grid, a bare zero, or a spinner that never resolves.",
+          "result": "pass",
+          "notes": "Every empty state encountered was written, not broken: Defects 'Nothing outstanding — Defects are what an inspection actually found…', Approvals 'Nothing waiting on you — Requests are raised from the thing being approved…', the approval matrix 'Until a band exists, nothing can be sent for approval — which is the safe default, but not a useful one', Escalations 'No escalation rules yet — nothing is chased automatically', Depreciation 'Until an asset has a schedule, its net book value is whatever someone typed into the asset record', Reports 'No reports yet'. No bare zeros, broken grids or hanging spinners."
         }
       ]
     },
@@ -892,7 +982,9 @@
             "Move between months and back.",
             "Check that anything created today shows on today's date."
           ],
-          "expect": "Events appear on their correct dates, clicking one opens the record, month navigation works in both directions, and today's records are on today rather than a day out."
+          "expect": "Events appear on their correct dates, clicking one opens the record, month navigation works in both directions, and today's records are on today rather than a day out.",
+          "result": "pending",
+          "notes": "Not run — the session ended before the calendar was exercised."
         },
         {
           "title": "Asset map",
@@ -909,7 +1001,9 @@
             "Click a marker.",
             "Check an asset with no coordinates."
           ],
-          "expect": "Tiles load, markers sit in sensible places, clicking one identifies the asset and links to it, and an asset without coordinates is handled rather than dropped at the origin. Nothing throws."
+          "expect": "Tiles load, markers sit in sensible places, clicking one identifies the asset and links to it, and an asset without coordinates is handled rather than dropped at the origin. Nothing throws.",
+          "result": "pending",
+          "notes": "Not run."
         },
         {
           "title": "QR sheets and the scan page",
@@ -928,7 +1022,9 @@
             "As the Field Technician, open <code>/scan</code>.",
             "Follow what a scanned code resolves to."
           ],
-          "expect": "The sheet lays out one labelled code per asset and is printable without cutting codes across pages. The scan page opens and explains itself even where a camera is unavailable, and a code resolves to its asset."
+          "expect": "The sheet lays out one labelled code per asset and is printable without cutting codes across pages. The scan page opens and explains itself even where a camera is unavailable, and a code resolves to its asset.",
+          "result": "pending",
+          "notes": "Not run."
         },
         {
           "title": "Photo upload and the lightbox",
@@ -947,7 +1043,9 @@
             "Sign out, sign in as the Viewer, and paste the image URL directly.",
             "Then try it signed out entirely."
           ],
-          "expect": "The upload succeeds and thumbnails. The lightbox opens, navigates and closes on Escape. Signed out, the file URL is refused — an image that loads with no session is a data leak."
+          "expect": "The upload succeeds and thumbnails. The lightbox opens, navigates and closes on Escape. Signed out, the file URL is refused — an image that loads with no session is a data leak.",
+          "result": "pending",
+          "notes": "Not run — this includes the signed-out file-URL check, which is the permission boundary most worth closing in round 2."
         },
         {
           "title": "CSV import",
@@ -965,7 +1063,9 @@
             "Import a file with a valid header and one bad row among three good ones.",
             "Rename a <code>.txt</code> file to <code>.csv</code> and import that."
           ],
-          "expect": "Valid rows import and appear in the list. A missing column is refused naming the column. The part-bad file either imports the good rows and reports the bad one by line number, or refuses the lot — but says clearly which happened. The fake CSV is refused rather than half-imported."
+          "expect": "Valid rows import and appear in the list. A missing column is refused naming the column. The part-bad file either imports the good rows and reports the bad one by line number, or refuses the lot — but says clearly which happened. The fake CSV is refused rather than half-imported.",
+          "result": "pending",
+          "notes": "Not run."
         }
       ]
     },
@@ -988,7 +1088,9 @@
             "On each page reachable, look for any create, edit, delete or transition control and try it.",
             "Then type <code>/admin</code>."
           ],
-          "expect": "Read-only pages may render, but no control creates, edits or transitions anything — and any attempt is refused rather than accepted. <code>/admin</code> does not open."
+          "expect": "Read-only pages may render, but no control creates, edits or transitions anything — and any attempt is refused rather than accepted. <code>/admin</code> does not open.",
+          "result": "fail",
+          "notes": "Read-only enforcement itself holds: the Viewer's work-order panel offers a comment box and 'Attach file', and posting a comment is correctly refused by the server — but the toast reads just 'forbidden', a raw code, and the controls should not be offered at all (F5). The test fails on its last clause: /admin DOES open for the Viewer, showing Escalations and the full Audit Log with every organisational event (F4). The Viewer's nav also carries Depreciation and Analytics."
         },
         {
           "title": "Auditor sees everything and changes nothing",
@@ -1005,7 +1107,9 @@
             "Try to reach the Users &amp; Roles, Locations and Configuration tabs.",
             "On the Audit Log, try to change anything."
           ],
-          "expect": "Admin opens on the Audit Log alone. Users &amp; Roles, Locations and Configuration are not reachable. Nothing on the audit log can be altered."
+          "expect": "Admin opens on the Audit Log alone. Users &amp; Roles, Locations and Configuration are not reachable. Nothing on the audit log can be altered.",
+          "result": "pass",
+          "notes": "Admin opens for the Auditor showing only Escalations and Audit Log — no Users & Roles, Locations, Sites, Asset Categories or Configuration. Nothing on the audit log can be altered. Slight deviation from the expectation as written: an Escalations tab appears alongside the Audit Log (read-only, captioned 'Only a System Admin can add or change escalation rules'), because *:read satisfies escalation:read."
         },
         {
           "title": "Field Technician cannot reach management pages",
@@ -1022,7 +1126,9 @@
             "Open <code>/risks</code> and try to create a risk.",
             "Open a work order not assigned to them and try to edit it."
           ],
-          "expect": "Depreciation, Analytics and Admin do not open — they redirect or refuse rather than rendering. The technician can read risks but not create one."
+          "expect": "Depreciation, Analytics and Admin do not open — they redirect or refuse rather than rendering. The technician can read risks but not create one.",
+          "result": "fail",
+          "notes": "Two of the three boundaries hold: typing /depreciation, /analytics and /admin as the Field Technician each redirects to /dashboard. But /reports opens fully, and its Analytics tab renders per-location financials — Total value ₦1.4B, Book value ₦609.4M, WO cost and average health — for a role with no report:read and no depreciation:read. GET /api/reports and GET /api/reports/location-analytics both return 200, so this is a server-side leak, not just an unguarded route (F1). /settings correctly opens read-only with 'Only the Org Owner can edit organisation details.' and every field disabled."
         },
         {
           "title": "Maintenance Engineer cannot administer the org",
@@ -1038,7 +1144,9 @@
             "Try to reach the approval matrix and the escalation rules.",
             "Open <code>/settings</code> and try to change the organisation's currency."
           ],
-          "expect": "Admin does not open. The approval matrix and escalation rules are unreachable. The currency cannot be changed."
+          "expect": "Admin does not open. The approval matrix and escalation rules are unreachable. The currency cannot be changed.",
+          "result": "pending",
+          "notes": "Not run by URL. The Maintenance Engineer's nav does omit Depreciation and Admin, but I did not type the blocked URLs directly or attempt the approval-matrix, escalation-rule and currency writes."
         },
         {
           "title": "Operations Manager gets org:manage but not user:manage",
@@ -1055,7 +1163,9 @@
             "Try to reach Users &amp; Roles and invite somebody.",
             "Try to create an approval rule and an escalation rule."
           ],
-          "expect": "Locations, Sites and Categories work. Users &amp; Roles is not available, no invite can be sent, and neither an approval rule nor an escalation rule can be created."
+          "expect": "Locations, Sites and Categories work. Users &amp; Roles is not available, no invite can be sent, and neither an approval rule nor an escalation rule can be created.",
+          "result": "pending",
+          "notes": "Not run. The Ops Manager's nav does include Admin (correct — they hold org:manage), but I did not verify which Admin tabs they get, nor confirm that Users & Roles is absent and that approval and escalation rules cannot be created."
         },
         {
           "title": "Disabling a member locks them out",
@@ -1073,7 +1183,9 @@
             "If a Viewer session is still open in another window, reload it.",
             "Re-enable the account afterwards — later rounds need it."
           ],
-          "expect": "The disabled account cannot sign in and is told why. An already-open session stops working on the next request rather than continuing until it expires."
+          "expect": "The disabled account cannot sign in and is told why. An already-open session stops working on the next request rather than continuing until it expires.",
+          "result": "pending",
+          "notes": "Not run — no member was disabled, so lockout of a new sign-in and of an already-open session is untested. The demo members were deliberately left enabled for session 2."
         }
       ]
     },
@@ -1096,7 +1208,9 @@
             "On a work order, set a due date before the start date.",
             "Enter a 500-character name."
           ],
-          "expect": "Each refusal names the field and what is wrong with it. Nothing saves half a record, and nothing throws in the console."
+          "expect": "Each refusal names the field and what is wrong with it. Nothing saves half a record, and nothing throws in the console.",
+          "result": "pending",
+          "notes": "Not run systematically."
         },
         {
           "title": "Round trip with real characters",
@@ -1113,7 +1227,9 @@
             "Search for it by a distinctive word.",
             "Check how it renders in a list and in an export."
           ],
-          "expect": "Everything comes back exactly as entered, in the record, the list, the search result and the export. No escaping artefacts, no dropped characters."
+          "expect": "Everything comes back exactly as entered, in the record, the list, the search result and the export. No escaping artefacts, no dropped characters.",
+          "result": "pending",
+          "notes": "Not run."
         },
         {
           "title": "Double submit makes one record",
@@ -1129,7 +1245,9 @@
             "Press Save twice as fast as possible.",
             "Look at the list."
           ],
-          "expect": "Exactly one work order is created. The button disables or the request is de-duplicated."
+          "expect": "Exactly one work order is created. The button disables or the request is de-duplicated.",
+          "result": "pending",
+          "notes": "Not run."
         },
         {
           "title": "Search, filter and sort agree with each other",
@@ -1146,7 +1264,9 @@
             "Sort by two different columns and check the order actually changes.",
             "Combine a filter and a search."
           ],
-          "expect": "Counts match rows in every combination. The misspelling either returns nothing or a sensible near match, and the empty search says so rather than showing everything."
+          "expect": "Counts match rows in every combination. The misspelling either returns nothing or a sensible near match, and the empty search says so rather than showing everything.",
+          "result": "pending",
+          "notes": "Not run."
         },
         {
           "title": "Sign out, back button and a stale form",
@@ -1163,7 +1283,9 @@
             "Open a form, leave it sitting for several minutes, then submit it.",
             "Reload the app with a session open."
           ],
-          "expect": "The back button after sign-out shows the sign-in page, never the cached record. A stale form either submits cleanly against a refreshed token or says the session expired — it does not fail silently. Reloading keeps the session."
+          "expect": "The back button after sign-out shows the sign-in page, never the cached record. A stale form either submits cleanly against a refreshed token or says the session expired — it does not fail silently. Reloading keeps the session.",
+          "result": "pending",
+          "notes": "Partly run. Sign-out was exercised many times and always lands on /auth, including for the orphaned account. The back button after sign-out, the stale-token form and the reload-keeps-session case were not tested."
         },
         {
           "title": "Phone width",
@@ -1180,7 +1302,9 @@
             "Check nothing scrolls sideways and every button is reachable.",
             "Open the navigation."
           ],
-          "expect": "No horizontal scrolling on the page body. Wide tables scroll inside their own box. The navigation opens and closes, and every action is reachable with a thumb."
+          "expect": "No horizontal scrolling on the page body. Wide tables scroll inside their own box. The navigation opens and closes, and every action is reachable with a thumb.",
+          "result": "pending",
+          "notes": "Not run."
         },
         {
           "title": "Dark mode",
@@ -1196,7 +1320,9 @@
             "Visit the dashboard, Analytics, a work order, the risk matrix and Admin.",
             "Look for anything unreadable: white boxes, invisible text, charts still on a light ground."
           ],
-          "expect": "Every screen is legible in dark mode. Charts, the risk matrix and the health donut all adapt rather than keeping a light background."
+          "expect": "Every screen is legible in dark mode. Charts, the risk matrix and the health donut all adapt rather than keeping a light background.",
+          "result": "pending",
+          "notes": "Not run."
         },
         {
           "title": "Keyboard only",
@@ -1212,7 +1338,9 @@
             "Open a modal with the keyboard, then close it with Escape.",
             "Tab through a form and submit with Enter."
           ],
-          "expect": "Focus is always visible, tab order follows the page, modals trap focus and return it on close, and Escape closes them."
+          "expect": "Focus is always visible, tab order follows the page, modals trap focus and return it on close, and Escape closes them.",
+          "result": "fail",
+          "notes": "Enter does not submit the 'Invite a team member' form: with name, email and role filled, pressing Enter in the name field did nothing and the invite had to be sent by clicking the button (F3). It is a real <form> with a submit button, so Enter should work. The rest of the keyboard sweep — focus visibility, tab order, modal focus trapping, Escape to close — was not run."
         },
         {
           "title": "The console stays clean across the whole app",
@@ -1229,7 +1357,9 @@
             "Note every error and warning, with the page it came from.",
             "Check the network panel for any request returning 4xx or 5xx that the page did not surface to the user."
           ],
-          "expect": "No uncaught errors on any page. Any failed request is either expected (a permission refusal) or surfaced to the user — never a silent failure behind a page that looks fine."
+          "expect": "No uncaught errors on any page. Any failed request is either expected (a permission refusal) or surfaced to the user — never a silent failure behind a page that looks fine.",
+          "result": "fail",
+          "notes": "The console does not stay clean. Confirmed during the run: a suppressed native alert 'addWorkOrderTask is not defined' on every work-order checklist action (F8); repeated 500s from POST /api/depreciation/preview surfaced to the user as 'internal_error' (F10); and 403s from the Viewer write probe. React Router v7 future-flag warnings appear on every page load. A full page-by-page sweep with a cleared console was not run, so this is a floor on the problem, not a complete list."
         }
       ]
     }
