@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, type Request, type Response } from 'express'
 import rateLimit from 'express-rate-limit'
 import { z } from 'zod'
 import { ownerPool } from '../db.js'
@@ -28,8 +28,15 @@ const refreshCookieOpts = {
 // authorship rather than a security control. Raised only under NODE_ENV=test;
 // the production numbers are unchanged.
 const isTest = process.env.NODE_ENV === 'test'
-const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: isTest ? 1000 : 10, standardHeaders: true, legacyHeaders: false })
-const forgotLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: isTest ? 1000 : 5, standardHeaders: true, legacyHeaders: false })
+// express-rate-limit's default 429 body is a bare text string, which the app's
+// fetch wrapper cannot read an error code out of — it surfaced as
+// "Request failed (429)". Answer in the same { error } shape as every other
+// refusal so the client can say what happened and when it lifts.
+const tooMany = (req: Request, res: Response) =>
+  res.status(429).json({ error: 'too_many_attempts', retry_after_seconds: 15 * 60 })
+
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: isTest ? 1000 : 10, standardHeaders: true, legacyHeaders: false, handler: tooMany })
+const forgotLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: isTest ? 1000 : 5, standardHeaders: true, legacyHeaders: false, handler: tooMany })
 
 // UUID that matches no real site — the encoding for "scoped, but to zero sites"
 // (so an empty scope denies rather than falling back to the null = all-sites case).
