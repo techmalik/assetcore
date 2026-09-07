@@ -22,7 +22,14 @@ const windowInput = z.object({
 })
 
 /** Defaults to the last 90 days — long enough for most fleets to have failed
- * at least once, which is what MTBF needs to say anything at all. */
+ * at least once, which is what MTBF needs to say anything at all.
+ *
+ * The boundaries are UTC dates, because that is what `new Date().toISOString()`
+ * yields, and every query below compares against them in UTC too. Mixing the
+ * two — a UTC "today" against a timestamptz cast to date in the *session's*
+ * timezone — silently drops any job stamped between local midnight and UTC
+ * midnight, which is exactly how a corrective job closed at 00:13 in Lagos
+ * failed to appear in "Last 30 days". */
 function resolveWindow(q: z.infer<typeof windowInput>): { from: string; to: string; hours: number } {
   const to = q.to ?? new Date().toISOString().slice(0, 10)
   const from = q.from ?? new Date(Date.parse(`${to}T00:00:00Z`) - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10)
@@ -51,7 +58,7 @@ analyticsRouter.get('/analytics/kpis', requireCap('report:read'), async (req, re
          from public.work_orders
          where deleted_at is null and status = 'closed'
            and type = any($1)
-           and actual_end::date between $2 and $3
+           and (actual_end at time zone 'utc')::date between $2 and $3
            and ($4::uuid is null or asset_id = $4)`,
         [FAILURE_TYPES, w.from, w.to, assetId]
       ),
@@ -61,7 +68,7 @@ analyticsRouter.get('/analytics/kpis', requireCap('report:read'), async (req, re
         `select count(*)::int as n, coalesce(sum(downtime_hours), 0)::float as downtime
          from public.work_orders
          where deleted_at is null and type = any($1)
-           and created_at::date between $2 and $3
+           and (created_at at time zone 'utc')::date between $2 and $3
            and ($4::uuid is null or asset_id = $4)`,
         [FAILURE_TYPES, w.from, w.to, assetId]
       ),
