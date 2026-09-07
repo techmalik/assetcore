@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { listDocuments, uploadDocument, deleteDocument, DOCUMENT_KINDS } from '../lib/db/documents'
 import AuthImage from './AuthImage.jsx'
 import { api } from '../lib/apiClient'
+import { errorText } from '../lib/errors'
 
 // One typed document registry, rendered the same way wherever files hang off a
 // record. `parent` is a single-key object: { asset_id }, { work_order_id },
@@ -48,7 +49,7 @@ export default function DocumentsPanel({ parent, canEdit = false, compact = fals
     try {
       setDocs(await listDocuments(JSON.parse(parentKey)))
     } catch (e) {
-      setError(e.message || 'Could not load documents.')
+      setError(errorText(e, 'Could not load documents.'))
     } finally {
       setLoading(false)
     }
@@ -65,7 +66,7 @@ export default function DocumentsPanel({ parent, canEdit = false, compact = fals
       await uploadDocument(JSON.parse(parentKey), file, { kind })
       await load()
     } catch (ex) {
-      setError(ex.message === 'forbidden' ? 'Your role cannot add documents here.' : ex.message || 'Upload failed.')
+      setError(ex.message === 'forbidden' ? 'Your role cannot add documents here.' : errorText(ex, 'Upload failed.'))
     } finally {
       setBusy(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -75,7 +76,7 @@ export default function DocumentsPanel({ parent, canEdit = false, compact = fals
   async function remove(doc) {
     if (!confirm(`Remove "${doc.file_name}" from this record?`)) return
     try { await deleteDocument(doc.id); await load() }
-    catch (ex) { setError(ex.message || 'Delete failed.') }
+    catch (ex) { setError(errorText(ex, 'Delete failed.')) }
   }
 
   async function open(doc) {

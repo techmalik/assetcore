@@ -9,6 +9,7 @@ import { getDashboardStats, getRecentWorkOrders, getDashboardAlerts } from '../l
 import { getComplianceLicenceCounts, getPmCompliance } from '../lib/db/complianceLicences.js'
 import { listPMTasks } from '../lib/db/pmTasks.js'
 import { WO_STATUS_LABEL, WO_PRIORITY_LABEL, woStatusStyle, WO_PRIORITY_STYLE } from '../lib/db/workOrders.js'
+import { errorText } from '../lib/errors'
 
 const ALERT_SEVERITY_STYLE = {
   critical: { c: 'var(--srt)', bg: 'var(--srb)' },
@@ -73,7 +74,7 @@ export default function Dashboard({ dark, toggleDark }) {
   useEffect(() => {
     Promise.all([getDashboardStats({ locationId: globalLocationId }), getRecentWorkOrders({ locationId: globalLocationId })])
       .then(([s, wos]) => { setStats(s); setRecentWOs(wos) })
-      .catch(e => setStatsErr(e.message))
+      .catch(e => setStatsErr(errorText(e, 'Could not load the dashboard figures.')))
     getComplianceLicenceCounts().then(setComplianceCounts).catch(() => {})
     getPmCompliance().then(setPmCompliance).catch(() => {})
     getDashboardAlerts({ locationId: globalLocationId }).then(setAlerts).catch(() => setAlerts([]))

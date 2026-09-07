@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthContext'
 import { api } from '../lib/apiClient'
 import { createSite } from '../lib/db/sites'
 import { createCategory } from '../lib/db/categories'
+import { errorText } from '../lib/errors'
 
 const DEFAULT_CATEGORIES = [
   { name: 'Metering Station', code: 'MTR' },
@@ -128,7 +129,7 @@ export default function Onboarding() {
 
       nav('/dashboard', { replace: true })
     } catch (e) {
-      setErr(e.message || 'Something went wrong. Please try again.')
+      setErr(errorText(e, 'Something went wrong. Please try again.'))
       setSaving(false)
     }
   }

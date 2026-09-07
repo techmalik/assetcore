@@ -7,6 +7,7 @@ import { api } from '../lib/apiClient'
 import { SUPPORT_EMAIL } from '../lib/instance'
 import { getLicence, licenceDaysRemaining } from '../lib/db/licence'
 import { CURRENCY_CODE, currencySymbol, fmtMoneyExact } from '../lib/money.jsx'
+import { errorText } from '../lib/errors'
 
 function SuccessBanner({ msg }) {
   if (!msg) return null
@@ -48,7 +49,7 @@ function ProfileTab() {
     try {
       await api.patch('/profile', { full_name: form.full_name, phone: form.phone || null })
       setOk('Profile updated.')
-    } catch (e) { setErr(e.message) }
+    } catch (e) { setErr(errorText(e)) }
     finally { setSaving(false) }
   }
 
@@ -61,7 +62,7 @@ function ProfileTab() {
       await api.post('/auth/change-password', { currentPassword: pwForm.current, newPassword: pwForm.next })
       setPwOk('Password changed successfully.')
       setPwForm({ current: '', next: '', confirm: '' })
-    } catch (e) { setPwErr(e.message) }
+    } catch (e) { setPwErr(errorText(e, 'Could not change your password.')) }
     finally { setPwSaving(false) }
   }
 
@@ -245,7 +246,7 @@ function CurrencyCard() {
       })
       await refreshOrg?.()
       setOk('Currency saved.')
-    } catch (e) { setErr(e.message === 'forbidden' ? 'Only the Org Owner can change currency.' : e.message) }
+    } catch (e) { setErr(e.message === 'forbidden' ? 'Only the Org Owner can change currency.' : errorText(e)) }
     finally { setSaving(false) }
   }
 
@@ -346,7 +347,7 @@ function OrgTab() {
     try {
       await api.patch('/org', { name: form.name, short_name: form.short_name, region: form.region || null })
       setOk('Organisation details saved.')
-    } catch (e) { setErr(e.message) }
+    } catch (e) { setErr(errorText(e)) }
     finally { setSaving(false) }
   }
 

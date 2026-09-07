@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/apiClient'
+import { useAuth } from '../lib/AuthContext'
+import { errorText } from '../lib/errors'
 
 const Logo = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -11,6 +13,7 @@ const Logo = () => (
 
 export default function ResetPassword() {
   const [params] = useSearchParams()
+  const { authed, user, signOut } = useAuth()
   const nav = useNavigate()
   const token = params.get('token') || ''
   const [password, setPassword] = useState('')
@@ -28,10 +31,15 @@ export default function ResetPassword() {
     setBusy(true)
     try {
       await api.post('/auth/reset-password', { token, password })
+      // The link is normally opened by the admin who generated it, still
+      // signed in as themselves. The password just set belongs to somebody
+      // else, so end that session before sending them to the sign-in form —
+      // otherwise /auth bounces straight back to the admin's own dashboard.
+      if (authed) await signOut()
       setDone(true)
       setTimeout(() => nav('/auth', { replace: true }), 2000)
     } catch (err) {
-      setError(err?.message || 'This reset link is invalid or has expired.')
+      setError(errorText(err, 'This reset link is invalid or has expired.'))
     } finally {
       setBusy(false)
     }
@@ -53,7 +61,14 @@ export default function ResetPassword() {
           ) : (
             <form onSubmit={submit}>
               <h1 style={{fontFamily:'var(--ff-d)',fontSize:22,fontWeight:700,letterSpacing:'-.3px',color:'var(--n950)',marginBottom:6}}>Set a new password</h1>
-              <p style={{fontSize:13,color:'var(--n500)',marginBottom:24}}>Choose a new password for your account.</p>
+              <p style={{fontSize:13,color:'var(--n500)',marginBottom:authed?12:24}}>Choose a new password for your account.</p>
+
+              {authed && (
+                <p style={{background:'var(--b50)',border:'1px solid var(--b200)',borderRadius:4,padding:'9px 12px',fontSize:12,color:'var(--b700)',lineHeight:1.55,marginBottom:24}}>
+                  You are signed in as <strong>{user?.email}</strong>. Setting a password here changes the
+                  account this link was issued for, not yours, and will sign you out.
+                </p>
+              )}
 
               <div style={{display:'flex',flexDirection:'column',gap:14,marginBottom:20}}>
                 <div>

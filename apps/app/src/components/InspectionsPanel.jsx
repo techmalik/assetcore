@@ -23,10 +23,12 @@ import {
 } from '../lib/db/inspections'
 import { createDefect, DEFECT_SEVERITIES } from '../lib/db/defects'
 import { listSites } from '../lib/db/sites'
+import { listAssets } from '../lib/db/assets'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
+import { errorText } from '../lib/errors'
 
 export const STATUS_META = {
   scheduled:   { label:'Scheduled',   bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)' },
@@ -56,9 +58,9 @@ function isOverdue(ins) {
 }
 
 // ── Create Modal ─────────────────────────────────────────────────────────────
-function InspectionModal({ onClose, onSaved, sites, users, templates }) {
+function InspectionModal({ onClose, onSaved, sites, assets, users, templates }) {
   const today = new Date().toISOString().slice(0,10)
-  const [form, setForm] = useState({ title:'', kind:'condition', scheduled_date:today, site_id:'', inspector_id:'', template_id:'', notes:'' })
+  const [form, setForm] = useState({ title:'', kind:'condition', scheduled_date:today, asset_id:'', site_id:'', inspector_id:'', template_id:'', notes:'' })
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState(null)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -72,6 +74,7 @@ function InspectionModal({ onClose, onSaved, sites, users, templates }) {
         title:          form.title.trim(),
         kind:           form.kind,
         scheduled_date: form.scheduled_date,
+        asset_id:       form.asset_id || null,
         site_id:        form.site_id || null,
         inspector_id:   form.inspector_id || null,
         template_id:    form.template_id || null,
@@ -79,7 +82,7 @@ function InspectionModal({ onClose, onSaved, sites, users, templates }) {
         status:         'scheduled',
       })
       onSaved()
-    } catch (e) { setErr(e.message) }
+    } catch (e) { setErr(errorText(e)) }
     finally { setSaving(false) }
   }
 
@@ -136,6 +139,29 @@ function InspectionModal({ onClose, onSaved, sites, users, templates }) {
             )
           })()}
 
+          {/* The asset is what the 1-5 condition rating actually feeds: the
+              asset health breakdown reads inspection ratings, and a defect or
+              work order raised from this inspection inherits its asset. An
+              inspection saved without one scores nothing and hands a blank
+              asset down the whole chain, so it leads the pair. */}
+          <label style={lbl}>Asset
+            <select value={form.asset_id} onChange={e=>{
+              const id = e.target.value
+              const picked = assets.find(a => a.id === id)
+              // Choosing an asset settles the site too — they cannot disagree.
+              setForm(f => ({ ...f, asset_id: id, site_id: picked?.site_id || f.site_id }))
+            }} style={{...inp,appearance:'none'}}>
+              <option value="">— No specific asset —</option>
+              {assets.map(a => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
+            </select>
+          </label>
+          {!form.asset_id && (
+            <p style={{fontSize:11.5,color:'var(--n500)',lineHeight:1.5,marginTop:-6}}>
+              Without an asset the condition rating has nowhere to go — it will not move any
+              asset&apos;s health score, and anything raised from this inspection inherits a blank asset.
+            </p>
+          )}
+
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
             <label style={lbl}>Site
               <select value={form.site_id} onChange={e=>set('site_id',e.target.value)} style={{...inp,appearance:'none'}}>
@@ -164,7 +190,7 @@ function InspectionModal({ onClose, onSaved, sites, users, templates }) {
 }
 
 // ── Findings Modal ────────────────────────────────────────────────────────────
-function FindingsModal({ inspection, onClose, onSaved }) {
+function FindingsModal({ inspection, onClose, onSaved, readOnly = false }) {
   const [findings, setFindings] = useState(inspection.findings || '')
   const [notes, setNotes]       = useState(inspection.notes    || '')
   const [reportFile, setReportFile] = useState(null)
@@ -210,13 +236,13 @@ function FindingsModal({ inspection, onClose, onSaved }) {
     } catch (e) {
       setErr(e.message === 'condition_rating_required'
         ? 'An overall condition rating is required.'
-        : e.message || 'Failed to save.')
+        : errorText(e, 'Failed to save.'))
       setSaving(false)
     }
   }
 
   async function viewReport() {
-    try { await api.download(`/files/${reportUrl}`, reportUrl.split('/').pop()) } catch (e) { alert(e.message) }
+    try { await api.download(`/files/${reportUrl}`, reportUrl.split('/').pop()) } catch (e) { alert(errorText(e)) }
   }
 
   const inp = { width:'100%', border:'1px solid var(--n200)', borderRadius:4, padding:'8px 10px', fontSize:13, fontFamily:'var(--ff-u)', outline:'none', resize:'vertical', boxSizing:'border-box', background:'var(--n0)', color:'var(--n900)' }
@@ -225,10 +251,15 @@ function FindingsModal({ inspection, onClose, onSaved }) {
     <div style={{position:'fixed',inset:0,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,.35)'}}>
       <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:'24px',width:480,maxWidth:'92vw'}}>
         <div style={{display:'flex',alignItems:'center',marginBottom:18}}>
-          <h2 style={{fontFamily:'var(--ff-d)',fontSize:17,fontWeight:700,color:'var(--n950)',flex:1}}>Complete Inspection</h2>
+          <h2 style={{fontFamily:'var(--ff-d)',fontSize:17,fontWeight:700,color:'var(--n950)',flex:1}}>{readOnly ? 'Inspection record' : 'Complete Inspection'}</h2>
           <button onClick={onClose} style={{width:28,height:28,border:'none',background:'none',cursor:'pointer',color:'var(--n500)',fontSize:20,lineHeight:1}}>×</button>
         </div>
-        <div style={{fontSize:12,color:'var(--n600)',marginBottom:14}}>{inspection.title}</div>
+        <div style={{fontSize:12,color:'var(--n600)',marginBottom:14}}>
+          {inspection.title}
+          {readOnly && inspection.completed_date && (
+            <span style={{color:'var(--n400)'}}> · completed {fmtDate(inspection.completed_date)}</span>
+          )}
+        </div>
         <div style={{display:'flex',flexDirection:'column',gap:14}}>
           {items.length > 0 && (
             <div>
@@ -240,18 +271,22 @@ function FindingsModal({ inspection, onClose, onSaved }) {
                       <span style={{flex:1,fontSize:12.5,color:'var(--n800)'}}>{it.item}</span>
                       <div style={{display:'flex',gap:4}}>
                         {CHECKLIST_RESULTS.filter(([v]) => v !== 'pending').map(([v,l]) => (
-                          <button key={v} type="button" onClick={() => setItem(i, { result: v })}
-                            style={{height:24,padding:'0 9px',borderRadius:4,cursor:'pointer',fontFamily:'inherit',fontSize:11,
+                          <button key={v} type="button" disabled={readOnly} onClick={() => setItem(i, { result: v })}
+                            style={{height:24,padding:'0 9px',borderRadius:4,cursor:readOnly?'default':'pointer',fontFamily:'inherit',fontSize:11,
+                              display: readOnly && it.result!==v ? 'none' : undefined,
                               border:`1px solid ${it.result===v ? 'var(--b400)' : 'var(--n200)'}`,
                               background: it.result===v ? 'var(--slb)' : 'var(--n0)',
                               color: it.result===v ? 'var(--slt)' : 'var(--n600)'}}>{l}</button>
                         ))}
                       </div>
                     </div>
-                    <input value={it.notes || ''} onChange={e => setItem(i, { notes: e.target.value })}
-                      placeholder={it.result === 'fail' ? 'What is wrong?' : 'Notes (optional)'}
-                      style={{...inp, height:28, padding:'0 9px', fontSize:12, marginTop:7, resize:'none'}}/>
-                    {it.result === 'fail' && (
+                    {(!readOnly || it.notes) && (
+                      <input value={it.notes || ''} readOnly={readOnly} onChange={e => setItem(i, { notes: e.target.value })}
+                        placeholder={it.result === 'fail' ? 'What is wrong?' : 'Notes (optional)'}
+                        style={{...inp, height:28, padding:'0 9px', fontSize:12, marginTop:7, resize:'none',
+                          background: readOnly ? 'var(--n50)' : 'var(--n0)'}}/>
+                    )}
+                    {it.result === 'fail' && !readOnly && (
                       <div style={{display:'flex',alignItems:'center',gap:8,marginTop:7}}>
                         <span style={{fontSize:11.5,color:'var(--n600)'}}>Raise as a defect:</span>
                         <select value={raise[i] || ''} onChange={e => setRaise(r => ({ ...r, [i]: e.target.value }))}
@@ -264,7 +299,7 @@ function FindingsModal({ inspection, onClose, onSaved }) {
                   </div>
                 ))}
               </div>
-              {failed.length > 0 && (
+              {failed.length > 0 && !readOnly && (
                 <p style={{fontSize:11.5,color:'var(--n500)',marginTop:7,lineHeight:1.5}}>
                   {failed.length} item{failed.length===1?'':'s'} failed. A defect raised here goes onto the register linked to this
                   inspection, ready for a work order.
@@ -277,8 +312,9 @@ function FindingsModal({ inspection, onClose, onSaved }) {
             <div style={{fontSize:11,fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--n500)',fontFamily:'var(--ff-m)',marginBottom:7}}>Overall condition *</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(5, 1fr)',gap:5}}>
               {CONDITION_RATINGS.map(([v,l,hint]) => (
-                <button key={v} type="button" onClick={() => setRating(v)} title={hint}
-                  style={{padding:'8px 4px',borderRadius:5,cursor:'pointer',fontFamily:'inherit',textAlign:'center',
+                <button key={v} type="button" disabled={readOnly} onClick={() => setRating(v)} title={hint}
+                  style={{padding:'8px 4px',borderRadius:5,cursor:readOnly?'default':'pointer',fontFamily:'inherit',textAlign:'center',
+                    opacity: readOnly && rating!==v ? .4 : 1,
                     border:`1px solid ${rating===v ? 'var(--b400)' : 'var(--n200)'}`,
                     background: rating===v ? 'var(--slb)' : 'var(--n0)'}}>
                   <div style={{fontFamily:'var(--ff-m)',fontSize:14,fontWeight:600,color: rating===v ? 'var(--slt)' : 'var(--n700)'}}>{v}</div>
@@ -286,27 +322,32 @@ function FindingsModal({ inspection, onClose, onSaved }) {
                 </button>
               ))}
             </div>
-            <p style={{fontSize:11.5,color:'var(--n500)',marginTop:7,lineHeight:1.5}}>
-              A quarter of the asset&apos;s condition score. Required, because a score built on a rating nobody gave
-              would be a guess.
-            </p>
+            {!readOnly && (
+              <p style={{fontSize:11.5,color:'var(--n500)',marginTop:7,lineHeight:1.5}}>
+                A quarter of the asset&apos;s condition score. Required, because a score built on a rating nobody gave
+                would be a guess.
+              </p>
+            )}
           </div>
 
           <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Findings *
-            <textarea value={findings} onChange={e=>setFindings(e.target.value)} rows={3} placeholder="Describe what was observed, measured, or discovered…" style={inp}/>
+            <textarea value={findings} readOnly={readOnly} onChange={e=>setFindings(e.target.value)} rows={3} placeholder="Describe what was observed, measured, or discovered…" style={{...inp, background: readOnly ? 'var(--n50)' : 'var(--n0)'}}/>
           </label>
           <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Additional notes
-            <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} style={inp}/>
+            <textarea value={notes} readOnly={readOnly} onChange={e=>setNotes(e.target.value)} rows={2} style={{...inp, background: readOnly ? 'var(--n50)' : 'var(--n0)'}}/>
           </label>
-          <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Inspection report (optional)
-            <input type="file" onChange={e=>setReportFile(e.target.files?.[0]||null)} style={{fontSize:12}}/>
+          <label style={{fontSize:12,fontWeight:500,color:'var(--n800)',display:'flex',flexDirection:'column',gap:4}}>Inspection report{readOnly ? '' : ' (optional)'}
+            {!readOnly && <input type="file" onChange={e=>setReportFile(e.target.files?.[0]||null)} style={{fontSize:12}}/>}
+            {readOnly && !reportUrl && <span style={{fontSize:12,color:'var(--n400)'}}>None uploaded.</span>}
             {reportUrl && <button type="button" onClick={viewReport} style={{alignSelf:'flex-start',background:'none',border:'none',color:'var(--b600)',cursor:'pointer',fontSize:12,padding:0}}>View uploaded report</button>}
           </label>
         </div>
         {err && <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'8px 12px',fontSize:12,color:'var(--srt)',marginTop:12}}>{err}</div>}
         <div style={{display:'flex',gap:8,marginTop:20,justifyContent:'flex-end'}}>
-          <button onClick={onClose} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>Cancel</button>
-          <button onClick={save} disabled={saving||!findings.trim()||rating==null} className="btn btn-primary" style={{height:34,padding:'0 18px',fontSize:13}}>{saving?'Saving…':'Mark Complete'}</button>
+          <button onClick={onClose} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>{readOnly ? 'Close' : 'Cancel'}</button>
+          {!readOnly && (
+            <button onClick={save} disabled={saving||!findings.trim()||rating==null} className="btn btn-primary" style={{height:34,padding:'0 18px',fontSize:13}}>{saving?'Saving…':'Mark Complete'}</button>
+          )}
         </div>
       </div>
     </div>
@@ -326,6 +367,7 @@ export default function InspectionsPanel({ embedded = false, selectedId = null, 
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
   const [inspections, setInspections] = useState([])
   const [sites, setSites]             = useState([])
+  const [assets, setAssets]           = useState([])
   const [users, setUsers]             = useState([])
   const [templates, setTemplates]     = useState([])
   const [loading, setLoading]         = useState(true)
@@ -339,17 +381,19 @@ export default function InspectionsPanel({ embedded = false, selectedId = null, 
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
     try {
-      const [insp, siteList, userList, tpl] = await Promise.all([
+      const [insp, siteList, userList, tpl, assetList] = await Promise.all([
         listInspections({ locationId: globalLocationId }), listSites(), listOrgUsers().catch(() => []),
         // A missing checklist should not stop the page loading — it only means
         // inspections here record free-text findings.
         listInspectionTemplates().catch(() => []),
+        listAssets({ locationId: globalLocationId }).catch(() => []),
       ])
       setInspections(insp)
       setSites(siteList)
+      setAssets(assetList)
       setUsers(userList)
       setTemplates(tpl)
-    } catch (e) { setErr(e.message) }
+    } catch (e) { setErr(errorText(e)) }
     finally { setLoading(false) }
   }, [globalLocationId])
 
@@ -498,9 +542,9 @@ export default function InspectionsPanel({ embedded = false, selectedId = null, 
                     </td>
                     <td style={{padding:'11px 14px'}}>
                       <div style={{display:'flex',gap:10,whiteSpace:'nowrap'}}>
-                        {ins.status !== 'completed' && (
-                          <button onClick={() => setModal(ins)} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>Complete</button>
-                        )}
+                        <button onClick={() => setModal(ins)} style={{fontSize:11,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0}}>
+                          {ins.status === 'completed' ? 'View' : 'Complete'}
+                        </button>
                         {ins.status !== 'completed' && canReassign && (
                           <button onClick={() => setAssigning(ins)} style={{fontSize:11,color:'var(--n500)',background:'none',border:'none',cursor:'pointer',padding:0}}>
                             {ins.inspector ? 'Reassign' : 'Assign'}
@@ -517,10 +561,11 @@ export default function InspectionsPanel({ embedded = false, selectedId = null, 
       </div>
 
       {modal === 'create' && (
-        <InspectionModal sites={sites} users={users} templates={templates} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
+        <InspectionModal sites={sites} assets={assets} users={users} templates={templates} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
       )}
       {modal && modal !== 'create' && (
-        <FindingsModal inspection={modal} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
+        <FindingsModal inspection={modal} readOnly={modal.status === 'completed'}
+          onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }}/>
       )}
       {assigning && (
         <AssignModal title="Assign inspector" subtitle={assigning.title} users={users} currentId={assigning.inspector_id}

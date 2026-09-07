@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthImage from './AuthImage.jsx'
 import { api } from '../lib/apiClient'
+import { errorText } from '../lib/errors'
 
 // Full-screen viewer for asset images. Click a thumbnail to open; supports
 // keyboard navigation, prev/next across the asset's images, and a real
@@ -28,7 +29,7 @@ export default function ImageLightbox({ images, index = 0, onClose }) {
 
   async function downloadImage() {
     setBusy(true)
-    try { await api.download(`/files/${rel}`, name) } catch (e) { alert(e.message || 'Download failed.') }
+    try { await api.download(`/files/${rel}`, name) } catch (e) { alert(errorText(e, 'Download failed.')) }
     finally { setBusy(false) }
   }
 

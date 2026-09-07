@@ -10,6 +10,7 @@ import { listAssets } from '../lib/db/assets'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { useMoney, Money } from '../lib/money'
+import { errorText } from '../lib/errors'
 
 
 // Stock is numeric so consumables can be issued in litres — but 13.00 reads
@@ -90,7 +91,7 @@ function PartModal({ part, onClose, onSave }) {
       else await createSparePart(payload)
       onSave()
     } catch (ex) {
-      setErr(ex.message === 'duplicate_part_number' ? 'A part with that number already exists.' : ex.message || 'Save failed.')
+      setErr(ex.message === 'duplicate_part_number' ? 'A part with that number already exists.' : errorText(ex, 'Save failed.'))
       setSaving(false)
     }
   }
@@ -166,7 +167,7 @@ function AdjustModal({ part, onClose, onSaved }) {
       })
       onSaved()
     } catch (ex) {
-      setErr(ex.message === 'insufficient_stock' ? 'There is not enough on hand for that issue.' : ex.message || 'Adjustment failed.')
+      setErr(ex.message === 'insufficient_stock' ? 'There is not enough on hand for that issue.' : errorText(ex, 'Adjustment failed.'))
       setBusy(false)
     }
   }
@@ -258,7 +259,7 @@ export default function SpareParts({ dark, toggleDark }) {
       const [p, s, c] = await Promise.all([listSpareParts(filters), getPartStats(), listPartCategories()])
       setParts(p); setStats(s); setCategories(c)
     } catch (e) {
-      setError(e.message === 'forbidden' ? 'Your role cannot see the parts store.' : e.message || 'Failed to load parts.')
+      setError(e.message === 'forbidden' ? 'Your role cannot see the parts store.' : errorText(e, 'Failed to load parts.'))
     } finally {
       setLoading(false)
     }
@@ -276,7 +277,7 @@ export default function SpareParts({ dark, toggleDark }) {
   async function archive(id) {
     if (!confirm('Archive this part? Its movement history is kept.')) return
     try { await archiveSparePart(id); setDetail(null); load() }
-    catch (e) { alert(e.message) }
+    catch (e) { alert(errorText(e)) }
   }
 
   async function link(assetId) {

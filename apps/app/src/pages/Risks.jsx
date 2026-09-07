@@ -11,6 +11,7 @@ import { listSites } from '../lib/db/sites'
 import { listOrgMembers } from '../lib/db/orgMembers'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
+import { errorText } from '../lib/errors'
 
 const STATUS_CLASS = {
   open: 'badge-r', mitigating: 'badge-a', accepted: 'badge-b', closed: 'badge-n',
@@ -202,7 +203,7 @@ function RiskModal({ risk, prefill, onClose, onSave, assets, sites, members }) {
     } catch (ex) {
       setErr(ex.message === 'residual_incomplete'
         ? 'A residual rating needs both a likelihood and a consequence.'
-        : ex.message || 'Save failed.')
+        : errorText(ex, 'Save failed.'))
       setSaving(false)
     }
   }
@@ -363,7 +364,7 @@ export default function Risks({ dark, toggleDark }) {
       const [rows, m, s] = await Promise.all([listRisks(filters), getRiskMatrix(basis), getRiskStats()])
       setRisks(rows); setMatrix(m); setStats(s)
     } catch (ex) {
-      setError(ex.message || 'Could not load the risk register.')
+      setError(errorText(ex, 'Could not load the risk register.'))
     } finally {
       setLoading(false)
     }

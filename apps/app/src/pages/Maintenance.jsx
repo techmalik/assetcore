@@ -14,6 +14,7 @@ import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
+import { errorText } from '../lib/errors'
 
 const TASK_STATUS = {
   pending:     { bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)', label:'Pending' },
@@ -55,7 +56,7 @@ function ScheduleModal({ onClose, onSaved, users }) {
         description:form.description||null, assignee_id: form.assignee_id || null,
       })
       onSaved()
-    } catch(e) { setErr(e.message) } finally { setSaving(false) }
+    } catch(e) { setErr(errorText(e)) } finally { setSaving(false) }
   }
 
   return (
@@ -150,7 +151,7 @@ export default function Maintenance({ dark, toggleDark }) {
       setSchedules(s)
       setUsers(u)
     } catch(e) {
-      setErr(e.message)
+      setErr(errorText(e))
     } finally { setLoading(false) }
   }, [tab, today, globalLocationId])
 
@@ -169,7 +170,7 @@ export default function Maintenance({ dark, toggleDark }) {
       await softDeletePMSchedule(schedule.id)
       toast.success('Schedule archived.')
       load()
-    } catch (e) { toast.error(e.message || 'Failed to archive schedule.') }
+    } catch (e) { toast.error(errorText(e, 'Failed to archive schedule.')) }
   }
 
   const handleGenerate = async () => {
@@ -362,7 +363,7 @@ function CompleteTaskModal({ task, onClose, onDone }) {
       await updatePMTask(task.id, { status: 'completed', notes: notes || null })
       if (reportFile) await uploadMaintenanceReport(task.id, reportFile)
       onDone(task.id)
-    } catch (e) { setErr(e.message || 'Failed to complete.'); setSaving(false) }
+    } catch (e) { setErr(errorText(e, 'Failed to complete.')); setSaving(false) }
   }
 
   const inp = { width: '100%', border: '1px solid var(--n200)', borderRadius: 4, padding: '8px 10px', fontSize: 13, fontFamily: 'var(--ff-u)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', background: 'var(--n0)', color: 'var(--n900)' }

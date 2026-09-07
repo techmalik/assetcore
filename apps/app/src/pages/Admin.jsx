@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can, ROLE_CAPABILITIES, ROLE_KEYS, ROLE_LABELS, ADMIN_ENTRY_CAPS, GRANTABLE_CAPS as GRANTABLE_CAP_KEYS } from '../lib/rbac.js'
 import { useToast } from '../lib/ToastContext'
+import { errorText } from '../lib/errors'
 
 // Human labels for the grantable capabilities. The KEYS come from
 // @assetcore/rbac (the same list the API's invite/access schemas validate
@@ -162,7 +163,7 @@ function SiteModal({ site, locations, onClose, onSave }) {
       if (site) await updateSite(site.id, payload)
       else await createSite(payload)
       onSave()
-    } catch (ex) { setErr(ex.message) } finally { setSaving(false) }
+    } catch (ex) { setErr(errorText(ex)) } finally { setSaving(false) }
   }
 
   return (
@@ -208,14 +209,14 @@ function SitesTab() {
     setLoading(true)
     Promise.all([listSites(), listLocations().catch(() => [])])
       .then(([s, l]) => { setSites(s); setLocations(l); setLoading(false) })
-      .catch(e => { setErr(e.message); setLoading(false) })
+      .catch(e => { setErr(errorText(e)); setLoading(false) })
   }
 
   useEffect(() => { load() }, [])
 
   async function archive(id) {
     if (!confirm('Archive this site? It will no longer appear in lists.')) return
-    try { await softDeleteSite(id); load() } catch (e) { alert(e.message) }
+    try { await softDeleteSite(id); load() } catch (e) { alert(errorText(e)) }
   }
 
   return (
@@ -279,7 +280,7 @@ function LocationModal({ location, onClose, onSave }) {
       if (location) await updateLocation(location.id, form)
       else await createLocation(form)
       onSave()
-    } catch (ex) { setErr(ex.message) } finally { setSaving(false) }
+    } catch (ex) { setErr(errorText(ex)) } finally { setSaving(false) }
   }
 
   return (
@@ -313,13 +314,13 @@ function LocationsTab() {
 
   function load() {
     setLoading(true)
-    listLocations().then(l => { setLocations(l); setLoading(false) }).catch(e => { setErr(e.message); setLoading(false) })
+    listLocations().then(l => { setLocations(l); setLoading(false) }).catch(e => { setErr(errorText(e)); setLoading(false) })
   }
   useEffect(() => { load() }, [])
 
   async function archive(id) {
     if (!confirm('Archive this location? Its sites keep working but lose their location link.')) return
-    try { await softDeleteLocation(id); load() } catch (e) { alert(e.message) }
+    try { await softDeleteLocation(id); load() } catch (e) { alert(errorText(e)) }
   }
 
   return (
@@ -378,7 +379,7 @@ function CatModal({ cat, onClose, onSave }) {
       if (cat) await updateCategory(cat.id, form)
       else await createCategory(form)
       onSave()
-    } catch (ex) { setErr(ex.message) } finally { setSaving(false) }
+    } catch (ex) { setErr(errorText(ex)) } finally { setSaving(false) }
   }
 
   return (
@@ -412,14 +413,14 @@ function CategoriesTab() {
 
   function load() {
     setLoading(true)
-    listCategories().then(c => { setCats(c); setLoading(false) }).catch(e => { setErr(e.message); setLoading(false) })
+    listCategories().then(c => { setCats(c); setLoading(false) }).catch(e => { setErr(errorText(e)); setLoading(false) })
   }
 
   useEffect(() => { load() }, [])
 
   async function remove(id) {
     if (!confirm('Delete this category? This cannot be undone.')) return
-    try { await deleteCategory(id); load() } catch (e) { alert(e.message) }
+    try { await deleteCategory(id); load() } catch (e) { alert(errorText(e)) }
   }
 
   return (
@@ -565,7 +566,7 @@ function InviteModal({ locations, sites, onClose, onInvited }) {
       })
       if (invite_link) setLink(invite_link)
       else { toast.success(`Invite sent to ${form.email}.`); onInvited(); onClose() }
-    } catch (ex) { setErr(ex.message) } finally { setBusy(false) }
+    } catch (ex) { setErr(errorText(ex)) } finally { setBusy(false) }
   }
 
   if (link) {
@@ -637,7 +638,7 @@ function AccessModal({ member, locations, sites, onClose, onSaved }) {
       })
       toast.success('Access updated.')
       onSaved()
-    } catch (e) { setErr(e.message); setSaving(false) }
+    } catch (e) { setErr(errorText(e)); setSaving(false) }
   }
 
   return (
@@ -674,20 +675,20 @@ function UsersTab() {
     setLoading(true)
     Promise.all([listOrgMembers(), listLocations().catch(() => []), listSites().catch(() => [])])
       .then(([m, l, s]) => { setMembers(m); setLocations(l); setSites(s); setLoading(false) })
-      .catch(e => { setErr(e.message); setLoading(false) })
+      .catch(e => { setErr(errorText(e)); setLoading(false) })
   }
   useEffect(() => { load() }, [])
 
   async function changeRole(m, role_key) {
     try { await updateOrgMemberRole(m.id, role_key); load(); toast.success('Role updated.') }
-    catch (e) { toast.error(e.message || 'Failed to update role.') }
+    catch (e) { toast.error(errorText(e, 'Failed to update role.')) }
   }
 
   async function toggleStatus(m) {
     const enable = m.status === 'disabled'
     if (!enable && !confirm(`Disable ${m.full_name || m.email}? They will lose access immediately.`)) return
     try { await setOrgMemberStatus(m.id, enable); load(); toast.success(enable ? 'Member enabled.' : 'Member disabled.') }
-    catch (e) { toast.error(e.message || 'Failed to update member status.') }
+    catch (e) { toast.error(errorText(e, 'Failed to update member status.')) }
   }
 
   async function sendReset(m) {
@@ -695,7 +696,7 @@ function UsersTab() {
       const { action_link } = await resetOrgMemberPassword(m.id)
       setResetLink(action_link || 'Link generated (check email delivery settings).')
       toast.success('Password reset link generated.')
-    } catch (e) { toast.error(e.message || 'Failed to generate reset link.') }
+    } catch (e) { toast.error(errorText(e, 'Failed to generate reset link.')) }
   }
 
   return (
@@ -824,7 +825,7 @@ function AuditTab() {
     setLoading(true)
     listAuditLog({ limit: PAGE, offset: off })
       .then(({ rows: r, total: t }) => { setRows(r); setTotal(t); setLoading(false) })
-      .catch(e => { setErr(e.message); setLoading(false) })
+      .catch(e => { setErr(errorText(e)); setLoading(false) })
   }
 
   useEffect(() => { load(0) }, [])
@@ -940,7 +941,7 @@ function ConfigTab() {
         setDepStart(d.startFrom ?? 'install_date')
         setLoading(false)
       })
-      .catch(e => { setMsg(e.message); setLoading(false) })
+      .catch(e => { setMsg(errorText(e)); setLoading(false) })
   }, [])
 
   async function saveDepreciation() {
@@ -959,7 +960,7 @@ function ConfigTab() {
       const updated = await updateOrgSettings(settings)
       setOrg(updated); setDepLife(life); setDepSalvage(salvage); setDepRate(rate)
       setDepMsg('Saved — book values recalculated.')
-    } catch (e) { setDepMsg(e.message) } finally { setDepSaving(false) }
+    } catch (e) { setDepMsg(errorText(e, 'Could not save the depreciation policy.')) } finally { setDepSaving(false) }
   }
 
   async function save() {
@@ -973,7 +974,7 @@ function ConfigTab() {
       const settings = { ...(org?.settings || {}), health: { ...(org?.settings?.health || {}), inspectionThreshold: t, maintenanceThreshold: m } }
       const updated = await updateOrgSettings(settings)
       setOrg(updated); setThreshold(t); setMaintThreshold(m); setMsg('Saved.')
-    } catch (e) { setMsg(e.message) } finally { setSaving(false) }
+    } catch (e) { setMsg(errorText(e)) } finally { setSaving(false) }
   }
 
   return (
@@ -1145,7 +1146,7 @@ function RuleModal({ rule, onClose, onSaved }) {
     } catch (ex) {
       setErr(ex.message === 'invalid_trigger_for_entity'
         ? 'That trigger does not apply to this kind of record.'
-        : ex.message)
+        : errorText(ex, 'Could not save the rule.'))
       setSaving(false)
     }
   }
@@ -1245,14 +1246,14 @@ function EscalationsTab() {
     setLoading(true)
     Promise.all([listEscalationRules(), listEscalationEvents(15)])
       .then(([r, e]) => { setRules(r); setEvents(e); setLoading(false) })
-      .catch(e => { setErr(e.message); setLoading(false) })
+      .catch(e => { setErr(errorText(e)); setLoading(false) })
   }
   useEffect(() => { load() }, [])
 
   async function retire(rule) {
     if (!confirm(`Retire “${rule.name}”? It stops being evaluated; the escalations it already raised are kept.`)) return
     try { await retireEscalationRule(rule.id); toast.success('Rule retired.'); load() }
-    catch (e) { toast.error(e.message) }
+    catch (e) { toast.error(errorText(e)) }
   }
 
   async function runNow() {
@@ -1261,7 +1262,7 @@ function EscalationsTab() {
       const { fired } = await runEscalationsNow()
       toast.success(fired ? `${fired} escalation${fired === 1 ? '' : 's'} raised.` : 'Nothing met a rule.')
       load()
-    } catch (e) { toast.error(e.message) } finally { setRunning(false) }
+    } catch (e) { toast.error(errorText(e)) } finally { setRunning(false) }
   }
 
   const entityLabel = Object.fromEntries(ESCALATION_ENTITY_TYPES)

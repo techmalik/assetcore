@@ -10,6 +10,7 @@ import { listAssets } from '../lib/db/assets'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { useMoney, Money } from '../lib/money'
+import { errorText } from '../lib/errors'
 
 const THIS_YEAR = new Date().getFullYear()
 
@@ -68,7 +69,7 @@ function NewScheduleModal({ assets, onClose, onCreated }) {
               ? 'Units of production needs meter readings AssetCore does not collect yet. Pick another method.'
               : e.message === 'nothing_to_depreciate'
                 ? 'Salvage value is at or above cost, so there is nothing to depreciate.'
-                : e.message || 'Could not work out a schedule.'
+                : errorText(e, 'Could not work out a schedule.')
         )
       })
     return () => { cancelled = true }
@@ -77,7 +78,7 @@ function NewScheduleModal({ assets, onClose, onCreated }) {
   async function save() {
     setBusy(true)
     try { await createSchedule(body()); onCreated() }
-    catch (e) { setProblem(e.message || 'Could not save the schedule.'); setBusy(false) }
+    catch (e) { setProblem(errorText(e, 'Could not save the schedule.')); setBusy(false) }
   }
 
   const asset = assets.find((a) => a.id === assetId)
@@ -226,7 +227,7 @@ export default function Depreciation({ dark, toggleDark }) {
       const [s, st, f] = await Promise.all([listSchedules(), getDepreciationStats(), getForecast()])
       setSchedules(s); setStats(st); setForecast(f)
     } catch (e) {
-      setError(e.message === 'forbidden' ? 'Your role cannot see the depreciation register.' : e.message || 'Failed to load.')
+      setError(e.message === 'forbidden' ? 'Your role cannot see the depreciation register.' : errorText(e, 'Failed to load.'))
     } finally {
       setLoading(false)
     }
@@ -244,7 +245,7 @@ export default function Depreciation({ dark, toggleDark }) {
   async function post(id, assetId) {
     setBusy(true)
     try { await postSchedule(id, THIS_YEAR); await load(); await openDetail(assetId) }
-    catch (e) { alert(e.message) }
+    catch (e) { alert(errorText(e)) }
     finally { setBusy(false) }
   }
 
@@ -255,14 +256,14 @@ export default function Depreciation({ dark, toggleDark }) {
       const r = await postAllSchedules(THIS_YEAR)
       await load()
       alert(`${r.entries_posted} period${r.entries_posted === 1 ? '' : 's'} posted across ${r.schedules} schedule${r.schedules === 1 ? '' : 's'}.`)
-    } catch (e) { alert(e.message) }
+    } catch (e) { alert(errorText(e)) }
     finally { setBusy(false) }
   }
 
   async function retire(id) {
     if (!confirm('Retire this schedule? Posted history is kept, and net book value goes back to being entered by hand.')) return
     try { await retireSchedule(id); setDetail(null); load() }
-    catch (e) { alert(e.message) }
+    catch (e) { alert(errorText(e)) }
   }
 
   const eligible = assets.filter((a) => !schedules.some((s) => s.asset_id === a.id))

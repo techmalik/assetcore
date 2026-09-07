@@ -3,6 +3,7 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { listReports, requestReport, generateReport, downloadReport, getLocationAnalytics, REPORT_KINDS } from '../lib/db/reports'
 import { healthColor } from '../lib/health'
+import { errorText } from '../lib/errors'
 
 const KIND_META = {
   asset_register:      { icon:'A', bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -56,7 +57,7 @@ export default function Reports({ dark, toggleDark }) {
   const load = useCallback(async () => {
     setLoading(true); setErr(null)
     try { setReports(await listReports()) }
-    catch (e) { setErr(e.message) }
+    catch (e) { setErr(errorText(e)) }
     finally { setLoading(false) }
   }, [])
 
@@ -64,7 +65,7 @@ export default function Reports({ dark, toggleDark }) {
 
   useEffect(() => {
     if (tab !== 'analytics' || analytics) return
-    getLocationAnalytics().then(setAnalytics).catch((e) => setAnalyticsErr(e.message))
+    getLocationAnalytics().then(setAnalytics).catch((e) => setAnalyticsErr(errorText(e, 'Could not load the location analytics.')))
   }, [tab, analytics])
 
   const handleGenerate = async () => {
@@ -80,14 +81,14 @@ export default function Reports({ dark, toggleDark }) {
       setReports(prev => prev.map(r => r.id === ready.id ? ready : r))
       setPendingId(null)
       setTab('library')
-    } catch (e) { setErr(e.message) }
+    } catch (e) { setErr(errorText(e)) }
     finally { setRequesting(false) }
   }
 
   const handleDownload = async (report) => {
     setDownloadingId(report.id)
     try { await downloadReport(report) }
-    catch (e) { alert(e.message) }
+    catch (e) { alert(errorText(e)) }
     finally { setDownloadingId(null) }
   }
 

@@ -6,6 +6,7 @@ import { can } from '../lib/rbac'
 import { listDevices, createDevice, updateDevice, softDeleteDevice } from '../lib/db/devices'
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
+import { errorText } from '../lib/errors'
 
 const STATUS_META = {
   online:          { label: 'Online',         dot: 'var(--sg)',    c: 'var(--sgt)', bg: 'var(--sgb)', br: 'var(--sgbr)' },
@@ -69,7 +70,7 @@ function DeviceModal({ device, sites, assets, onClose, onSaved }) {
       if (editing) await updateDevice(device.id, payload)
       else         await createDevice(payload)
       onSaved()
-    } catch (e) { setErr(e.message) }
+    } catch (e) { setErr(errorText(e)) }
     finally { setSaving(false) }
   }
 
@@ -162,7 +163,7 @@ export default function Devices({ dark, toggleDark }) {
     try {
       const [devs, siteList, assetList] = await Promise.all([listDevices(), listSites(), listAssets({})])
       setDevices(devs); setSites(siteList); setAssets(assetList)
-    } catch (e) { setErr(e.message) }
+    } catch (e) { setErr(errorText(e)) }
     finally { setLoading(false) }
   }, [])
 

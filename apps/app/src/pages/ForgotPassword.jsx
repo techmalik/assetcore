@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/apiClient'
+import { errorText } from '../lib/errors'
 
 const Logo = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -23,7 +24,7 @@ export default function ForgotPassword() {
       await api.post('/auth/forgot-password', { email })
       setSent(true)
     } catch (err) {
-      setError(err?.message || 'Something went wrong. Please try again.')
+      setError(errorText(err, 'Something went wrong. Please try again.'))
     } finally {
       setBusy(false)
     }

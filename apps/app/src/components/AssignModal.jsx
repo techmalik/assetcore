@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { errorText } from '../lib/errors'
 
 // Shared assign/reassign picker for PM tasks and inspections — same shape as
 // the "Assigned operator" select in Assets.jsx's AssetModal, and the assignee
@@ -27,7 +28,7 @@ export default function AssignModal({ title, subtitle, users, currentId, current
     setSaving(true); setErr('')
     try {
       await onSave(userId || null)
-    } catch (ex) { setErr(ex.message || 'Failed to save.'); setSaving(false) }
+    } catch (ex) { setErr(errorText(ex, 'Failed to save.')); setSaving(false) }
   }
 
   return (

@@ -10,6 +10,7 @@ import {
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can, ROLE_LABELS } from '../lib/rbac'
 import { useMoney, Money } from '../lib/money'
+import { errorText } from '../lib/errors'
 
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS).filter(([k]) => k !== 'viewer')
 
@@ -80,7 +81,7 @@ function DecisionModal({ approval, action, onClose, onDone }) {
         not_pending: 'This request has already been decided.',
         not_requester: 'Only the person who submitted a request can recall it.',
       }
-      setErr(map[ex.message] || ex.message || 'That did not go through.')
+      setErr(map[ex.code] || errorText(ex, 'That did not go through.'))
       setBusy(false)
     }
   }
@@ -166,7 +167,7 @@ function RuleModal({ rule, onClose, onSave }) {
       else await createApprovalRule(payload)
       onSave()
     } catch (ex) {
-      setErr(ex.message === 'invalid_band' ? 'The ceiling has to be above the floor.' : ex.message || 'Save failed.')
+      setErr(ex.message === 'invalid_band' ? 'The ceiling has to be above the floor.' : errorText(ex, 'Save failed.'))
       setSaving(false)
     }
   }
@@ -381,7 +382,7 @@ export default function Approvals({ dark, toggleDark }) {
       setRows(list)
       setStats(s)
     } catch (ex) {
-      setError(ex.message || 'Could not load approvals.')
+      setError(errorText(ex, 'Could not load approvals.'))
     } finally {
       setLoading(false)
     }

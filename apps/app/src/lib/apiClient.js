@@ -79,6 +79,10 @@ async function request(method, path, body, { retry = true } = {}) {
   if (!res.ok) {
     const err = new Error(payload?.error || `Request failed (${res.status})`)
     err.status = res.status
+    // The machine code, kept separate from the message so screens can look
+    // up a sentence for it (lib/errors.js) instead of printing the code.
+    err.code = payload?.error ?? null
+    if (payload?.missing) err.missing = payload.missing
     throw err
   }
   return payload
@@ -102,6 +106,10 @@ async function upload(path, formData, { retry = true } = {}) {
   if (!res.ok) {
     const err = new Error(payload?.error || `Upload failed (${res.status})`)
     err.status = res.status
+    // The machine code, kept separate from the message so screens can look
+    // up a sentence for it (lib/errors.js) instead of printing the code.
+    err.code = payload?.error ?? null
+    if (payload?.missing) err.missing = payload.missing
     throw err
   }
   return payload

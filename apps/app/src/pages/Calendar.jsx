@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { getCalendar } from '../lib/db/analytics'
+import { errorText } from '../lib/errors'
 
 /**
  * One month, with everything that has a date on it.
@@ -100,7 +101,7 @@ export default function Calendar({ dark, toggleDark }) {
       // trailing days are not mysteriously empty.
       setEvents(await getCalendar(grid.days[0].key, grid.days[grid.days.length - 1].key))
     } catch (ex) {
-      setError(ex.message || 'Could not load the calendar.')
+      setError(errorText(ex, 'Could not load the calendar.'))
     } finally {
       setLoading(false)
     }

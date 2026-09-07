@@ -27,6 +27,7 @@ import { listAssets } from '../lib/db/assets'
 import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
+import { errorText } from '../lib/errors'
 
 const STATUS_META = {
   active:   { label:'Active',        bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -99,7 +100,7 @@ function LicenceModal({ licence, authorities, sites, onClose, onSaved }) {
       else         await createComplianceLicence(payload)
       toast.success(editing ? 'Licence updated.' : 'Licence added.')
       onSaved()
-    } catch (e) { setErr(e.message) }
+    } catch (e) { setErr(errorText(e)) }
     finally { setSaving(false) }
   }
 
@@ -172,7 +173,7 @@ function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded })
 
   async function viewDocument() {
     try { await api.download(`/files/${lic.document_url}`, lic.document_url.split('/').pop()) }
-    catch (ex) { toast.error(ex.message || 'Failed to download document.') }
+    catch (ex) { toast.error(errorText(ex, 'Failed to download document.')) }
   }
 
   async function handleDocPick(e) {
@@ -180,13 +181,13 @@ function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded })
     if (!file) return
     setUploading(true)
     try { onDocUploaded(await uploadComplianceDocument(lic.id, file)); toast.success('Document uploaded.') }
-    catch (ex) { toast.error(ex.message || 'Failed to upload document.') }
+    catch (ex) { toast.error(errorText(ex, 'Failed to upload document.')) }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
   }
 
   async function removeDoc(url) {
     try { onDocUploaded(await deleteComplianceDocument(lic.id, url)); toast.success('Document removed.') }
-    catch (ex) { toast.error(ex.message || 'Failed to remove document.') }
+    catch (ex) { toast.error(errorText(ex, 'Failed to remove document.')) }
   }
 
   const docList = lic.documents?.length ? lic.documents : (lic.document_url ? [{ url: lic.document_url, name: lic.document_url.split('/').pop() }] : [])
@@ -263,7 +264,7 @@ function AuditFindingsModal({ audit, onClose, onChanged }) {
   const [form, setForm] = useState({ clause: '', description: '', severity: 'minor', due_date: '' })
 
   const load = useCallback(async () => {
-    try { setDetail(await getComplianceAudit(audit.id)) } catch (e) { toast.error(e.message) }
+    try { setDetail(await getComplianceAudit(audit.id)) } catch (e) { toast.error(errorText(e)) }
   }, [audit.id, toast])
   useEffect(() => { load() }, [load])
 
@@ -279,14 +280,14 @@ function AuditFindingsModal({ audit, onClose, onChanged }) {
       setForm({ clause: '', description: '', severity: 'minor', due_date: '' })
       setAdding(false)
       await load(); onChanged()
-    } catch (e) { toast.error(e.message) }
+    } catch (e) { toast.error(errorText(e)) }
   }
 
   const toggle = async (f) => {
     try {
       await updateAuditFinding(audit.id, f.id, { status: f.status === 'open' ? 'closed' : 'open' })
       await load(); onChanged()
-    } catch (e) { toast.error(e.message) }
+    } catch (e) { toast.error(errorText(e)) }
   }
 
   const raise = async (f) => {
@@ -295,7 +296,7 @@ function AuditFindingsModal({ audit, onClose, onChanged }) {
       toast.success(`Raised ${d.ref} on the defect register.`)
       await load(); onChanged()
     } catch (e) {
-      toast.error(e.message === 'already_raised' ? 'A defect has already been raised for this finding.' : e.message)
+      toast.error(e.message === 'already_raised' ? 'A defect has already been raised for this finding.' : errorText(e))
     }
   }
 
@@ -399,7 +400,10 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
     asset_id: audit?.asset_id || '',
     routine_maintenance_complied: audit?.routine_maintenance_complied ?? null,
     iso_audit_conducted: audit?.iso_audit_conducted ?? null,
-    status: audit?.status || 'completed',
+    // A new audit is one you are scheduling; defaulting to 'completed' meant
+    // the first Save was always refused for a missing outcome, and the normal
+    // reason to open this form took an extra step to undo.
+    status: audit?.status || 'scheduled',
     outcome: audit?.outcome || '',
     summary: audit?.summary || '',
     next_due_date: audit?.next_due_date || '',
@@ -446,7 +450,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
       toast.success(editing ? 'Audit updated.' : 'Audit recorded.')
       onSaved()
     } catch (e) {
-      setErr(e.message === 'outcome_required' ? 'An outcome is required to complete an audit.' : e.message)
+      setErr(e.message === 'outcome_required' ? 'An outcome is required to complete an audit.' : errorText(e))
       setSaving(false)
     }
   }
@@ -601,13 +605,13 @@ function AuditsPanel({ canCreate }) {
         listAssets().catch(() => []), getPmCompliance().catch(() => null),
       ])
       setAudits(a); setSites(s); setUsers(u); setAssets(as); setPmCompliance(pm)
-    } catch (e) { setErr(e.message) } finally { setLoading(false) }
+    } catch (e) { setErr(errorText(e)) } finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
 
   async function remove(id) {
     if (!confirm('Archive this audit record?')) return
-    try { await softDeleteComplianceAudit(id); load(); toast.success('Audit archived.') } catch (e) { toast.error(e.message || 'Failed to archive audit.') }
+    try { await softDeleteComplianceAudit(id); load(); toast.success('Audit archived.') } catch (e) { toast.error(errorText(e, 'Failed to archive audit.')) }
   }
   const yn = (v) => v === true ? <span style={{ color: 'var(--sgt)' }}>Yes</span> : v === false ? <span style={{ color: 'var(--srt)' }}>No</span> : <span style={{ color: 'var(--n400)' }}>—</span>
 
@@ -719,7 +723,7 @@ export default function CompliancePanel({ embedded = false, selectedId = null, o
       setLicences(lics)
       setAuthorities(auths)
       setSites(siteList)
-    } catch (e) { setErr(e.message) }
+    } catch (e) { setErr(errorText(e)) }
     finally { setLoading(false) }
   }, [globalLocationId])
 
@@ -761,14 +765,14 @@ export default function CompliancePanel({ embedded = false, selectedId = null, o
 
   const handleDelete = async (id) => {
     try { await softDeleteComplianceLicence(id); setSelected(null); load(); toast.success('Licence archived.') }
-    catch (e) { toast.error(e.message || 'Failed to archive licence.') }
+    catch (e) { toast.error(errorText(e, 'Failed to archive licence.')) }
   }
 
   const handleRunExpiry = async () => {
     try {
       const count = await checkLicenceExpiry()
       toast.success(count ? `Expiry check complete — ${count} notification${count !== 1 ? 's' : ''} sent.` : 'Expiry check complete — nothing due.')
-    } catch (e) { toast.error(e.message || 'Expiry check failed.') }
+    } catch (e) { toast.error(errorText(e, 'Expiry check failed.')) }
   }
 
   return (

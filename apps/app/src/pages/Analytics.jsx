@@ -8,6 +8,7 @@ import {
   getKpis, getWorkOrderTrend, getWorkOrderMix, getWorstAssets, getAssetMap,
 } from '../lib/db/analytics'
 import { useMoney } from '../lib/money'
+import { errorText } from '../lib/errors'
 
 const MONTH_LABEL = (iso) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })
@@ -96,7 +97,7 @@ export default function Analytics({ dark, toggleDark }) {
       ])
       setKpis(k); setTrend(t); setMix(m); setWorst(w); setMap(mp)
     } catch (ex) {
-      setError(ex.message || 'Could not load the analytics.')
+      setError(errorText(ex, 'Could not load the analytics.'))
     } finally {
       setLoading(false)
     }

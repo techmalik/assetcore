@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { signIn } from '../lib/auth'
 import { INSTANCE_CLIENT, SUPPORT_EMAIL } from '../lib/instance'
+import { errorText } from '../lib/errors'
 
 const Logo = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -31,7 +32,7 @@ export default function Auth() {
       await signIn(email, password)
       // AuthProvider observes the session change and the router redirects.
     } catch (err) {
-      setError(err?.message || 'Sign in failed. Check your email and password.')
+      setError(errorText(err, 'Sign in failed. Check your email and password.'))
       setBusy(false)
     }
   }

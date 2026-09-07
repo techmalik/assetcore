@@ -13,6 +13,7 @@ import { listInspections } from '../lib/db/inspections'
 import { listApprovals, submitApproval, APPROVAL_STATUS_META } from '../lib/db/approvals'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
+import { errorText } from '../lib/errors'
 
 const SEVERITY_CLASS = {
   minor: 'badge-n', moderate: 'badge-b', major: 'badge-a', critical: 'badge-r',
@@ -87,7 +88,7 @@ function DefectModal({ defect, prefill, onClose, onSave, assets, sites, inspecti
       else await createDefect(payload)
       onSave()
     } catch (ex) {
-      setErr(ex.message || 'Save failed.')
+      setErr(errorText(ex, 'Save failed.'))
       setSaving(false)
     }
   }
@@ -188,7 +189,7 @@ function RaiseModal({ defect, onClose, onRaised }) {
       })
       onRaised()
     } catch (ex) {
-      setErr(ex.message === 'already_raised' ? 'A work order has already been raised for this defect.' : ex.message || 'Could not raise the job.')
+      setErr(ex.message === 'already_raised' ? 'A work order has already been raised for this defect.' : errorText(ex, 'Could not raise the job.'))
       setBusy(false)
     }
   }
@@ -254,7 +255,7 @@ function DeferralSection({ defect, canSubmit, canRead }) {
       setErr(ex.message === 'no_matching_rule'
         ? 'No approval rule covers defect deferrals yet. An owner adds one on Approvals → Matrix.'
         : ex.message === 'already_pending' ? 'A deferral request is already waiting on this defect.'
-        : ex.message || 'Could not send the request.')
+        : errorText(ex, 'Could not send the request.'))
     } finally {
       setBusy(false)
     }
@@ -330,7 +331,7 @@ export default function Defects({ dark, toggleDark }) {
       setDefects(rows)
       setStats(s)
     } catch (ex) {
-      setError(ex.message || 'Could not load the defect register.')
+      setError(errorText(ex, 'Could not load the defect register.'))
     } finally {
       setLoading(false)
     }

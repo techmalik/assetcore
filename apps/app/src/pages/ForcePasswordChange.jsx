@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/apiClient'
 import { useAuth } from '../lib/AuthContext'
+import { errorText } from '../lib/errors'
 
 const Logo = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -30,7 +31,7 @@ export default function ForcePasswordChange() {
       await refreshSession()
       nav('/', { replace: true })
     } catch (err) {
-      setError(err?.message || 'Could not change your password.')
+      setError(errorText(err, 'Could not change your password.'))
     } finally {
       setBusy(false)
     }

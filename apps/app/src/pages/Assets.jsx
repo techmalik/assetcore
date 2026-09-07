@@ -27,6 +27,7 @@ import { healthColor, healthLabel, healthBand } from '../lib/health'
 import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
+import { errorText } from '../lib/errors'
 
 // operational/maintenance/standby/offline describe WHAT the asset is doing
 // right now (the new, David-demo-adopted model — TASK-4.2); attention/critical
@@ -95,7 +96,7 @@ function ConditionPanel({ asset }) {
     setErr('')
     getAssetHealth(asset.id)
       .then((h) => { if (!cancelled) setHealth(h) })
-      .catch((ex) => { if (!cancelled) setErr(ex.message || 'Could not read the score.') })
+      .catch((ex) => { if (!cancelled) setErr(errorText(ex, 'Could not read the score.')) })
     return () => { cancelled = true }
   }, [asset.id])
 
@@ -388,7 +389,7 @@ function AssetModal({ asset, sites, locations, categories, operators, allAssets 
       }
       toast.success(editing ? 'Asset updated.' : 'Asset created.')
       onSave()
-    } catch (ex) { setErr(ex.message || 'Save failed.'); setSaving(false) }
+    } catch (ex) { setErr(errorText(ex, 'Save failed.')); setSaving(false) }
   }
 
   async function pickPhoto(e) {
@@ -397,7 +398,7 @@ function AssetModal({ asset, sites, locations, categories, operators, allAssets 
     if (editing) {
       setBusyFile(true); setErr('')
       try { const up = await uploadAssetPhoto(asset.id, file); setPhotos(up.photos || []) }
-      catch (ex) { setErr(ex.message || 'Photo upload failed.') }
+      catch (ex) { setErr(errorText(ex, 'Photo upload failed.')) }
       finally { setBusyFile(false); if (photoRef.current) photoRef.current.value = '' }
     } else {
       setPendingPhotos((p) => [...p, file]); if (photoRef.current) photoRef.current.value = ''
@@ -409,7 +410,7 @@ function AssetModal({ asset, sites, locations, categories, operators, allAssets 
     if (editing) {
       setBusyFile(true); setErr('')
       try { const up = await uploadAssetDocument(asset.id, file); setDocuments(up.documents || []) }
-      catch (ex) { setErr(ex.message || 'Document upload failed.') }
+      catch (ex) { setErr(errorText(ex, 'Document upload failed.')) }
       finally { setBusyFile(false); if (docRef.current) docRef.current.value = '' }
     } else {
       setPendingDocs((p) => [...p, file]); if (docRef.current) docRef.current.value = ''
@@ -419,14 +420,14 @@ function AssetModal({ asset, sites, locations, categories, operators, allAssets 
   async function removeDoc(url) {
     setBusyFile(true)
     try { const up = await deleteAssetDocument(asset.id, url); setDocuments(up.documents || []) }
-    catch (ex) { setErr(ex.message) }
+    catch (ex) { setErr(errorText(ex)) }
     finally { setBusyFile(false) }
   }
 
   async function removePhoto(url) {
     setBusyFile(true)
     try { const up = await deleteAssetPhoto(asset.id, url); setPhotos(up.photos || []) }
-    catch (ex) { setErr(ex.message) }
+    catch (ex) { setErr(errorText(ex)) }
     finally { setBusyFile(false) }
   }
 
@@ -631,7 +632,7 @@ function RaiseWOModal({ asset, users = [], onClose, onCreated }) {
       })
       toast.success(`Work order ${wo.ref} created.`)
       onCreated()
-    } catch (ex) { setErr(ex.message || 'Failed to raise work order.'); setSaving(false) }
+    } catch (ex) { setErr(errorText(ex, 'Failed to raise work order.')); setSaving(false) }
   }
 
   return (
@@ -725,7 +726,7 @@ function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
       })
       toast.success('Maintenance completed — health reset to 100%.')
       onCompleted()
-    } catch (ex) { setErr(ex.message || 'Failed to record maintenance completion.'); setSaving(false) }
+    } catch (ex) { setErr(errorText(ex, 'Failed to record maintenance completion.')); setSaving(false) }
   }
 
   return (
@@ -790,7 +791,7 @@ function PMTaskCompleteModal({ task, onClose, onCompleted }) {
       if (report) await uploadMaintenanceReport(task.id, report)
       toast.success('PM task completed — health reset to 100%.')
       onCompleted()
-    } catch (ex) { setErr(ex.message || 'Failed to complete task.'); setSaving(false) }
+    } catch (ex) { setErr(errorText(ex, 'Failed to complete task.')); setSaving(false) }
   }
 
   return (
@@ -840,7 +841,7 @@ function ImportModal({ onClose, onDone }) {
       const { created, skipped, errors } = imported.summary
       if (errors > 0) toast.error(`Import finished with ${errors} error${errors !== 1 ? 's' : ''} — ${created} created, ${skipped} skipped.`)
       else toast.success(`Import complete — ${created} created, ${skipped} skipped.`)
-    } catch (ex) { setErr(ex.message || 'Import failed.') }
+    } catch (ex) { setErr(errorText(ex, 'Import failed.')) }
     finally { setBusy(false); if (fileRef.current) fileRef.current.value = '' }
   }
 
@@ -937,23 +938,23 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
   async function changePMStatus(task, newStatus) {
     if (newStatus === 'completed') { setCompletingTask(task); return }
     try { await updatePMTask(task.id, { status: newStatus }); loadPMTasks(); toast.success('PM task status updated.') }
-    catch (ex) { toast.error(ex.message || 'Failed to update PM task status.') }
+    catch (ex) { toast.error(errorText(ex, 'Failed to update PM task status.')) }
   }
 
   async function changeInspectionStatus(inspection, newStatus) {
     try { await updateInspection(inspection.id, { status: newStatus }); loadInspections(); toast.success('Inspection status updated.') }
-    catch (ex) { toast.error(ex.message || 'Failed to update inspection status.') }
+    catch (ex) { toast.error(errorText(ex, 'Failed to update inspection status.')) }
   }
 
   async function postComment() {
     if (!comment.trim()) return
     setPosting(true)
     try { await addAssetComment(asset.id, comment.trim()); setComment(''); loadActivity() }
-    catch (ex) { toast.error(ex.message || 'Failed to post comment.') } finally { setPosting(false) }
+    catch (ex) { toast.error(errorText(ex, 'Failed to post comment.')) } finally { setPosting(false) }
   }
 
   async function viewDoc(doc) {
-    try { await api.download(`/files/${doc.url}`, doc.name) } catch (ex) { toast.error(ex.message || 'Failed to download file.') }
+    try { await api.download(`/files/${doc.url}`, doc.name) } catch (ex) { toast.error(errorText(ex, 'Failed to download file.')) }
   }
 
   const section = { fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)', marginBottom: 8 }
@@ -1270,7 +1271,7 @@ export default function Assets({ dark, toggleDark }) {
       setAssets(a); setSites(s); setLocations(l); setCategories(c); setOperators(u)
       setOrgDepreciation(org?.settings?.depreciation || null)
       setSelected((sel) => (sel ? a.find((x) => x.id === sel.id) || null : null))
-    } catch (e) { setError(e.message || 'Failed to load assets.') }
+    } catch (e) { setError(errorText(e, 'Failed to load assets.')) }
     finally { setLoading(false) }
   }, [filter, archivedView, globalLocationId])
 
@@ -1297,12 +1298,12 @@ export default function Assets({ dark, toggleDark }) {
   async function archiveAsset(id) {
     if (!confirm('Archive this asset? It will be hidden from the registry but not deleted, and can be restored.')) return
     try { await softDeleteAsset(id); setSelected(null); load(); toast.success('Asset archived.') }
-    catch (e) { toast.error(e.message || 'Failed to archive asset.') }
+    catch (e) { toast.error(errorText(e, 'Failed to archive asset.')) }
   }
 
   async function doRestore(id) {
     try { await restoreAsset(id); load(); toast.success('Asset restored.') }
-    catch (e) { toast.error(e.message || 'Failed to restore asset.') }
+    catch (e) { toast.error(errorText(e, 'Failed to restore asset.')) }
   }
 
   const linkBtn = { padding: '3px 8px', border: '1px solid var(--n200)', borderRadius: 3, background: 'var(--n0)', fontSize: 11, color: 'var(--n600)', cursor: 'pointer' }
