@@ -96,8 +96,8 @@
       "result": "pending",
       "ref": "R1-48"
      },
-     "result": "",
-     "notes": ""
+     "result": "fail",
+     "notes": "No such control exists. As the owner on Assets I looked at every control on the page and in each row: STATE and HEALTH filter chips, Archived, Import CSV, Add Asset, a search box, type and location selects, and per-row View / Edit / WO. There is no row selection, no Labels, no QR, no Print — read_page's interactive list confirms it, and searching the page for 'label', 'QR' and 'print' returns nothing. The asset detail panel has no QR either (its actions are Complete Maintenance, Raise Work Order, Edit Asset, Archive). Cause: apps/app/src/components/AssetQr.jsx exports assetQrValue(), AssetQrCode and PrintQrSheet — a working QR label and a printable 4-up sheet with its own print stylesheet — and nothing in the app imports any of them. Grepping the whole client for 'AssetQr' matches only the file's own export line. The feature is written and unreachable. (apps/app/src/components/DocumentsPanel.jsx is dead in the same way.)"
     },
     {
      "title": "Scan page: look up a real tag by hand",
@@ -118,8 +118,8 @@
       "result": "pending",
       "ref": "R1-48"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "As the Field Technician on /scan, typed NGML-MTR-0042 and pressed Find: the card returned 'Lagos DS-04 Metering Station' with badges operational / medium criticality / Lagos DS-04, Category 'Metering Station', and — the point of the retest — Installed reading 2020-09-07 rather than blank, so round 2's commission_date→install_date fix holds on this screen. FOUND WHILE HERE, not part of the pass condition: three of the six fields on this card can never be filled. It reads asset.manufacturer, asset.serial_number and asset.warranty_expiry (Scan.jsx:197-200), but the asset edit form and the CSV importer both write manufacturer/model/serial into the specs JSONB (assets.ts:355-358), and every row in the table has NULL in the real columns. I set NGML-MTR-0042's manufacturer to 'UAT R3 Instruments' earlier in this round: the asset list shows it, the scan card still shows '—'. Custodian is blank for the same class of reason."
     },
     {
      "title": "Scan page: an unknown tag is refused in a sentence",
@@ -135,8 +135,8 @@
       "Read the message."
      ],
      "expect": "A sentence naming the tag — no raw <code>not_found</code>, no blank card.",
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Entered NGML-NOPE-9999. The card cleared and the page showed: 'No asset with tag “NGML-NOPE-9999” in this organisation.' — a sentence naming the tag, no raw not_found, no empty card left on screen."
     },
     {
      "title": "A scan URL opens the asset directly",
@@ -152,8 +152,8 @@
       "Check the asset resolves without typing anything."
      ],
      "expect": "The Warri T-A Isolation Valve card renders from the URL alone.",
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Navigated straight to http://localhost:5174/scan?ain=NGML-VLV-0089 with no typing. The page loaded with the field pre-filled 'NGML-VLV-0089' and the card already resolved to 'Warri T-A Isolation Valve 089' (operational, medium criticality, Warri Terminal A). This is the path a printed label would use — it works, even though nothing in the app can print that label (see card 01)."
     }
    ]
   },
@@ -181,8 +181,8 @@
       "result": "pending",
       "ref": "R1-37"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Watched end to end. Before: Spare Parts showed SP-PT-1100 at '2 each' with a Reorder badge and a stock value of ₦370,000; WO-2025-0041 carried '1× · SP-PT-1100 · 2 in stock · Reserved · ₦185,000'. Pressed Closed on the job: toast 'Work order moved to Closed.', activity logged 'Status changed to Closed · Adaeze Okeke · 8 Sept, 15:51'. After: the job's part line reads '1× · SP-PT-1100 · 1 in stock · Taken', Spare Parts reads '1 each' and stock value ₦185,000, and the part's movement history opens with '-1 · Used on job · → 1 · WO-2025-0041 · Consumed on work order · Adaeze Okeke' above the earlier '-6 Issue → 2' and '+8 Receipt → 8'. The ledger reconciles to the balance on every row."
     },
     {
      "title": "A job cannot be closed against stock that isn't there",
@@ -198,8 +198,8 @@
       "Try to close the job."
      ],
      "expect": "The close is refused in a readable sentence naming the shortfall — not a raw <code>insufficient_stock</code>, and the stock figure does not go negative.",
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Reserved 50× SP-PT-1100 on WO-2025-0042 against 1 on hand — the panel showed '50× · 1 in stock · Reserved · ₦9.3M' — then pressed Closed. Refused with a red toast reading 'There is not enough on hand for that issue.' The job stayed Assigned, the line stayed Reserved, and the store still read 1 each: nothing was half-consumed and stock did not go negative. GAP, and the reason this is a qualified pass: the API answers 409 with a shortfalls array naming each part and the amount missing, and the UI throws that away — the sentence names neither the part nor the shortfall. With one line that is obvious; with five it is not. The 50× line was deleted afterwards, so the job is back as it was."
     }
    ]
   },
@@ -227,8 +227,8 @@
       "result": "pending",
       "ref": "R1-43"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Reports → Generate Report → Asset Register, output CSV, Generate. The row appeared as 'Asset Register — 8 Sept 2026', CSV, 1 KB, Ready, with a Download action; pressing Download issued GET /api/files/reports/ca722304…csv → 200 (the pane's sandbox blocks the save itself, so the file was read from where the API wrote it, apps/api/data/files/<org>/reports/). The file holds a header row plus exactly six data rows, one per asset, and the figures agree with the screen: health 69 / 61 / 74 / 88 / 18 / 92 against the same six values in the Asset Registry, and NGML-MTR-0042's book value 148,800,000 against the ₦148,800,000.00 on its asset panel. SMALL DEFECT: immediately after generating, the BY column reads '—'. POST /reports and /reports/:id/generate both return the raw row, which has no created_by_profile — only the list query joins the user. Reloading the page fills it in with 'Adaeze Okeke'. Cosmetic and momentary, but it is the one figure on that row nobody can check by eye."
     },
     {
      "title": "A report the Viewer must not be able to request",
@@ -244,8 +244,8 @@
       "Look for a request/generate control, and try it if it is offered."
      ],
      "expect": "Either no create control is offered, or using it is refused in a sentence. A Viewer must not be able to write a report file.",
-     "result": "",
-     "notes": ""
+     "result": "fail",
+     "notes": "The server holds; the screen does not. As uat.viewer the Reports page renders with a '+ Generate Report' button in the header AND a Generate Report tab — both offered to a role with only *:read. Picking Asset Register and pressing Generate Report sends POST /api/reports, which is correctly refused 403 Forbidden — and the user is told nothing at all. No toast, no inline message, no change of state; the button just sits there. Cause: handleGenerate catches the error into setErr (Reports.jsx:83) but `err` is only rendered inside the Report Library branch (Reports.jsx:128), and setTab('library') is only reached on success — so the message is stored on a tab the user is not on and never sees. The expectation allowed either outcome (no control, or a refusal in a sentence); neither happened. This is the F5 shape round 2 fixed elsewhere: a control offered to a role that cannot use it, with a silent refusal behind it."
     }
    ]
   },
@@ -272,8 +272,8 @@
       "result": "pass",
       "ref": "R1-18"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Approvals → Matrix, real pointer clicks throughout. Opened 'UAT band — job spend ₦1,000 to ₦50,000' (floor 1000, ceiling 50000), changed the ceiling to 75000 and pressed Save rule: the matrix row redrew as '₦1,000 — ₦75,000', and reopening the editor read back 1000 / 75000 from the server rather than from local state. Restored to 50000 afterwards and confirmed the row reads '₦1,000 — ₦50,000' again, so the instance is as it was."
     },
     {
      "title": "Approval matrix: an impossible band is refused",
@@ -293,8 +293,8 @@
       "result": "pass",
       "ref": "R1-20"
      },
-     "result": "",
-     "notes": ""
+     "result": "fail",
+     "notes": "It is refused, but as a crash rather than as the rule. Set floor 90000 / ceiling 5000 on the existing rule and pressed Save: PATCH /api/approval-rules/028cf6d5… returned 500 Internal Server Error and the modal printed 'Something went wrong at our end. Try again, and tell an administrator if it keeps happening.' — which tells the user to escalate a mistake they could fix in two seconds. Cause: POST /approval-rules validates the band and answers 422 invalid_band (approvals.ts:97-99), and round 1 saw its sentence, 'The ceiling has to be above the floor.' The PATCH handler has no such check (approvals.ts:120-137); the DB check constraint approval_rules_check (max_amount_cents IS NULL OR max > min) raises instead, and the error escapes untyped as a 500. The create path and the edit path disagree about the same rule."
     },
     {
      "title": "Nobody approves their own request",
@@ -314,8 +314,8 @@
       "result": "pass",
       "ref": "R1-22"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "As uat.ops — both the requester and the role the band names — set WO-2025-0042's estimated cost to ₦25,000 and pressed Request spend approval → Send for approval. The job's panel then read 'With Operations Manager · ₦25,000 · Pending'. On Approvals the counters read 'Waiting on me 1 / Mine, still pending 1 / Pending across the org 2', and the one row under Waiting on me is the OTHER request — WO-2025-0041, raised by Adaeze Okeke — with a Review action. The request I raised myself appears only under 'I submitted', and the only control on it is Recall. There is no Approve control anywhere for it, on any tab. Also worth recording: the request dialog warns before you send it — 'This job has no cost on it yet, so it will be sent as ₦0 and will only match a band that starts at zero.'"
     },
     {
      "title": "Compliance findings: raise one on the completed audit",
@@ -336,8 +336,8 @@
       "result": "pass",
       "ref": "R1-29"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "As uat.hse, Compliance → Audits & Attestations → Findings on 'UAT R1 — ISO 14001 internal audit, Lagos DS-04'. Added a finding with clause 'ISO 14001 §9.1', text 'UAT R3 - flare stack emissions monitoring log not signed off for August.', severity Critical, due 15 Oct 2026. It saved and listed above the round-1 finding with a red 'critical' chip, the clause, and 'Due 15 Oct 26', offering Close and 'Raise a defect'. The audit row's FINDINGS column moved from '1 open of 1' to '2 open of 2', so the count follows the record. All of it with real pointer input, which is what this card was re-run for."
     },
     {
      "title": "Risk register: raise a risk and watch the score",
@@ -358,8 +358,8 @@
       "result": "pass",
       "ref": "R1-32"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "As uat.hse. Created 'UAT R3 — inlet flange gas release during changeover' at likelihood 4 (Has happened here before) × consequence 5 (Fatality, or loss of the facility). Saved as RSK-2026-0002: the matrix drew a red '1' in the score-20 cell, the Extreme tile went 0 → 1, Live risks 1 → 2, and the detail panel read 'BEFORE CONTROLS 20 Extreme / AFTER CONTROLS — not rated', with the honest note that the grid reads the inherent figure while no residual exists. Edited likelihood down to 1: the panel became '5 Low', Rating 1 × 5, the register row moved to 'Low 5' in both Inherent and Current, and the Extreme tile went back to 0. Score and band both follow the inputs, on the card, the register and the matrix. DEFECT FOUND HERE: on the Assess a risk form the Asset, Site and Owner pickers all read '— None —' and nothing else for this role. GET /api/assets and GET /api/sites both returned 200; GET /api/org/members returned 403 (an HSE officer has no user:manage). All three load in one Promise.all whose catch is empty — 'the register works without the pickers' (Risks.jsx:375-378) — so one forbidden call silently empties all three. Any role without user:manage therefore cannot attach a risk to an asset at all: the same shape as F6, which round 2 fixed for inspections."
     }
    ]
   },
@@ -386,8 +386,8 @@
       "result": "pending",
       "ref": "R1-58"
      },
-     "result": "",
-     "notes": ""
+     "result": "fail",
+     "notes": "The theme itself is well built: turned on from the account menu, Dashboard, Assets, an asset detail, Analytics, Risk and Admin all redraw dark — sidebar, cards, the health donut, the backlog bar, the line chart and the status doughnut all adapt, and a scan for light-filled boxes wider than 80px found none. Two things fail. (1) CONTRAST. Measuring every text node against its computed background (colours are oklch, so they were resolved through a canvas): on the dashboard 18 of 143 text elements fall below WCAG AA, the worst at 1.59:1 — the empty-state line 'Preventive maintenance tasks due soon will appear here' — and the work-order reference links in Recent Work Orders at 1.79:1, which are visibly a dim blue on the dark card. Analytics is the same story (7 of 146 below AA, asset references at 1.79:1). The light theme measures 18 of 143 too, so most of this is not dark-specific — but the reference links are: they are legible in light and not in dark. (2) THE SETTING DOES NOT PERSIST. Turn dark on, reload the page, and it is light again: body background goes oklch(0.19) → oklch(0.968), there is no theme key in localStorage, and App.jsx:68 is `useState(false)` with no read of storage and no prefers-color-scheme default. A user who wants dark mode has to set it again on every page load."
     },
     {
      "title": "The app at phone width",
@@ -408,8 +408,8 @@
       "result": "pending",
       "ref": "R1-57"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Emulated 375×812 as the Field Technician. Dashboard, Work Orders, a work-order detail and /scan all report documentElement.scrollWidth === clientWidth === 375, so nothing scrolls the page sideways; the KPI tiles stack two-up, and Recent Work Orders scrolls inside its own box (321 visible of 662) which is the correct behaviour rather than a defect. The sidebar collapses behind a hamburger which opens a 220px drawer carrying the whole nav, and the work-order detail opens full width without overflow. Only clipping seen is text ellipsis on the org name and the breadcrumb. HONESTY NOTE: with the pane hidden, pointer clicks in the emulated mobile viewport timed out, so the drawer and the work-order detail were opened with element.click() rather than real pointer input. The layout measurements are read from the rendered DOM and are unaffected; the hit-testing of those two controls at phone width is not proved."
     },
     {
      "title": "Keyboard only: reach and use the primary action",
@@ -430,8 +430,8 @@
       "result": "pending",
       "ref": "R1-60"
      },
-     "result": "",
-     "notes": ""
+     "result": "pending",
+     "notes": "Half observed, half unprovable. OBSERVED GOOD: tabbing through Assets moves focus in DOM order — type select, location select, then each row's View / Edit / WO in turn — and every one of the 15 stops recorded carries a visible focus ring (outline: auto 1px, the UA default; the app defines no focus-visible style of its own). Shift+Tab from the search box lands on 'Add Asset', so the primary action is reachable. NOT PROVABLE: pressing Return and then space on that focused button did nothing — no modal, no request. That is the same limitation round 2 recorded for F3: this pane's synthetic key events move focus and type text but do not appear to produce a browser's default key-to-activation behaviour, and round 2 showed the same silence on the simplest form in the app. So neither a pass nor a fail can be claimed for activation, and it is left unrun rather than guessed. Thirty seconds from a human with a real keyboard settles it."
     },
     {
      "title": "Double-submit a create form",
@@ -452,8 +452,8 @@
       "result": "pending",
       "ref": "R1-62"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Filled New WO with the title 'UAT R3 — double submit probe' and clicked 'Create work order' twice back to back. Exactly one record: WO-2026-0003, and the list went from 7 rows to 8. The guard is real rather than lucky — the submit button is `disabled={saving}` and relabels to 'Creating…' while the request is in flight (WorkOrders.jsx:150-151). CAVEAT ON THE STRENGTH OF THIS: the two clicks were separate tool calls, so they were a few hundred milliseconds apart rather than a true human double-click; the disabled attribute is what makes me confident, not the timing."
     },
     {
      "title": "Search, filter and sort agree with each other",
@@ -474,8 +474,8 @@
       "result": "pending",
       "ref": "R1-63"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "On Assets, searching 'Warri' left exactly 2 rows (NGML-VLV-0089, NGML-SCR-041) and the header read '2 assets'. Adding the Standby state filter on top left exactly 1 row (NGML-SCR-041, the only Standby asset) and the header read '1 asset', pluralised correctly. Counts and rows agree in every combination tried. Two things the card asked for that are not there: the table has no sort — the column headers are plain <th> with no handler — so the sort clause could not be exercised; and the header sentence mixes scopes, reading '1 asset · 4 locations · 5 sites' where the asset count is filtered and the location and site counts are not."
     },
     {
      "title": "Back button after sign-out",
@@ -496,8 +496,8 @@
       "result": "pending",
       "ref": "R1-64"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Signed in as the owner, opened /assets, signed out through the account menu (landed on /auth), then pressed the browser Back button. The sign-in form is what came back: location is /auth, the page contains no asset data (searched for NGML-MTR-0042 — absent), and the form is the live one, not a cached render."
     },
     {
      "title": "CSV import: the template and the picker",
@@ -518,8 +518,8 @@
       "result": "pending",
       "ref": "R1-50"
      },
-     "result": "",
-     "notes": ""
+     "result": "fail",
+     "notes": "The template the button hands you is broken. Pressing 'Download template' does fire a real download named asset-import-template.csv (the blob was captured at creation to read what it contains, since the pane's sandbox blocks the save). Its header row has 18 columns — ain,name,category,location,site,status,manufacturer,model,serial_number,install_date,purchase_date,runtime_hours,value,last_maintenance_date,next_maintenance_date,tags,lat,lng — and those are the right ones; parseCSV maps values to whatever headers it finds. But the example row underneath has NINETEEN values: an extra '90' sits after value and before the dates. From column 14 on, every value is one place left of its header: last_maintenance_date gets '90', next_maintenance_date gets 2025-06-01, tags gets a date, lat gets 'critical,offshore', lng gets 6.45, and 3.4 falls off the end. Cause is visible at Assets.jsx:228 — the comment above CSV_HEADERS says health_score was deliberately removed from the header list because it is derived, and the example array was never trimmed to match. Anyone who does the obvious thing — open the template, replace the sample row, import — imports garbage dates and coordinates. NOT RUN, and still not run: the import itself, which needs a native file picker this session cannot operate."
     }
    ]
   },
@@ -546,8 +546,8 @@
       "result": "fail",
       "ref": "R1-F4"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Signed in as uat.viewer and typed /admin into the address bar rather than trusting the nav. Redirected to /dashboard; the sidebar carries no Admin entry and the page contains no audit or activity log. Round 2's EXPLICIT_ONLY_CAPS carve-out still holds."
     },
     {
      "title": "Depreciation preview still computes",
@@ -567,8 +567,8 @@
       "result": "fail",
       "ref": "R1-F10"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "Depreciation → New Schedule → NGML-MTR-0042. The asset has no useful life, and the app says so in a sentence — 'This asset is missing part of its basis. Fill it in below, or add it on the asset record.' — rather than the internal_error round 1 saw. Supplying cost ₦240,000,000, salvage ₦24,000,000, life 20 years from 2020-09-07 rendered the full 20-row table with a charge of ₦10,800,000.00 a year, which is (240,000,000 − 24,000,000) ÷ 20 exactly, and closing balances stepping down row by row. The schedule was deliberately NOT created — the preview is what this card needed, and round 2 already left one fabricated schedule in the register."
     },
     {
      "title": "Health score still agrees with its own breakdown",
@@ -589,8 +589,8 @@
       "result": "fail",
       "ref": "R2-health"
      },
-     "result": "",
-     "notes": ""
+     "result": "pass",
+     "notes": "NGML-MTR-0042 read 69, 'Calculated from 4 of 5 signals', with the working: Inspection condition 25/100 @25%, Open defects 80/100 @25%, Overdue maintenance 100/100 @20%, Risk level 80/100 @15%, Age against useful life excluded as no data. Edited the asset — set Manufacturer to 'UAT R3 Instruments', a field with no bearing on health — and saved ('Asset updated.'). The list still shows 69 and the reopened breakdown is unchanged and still reconciles: (25×.25 + 80×.25 + 100×.20 + 80×.15) ÷ 0.85 = 68.5 → 69. The legacy decay engine round 2 removed from the PATCH path has stayed removed."
     },
     {
      "title": "No raw error codes anywhere the run touched",
@@ -607,8 +607,8 @@
       "result": "fail",
       "ref": "R1-F5"
      },
-     "result": "",
-     "notes": ""
+     "result": "fail",
+     "notes": "No snake_case code reached a screen anywhere in this round — that half of round 2's sweep holds. Every refusal provoked read as English: 'There is not enough on hand for that issue.', 'No asset with tag “NGML-NOPE-9999” in this organisation.', 'This asset is missing part of its basis…', 'This job has no cost on it yet, so it will be sent as ₦0…'. Two failures against the rest of the expectation, both recorded on their own cards. One refusal produced NO message at all: the Viewer's POST /api/reports is refused 403 and the screen says nothing, because the error is written to a variable only rendered on a different tab. One misdescribes itself: an inverted approval band is a client mistake the API is written to answer 422 invalid_band, but the PATCH path escapes as a 500 and the user is told 'Something went wrong at our end… tell an administrator'. A silent refusal is worse for the user than the code would have been. Console across the whole run: only React Router v7 future-flag warnings plus the 403s this round deliberately provoked — nothing thrown."
     }
    ]
   }

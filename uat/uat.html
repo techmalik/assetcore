@@ -3569,7 +3569,7 @@
           <p>The technician's path: print a label, scan it, find the asset. Round 1 listed this as r1t48 and never ran it.</p>
         </div>
         
-        <article class="card" data-test id="r3t01" data-result=""
+        <article class="card" data-test id="r3t01" data-result="fail"
                  data-number="01" data-round="3"
                  data-title="Print a sheet of QR labels from the asset list"
                  data-roles="System Admin">
@@ -3591,14 +3591,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; select two or three assets.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for a <strong>Labels</strong>, <strong>QR</strong> or <strong>Print</strong> action on the list or in the row menu.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open it and check the sheet previews one label per asset.</span></button></div>
             <p class="expect"><span>Expect</span>A label sheet opens showing one QR per selected asset with its AIN beneath, and Print produces the same sheet.</p>
             <div class="res-group" role="group" aria-label="Result for test 01"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="No such control exists. As the owner on Assets I looked at every control on the page and in each row: STATE and HEALTH filter chips, Archived, Import CSV, Add Asset, a search box, type and location selects, and per-row View / Edit / WO. There is no row selection, no Labels, no QR, no Print — read_page&#x27;s interactive list confirms it, and searching the page for &#x27;label&#x27;, &#x27;QR&#x27; and &#x27;print&#x27; returns nothing. The asset detail panel has no QR either (its actions are Complete Maintenance, Raise Work Order, Edit Asset, Archive). Cause: apps/app/src/components/AssetQr.jsx exports assetQrValue(), AssetQrCode and PrintQrSheet — a working QR label and a printable 4-up sheet with its own print stylesheet — and nothing in the app imports any of them. Grepping the whole client for &#x27;AssetQr&#x27; matches only the file&#x27;s own export line. The feature is written and unreachable. (apps/app/src/components/DocumentsPanel.jsx is dead in the same way.)">
               <label class="sr-only" for="r3t01-notes">Notes for test 01</label>
               <textarea id="r3t01-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t02" data-result=""
+        <article class="card" data-test id="r3t02" data-result="pass"
                  data-number="02" data-round="3"
                  data-title="Scan page: look up a real tag by hand"
                  data-roles="Field Technician">
@@ -3620,14 +3620,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>/scan</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type <code>NGML-MTR-0042</code> into the manual field and submit.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the asset card that comes back.</span></button></div>
             <p class="expect"><span>Expect</span>The Lagos DS-04 Metering Station card appears with its status, criticality and commissioned date — the date filled in, not blank (round 2 fixed the column name behind it).</p>
             <div class="res-group" role="group" aria-label="Result for test 02"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="As the Field Technician on /scan, typed NGML-MTR-0042 and pressed Find: the card returned &#x27;Lagos DS-04 Metering Station&#x27; with badges operational / medium criticality / Lagos DS-04, Category &#x27;Metering Station&#x27;, and — the point of the retest — Installed reading 2020-09-07 rather than blank, so round 2&#x27;s commission_date→install_date fix holds on this screen. FOUND WHILE HERE, not part of the pass condition: three of the six fields on this card can never be filled. It reads asset.manufacturer, asset.serial_number and asset.warranty_expiry (Scan.jsx:197-200), but the asset edit form and the CSV importer both write manufacturer/model/serial into the specs JSONB (assets.ts:355-358), and every row in the table has NULL in the real columns. I set NGML-MTR-0042&#x27;s manufacturer to &#x27;UAT R3 Instruments&#x27; earlier in this round: the asset list shows it, the scan card still shows &#x27;—&#x27;. Custodian is blank for the same class of reason.">
               <label class="sr-only" for="r3t02-notes">Notes for test 02</label>
               <textarea id="r3t02-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t03" data-result=""
+        <article class="card" data-test id="r3t03" data-result="pass"
                  data-number="03" data-round="3"
                  data-title="Scan page: an unknown tag is refused in a sentence"
                  data-roles="Field Technician">
@@ -3649,14 +3649,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On <code>/scan</code>, enter <code>NGML-NOPE-9999</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the message.</span></button></div>
             <p class="expect"><span>Expect</span>A sentence naming the tag — no raw <code>not_found</code>, no blank card.</p>
             <div class="res-group" role="group" aria-label="Result for test 03"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Entered NGML-NOPE-9999. The card cleared and the page showed: &#x27;No asset with tag “NGML-NOPE-9999” in this organisation.&#x27; — a sentence naming the tag, no raw not_found, no empty card left on screen.">
               <label class="sr-only" for="r3t03-notes">Notes for test 03</label>
               <textarea id="r3t03-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t04" data-result=""
+        <article class="card" data-test id="r3t04" data-result="pass"
                  data-number="04" data-round="3"
                  data-title="A scan URL opens the asset directly"
                  data-roles="Field Technician">
@@ -3678,7 +3678,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Navigate to <code>http://localhost:5174/scan?ain=NGML-VLV-0089</code> directly.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the asset resolves without typing anything.</span></button></div>
             <p class="expect"><span>Expect</span>The Warri T-A Isolation Valve card renders from the URL alone.</p>
             <div class="res-group" role="group" aria-label="Result for test 04"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Navigated straight to http://localhost:5174/scan?ain=NGML-VLV-0089 with no typing. The page loaded with the field pre-filled &#x27;NGML-VLV-0089&#x27; and the card already resolved to &#x27;Warri T-A Isolation Valve 089&#x27; (operational, medium criticality, Warri Terminal A). This is the path a printed label would use — it works, even though nothing in the app can print that label (see card 01).">
               <label class="sr-only" for="r3t04-notes">Notes for test 04</label>
               <textarea id="r3t04-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -3692,7 +3692,7 @@
           <p>Round 2 proved a part could be reserved on a job. Nobody has yet watched stock fall when the job closes — r1t37's other half.</p>
         </div>
         
-        <article class="card" data-test id="r3t05" data-result=""
+        <article class="card" data-test id="r3t05" data-result="pass"
                  data-number="05" data-round="3"
                  data-title="Closing a work order draws its reserved parts out of stock"
                  data-roles="System Admin">
@@ -3714,14 +3714,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note the on-hand figure for <code>SP-PT-1100</code> on Spare Parts.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>WO-2025-0041</code> and close it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Return to Spare Parts and read the on-hand figure again.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the part and look for the issue in its movement history.</span></button></div>
             <p class="expect"><span>Expect</span>On-hand falls from 2 to 1, the work order's part line reads as consumed rather than reserved, and a movement row records the issue against the job.</p>
             <div class="res-group" role="group" aria-label="Result for test 05"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Watched end to end. Before: Spare Parts showed SP-PT-1100 at &#x27;2 each&#x27; with a Reorder badge and a stock value of ₦370,000; WO-2025-0041 carried &#x27;1× · SP-PT-1100 · 2 in stock · Reserved · ₦185,000&#x27;. Pressed Closed on the job: toast &#x27;Work order moved to Closed.&#x27;, activity logged &#x27;Status changed to Closed · Adaeze Okeke · 8 Sept, 15:51&#x27;. After: the job&#x27;s part line reads &#x27;1× · SP-PT-1100 · 1 in stock · Taken&#x27;, Spare Parts reads &#x27;1 each&#x27; and stock value ₦185,000, and the part&#x27;s movement history opens with &#x27;-1 · Used on job · → 1 · WO-2025-0041 · Consumed on work order · Adaeze Okeke&#x27; above the earlier &#x27;-6 Issue → 2&#x27; and &#x27;+8 Receipt → 8&#x27;. The ledger reconciles to the balance on every row.">
               <label class="sr-only" for="r3t05-notes">Notes for test 05</label>
               <textarea id="r3t05-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t06" data-result=""
+        <article class="card" data-test id="r3t06" data-result="pass"
                  data-number="06" data-round="3"
                  data-title="A job cannot be closed against stock that isn&#x27;t there"
                  data-roles="System Admin">
@@ -3743,7 +3743,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On an open work order, reserve <code>SP-PT-1100</code> with a quantity above what is on hand (say 50).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try to close the job.</span></button></div>
             <p class="expect"><span>Expect</span>The close is refused in a readable sentence naming the shortfall — not a raw <code>insufficient_stock</code>, and the stock figure does not go negative.</p>
             <div class="res-group" role="group" aria-label="Result for test 06"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Reserved 50× SP-PT-1100 on WO-2025-0042 against 1 on hand — the panel showed &#x27;50× · 1 in stock · Reserved · ₦9.3M&#x27; — then pressed Closed. Refused with a red toast reading &#x27;There is not enough on hand for that issue.&#x27; The job stayed Assigned, the line stayed Reserved, and the store still read 1 each: nothing was half-consumed and stock did not go negative. GAP, and the reason this is a qualified pass: the API answers 409 with a shortfalls array naming each part and the amount missing, and the UI throws that away — the sentence names neither the part nor the shortfall. With one line that is obvious; with five it is not. The 50× line was deleted afterwards, so the job is back as it was.">
               <label class="sr-only" for="r3t06-notes">Notes for test 06</label>
               <textarea id="r3t06-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -3757,7 +3757,7 @@
           <p>r1t43: generate a report and check the file against what the screen says. Never run, and the generator was rewritten from a stub.</p>
         </div>
         
-        <article class="card" data-test id="r3t07" data-result=""
+        <article class="card" data-test id="r3t07" data-result="pass"
                  data-number="07" data-round="3"
                  data-title="Request and generate a report, then compare it to the screen"
                  data-roles="System Admin">
@@ -3779,14 +3779,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reports &rarr; request an asset register as <strong>CSV</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Generate it and wait for Ready.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note the row count implied by the Assets page (6 assets).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Download the file and open it.</span></button></div>
             <p class="expect"><span>Expect</span>Status goes pending &rarr; ready with a non-zero size, and the file holds a header row plus one row per asset, matching the Assets list.</p>
             <div class="res-group" role="group" aria-label="Result for test 07"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Reports → Generate Report → Asset Register, output CSV, Generate. The row appeared as &#x27;Asset Register — 8 Sept 2026&#x27;, CSV, 1 KB, Ready, with a Download action; pressing Download issued GET /api/files/reports/ca722304…csv → 200 (the pane&#x27;s sandbox blocks the save itself, so the file was read from where the API wrote it, apps/api/data/files/&lt;org&gt;/reports/). The file holds a header row plus exactly six data rows, one per asset, and the figures agree with the screen: health 69 / 61 / 74 / 88 / 18 / 92 against the same six values in the Asset Registry, and NGML-MTR-0042&#x27;s book value 148,800,000 against the ₦148,800,000.00 on its asset panel. SMALL DEFECT: immediately after generating, the BY column reads &#x27;—&#x27;. POST /reports and /reports/:id/generate both return the raw row, which has no created_by_profile — only the list query joins the user. Reloading the page fills it in with &#x27;Adaeze Okeke&#x27;. Cosmetic and momentary, but it is the one figure on that row nobody can check by eye.">
               <label class="sr-only" for="r3t07-notes">Notes for test 07</label>
               <textarea id="r3t07-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t08" data-result=""
+        <article class="card" data-test id="r3t08" data-result="fail"
                  data-number="08" data-round="3"
                  data-title="A report the Viewer must not be able to request"
                  data-roles="Executive / Viewer">
@@ -3808,7 +3808,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the Viewer open <code>/reports</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for a request/generate control, and try it if it is offered.</span></button></div>
             <p class="expect"><span>Expect</span>Either no create control is offered, or using it is refused in a sentence. A Viewer must not be able to write a report file.</p>
             <div class="res-group" role="group" aria-label="Result for test 08"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="The server holds; the screen does not. As uat.viewer the Reports page renders with a &#x27;+ Generate Report&#x27; button in the header AND a Generate Report tab — both offered to a role with only *:read. Picking Asset Register and pressing Generate Report sends POST /api/reports, which is correctly refused 403 Forbidden — and the user is told nothing at all. No toast, no inline message, no change of state; the button just sits there. Cause: handleGenerate catches the error into setErr (Reports.jsx:83) but `err` is only rendered inside the Report Library branch (Reports.jsx:128), and setTab(&#x27;library&#x27;) is only reached on success — so the message is stored on a tab the user is not on and never sees. The expectation allowed either outcome (no control, or a refusal in a sentence); neither happened. This is the F5 shape round 2 fixed elsewhere: a control offered to a role that cannot use it, with a silent refusal behind it.">
               <label class="sr-only" for="r3t08-notes">Notes for test 08</label>
               <textarea id="r3t08-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -3822,7 +3822,7 @@
           <p>These were marked passed in round 1 on evidence obtained by dispatching clicks in script rather than through the browser's input pipeline. A JS click bypasses hit-testing, so it cannot see an overlay, a disabled state or a z-index trap.</p>
         </div>
         
-        <article class="card" data-test id="r3t09" data-result=""
+        <article class="card" data-test id="r3t09" data-result="pass"
                  data-number="09" data-round="3"
                  data-title="Approval matrix: edit a band with real pointer input"
                  data-roles="System Admin">
@@ -3844,14 +3844,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; Approvals, open a rule and its bands.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Change a band's upper threshold and save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reopen it and confirm the new figure stuck.</span></button></div>
             <p class="expect"><span>Expect</span>The band saves and reads back with the new threshold.</p>
             <div class="res-group" role="group" aria-label="Result for test 09"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Approvals → Matrix, real pointer clicks throughout. Opened &#x27;UAT band — job spend ₦1,000 to ₦50,000&#x27; (floor 1000, ceiling 50000), changed the ceiling to 75000 and pressed Save rule: the matrix row redrew as &#x27;₦1,000 — ₦75,000&#x27;, and reopening the editor read back 1000 / 75000 from the server rather than from local state. Restored to 50000 afterwards and confirmed the row reads &#x27;₦1,000 — ₦50,000&#x27; again, so the instance is as it was.">
               <label class="sr-only" for="r3t09-notes">Notes for test 09</label>
               <textarea id="r3t09-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t10" data-result=""
+        <article class="card" data-test id="r3t10" data-result="fail"
                  data-number="10" data-round="3"
                  data-title="Approval matrix: an impossible band is refused"
                  data-roles="System Admin">
@@ -3873,14 +3873,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Edit a band so its lower bound sits above its upper bound.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Save.</span></button></div>
             <p class="expect"><span>Expect</span>Refused with a sentence explaining the range is wrong. No raw <code>invalid_band</code> on screen.</p>
             <div class="res-group" role="group" aria-label="Result for test 10"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="It is refused, but as a crash rather than as the rule. Set floor 90000 / ceiling 5000 on the existing rule and pressed Save: PATCH /api/approval-rules/028cf6d5… returned 500 Internal Server Error and the modal printed &#x27;Something went wrong at our end. Try again, and tell an administrator if it keeps happening.&#x27; — which tells the user to escalate a mistake they could fix in two seconds. Cause: POST /approval-rules validates the band and answers 422 invalid_band (approvals.ts:97-99), and round 1 saw its sentence, &#x27;The ceiling has to be above the floor.&#x27; The PATCH handler has no such check (approvals.ts:120-137); the DB check constraint approval_rules_check (max_amount_cents IS NULL OR max &gt; min) raises instead, and the error escapes untyped as a 500. The create path and the edit path disagree about the same rule.">
               <label class="sr-only" for="r3t10-notes">Notes for test 10</label>
               <textarea id="r3t10-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t11" data-result=""
+        <article class="card" data-test id="r3t11" data-result="pass"
                  data-number="11" data-round="3"
                  data-title="Nobody approves their own request"
                  data-roles="Operations Manager">
@@ -3902,14 +3902,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Raise a spend approval as the Operations Manager on any work order.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open Approvals and try to approve that same request.</span></button></div>
             <p class="expect"><span>Expect</span>Refused — the approve control is absent or the attempt returns a sentence saying a requester cannot approve their own request.</p>
             <div class="res-group" role="group" aria-label="Result for test 11"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="As uat.ops — both the requester and the role the band names — set WO-2025-0042&#x27;s estimated cost to ₦25,000 and pressed Request spend approval → Send for approval. The job&#x27;s panel then read &#x27;With Operations Manager · ₦25,000 · Pending&#x27;. On Approvals the counters read &#x27;Waiting on me 1 / Mine, still pending 1 / Pending across the org 2&#x27;, and the one row under Waiting on me is the OTHER request — WO-2025-0041, raised by Adaeze Okeke — with a Review action. The request I raised myself appears only under &#x27;I submitted&#x27;, and the only control on it is Recall. There is no Approve control anywhere for it, on any tab. Also worth recording: the request dialog warns before you send it — &#x27;This job has no cost on it yet, so it will be sent as ₦0 and will only match a band that starts at zero.&#x27;">
               <label class="sr-only" for="r3t11-notes">Notes for test 11</label>
               <textarea id="r3t11-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t12" data-result=""
+        <article class="card" data-test id="r3t12" data-result="pass"
                  data-number="12" data-round="3"
                  data-title="Compliance findings: raise one on the completed audit"
                  data-roles="HSE / Compliance Officer">
@@ -3931,14 +3931,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compliance &rarr; open <em>UAT R1 — ISO 14001 internal audit, Lagos DS-04</em>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Add a finding with a severity and a due date.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check it appears in the audit's finding list and in any open-findings count.</span></button></div>
             <p class="expect"><span>Expect</span>The finding saves, shows its severity, and the audit's finding count moves with it.</p>
             <div class="res-group" role="group" aria-label="Result for test 12"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="As uat.hse, Compliance → Audits &amp; Attestations → Findings on &#x27;UAT R1 — ISO 14001 internal audit, Lagos DS-04&#x27;. Added a finding with clause &#x27;ISO 14001 §9.1&#x27;, text &#x27;UAT R3 - flare stack emissions monitoring log not signed off for August.&#x27;, severity Critical, due 15 Oct 2026. It saved and listed above the round-1 finding with a red &#x27;critical&#x27; chip, the clause, and &#x27;Due 15 Oct 26&#x27;, offering Close and &#x27;Raise a defect&#x27;. The audit row&#x27;s FINDINGS column moved from &#x27;1 open of 1&#x27; to &#x27;2 open of 2&#x27;, so the count follows the record. All of it with real pointer input, which is what this card was re-run for.">
               <label class="sr-only" for="r3t12-notes">Notes for test 12</label>
               <textarea id="r3t12-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t13" data-result=""
+        <article class="card" data-test id="r3t13" data-result="pass"
                  data-number="13" data-round="3"
                  data-title="Risk register: raise a risk and watch the score"
                  data-roles="HSE / Compliance Officer">
@@ -3960,7 +3960,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Risks &rarr; new risk.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Set likelihood and impact to give a high score, save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Edit it down to a low likelihood and check the band moves.</span></button></div>
             <p class="expect"><span>Expect</span>The computed score and its band both change with the inputs, on the card and in the list.</p>
             <div class="res-group" role="group" aria-label="Result for test 13"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="As uat.hse. Created &#x27;UAT R3 — inlet flange gas release during changeover&#x27; at likelihood 4 (Has happened here before) × consequence 5 (Fatality, or loss of the facility). Saved as RSK-2026-0002: the matrix drew a red &#x27;1&#x27; in the score-20 cell, the Extreme tile went 0 → 1, Live risks 1 → 2, and the detail panel read &#x27;BEFORE CONTROLS 20 Extreme / AFTER CONTROLS — not rated&#x27;, with the honest note that the grid reads the inherent figure while no residual exists. Edited likelihood down to 1: the panel became &#x27;5 Low&#x27;, Rating 1 × 5, the register row moved to &#x27;Low 5&#x27; in both Inherent and Current, and the Extreme tile went back to 0. Score and band both follow the inputs, on the card, the register and the matrix. DEFECT FOUND HERE: on the Assess a risk form the Asset, Site and Owner pickers all read &#x27;— None —&#x27; and nothing else for this role. GET /api/assets and GET /api/sites both returned 200; GET /api/org/members returned 403 (an HSE officer has no user:manage). All three load in one Promise.all whose catch is empty — &#x27;the register works without the pickers&#x27; (Risks.jsx:375-378) — so one forbidden call silently empties all three. Any role without user:manage therefore cannot attach a risk to an asset at all: the same shape as F6, which round 2 fixed for inspections.">
               <label class="sr-only" for="r3t13-notes">Notes for test 13</label>
               <textarea id="r3t13-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -3974,7 +3974,7 @@
           <p>Round 1's r1t57-64, none of which has ever been run. These are the checks that catch what feature testing cannot.</p>
         </div>
         
-        <article class="card" data-test id="r3t14" data-result=""
+        <article class="card" data-test id="r3t14" data-result="fail"
                  data-number="14" data-round="3"
                  data-title="Dark mode across the main screens"
                  data-roles="System Admin">
@@ -3996,14 +3996,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Turn dark mode on from the topbar.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Walk Dashboard, Assets, an asset detail, Work Orders and Admin.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for unreadable text, white panels and charts that kept a light background.</span></button></div>
             <p class="expect"><span>Expect</span>Every screen is legible in dark mode: no black-on-black, no white card islands, badges and charts still readable.</p>
             <div class="res-group" role="group" aria-label="Result for test 14"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="The theme itself is well built: turned on from the account menu, Dashboard, Assets, an asset detail, Analytics, Risk and Admin all redraw dark — sidebar, cards, the health donut, the backlog bar, the line chart and the status doughnut all adapt, and a scan for light-filled boxes wider than 80px found none. Two things fail. (1) CONTRAST. Measuring every text node against its computed background (colours are oklch, so they were resolved through a canvas): on the dashboard 18 of 143 text elements fall below WCAG AA, the worst at 1.59:1 — the empty-state line &#x27;Preventive maintenance tasks due soon will appear here&#x27; — and the work-order reference links in Recent Work Orders at 1.79:1, which are visibly a dim blue on the dark card. Analytics is the same story (7 of 146 below AA, asset references at 1.79:1). The light theme measures 18 of 143 too, so most of this is not dark-specific — but the reference links are: they are legible in light and not in dark. (2) THE SETTING DOES NOT PERSIST. Turn dark on, reload the page, and it is light again: body background goes oklch(0.19) → oklch(0.968), there is no theme key in localStorage, and App.jsx:68 is `useState(false)` with no read of storage and no prefers-color-scheme default. A user who wants dark mode has to set it again on every page load.">
               <label class="sr-only" for="r3t14-notes">Notes for test 14</label>
               <textarea id="r3t14-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t15" data-result=""
+        <article class="card" data-test id="r3t15" data-result="pass"
                  data-number="15" data-round="3"
                  data-title="The app at phone width"
                  data-roles="Field Technician">
@@ -4025,14 +4025,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Emulate a 375&times;812 viewport.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open Dashboard, Work Orders, a work order and Scan.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the nav is reachable and nothing overflows the screen horizontally.</span></button></div>
             <p class="expect"><span>Expect</span>Content fits the width, the sidebar collapses to something reachable, and no page scrolls sideways.</p>
             <div class="res-group" role="group" aria-label="Result for test 15"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Emulated 375×812 as the Field Technician. Dashboard, Work Orders, a work-order detail and /scan all report documentElement.scrollWidth === clientWidth === 375, so nothing scrolls the page sideways; the KPI tiles stack two-up, and Recent Work Orders scrolls inside its own box (321 visible of 662) which is the correct behaviour rather than a defect. The sidebar collapses behind a hamburger which opens a 220px drawer carrying the whole nav, and the work-order detail opens full width without overflow. Only clipping seen is text ellipsis on the org name and the breadcrumb. HONESTY NOTE: with the pane hidden, pointer clicks in the emulated mobile viewport timed out, so the drawer and the work-order detail were opened with element.click() rather than real pointer input. The layout measurements are read from the rendered DOM and are unaffected; the hit-testing of those two controls at phone width is not proved.">
               <label class="sr-only" for="r3t15-notes">Notes for test 15</label>
               <textarea id="r3t15-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t16" data-result=""
+        <article class="card" data-test id="r3t16" data-result="pending"
                  data-number="16" data-round="3"
                  data-title="Keyboard only: reach and use the primary action"
                  data-roles="System Admin">
@@ -4054,14 +4054,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On Assets, tab from the top of the page.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Watch for a visible focus ring at each stop.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reach the primary button and press <kbd>Enter</kbd> or <kbd>Space</kbd>.</span></button></div>
             <p class="expect"><span>Expect</span>Focus is visible at every stop, order follows the page, and the button fires from the keyboard.</p>
             <div class="res-group" role="group" aria-label="Result for test 16"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Half observed, half unprovable. OBSERVED GOOD: tabbing through Assets moves focus in DOM order — type select, location select, then each row&#x27;s View / Edit / WO in turn — and every one of the 15 stops recorded carries a visible focus ring (outline: auto 1px, the UA default; the app defines no focus-visible style of its own). Shift+Tab from the search box lands on &#x27;Add Asset&#x27;, so the primary action is reachable. NOT PROVABLE: pressing Return and then space on that focused button did nothing — no modal, no request. That is the same limitation round 2 recorded for F3: this pane&#x27;s synthetic key events move focus and type text but do not appear to produce a browser&#x27;s default key-to-activation behaviour, and round 2 showed the same silence on the simplest form in the app. So neither a pass nor a fail can be claimed for activation, and it is left unrun rather than guessed. Thirty seconds from a human with a real keyboard settles it.">
               <label class="sr-only" for="r3t16-notes">Notes for test 16</label>
               <textarea id="r3t16-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t17" data-result=""
+        <article class="card" data-test id="r3t17" data-result="pass"
                  data-number="17" data-round="3"
                  data-title="Double-submit a create form"
                  data-roles="System Admin">
@@ -4083,14 +4083,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open a create form (a risk or a work order).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Fill it and click Save twice in quick succession.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the list.</span></button></div>
             <p class="expect"><span>Expect</span>One record, not two — the button disables or the second submit is swallowed.</p>
             <div class="res-group" role="group" aria-label="Result for test 17"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Filled New WO with the title &#x27;UAT R3 — double submit probe&#x27; and clicked &#x27;Create work order&#x27; twice back to back. Exactly one record: WO-2026-0003, and the list went from 7 rows to 8. The guard is real rather than lucky — the submit button is `disabled={saving}` and relabels to &#x27;Creating…&#x27; while the request is in flight (WorkOrders.jsx:150-151). CAVEAT ON THE STRENGTH OF THIS: the two clicks were separate tool calls, so they were a few hundred milliseconds apart rather than a true human double-click; the disabled attribute is what makes me confident, not the timing.">
               <label class="sr-only" for="r3t17-notes">Notes for test 17</label>
               <textarea id="r3t17-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t18" data-result=""
+        <article class="card" data-test id="r3t18" data-result="pass"
                  data-number="18" data-round="3"
                  data-title="Search, filter and sort agree with each other"
                  data-roles="System Admin">
@@ -4112,14 +4112,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On Assets, search for a term matching one asset.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Apply a status filter alongside it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sort by a column and check the row count and any 'showing N' figure still agree.</span></button></div>
             <p class="expect"><span>Expect</span>The rows shown match the filters, and every count on the page agrees with the rows.</p>
             <div class="res-group" role="group" aria-label="Result for test 18"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="On Assets, searching &#x27;Warri&#x27; left exactly 2 rows (NGML-VLV-0089, NGML-SCR-041) and the header read &#x27;2 assets&#x27;. Adding the Standby state filter on top left exactly 1 row (NGML-SCR-041, the only Standby asset) and the header read &#x27;1 asset&#x27;, pluralised correctly. Counts and rows agree in every combination tried. Two things the card asked for that are not there: the table has no sort — the column headers are plain &lt;th&gt; with no handler — so the sort clause could not be exercised; and the header sentence mixes scopes, reading &#x27;1 asset · 4 locations · 5 sites&#x27; where the asset count is filtered and the location and site counts are not.">
               <label class="sr-only" for="r3t18-notes">Notes for test 18</label>
               <textarea id="r3t18-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t19" data-result=""
+        <article class="card" data-test id="r3t19" data-result="pass"
                  data-number="19" data-round="3"
                  data-title="Back button after sign-out"
                  data-roles="System Admin">
@@ -4141,14 +4141,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in, open Assets, sign out.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press the browser Back button.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read what renders.</span></button></div>
             <p class="expect"><span>Expect</span>The sign-in screen, or a redirect to it. No asset data behind a dead session.</p>
             <div class="res-group" role="group" aria-label="Result for test 19"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Signed in as the owner, opened /assets, signed out through the account menu (landed on /auth), then pressed the browser Back button. The sign-in form is what came back: location is /auth, the page contains no asset data (searched for NGML-MTR-0042 — absent), and the form is the live one, not a cached render.">
               <label class="sr-only" for="r3t19-notes">Notes for test 19</label>
               <textarea id="r3t19-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t20" data-result=""
+        <article class="card" data-test id="r3t20" data-result="fail"
                  data-number="20" data-round="3"
                  data-title="CSV import: the template and the picker"
                  data-roles="System Admin">
@@ -4170,7 +4170,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; Import CSV.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Download the template.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check its header row against what the importer expects.</span></button></div>
             <p class="expect"><span>Expect</span>The template downloads and its headers are the ones the parser reads.</p>
             <div class="res-group" role="group" aria-label="Result for test 20"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="The template the button hands you is broken. Pressing &#x27;Download template&#x27; does fire a real download named asset-import-template.csv (the blob was captured at creation to read what it contains, since the pane&#x27;s sandbox blocks the save). Its header row has 18 columns — ain,name,category,location,site,status,manufacturer,model,serial_number,install_date,purchase_date,runtime_hours,value,last_maintenance_date,next_maintenance_date,tags,lat,lng — and those are the right ones; parseCSV maps values to whatever headers it finds. But the example row underneath has NINETEEN values: an extra &#x27;90&#x27; sits after value and before the dates. From column 14 on, every value is one place left of its header: last_maintenance_date gets &#x27;90&#x27;, next_maintenance_date gets 2025-06-01, tags gets a date, lat gets &#x27;critical,offshore&#x27;, lng gets 6.45, and 3.4 falls off the end. Cause is visible at Assets.jsx:228 — the comment above CSV_HEADERS says health_score was deliberately removed from the header list because it is derived, and the example array was never trimmed to match. Anyone who does the obvious thing — open the template, replace the sample row, import — imports garbage dates and coordinates. NOT RUN, and still not run: the import itself, which needs a native file picker this session cannot operate.">
               <label class="sr-only" for="r3t20-notes">Notes for test 20</label>
               <textarea id="r3t20-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
@@ -4184,7 +4184,7 @@
           <p>Four fixes from round 2 that a later change could plausibly undo, re-checked from the screen.</p>
         </div>
         
-        <article class="card" data-test id="r3t21" data-result=""
+        <article class="card" data-test id="r3t21" data-result="pass"
                  data-number="21" data-round="3"
                  data-title="The Viewer still cannot read the audit log"
                  data-roles="Executive / Viewer">
@@ -4206,14 +4206,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Viewer.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type <code>/admin</code> into the address bar directly — do not just check the nav.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for an audit or activity log tab.</span></button></div>
             <p class="expect"><span>Expect</span>No audit log. Bounced to the dashboard, or the tab is absent.</p>
             <div class="res-group" role="group" aria-label="Result for test 21"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Signed in as uat.viewer and typed /admin into the address bar rather than trusting the nav. Redirected to /dashboard; the sidebar carries no Admin entry and the page contains no audit or activity log. Round 2&#x27;s EXPLICIT_ONLY_CAPS carve-out still holds.">
               <label class="sr-only" for="r3t21-notes">Notes for test 21</label>
               <textarea id="r3t21-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t22" data-result=""
+        <article class="card" data-test id="r3t22" data-result="pass"
                  data-number="22" data-round="3"
                  data-title="Depreciation preview still computes"
                  data-roles="System Admin">
@@ -4235,14 +4235,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Depreciation &rarr; preview a schedule on an asset.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the first year's charge.</span></button></div>
             <p class="expect"><span>Expect</span>A schedule preview with figures, not <code>internal_error</code>.</p>
             <div class="res-group" role="group" aria-label="Result for test 22"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="Depreciation → New Schedule → NGML-MTR-0042. The asset has no useful life, and the app says so in a sentence — &#x27;This asset is missing part of its basis. Fill it in below, or add it on the asset record.&#x27; — rather than the internal_error round 1 saw. Supplying cost ₦240,000,000, salvage ₦24,000,000, life 20 years from 2020-09-07 rendered the full 20-row table with a charge of ₦10,800,000.00 a year, which is (240,000,000 − 24,000,000) ÷ 20 exactly, and closing balances stepping down row by row. The schedule was deliberately NOT created — the preview is what this card needed, and round 2 already left one fabricated schedule in the register.">
               <label class="sr-only" for="r3t22-notes">Notes for test 22</label>
               <textarea id="r3t22-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t23" data-result=""
+        <article class="card" data-test id="r3t23" data-result="pass"
                  data-number="23" data-round="3"
                  data-title="Health score still agrees with its own breakdown"
                  data-roles="System Admin">
@@ -4264,14 +4264,14 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>NGML-MTR-0042</code> and note the health score and its breakdown.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Edit the asset — change any field — and save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the score and breakdown again.</span></button></div>
             <p class="expect"><span>Expect</span>The score is unchanged by an unrelated edit and still reconciles with the five signals listed beneath it.</p>
             <div class="res-group" role="group" aria-label="Result for test 23"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="NGML-MTR-0042 read 69, &#x27;Calculated from 4 of 5 signals&#x27;, with the working: Inspection condition 25/100 @25%, Open defects 80/100 @25%, Overdue maintenance 100/100 @20%, Risk level 80/100 @15%, Age against useful life excluded as no data. Edited the asset — set Manufacturer to &#x27;UAT R3 Instruments&#x27;, a field with no bearing on health — and saved (&#x27;Asset updated.&#x27;). The list still shows 69 and the reopened breakdown is unchanged and still reconciles: (25×.25 + 80×.25 + 100×.20 + 80×.15) ÷ 0.85 = 68.5 → 69. The legacy decay engine round 2 removed from the PATCH path has stayed removed.">
               <label class="sr-only" for="r3t23-notes">Notes for test 23</label>
               <textarea id="r3t23-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
             </div>
           </div>
         </article>
-        <article class="card" data-test id="r3t24" data-result=""
+        <article class="card" data-test id="r3t24" data-result="fail"
                  data-number="24" data-round="3"
                  data-title="No raw error codes anywhere the run touched"
                  data-roles="Any">
@@ -4293,7 +4293,7 @@
             <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Across every refusal triggered in this round, read the text on screen.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Watch the console for anything thrown behind a clean-looking page.</span></button></div>
             <p class="expect"><span>Expect</span>Every refusal reads as a sentence. No <code>snake_case</code> code shown to a user.</p>
             <div class="res-group" role="group" aria-label="Result for test 24"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
-            <div class="notes" data-notes="">
+            <div class="notes" data-notes="No snake_case code reached a screen anywhere in this round — that half of round 2&#x27;s sweep holds. Every refusal provoked read as English: &#x27;There is not enough on hand for that issue.&#x27;, &#x27;No asset with tag “NGML-NOPE-9999” in this organisation.&#x27;, &#x27;This asset is missing part of its basis…&#x27;, &#x27;This job has no cost on it yet, so it will be sent as ₦0…&#x27;. Two failures against the rest of the expectation, both recorded on their own cards. One refusal produced NO message at all: the Viewer&#x27;s POST /api/reports is refused 403 and the screen says nothing, because the error is written to a variable only rendered on a different tab. One misdescribes itself: an inverted approval band is a client mistake the API is written to answer 422 invalid_band, but the PATCH path escapes as a 500 and the user is told &#x27;Something went wrong at our end… tell an administrator&#x27;. A silent refusal is worse for the user than the code would have been. Console across the whole run: only React Router v7 future-flag warnings plus the 403s this round deliberately provoked — nothing thrown.">
               <label class="sr-only" for="r3t24-notes">Notes for test 24</label>
               <textarea id="r3t24-notes" rows="2"
                         placeholder="What happened, what you would change&hellip;"></textarea>
