@@ -412,7 +412,7 @@
   <header class="mast">
     <p class="eyebrow">AssetCore &middot; user acceptance testing</p>
     <h1>Work through it, mark what breaks</h1>
-    <p class="standfirst">Round 2: every round-1 failure retested in the browser, the JS-driven passes re-clicked for real, and the first of the untested surface.</p>
+    <p class="standfirst">Round 3: the surface two rounds never reached — QR labels, the scan page, stock movement, report files, and the cross-cutting checks nobody has run.</p>
     <p class="howto">
       Every test starts collapsed. Open one, work the steps, mark it, and write what you saw.
       <strong>Your marks are saved as you make them</strong>, so closing the tab loses nothing.
@@ -422,7 +422,7 @@
     <p class="saved" data-saved hidden><span class="saved-dot" aria-hidden="true"></span><span data-saved-text>Saved</span></p>
   </header><!--uat:head:end-->
   <div class="tabs" role="tablist" aria-label="Test rounds">
-<!--uat:tabs:start--><button type="button" class="tab" role="tab" data-round-tab="1" aria-selected="false">Round 1</button><button type="button" class="tab" role="tab" data-round-tab="2" aria-selected="false">Round 2</button><!--uat:tabs:end-->
+<!--uat:tabs:start--><button type="button" class="tab" role="tab" data-round-tab="1" aria-selected="false">Round 1</button><button type="button" class="tab" role="tab" data-round-tab="2" aria-selected="false">Round 2</button><button type="button" class="tab" role="tab" data-round-tab="3" aria-selected="false">Round 3</button><!--uat:tabs:end-->
   </div>
 <!--uat:rounds:start-->
   <div class="round" data-round="1" data-round-label="Round 1"
@@ -3540,7 +3540,769 @@
           </div>
         </article>
       </section>
-  </div><!--uat:rounds:end-->
+  </div>
+  <div class="round" data-round="3" data-round-label="Round 3"
+       data-total="24">
+    <p class="round-intro">Rounds 1 and 2 closed 14 defects but left 17 of round 1's original untested cases still untested, and re-clicked only some of round 1's JavaScript-driven passes. This round goes after exactly that: the parts of the app that have never been watched working. It also re-checks the round-2 fixes that a later change could plausibly have broken. Run against a local stack — API on <code>8787</code>, app on <code>5174</code>, database <code>assetcore_integrate</code> — not staging.</p>
+    <nav class="nav" aria-label="Tests in this round"><div class="navgroup"><span class="navgroup-label">Labels, scanning and the field loop</span><div class="navchips"><button type="button" class="navchip" data-goto="r3t01" title="Print a sheet of QR labels from the asset list">01</button><button type="button" class="navchip" data-goto="r3t02" title="Scan page: look up a real tag by hand">02</button><button type="button" class="navchip" data-goto="r3t03" title="Scan page: an unknown tag is refused in a sentence">03</button><button type="button" class="navchip" data-goto="r3t04" title="A scan URL opens the asset directly">04</button></div></div><div class="navgroup"><span class="navgroup-label">Stock actually moves</span><div class="navchips"><button type="button" class="navchip" data-goto="r3t05" title="Closing a work order draws its reserved parts out of stock">05</button><button type="button" class="navchip" data-goto="r3t06" title="A job cannot be closed against stock that isn&#x27;t there">06</button></div></div><div class="navgroup"><span class="navgroup-label">Reports produce a file</span><div class="navchips"><button type="button" class="navchip" data-goto="r3t07" title="Request and generate a report, then compare it to the screen">07</button><button type="button" class="navchip" data-goto="r3t08" title="A report the Viewer must not be able to request">08</button></div></div><div class="navgroup"><span class="navgroup-label">Round 1&#x27;s JavaScript-driven passes, re-clicked</span><div class="navchips"><button type="button" class="navchip" data-goto="r3t09" title="Approval matrix: edit a band with real pointer input">09</button><button type="button" class="navchip" data-goto="r3t10" title="Approval matrix: an impossible band is refused">10</button><button type="button" class="navchip" data-goto="r3t11" title="Nobody approves their own request">11</button><button type="button" class="navchip" data-goto="r3t12" title="Compliance findings: raise one on the completed audit">12</button><button type="button" class="navchip" data-goto="r3t13" title="Risk register: raise a risk and watch the score">13</button></div></div><div class="navgroup"><span class="navgroup-label">Input, sessions and the edges</span><div class="navchips"><button type="button" class="navchip" data-goto="r3t14" title="Dark mode across the main screens">14</button><button type="button" class="navchip" data-goto="r3t15" title="The app at phone width">15</button><button type="button" class="navchip" data-goto="r3t16" title="Keyboard only: reach and use the primary action">16</button><button type="button" class="navchip" data-goto="r3t17" title="Double-submit a create form">17</button><button type="button" class="navchip" data-goto="r3t18" title="Search, filter and sort agree with each other">18</button><button type="button" class="navchip" data-goto="r3t19" title="Back button after sign-out">19</button><button type="button" class="navchip" data-goto="r3t20" title="CSV import: the template and the picker">20</button></div></div><div class="navgroup"><span class="navgroup-label">Regressions on the round-2 fixes</span><div class="navchips"><button type="button" class="navchip" data-goto="r3t21" title="The Viewer still cannot read the audit log">21</button><button type="button" class="navchip" data-goto="r3t22" title="Depreciation preview still computes">22</button><button type="button" class="navchip" data-goto="r3t23" title="Health score still agrees with its own breakdown">23</button><button type="button" class="navchip" data-goto="r3t24" title="No raw error codes anywhere the run touched">24</button></div></div></nav>
+    <div class="bar">
+      <div class="tally">
+        <span class="tally-item is-pass"><b data-count="pass">0</b> pass</span>
+        <span class="tally-item is-fail"><b data-count="fail">0</b> fail</span>
+        <span class="tally-item is-blocked"><b data-count="blocked">0</b> blocked</span>
+        <span class="tally-item"><b data-count="pending">24</b> not run</span>
+        <div class="meter" aria-hidden="true">
+          <span class="m-pass"></span><span class="m-fail"></span><span class="m-blocked"></span>
+        </div>
+      </div>
+      <div class="bar-actions">
+        <button type="button" class="btn" data-expand-all>Expand all</button>
+        <button type="button" class="btn" data-collapse-all>Collapse all</button>
+        <button type="button" class="btn" data-jump>Next unrun</button>
+        <button type="button" class="btn btn--primary" data-export>Export feedback</button>
+      </div>
+    </div>
+    
+      <section class="band">
+        <div class="band-head">
+          <h2>Labels, scanning and the field loop</h2>
+          <p>The technician's path: print a label, scan it, find the asset. Round 1 listed this as r1t48 and never ran it.</p>
+        </div>
+        
+        <article class="card" data-test id="r3t01" data-result=""
+                 data-number="01" data-round="3"
+                 data-title="Print a sheet of QR labels from the asset list"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t01-body">
+            <span class="num">01</span>
+            <span class="card-head-main">
+              <span class="card-title">Print a sheet of QR labels from the asset list</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pending">R1-48 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t01-body">
+            <p class="intro">The codebase carries <code>components/AssetQr.jsx</code> — a QR code and a printable label sheet with its own print stylesheet. This test asks whether a user can reach it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; select two or three assets.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for a <strong>Labels</strong>, <strong>QR</strong> or <strong>Print</strong> action on the list or in the row menu.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open it and check the sheet previews one label per asset.</span></button></div>
+            <p class="expect"><span>Expect</span>A label sheet opens showing one QR per selected asset with its AIN beneath, and Print produces the same sheet.</p>
+            <div class="res-group" role="group" aria-label="Result for test 01"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t01-notes">Notes for test 01</label>
+              <textarea id="r3t01-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t02" data-result=""
+                 data-number="02" data-round="3"
+                 data-title="Scan page: look up a real tag by hand"
+                 data-roles="Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t02-body">
+            <span class="num">02</span>
+            <span class="card-head-main">
+              <span class="card-title">Scan page: look up a real tag by hand</span>
+              <span class="tags"><span class="chip">Field Technician</span><span class="was was--pending">R1-48 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t02-body">
+            <p class="intro">The scan page takes a camera feed or a typed tag. The camera cannot be driven here; the manual path can, and it is the same lookup.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Field Technician</span><span class="who-mail">uat.tech@assetcore.test</span><span class="who-role">Field Technician</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>/scan</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type <code>NGML-MTR-0042</code> into the manual field and submit.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the asset card that comes back.</span></button></div>
+            <p class="expect"><span>Expect</span>The Lagos DS-04 Metering Station card appears with its status, criticality and commissioned date — the date filled in, not blank (round 2 fixed the column name behind it).</p>
+            <div class="res-group" role="group" aria-label="Result for test 02"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t02-notes">Notes for test 02</label>
+              <textarea id="r3t02-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t03" data-result=""
+                 data-number="03" data-round="3"
+                 data-title="Scan page: an unknown tag is refused in a sentence"
+                 data-roles="Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t03-body">
+            <span class="num">03</span>
+            <span class="card-head-main">
+              <span class="card-title">Scan page: an unknown tag is refused in a sentence</span>
+              <span class="tags"><span class="chip">Field Technician</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t03-body">
+            <p class="intro">A label from another site, or a smudged read. The page must say so rather than showing a code or an empty card.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Field Technician</span><span class="who-mail">uat.tech@assetcore.test</span><span class="who-role">Field Technician</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On <code>/scan</code>, enter <code>NGML-NOPE-9999</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the message.</span></button></div>
+            <p class="expect"><span>Expect</span>A sentence naming the tag — no raw <code>not_found</code>, no blank card.</p>
+            <div class="res-group" role="group" aria-label="Result for test 03"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t03-notes">Notes for test 03</label>
+              <textarea id="r3t03-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t04" data-result=""
+                 data-number="04" data-round="3"
+                 data-title="A scan URL opens the asset directly"
+                 data-roles="Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t04-body">
+            <span class="num">04</span>
+            <span class="card-head-main">
+              <span class="card-title">A scan URL opens the asset directly</span>
+              <span class="tags"><span class="chip">Field Technician</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t04-body">
+            <p class="intro">A printed label encodes <code>/scan?ain=…</code> so a phone camera opens the asset. That query parameter path has never been exercised.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Field Technician</span><span class="who-mail">uat.tech@assetcore.test</span><span class="who-role">Field Technician</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Navigate to <code>http://localhost:5174/scan?ain=NGML-VLV-0089</code> directly.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the asset resolves without typing anything.</span></button></div>
+            <p class="expect"><span>Expect</span>The Warri T-A Isolation Valve card renders from the URL alone.</p>
+            <div class="res-group" role="group" aria-label="Result for test 04"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t04-notes">Notes for test 04</label>
+              <textarea id="r3t04-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Stock actually moves</h2>
+          <p>Round 2 proved a part could be reserved on a job. Nobody has yet watched stock fall when the job closes — r1t37's other half.</p>
+        </div>
+        
+        <article class="card" data-test id="r3t05" data-result=""
+                 data-number="05" data-round="3"
+                 data-title="Closing a work order draws its reserved parts out of stock"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t05-body">
+            <span class="num">05</span>
+            <span class="card-head-main">
+              <span class="card-title">Closing a work order draws its reserved parts out of stock</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pending">R1-37 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t05-body">
+            <p class="intro"><code>consumeParts()</code> in <code>workOrders.ts</code> runs on the transition to closed: it decrements <code>quantity_in_stock</code>, writes a stock movement and stamps <code>consumed_at</code>. Round 2 left <code>WO-2025-0041</code> holding one reserved <code>SP-PT-1100</code> against a stock of 2.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note the on-hand figure for <code>SP-PT-1100</code> on Spare Parts.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>WO-2025-0041</code> and close it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Return to Spare Parts and read the on-hand figure again.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the part and look for the issue in its movement history.</span></button></div>
+            <p class="expect"><span>Expect</span>On-hand falls from 2 to 1, the work order's part line reads as consumed rather than reserved, and a movement row records the issue against the job.</p>
+            <div class="res-group" role="group" aria-label="Result for test 05"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t05-notes">Notes for test 05</label>
+              <textarea id="r3t05-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t06" data-result=""
+                 data-number="06" data-round="3"
+                 data-title="A job cannot be closed against stock that isn&#x27;t there"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t06-body">
+            <span class="num">06</span>
+            <span class="card-head-main">
+              <span class="card-title">A job cannot be closed against stock that isn&#x27;t there</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t06-body">
+            <p class="intro"><code>insufficient_stock</code> (409) with a shortfall list is one of the app's own stated rules. Reserving more than exists and closing is the only way to reach it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On an open work order, reserve <code>SP-PT-1100</code> with a quantity above what is on hand (say 50).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try to close the job.</span></button></div>
+            <p class="expect"><span>Expect</span>The close is refused in a readable sentence naming the shortfall — not a raw <code>insufficient_stock</code>, and the stock figure does not go negative.</p>
+            <div class="res-group" role="group" aria-label="Result for test 06"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t06-notes">Notes for test 06</label>
+              <textarea id="r3t06-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Reports produce a file</h2>
+          <p>r1t43: generate a report and check the file against what the screen says. Never run, and the generator was rewritten from a stub.</p>
+        </div>
+        
+        <article class="card" data-test id="r3t07" data-result=""
+                 data-number="07" data-round="3"
+                 data-title="Request and generate a report, then compare it to the screen"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t07-body">
+            <span class="num">07</span>
+            <span class="card-head-main">
+              <span class="card-title">Request and generate a report, then compare it to the screen</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pending">R1-43 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t07-body">
+            <p class="intro"><code>POST /reports/:id/generate</code> builds a real XLSX or CSV synchronously and records a byte size. The check that matters is whether the file's row count agrees with the list it claims to report.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reports &rarr; request an asset register as <strong>CSV</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Generate it and wait for Ready.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note the row count implied by the Assets page (6 assets).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Download the file and open it.</span></button></div>
+            <p class="expect"><span>Expect</span>Status goes pending &rarr; ready with a non-zero size, and the file holds a header row plus one row per asset, matching the Assets list.</p>
+            <div class="res-group" role="group" aria-label="Result for test 07"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t07-notes">Notes for test 07</label>
+              <textarea id="r3t07-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t08" data-result=""
+                 data-number="08" data-round="3"
+                 data-title="A report the Viewer must not be able to request"
+                 data-roles="Executive / Viewer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t08-body">
+            <span class="num">08</span>
+            <span class="card-head-main">
+              <span class="card-title">A report the Viewer must not be able to request</span>
+              <span class="tags"><span class="chip">Executive / Viewer</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t08-body">
+            <p class="intro">Round 2 gated <code>GET /reports</code> on <code>report:read</code> and left the Viewer holding it through <code>*:read</code>. <code>report:create</code> is a different capability — the Viewer should be able to read the page and not to generate.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Viewer</span><span class="who-mail">uat.viewer@assetcore.test</span><span class="who-role">Executive / Viewer</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the Viewer open <code>/reports</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for a request/generate control, and try it if it is offered.</span></button></div>
+            <p class="expect"><span>Expect</span>Either no create control is offered, or using it is refused in a sentence. A Viewer must not be able to write a report file.</p>
+            <div class="res-group" role="group" aria-label="Result for test 08"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t08-notes">Notes for test 08</label>
+              <textarea id="r3t08-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Round 1&#x27;s JavaScript-driven passes, re-clicked</h2>
+          <p>These were marked passed in round 1 on evidence obtained by dispatching clicks in script rather than through the browser's input pipeline. A JS click bypasses hit-testing, so it cannot see an overlay, a disabled state or a z-index trap.</p>
+        </div>
+        
+        <article class="card" data-test id="r3t09" data-result=""
+                 data-number="09" data-round="3"
+                 data-title="Approval matrix: edit a band with real pointer input"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t09-body">
+            <span class="num">09</span>
+            <span class="card-head-main">
+              <span class="card-title">Approval matrix: edit a band with real pointer input</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pass">R1-18 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t09-body">
+            <p class="intro">Admin &rarr; Approvals. The band editor sets the money thresholds that route a request. Round 1 drove it in script.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; Approvals, open a rule and its bands.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Change a band's upper threshold and save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reopen it and confirm the new figure stuck.</span></button></div>
+            <p class="expect"><span>Expect</span>The band saves and reads back with the new threshold.</p>
+            <div class="res-group" role="group" aria-label="Result for test 09"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t09-notes">Notes for test 09</label>
+              <textarea id="r3t09-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t10" data-result=""
+                 data-number="10" data-round="3"
+                 data-title="Approval matrix: an impossible band is refused"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t10-body">
+            <span class="num">10</span>
+            <span class="card-head-main">
+              <span class="card-title">Approval matrix: an impossible band is refused</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pass">R1-20 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t10-body">
+            <p class="intro"><code>approvals.ts:98</code> answers <code>422 invalid_band</code> when the thresholds do not make a valid range. This is the app stating its own rule.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Edit a band so its lower bound sits above its upper bound.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Save.</span></button></div>
+            <p class="expect"><span>Expect</span>Refused with a sentence explaining the range is wrong. No raw <code>invalid_band</code> on screen.</p>
+            <div class="res-group" role="group" aria-label="Result for test 10"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t10-notes">Notes for test 10</label>
+              <textarea id="r3t10-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t11" data-result=""
+                 data-number="11" data-round="3"
+                 data-title="Nobody approves their own request"
+                 data-roles="Operations Manager">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t11-body">
+            <span class="num">11</span>
+            <span class="card-head-main">
+              <span class="card-title">Nobody approves their own request</span>
+              <span class="tags"><span class="chip">Operations Manager</span><span class="was was--pass">R1-22 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t11-body">
+            <p class="intro"><code>self_approval</code> is the one rule an approval matrix exists to enforce. Round 2 left a pending &#8358;25,000 <code>wo_cost</code> approval routed to the Operations Manager.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Ops Manager</span><span class="who-mail">uat.ops@assetcore.test</span><span class="who-role">Operations Manager</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Raise a spend approval as the Operations Manager on any work order.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open Approvals and try to approve that same request.</span></button></div>
+            <p class="expect"><span>Expect</span>Refused — the approve control is absent or the attempt returns a sentence saying a requester cannot approve their own request.</p>
+            <div class="res-group" role="group" aria-label="Result for test 11"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t11-notes">Notes for test 11</label>
+              <textarea id="r3t11-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t12" data-result=""
+                 data-number="12" data-round="3"
+                 data-title="Compliance findings: raise one on the completed audit"
+                 data-roles="HSE / Compliance Officer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t12-body">
+            <span class="num">12</span>
+            <span class="card-head-main">
+              <span class="card-title">Compliance findings: raise one on the completed audit</span>
+              <span class="tags"><span class="chip">HSE / Compliance Officer</span><span class="was was--pass">R1-29 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t12-body">
+            <p class="intro">The findings flow was passed in round 1 on script-driven evidence and has one finding in the database to show for it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT HSE Officer</span><span class="who-mail">uat.hse@assetcore.test</span><span class="who-role">HSE / Compliance Officer</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compliance &rarr; open <em>UAT R1 — ISO 14001 internal audit, Lagos DS-04</em>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Add a finding with a severity and a due date.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check it appears in the audit's finding list and in any open-findings count.</span></button></div>
+            <p class="expect"><span>Expect</span>The finding saves, shows its severity, and the audit's finding count moves with it.</p>
+            <div class="res-group" role="group" aria-label="Result for test 12"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t12-notes">Notes for test 12</label>
+              <textarea id="r3t12-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t13" data-result=""
+                 data-number="13" data-round="3"
+                 data-title="Risk register: raise a risk and watch the score"
+                 data-roles="HSE / Compliance Officer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t13-body">
+            <span class="num">13</span>
+            <span class="card-head-main">
+              <span class="card-title">Risk register: raise a risk and watch the score</span>
+              <span class="tags"><span class="chip">HSE / Compliance Officer</span><span class="was was--pass">R1-32 passed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t13-body">
+            <p class="intro">The register scores likelihood &times; impact into a band. Round 1's pass never watched the band change.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT HSE Officer</span><span class="who-mail">uat.hse@assetcore.test</span><span class="who-role">HSE / Compliance Officer</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Risks &rarr; new risk.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Set likelihood and impact to give a high score, save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Edit it down to a low likelihood and check the band moves.</span></button></div>
+            <p class="expect"><span>Expect</span>The computed score and its band both change with the inputs, on the card and in the list.</p>
+            <div class="res-group" role="group" aria-label="Result for test 13"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t13-notes">Notes for test 13</label>
+              <textarea id="r3t13-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Input, sessions and the edges</h2>
+          <p>Round 1's r1t57-64, none of which has ever been run. These are the checks that catch what feature testing cannot.</p>
+        </div>
+        
+        <article class="card" data-test id="r3t14" data-result=""
+                 data-number="14" data-round="3"
+                 data-title="Dark mode across the main screens"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t14-body">
+            <span class="num">14</span>
+            <span class="card-head-main">
+              <span class="card-title">Dark mode across the main screens</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pending">R1-58 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t14-body">
+            <p class="intro">The app carries a dark toggle threaded through every page. Nobody has looked at it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Turn dark mode on from the topbar.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Walk Dashboard, Assets, an asset detail, Work Orders and Admin.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for unreadable text, white panels and charts that kept a light background.</span></button></div>
+            <p class="expect"><span>Expect</span>Every screen is legible in dark mode: no black-on-black, no white card islands, badges and charts still readable.</p>
+            <div class="res-group" role="group" aria-label="Result for test 14"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t14-notes">Notes for test 14</label>
+              <textarea id="r3t14-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t15" data-result=""
+                 data-number="15" data-round="3"
+                 data-title="The app at phone width"
+                 data-roles="Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t15-body">
+            <span class="num">15</span>
+            <span class="card-head-main">
+              <span class="card-title">The app at phone width</span>
+              <span class="tags"><span class="chip">Field Technician</span><span class="was was--pending">R1-57 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t15-body">
+            <p class="intro">The field role is the one most likely to be on a phone, and the one nobody has tested on one.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Field Technician</span><span class="who-mail">uat.tech@assetcore.test</span><span class="who-role">Field Technician</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Emulate a 375&times;812 viewport.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open Dashboard, Work Orders, a work order and Scan.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the nav is reachable and nothing overflows the screen horizontally.</span></button></div>
+            <p class="expect"><span>Expect</span>Content fits the width, the sidebar collapses to something reachable, and no page scrolls sideways.</p>
+            <div class="res-group" role="group" aria-label="Result for test 15"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t15-notes">Notes for test 15</label>
+              <textarea id="r3t15-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t16" data-result=""
+                 data-number="16" data-round="3"
+                 data-title="Keyboard only: reach and use the primary action"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t16-body">
+            <span class="num">16</span>
+            <span class="card-head-main">
+              <span class="card-title">Keyboard only: reach and use the primary action</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pending">R1-60 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t16-body">
+            <p class="intro">Tab order and visible focus, on the busiest list in the app.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On Assets, tab from the top of the page.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Watch for a visible focus ring at each stop.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reach the primary button and press <kbd>Enter</kbd> or <kbd>Space</kbd>.</span></button></div>
+            <p class="expect"><span>Expect</span>Focus is visible at every stop, order follows the page, and the button fires from the keyboard.</p>
+            <div class="res-group" role="group" aria-label="Result for test 16"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t16-notes">Notes for test 16</label>
+              <textarea id="r3t16-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t17" data-result=""
+                 data-number="17" data-round="3"
+                 data-title="Double-submit a create form"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t17-body">
+            <span class="num">17</span>
+            <span class="card-head-main">
+              <span class="card-title">Double-submit a create form</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pending">R1-62 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t17-body">
+            <p class="intro">The classic duplicate: an impatient second click before the first request answers.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open a create form (a risk or a work order).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Fill it and click Save twice in quick succession.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the list.</span></button></div>
+            <p class="expect"><span>Expect</span>One record, not two — the button disables or the second submit is swallowed.</p>
+            <div class="res-group" role="group" aria-label="Result for test 17"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t17-notes">Notes for test 17</label>
+              <textarea id="r3t17-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t18" data-result=""
+                 data-number="18" data-round="3"
+                 data-title="Search, filter and sort agree with each other"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t18-body">
+            <span class="num">18</span>
+            <span class="card-head-main">
+              <span class="card-title">Search, filter and sort agree with each other</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pending">R1-63 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t18-body">
+            <p class="intro">Three controls over one list is where counts and rows stop matching.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On Assets, search for a term matching one asset.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Apply a status filter alongside it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sort by a column and check the row count and any 'showing N' figure still agree.</span></button></div>
+            <p class="expect"><span>Expect</span>The rows shown match the filters, and every count on the page agrees with the rows.</p>
+            <div class="res-group" role="group" aria-label="Result for test 18"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t18-notes">Notes for test 18</label>
+              <textarea id="r3t18-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t19" data-result=""
+                 data-number="19" data-round="3"
+                 data-title="Back button after sign-out"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t19-body">
+            <span class="num">19</span>
+            <span class="card-head-main">
+              <span class="card-title">Back button after sign-out</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pending">R1-64 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t19-body">
+            <p class="intro">The cheapest data leak there is: a cached page rendering after the session is gone.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in, open Assets, sign out.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press the browser Back button.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read what renders.</span></button></div>
+            <p class="expect"><span>Expect</span>The sign-in screen, or a redirect to it. No asset data behind a dead session.</p>
+            <div class="res-group" role="group" aria-label="Result for test 19"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t19-notes">Notes for test 19</label>
+              <textarea id="r3t19-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t20" data-result=""
+                 data-number="20" data-round="3"
+                 data-title="CSV import: the template and the picker"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t20-body">
+            <span class="num">20</span>
+            <span class="card-head-main">
+              <span class="card-title">CSV import: the template and the picker</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--pending">R1-50 was not run</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t20-body">
+            <p class="intro">r1t50. The import modal takes a file through a native picker, which this session cannot open. The template download in the same modal can be checked, and its headers are what an importer has to match.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; Import CSV.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Download the template.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check its header row against what the importer expects.</span></button></div>
+            <p class="expect"><span>Expect</span>The template downloads and its headers are the ones the parser reads.</p>
+            <div class="res-group" role="group" aria-label="Result for test 20"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t20-notes">Notes for test 20</label>
+              <textarea id="r3t20-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Regressions on the round-2 fixes</h2>
+          <p>Four fixes from round 2 that a later change could plausibly undo, re-checked from the screen.</p>
+        </div>
+        
+        <article class="card" data-test id="r3t21" data-result=""
+                 data-number="21" data-round="3"
+                 data-title="The Viewer still cannot read the audit log"
+                 data-roles="Executive / Viewer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t21-body">
+            <span class="num">21</span>
+            <span class="card-head-main">
+              <span class="card-title">The Viewer still cannot read the audit log</span>
+              <span class="tags"><span class="chip">Executive / Viewer</span><span class="was was--fail">R1-F4 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t21-body">
+            <p class="intro">Round 2's F4: <code>*:read</code> no longer satisfies <code>audit:read</code>. The Viewer reaching the Admin audit tab was the symptom.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Viewer</span><span class="who-mail">uat.viewer@assetcore.test</span><span class="who-role">Executive / Viewer</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in as the Viewer.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type <code>/admin</code> into the address bar directly — do not just check the nav.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for an audit or activity log tab.</span></button></div>
+            <p class="expect"><span>Expect</span>No audit log. Bounced to the dashboard, or the tab is absent.</p>
+            <div class="res-group" role="group" aria-label="Result for test 21"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t21-notes">Notes for test 21</label>
+              <textarea id="r3t21-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t22" data-result=""
+                 data-number="22" data-round="3"
+                 data-title="Depreciation preview still computes"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t22-body">
+            <span class="num">22</span>
+            <span class="card-head-main">
+              <span class="card-title">Depreciation preview still computes</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--fail">R1-F10 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t22-body">
+            <p class="intro">Round 2's F10: a non-existent <code>commission_date</code> column made every basis lookup 500.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Depreciation &rarr; preview a schedule on an asset.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the first year's charge.</span></button></div>
+            <p class="expect"><span>Expect</span>A schedule preview with figures, not <code>internal_error</code>.</p>
+            <div class="res-group" role="group" aria-label="Result for test 22"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t22-notes">Notes for test 22</label>
+              <textarea id="r3t22-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t23" data-result=""
+                 data-number="23" data-round="3"
+                 data-title="Health score still agrees with its own breakdown"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t23-body">
+            <span class="num">23</span>
+            <span class="card-head-main">
+              <span class="card-title">Health score still agrees with its own breakdown</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="was was--fail">R2-health failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t23-body">
+            <p class="intro">Round 2's late find: the asset PATCH route ran a legacy decay engine, so any edit rewrote the score while the breakdown beneath it stayed on the five-signal engine.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">Adaeze Okeke</span><span class="who-mail">a.okeke@ngml.example</span><span class="who-role">System Admin (owner) — password Password123!</span></div><p class="who-pass">password <code>UatPass123!</code></p></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>NGML-MTR-0042</code> and note the health score and its breakdown.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Edit the asset — change any field — and save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the score and breakdown again.</span></button></div>
+            <p class="expect"><span>Expect</span>The score is unchanged by an unrelated edit and still reconciles with the five signals listed beneath it.</p>
+            <div class="res-group" role="group" aria-label="Result for test 23"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t23-notes">Notes for test 23</label>
+              <textarea id="r3t23-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r3t24" data-result=""
+                 data-number="24" data-round="3"
+                 data-title="No raw error codes anywhere the run touched"
+                 data-roles="Any">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r3t24-body">
+            <span class="num">24</span>
+            <span class="card-head-main">
+              <span class="card-title">No raw error codes anywhere the run touched</span>
+              <span class="tags"><span class="chip">Any</span><span class="was was--fail">R1-F5 failed</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r3t24-body">
+            <p class="intro">Round 2 replaced the displayed error at 113 call sites across 25 files. This is a standing check across every refusal this round provokes rather than a separate click-through.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Across every refusal triggered in this round, read the text on screen.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Watch the console for anything thrown behind a clean-looking page.</span></button></div>
+            <p class="expect"><span>Expect</span>Every refusal reads as a sentence. No <code>snake_case</code> code shown to a user.</p>
+            <div class="res-group" role="group" aria-label="Result for test 24"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r3t24-notes">Notes for test 24</label>
+              <textarea id="r3t24-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+  </div>
+<!--uat:rounds:end-->
   <p class="foot">
     Marks and notes live in this page and save as you go. Export gives the same thing as a note to
     Claude Code, as Markdown, JSON or CSV.

@@ -1,0 +1,616 @@
+{
+ "app": "AssetCore",
+ "title": "AssetCore UAT",
+ "headline": "Work through it, mark what breaks",
+ "password": "UatPass123!",
+ "artifact_url": "https://claude.ai/code/artifact/cf07489b-e232-4cce-b93c-f9de90f236e7",
+ "theme": {
+  "accent": "#1272AB",
+  "brand": "#1A3A5C",
+  "display_font": "Bricolage Grotesque",
+  "body_font": "Inter",
+  "mono_font": "JetBrains Mono"
+ },
+ "accounts": [
+  {
+   "key": "owner",
+   "name": "Adaeze Okeke",
+   "email": "a.okeke@ngml.example",
+   "role": "System Admin (owner) — password Password123!"
+  },
+  {
+   "key": "ops",
+   "name": "UAT Ops Manager",
+   "email": "uat.ops@assetcore.test",
+   "role": "Operations Manager"
+  },
+  {
+   "key": "eng",
+   "name": "UAT Maintenance Engineer",
+   "email": "uat.eng@assetcore.test",
+   "role": "Maintenance Engineer"
+  },
+  {
+   "key": "tech",
+   "name": "UAT Field Technician",
+   "email": "uat.tech@assetcore.test",
+   "role": "Field Technician"
+  },
+  {
+   "key": "hse",
+   "name": "UAT HSE Officer",
+   "email": "uat.hse@assetcore.test",
+   "role": "HSE / Compliance Officer"
+  },
+  {
+   "key": "auditor",
+   "name": "UAT Auditor",
+   "email": "uat.auditor@assetcore.test",
+   "role": "Auditor"
+  },
+  {
+   "key": "viewer",
+   "name": "UAT Viewer",
+   "email": "uat.viewer@assetcore.test",
+   "role": "Executive / Viewer"
+  },
+  {
+   "key": "orphan",
+   "name": "Paul O",
+   "email": "paul.o@ngml.com",
+   "role": "No membership row — password NgmlDemo2026"
+  },
+  {
+   "key": "enter",
+   "name": "UAT R2 Enter Probe",
+   "email": "uat.enter@assetcore.test",
+   "role": "Field Technician — created this round"
+  }
+ ],
+ "tagline": "Round 3: the surface two rounds never reached — QR labels, the scan page, stock movement, report files, and the cross-cutting checks nobody has run.",
+ "round": 3,
+ "round_label": "Round 3",
+ "intro": "Rounds 1 and 2 closed 14 defects but left 17 of round 1's original untested cases still untested, and re-clicked only some of round 1's JavaScript-driven passes. This round goes after exactly that: the parts of the app that have never been watched working. It also re-checks the round-2 fixes that a later change could plausibly have broken. Run against a local stack — API on <code>8787</code>, app on <code>5174</code>, database <code>assetcore_integrate</code> — not staging.",
+ "url_hint": "The app runs at <code>http://localhost:5174</code> and the API at <code>http://localhost:8787</code>. Ask Claude Code to start them both if the link is dead.",
+ "sections": [
+  {
+   "title": "Labels, scanning and the field loop",
+   "blurb": "The technician's path: print a label, scan it, find the asset. Round 1 listed this as r1t48 and never ran it.",
+   "tests": [
+    {
+     "title": "Print a sheet of QR labels from the asset list",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "The codebase carries <code>components/AssetQr.jsx</code> — a QR code and a printable label sheet with its own print stylesheet. This test asks whether a user can reach it.",
+     "steps": [
+      "Assets &rarr; select two or three assets.",
+      "Look for a <strong>Labels</strong>, <strong>QR</strong> or <strong>Print</strong> action on the list or in the row menu.",
+      "Open it and check the sheet previews one label per asset."
+     ],
+     "expect": "A label sheet opens showing one QR per selected asset with its AIN beneath, and Print produces the same sheet.",
+     "was": {
+      "result": "pending",
+      "ref": "R1-48"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Scan page: look up a real tag by hand",
+     "roles": [
+      "Field Technician"
+     ],
+     "signin": [
+      "tech"
+     ],
+     "intro": "The scan page takes a camera feed or a typed tag. The camera cannot be driven here; the manual path can, and it is the same lookup.",
+     "steps": [
+      "Open <code>/scan</code>.",
+      "Type <code>NGML-MTR-0042</code> into the manual field and submit.",
+      "Read the asset card that comes back."
+     ],
+     "expect": "The Lagos DS-04 Metering Station card appears with its status, criticality and commissioned date — the date filled in, not blank (round 2 fixed the column name behind it).",
+     "was": {
+      "result": "pending",
+      "ref": "R1-48"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Scan page: an unknown tag is refused in a sentence",
+     "roles": [
+      "Field Technician"
+     ],
+     "signin": [
+      "tech"
+     ],
+     "intro": "A label from another site, or a smudged read. The page must say so rather than showing a code or an empty card.",
+     "steps": [
+      "On <code>/scan</code>, enter <code>NGML-NOPE-9999</code>.",
+      "Read the message."
+     ],
+     "expect": "A sentence naming the tag — no raw <code>not_found</code>, no blank card.",
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "A scan URL opens the asset directly",
+     "roles": [
+      "Field Technician"
+     ],
+     "signin": [
+      "tech"
+     ],
+     "intro": "A printed label encodes <code>/scan?ain=…</code> so a phone camera opens the asset. That query parameter path has never been exercised.",
+     "steps": [
+      "Navigate to <code>http://localhost:5174/scan?ain=NGML-VLV-0089</code> directly.",
+      "Check the asset resolves without typing anything."
+     ],
+     "expect": "The Warri T-A Isolation Valve card renders from the URL alone.",
+     "result": "",
+     "notes": ""
+    }
+   ]
+  },
+  {
+   "title": "Stock actually moves",
+   "blurb": "Round 2 proved a part could be reserved on a job. Nobody has yet watched stock fall when the job closes — r1t37's other half.",
+   "tests": [
+    {
+     "title": "Closing a work order draws its reserved parts out of stock",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "<code>consumeParts()</code> in <code>workOrders.ts</code> runs on the transition to closed: it decrements <code>quantity_in_stock</code>, writes a stock movement and stamps <code>consumed_at</code>. Round 2 left <code>WO-2025-0041</code> holding one reserved <code>SP-PT-1100</code> against a stock of 2.",
+     "steps": [
+      "Note the on-hand figure for <code>SP-PT-1100</code> on Spare Parts.",
+      "Open <code>WO-2025-0041</code> and close it.",
+      "Return to Spare Parts and read the on-hand figure again.",
+      "Open the part and look for the issue in its movement history."
+     ],
+     "expect": "On-hand falls from 2 to 1, the work order's part line reads as consumed rather than reserved, and a movement row records the issue against the job.",
+     "was": {
+      "result": "pending",
+      "ref": "R1-37"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "A job cannot be closed against stock that isn't there",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "<code>insufficient_stock</code> (409) with a shortfall list is one of the app's own stated rules. Reserving more than exists and closing is the only way to reach it.",
+     "steps": [
+      "On an open work order, reserve <code>SP-PT-1100</code> with a quantity above what is on hand (say 50).",
+      "Try to close the job."
+     ],
+     "expect": "The close is refused in a readable sentence naming the shortfall — not a raw <code>insufficient_stock</code>, and the stock figure does not go negative.",
+     "result": "",
+     "notes": ""
+    }
+   ]
+  },
+  {
+   "title": "Reports produce a file",
+   "blurb": "r1t43: generate a report and check the file against what the screen says. Never run, and the generator was rewritten from a stub.",
+   "tests": [
+    {
+     "title": "Request and generate a report, then compare it to the screen",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "<code>POST /reports/:id/generate</code> builds a real XLSX or CSV synchronously and records a byte size. The check that matters is whether the file's row count agrees with the list it claims to report.",
+     "steps": [
+      "Reports &rarr; request an asset register as <strong>CSV</strong>.",
+      "Generate it and wait for Ready.",
+      "Note the row count implied by the Assets page (6 assets).",
+      "Download the file and open it."
+     ],
+     "expect": "Status goes pending &rarr; ready with a non-zero size, and the file holds a header row plus one row per asset, matching the Assets list.",
+     "was": {
+      "result": "pending",
+      "ref": "R1-43"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "A report the Viewer must not be able to request",
+     "roles": [
+      "Executive / Viewer"
+     ],
+     "signin": [
+      "viewer"
+     ],
+     "intro": "Round 2 gated <code>GET /reports</code> on <code>report:read</code> and left the Viewer holding it through <code>*:read</code>. <code>report:create</code> is a different capability — the Viewer should be able to read the page and not to generate.",
+     "steps": [
+      "As the Viewer open <code>/reports</code>.",
+      "Look for a request/generate control, and try it if it is offered."
+     ],
+     "expect": "Either no create control is offered, or using it is refused in a sentence. A Viewer must not be able to write a report file.",
+     "result": "",
+     "notes": ""
+    }
+   ]
+  },
+  {
+   "title": "Round 1's JavaScript-driven passes, re-clicked",
+   "blurb": "These were marked passed in round 1 on evidence obtained by dispatching clicks in script rather than through the browser's input pipeline. A JS click bypasses hit-testing, so it cannot see an overlay, a disabled state or a z-index trap.",
+   "tests": [
+    {
+     "title": "Approval matrix: edit a band with real pointer input",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "Admin &rarr; Approvals. The band editor sets the money thresholds that route a request. Round 1 drove it in script.",
+     "steps": [
+      "Admin &rarr; Approvals, open a rule and its bands.",
+      "Change a band's upper threshold and save.",
+      "Reopen it and confirm the new figure stuck."
+     ],
+     "expect": "The band saves and reads back with the new threshold.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-18"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Approval matrix: an impossible band is refused",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "<code>approvals.ts:98</code> answers <code>422 invalid_band</code> when the thresholds do not make a valid range. This is the app stating its own rule.",
+     "steps": [
+      "Edit a band so its lower bound sits above its upper bound.",
+      "Save."
+     ],
+     "expect": "Refused with a sentence explaining the range is wrong. No raw <code>invalid_band</code> on screen.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-20"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Nobody approves their own request",
+     "roles": [
+      "Operations Manager"
+     ],
+     "signin": [
+      "ops"
+     ],
+     "intro": "<code>self_approval</code> is the one rule an approval matrix exists to enforce. Round 2 left a pending &#8358;25,000 <code>wo_cost</code> approval routed to the Operations Manager.",
+     "steps": [
+      "Raise a spend approval as the Operations Manager on any work order.",
+      "Open Approvals and try to approve that same request."
+     ],
+     "expect": "Refused — the approve control is absent or the attempt returns a sentence saying a requester cannot approve their own request.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-22"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Compliance findings: raise one on the completed audit",
+     "roles": [
+      "HSE / Compliance Officer"
+     ],
+     "signin": [
+      "hse"
+     ],
+     "intro": "The findings flow was passed in round 1 on script-driven evidence and has one finding in the database to show for it.",
+     "steps": [
+      "Compliance &rarr; open <em>UAT R1 — ISO 14001 internal audit, Lagos DS-04</em>.",
+      "Add a finding with a severity and a due date.",
+      "Check it appears in the audit's finding list and in any open-findings count."
+     ],
+     "expect": "The finding saves, shows its severity, and the audit's finding count moves with it.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-29"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Risk register: raise a risk and watch the score",
+     "roles": [
+      "HSE / Compliance Officer"
+     ],
+     "signin": [
+      "hse"
+     ],
+     "intro": "The register scores likelihood &times; impact into a band. Round 1's pass never watched the band change.",
+     "steps": [
+      "Risks &rarr; new risk.",
+      "Set likelihood and impact to give a high score, save.",
+      "Edit it down to a low likelihood and check the band moves."
+     ],
+     "expect": "The computed score and its band both change with the inputs, on the card and in the list.",
+     "was": {
+      "result": "pass",
+      "ref": "R1-32"
+     },
+     "result": "",
+     "notes": ""
+    }
+   ]
+  },
+  {
+   "title": "Input, sessions and the edges",
+   "blurb": "Round 1's r1t57-64, none of which has ever been run. These are the checks that catch what feature testing cannot.",
+   "tests": [
+    {
+     "title": "Dark mode across the main screens",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "The app carries a dark toggle threaded through every page. Nobody has looked at it.",
+     "steps": [
+      "Turn dark mode on from the topbar.",
+      "Walk Dashboard, Assets, an asset detail, Work Orders and Admin.",
+      "Look for unreadable text, white panels and charts that kept a light background."
+     ],
+     "expect": "Every screen is legible in dark mode: no black-on-black, no white card islands, badges and charts still readable.",
+     "was": {
+      "result": "pending",
+      "ref": "R1-58"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "The app at phone width",
+     "roles": [
+      "Field Technician"
+     ],
+     "signin": [
+      "tech"
+     ],
+     "intro": "The field role is the one most likely to be on a phone, and the one nobody has tested on one.",
+     "steps": [
+      "Emulate a 375&times;812 viewport.",
+      "Open Dashboard, Work Orders, a work order and Scan.",
+      "Check the nav is reachable and nothing overflows the screen horizontally."
+     ],
+     "expect": "Content fits the width, the sidebar collapses to something reachable, and no page scrolls sideways.",
+     "was": {
+      "result": "pending",
+      "ref": "R1-57"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Keyboard only: reach and use the primary action",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "Tab order and visible focus, on the busiest list in the app.",
+     "steps": [
+      "On Assets, tab from the top of the page.",
+      "Watch for a visible focus ring at each stop.",
+      "Reach the primary button and press <kbd>Enter</kbd> or <kbd>Space</kbd>."
+     ],
+     "expect": "Focus is visible at every stop, order follows the page, and the button fires from the keyboard.",
+     "was": {
+      "result": "pending",
+      "ref": "R1-60"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Double-submit a create form",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "The classic duplicate: an impatient second click before the first request answers.",
+     "steps": [
+      "Open a create form (a risk or a work order).",
+      "Fill it and click Save twice in quick succession.",
+      "Check the list."
+     ],
+     "expect": "One record, not two — the button disables or the second submit is swallowed.",
+     "was": {
+      "result": "pending",
+      "ref": "R1-62"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Search, filter and sort agree with each other",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "Three controls over one list is where counts and rows stop matching.",
+     "steps": [
+      "On Assets, search for a term matching one asset.",
+      "Apply a status filter alongside it.",
+      "Sort by a column and check the row count and any 'showing N' figure still agree."
+     ],
+     "expect": "The rows shown match the filters, and every count on the page agrees with the rows.",
+     "was": {
+      "result": "pending",
+      "ref": "R1-63"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Back button after sign-out",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "The cheapest data leak there is: a cached page rendering after the session is gone.",
+     "steps": [
+      "Sign in, open Assets, sign out.",
+      "Press the browser Back button.",
+      "Read what renders."
+     ],
+     "expect": "The sign-in screen, or a redirect to it. No asset data behind a dead session.",
+     "was": {
+      "result": "pending",
+      "ref": "R1-64"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "CSV import: the template and the picker",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "r1t50. The import modal takes a file through a native picker, which this session cannot open. The template download in the same modal can be checked, and its headers are what an importer has to match.",
+     "steps": [
+      "Assets &rarr; Import CSV.",
+      "Download the template.",
+      "Check its header row against what the importer expects."
+     ],
+     "expect": "The template downloads and its headers are the ones the parser reads.",
+     "was": {
+      "result": "pending",
+      "ref": "R1-50"
+     },
+     "result": "",
+     "notes": ""
+    }
+   ]
+  },
+  {
+   "title": "Regressions on the round-2 fixes",
+   "blurb": "Four fixes from round 2 that a later change could plausibly undo, re-checked from the screen.",
+   "tests": [
+    {
+     "title": "The Viewer still cannot read the audit log",
+     "roles": [
+      "Executive / Viewer"
+     ],
+     "signin": [
+      "viewer"
+     ],
+     "intro": "Round 2's F4: <code>*:read</code> no longer satisfies <code>audit:read</code>. The Viewer reaching the Admin audit tab was the symptom.",
+     "steps": [
+      "Sign in as the Viewer.",
+      "Type <code>/admin</code> into the address bar directly — do not just check the nav.",
+      "Look for an audit or activity log tab."
+     ],
+     "expect": "No audit log. Bounced to the dashboard, or the tab is absent.",
+     "was": {
+      "result": "fail",
+      "ref": "R1-F4"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Depreciation preview still computes",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "Round 2's F10: a non-existent <code>commission_date</code> column made every basis lookup 500.",
+     "steps": [
+      "Depreciation &rarr; preview a schedule on an asset.",
+      "Read the first year's charge."
+     ],
+     "expect": "A schedule preview with figures, not <code>internal_error</code>.",
+     "was": {
+      "result": "fail",
+      "ref": "R1-F10"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "Health score still agrees with its own breakdown",
+     "roles": [
+      "System Admin"
+     ],
+     "signin": [
+      "owner"
+     ],
+     "intro": "Round 2's late find: the asset PATCH route ran a legacy decay engine, so any edit rewrote the score while the breakdown beneath it stayed on the five-signal engine.",
+     "steps": [
+      "Open <code>NGML-MTR-0042</code> and note the health score and its breakdown.",
+      "Edit the asset — change any field — and save.",
+      "Read the score and breakdown again."
+     ],
+     "expect": "The score is unchanged by an unrelated edit and still reconciles with the five signals listed beneath it.",
+     "was": {
+      "result": "fail",
+      "ref": "R2-health"
+     },
+     "result": "",
+     "notes": ""
+    },
+    {
+     "title": "No raw error codes anywhere the run touched",
+     "roles": [
+      "Any"
+     ],
+     "intro": "Round 2 replaced the displayed error at 113 call sites across 25 files. This is a standing check across every refusal this round provokes rather than a separate click-through.",
+     "steps": [
+      "Across every refusal triggered in this round, read the text on screen.",
+      "Watch the console for anything thrown behind a clean-looking page."
+     ],
+     "expect": "Every refusal reads as a sentence. No <code>snake_case</code> code shown to a user.",
+     "was": {
+      "result": "fail",
+      "ref": "R1-F5"
+     },
+     "result": "",
+     "notes": ""
+    }
+   ]
+  }
+ ]
+}
