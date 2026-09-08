@@ -5,6 +5,7 @@ import Topbar from '../components/Topbar.jsx'
 import AuthImage from '../components/AuthImage.jsx'
 import ImageLightbox from '../components/ImageLightbox.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
+import { PrintQrSheet } from '../components/AssetQr.jsx'
 import {
   listAssets, createAsset, updateAsset, softDeleteAsset, restoreAsset, importAssets,
   uploadAssetPhoto, deleteAssetPhoto, uploadAssetDocument, deleteAssetDocument, listAssetActivity, addAssetComment,
@@ -224,7 +225,12 @@ function csvCell(v) {
 }
 
 function downloadTemplate() {
-  const example = ['AST-001', 'Compressor Unit X-5', 'Compressor', 'Lagos', 'Lagos DS-04', 'operational', 'GE', 'GCF-700', 'SN-001', '2023-01-15', '2022-11-01', '18240', '5000000', '90', '2025-06-01', '2025-12-01', 'critical,offshore', '6.45', '3.4']
+  // One value per header, in the same order. The '90' that used to sit
+  // between value and last_maintenance_date was health_score, dropped from
+  // CSV_HEADERS above and left behind here — it shifted every date, the
+  // tags and both coordinates one column left in the file we hand people.
+  const example = ['AST-001', 'Compressor Unit X-5', 'Compressor', 'Lagos', 'Lagos DS-04', 'operational', 'GE', 'GCF-700', 'SN-001', '2023-01-15', '2022-11-01', '18240', '5000000', '2025-06-01', '2025-12-01', 'critical,offshore', '6.45', '3.4']
+  if (example.length !== CSV_HEADERS.length) throw new Error('asset import template: example row does not match its headers')
   const csv = CSV_HEADERS.join(',') + '\n' + example.map(csvCell).join(',') + '\n'
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
@@ -1260,6 +1266,7 @@ export default function Assets({ dark, toggleDark }) {
   const [completingAsset, setCompletingAsset] = useState(null)  // asset for Complete Maintenance
   const [detailRefreshToken, setDetailRefreshToken] = useState(0)  // bump to force the open detail panel's activity/PM/inspection lists to refetch
   const [importing, setImporting] = useState(false)
+  const [labelling, setLabelling] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -1362,6 +1369,7 @@ export default function Assets({ dark, toggleDark }) {
             {canCreate && !archivedView && (
               <>
                 <button onClick={() => setImporting(true)} className="btn btn-secondary" style={{ height: 32, padding: '0 12px', fontSize: 13 }}>Import CSV</button>
+                <button onClick={() => setLabelling(true)} disabled={visibleAssets.length === 0} className="btn btn-secondary" style={{ height: 32, padding: '0 12px', fontSize: 13, opacity: visibleAssets.length === 0 ? .5 : 1 }} title="Print a QR label for every asset in the list below">Labels</button>
                 <button onClick={() => setModal('add')} style={{ height: 32, padding: '0 14px', background: 'var(--b500)', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" /></svg>
                   Add Asset
@@ -1545,6 +1553,14 @@ export default function Assets({ dark, toggleDark }) {
         <ImportModal
           onClose={() => setImporting(false)}
           onDone={() => load()}
+        />
+      )}
+      {/* The sheet prints whatever the filters have narrowed the list to, so
+          "labels for the Warri site" is a search away rather than a feature. */}
+      {labelling && (
+        <PrintQrSheet
+          assets={visibleAssets}
+          onClose={() => setLabelling(false)}
         />
       )}
     </div>

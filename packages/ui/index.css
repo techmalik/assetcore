@@ -16,6 +16,10 @@
   --b700: oklch(34% 0.108 237);
   --b800: oklch(26% 0.075 237);
   --b900: oklch(18% 0.052 237);
+  /* A solid brand fill that always carries white text — avatars, badges.
+     Distinct from the ramp because the ramp flips for dark and this must not:
+     white has to stay legible on it in both themes. */
+  --b-solid: oklch(43% 0.135 237);
 
   /* Neutral */
   --n0: #ffffff;
@@ -275,9 +279,13 @@ a { text-decoration: none; color: inherit; }
   --n100: oklch(19% .008 237);
   --n200: oklch(24% .009 237);
   --n300: oklch(32% .009 237);
-  --n400: oklch(48% .008 237);
-  --n500: oklch(60% .007 237);
-  --n600: oklch(72% .007 237);
+  /* n400-n600 carry the muted copy — empty-state hints, captions, table
+     sub-labels. At the light theme's mirrored lightness they fell to 1.6:1
+     against a dark card, which is invisible rather than muted. Lifted until
+     the smallest of them clears WCAG AA on --n0. */
+  --n400: oklch(62% .008 237);
+  --n500: oklch(70% .007 237);
+  --n600: oklch(78% .007 237);
   --n700: oklch(82% .006 237);
   --n800: oklch(90% .005 237);
   --n900: oklch(95% .004 237);
@@ -289,6 +297,23 @@ a { text-decoration: none; color: inherit; }
   --sab: oklch(20% .05 72); --sat: oklch(72% .15 72); --sabr: oklch(28% .07 72);
   --srb: oklch(20% .05 25); --srt: oklch(68% .15 25); --srbr: oklch(28% .07 25);
   --slb: oklch(18% .04 237); --slt: oklch(70% .12 237); --slbr: oklch(26% .06 237);
+
+  /* The brand ramp was never inverted for dark, so every link, reference and
+     active tab painted with --b600/--b700 (dark blue, meant for a white page)
+     sat on a near-black card at ~1.8:1. The low end becomes background, the
+     high end becomes text — mirroring what the neutral ramp already does.
+     --b400 and --b500 keep their light-theme values on purpose: they are the
+     focus ring and the primary button's ground, and white text has to stay
+     legible on top of them. */
+  --b50: oklch(17% .035 237);
+  --b100: oklch(22% .050 237);
+  --b200: oklch(28% .070 237);
+  --b300: oklch(38% .100 237);
+  --b600: oklch(78% .110 237);
+  --b700: oklch(85% .080 237);
+  --b800: oklch(90% .060 237);
+  --b900: oklch(94% .040 237);
+  --b-solid: oklch(48% .140 237);
 }
 
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }

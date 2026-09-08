@@ -327,7 +327,7 @@ function MatrixTab({ canManage }) {
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                       {r.levels.map((l, i) => (
                         <span key={l.level} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          {i > 0 && <span style={{ color: 'var(--n300)', fontSize: 11 }}>→</span>}
+                          {i > 0 && <span style={{ color: 'var(--n400)', fontSize: 11 }}>→</span>}
                           <span className="badge badge-n" title={l.label || undefined}>{ROLE_LABELS[l.role_key] || l.role_key}</span>
                         </span>
                       ))}

@@ -267,7 +267,7 @@ export default function Dashboard({ dark, toggleDark }) {
                 <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,gap:8}}>
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7L12 2Z" stroke="var(--n300)" strokeWidth="1.5" fill="none"/></svg>
                   <div style={{fontSize:13,fontWeight:500,color:'var(--n400)'}}>No active alerts</div>
-                  <div style={{fontSize:12,color:'var(--n300)',textAlign:'center'}}>Overdue PM, expiring licences, critical work orders, and offline devices will appear here.</div>
+                  <div style={{fontSize:12,color:'var(--n400)',textAlign:'center'}}>Overdue PM, expiring licences, critical work orders, and offline devices will appear here.</div>
                 </div>
               ) : (
                 <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
@@ -327,7 +327,7 @@ export default function Dashboard({ dark, toggleDark }) {
                             <td style={{padding:'10px 12px',whiteSpace:'nowrap'}}>
                               {wo.assignee ? (
                                 <div style={{display:'flex',alignItems:'center',gap:6}}>
-                                  <div style={{width:24,height:24,borderRadius:'50%',background:'var(--b700)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:600,color:'#fff',flexShrink:0}}>{initialsOf(wo.assignee.full_name)}</div>
+                                  <div style={{width:24,height:24,borderRadius:'50%',background:'var(--b-solid)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:600,color:'#fff',flexShrink:0}}>{initialsOf(wo.assignee.full_name)}</div>
                                   <span style={{fontSize:12,color:'var(--n700)'}}>{wo.assignee.full_name}</span>
                                 </div>
                               ) : <span style={{fontSize:12,color:'var(--n400)'}}>Unassigned</span>}
@@ -357,7 +357,7 @@ export default function Dashboard({ dark, toggleDark }) {
                 <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,gap:8}}>
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="var(--n300)" strokeWidth="1.5"/><path d="M3 9h18M8 2v4M16 2v4" stroke="var(--n300)" strokeWidth="1.5" strokeLinecap="round"/></svg>
                   <div style={{fontSize:13,fontWeight:500,color:'var(--n400)'}}>No PM due in the next 14 days</div>
-                  <div style={{fontSize:12,color:'var(--n300)',textAlign:'center'}}>Preventive maintenance tasks due soon will appear here.</div>
+                  <div style={{fontSize:12,color:'var(--n400)',textAlign:'center'}}>Preventive maintenance tasks due soon will appear here.</div>
                 </div>
               ) : (
                 <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>

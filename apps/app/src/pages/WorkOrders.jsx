@@ -561,7 +561,19 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
       setWo(fresh)
       onUpdate()
       toast.success(`Work order moved to ${WO_STATUS_LABEL[newStatus] || newStatus}.`)
-    } catch (e) { toast.error(errorText(e, 'Failed to update work order status.')) }
+    } catch (e) {
+      // A close refused for stock is worth spelling out: the API returns every
+      // line that fell short and by how much, and 'not enough on hand' on its
+      // own leaves a job with five parts on it a guessing game.
+      if (e.code === 'insufficient_stock' && e.shortfalls?.length) {
+        const lines = e.shortfalls
+          .map((s) => `${s.part_number} — need ${s.needed}, ${s.in_stock} on hand`)
+          .join('; ')
+        toast.error(`Not enough stock to close this job: ${lines}.`)
+      } else {
+        toast.error(errorText(e, 'Failed to update work order status.'))
+      }
+    }
     finally { setTransitioning(false) }
   }
 

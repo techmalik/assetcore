@@ -126,6 +126,24 @@ approvalsRouter.patch('/approval-rules/:id', requireCap('approval:manage'), asyn
   if (!setSql && !levels) return res.status(400).json({ error: 'empty_patch' })
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    // The band has to be checked against what the rule will BE, not against
+    // what the patch happens to carry: raising only the floor above the stored
+    // ceiling is just as invalid as sending both. Without this the DB's
+    // approval_rules_check raises and escapes as a 500, so an editor is told
+    // to call an administrator about a range they could fix themselves —
+    // while the create path answers a typed 422. Same rule, same answer.
+    if (fields.min_amount_cents !== undefined || fields.max_amount_cents !== undefined) {
+      const { rows: current } = await c.query(
+        'select min_amount_cents, max_amount_cents from public.approval_rules where id = $1 and deleted_at is null',
+        [req.params.id]
+      )
+      if (!current[0]) return null
+      const min = fields.min_amount_cents ?? Number(current[0].min_amount_cents ?? 0)
+      const max = fields.max_amount_cents !== undefined
+        ? fields.max_amount_cents
+        : (current[0].max_amount_cents == null ? null : Number(current[0].max_amount_cents))
+      if (max != null && max <= min) return { error: 'invalid_band' as const }
+    }
     if (setSql) {
       const { rows } = await c.query(
         `update public.approval_rules set ${setSql} where id = $1 and deleted_at is null returning id`,
@@ -143,6 +161,7 @@ approvalsRouter.patch('/approval-rules/:id', requireCap('approval:manage'), asyn
     return full[0]
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
+  if ('error' in row) return res.status(422).json({ error: row.error })
   res.json(row)
 })
 

@@ -159,7 +159,7 @@ export default function Sidebar({ active }) {
       </button>
 
       <div className="sidebar-footer" style={{borderTop:'var(--bdr)',padding:'12px 16px',display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-        <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b700)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'#fff',flexShrink:0}}>{initials}</div>
+        <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b-solid)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'#fff',flexShrink:0}}>{initials}</div>
         <div className="sidebar-userinfo" style={{minWidth:0}}>
           <div style={{fontSize:12,fontWeight:500,color:'var(--n900)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fullName || '—'}</div>
           <div style={{fontSize:10,color:'var(--n500)'}}>{ROLE_LABELS[roleKey] || ''}</div>

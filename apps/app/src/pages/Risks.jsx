@@ -373,9 +373,18 @@ export default function Risks({ dark, toggleDark }) {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    Promise.all([listAssets(), listSites(), listOrgMembers()])
-      .then(([a, s, m]) => { setAssets(a); setSites(s); setMembers(m) })
-      .catch(() => { /* the register works without the pickers */ })
+    // Settled, not all: listOrgMembers needs user:manage, so for an HSE
+    // officer it answers 403 while assets and sites both return fine. Under
+    // Promise.all that one refusal rejected the lot and the empty catch left
+    // the Asset, Site AND Owner pickers showing '— None —' only, which made a
+    // risk impossible to attach to anything. Each picker now stands or falls
+    // on its own request.
+    Promise.allSettled([listAssets(), listSites(), listOrgMembers()])
+      .then(([a, s, m]) => {
+        if (a.status === 'fulfilled') setAssets(a.value)
+        if (s.status === 'fulfilled') setSites(s.value)
+        if (m.status === 'fulfilled') setMembers(m.value)
+      })
   }, [])
 
   const openDetail = async (id) => {

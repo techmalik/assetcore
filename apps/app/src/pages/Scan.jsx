@@ -194,8 +194,14 @@ export default function Scan({ dark, toggleDark }) {
                   </div>
                 </div>
                 <Field label="Category" value={asset.category?.name} />
-                <Field label="Manufacturer" value={[asset.manufacturer, asset.model].filter(Boolean).join(' ')} />
-                <Field label="Serial number" value={asset.serial_number} mono />
+                {/* The asset form and the CSV importer both write these three
+                    into specs, while the assets table also carries real
+                    columns for them that nothing populates. Reading only the
+                    columns left every scanned label showing '—' for the three
+                    fields a technician standing at the asset most wants.
+                    Column first so a future migration that fills them wins. */}
+                <Field label="Manufacturer" value={[asset.manufacturer ?? asset.specs?.manufacturer, asset.model ?? asset.specs?.model].filter(Boolean).join(' ')} />
+                <Field label="Serial number" value={asset.serial_number ?? asset.specs?.serial_number} mono />
                 <Field label="Installed" value={asset.install_date} mono />
                 <Field label="Warranty expires" value={asset.warranty_expiry} mono />
                 <Field label="Custodian" value={asset.custodian?.full_name} />

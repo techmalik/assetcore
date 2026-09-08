@@ -83,6 +83,10 @@ async function request(method, path, body, { retry = true } = {}) {
     // up a sentence for it (lib/errors.js) instead of printing the code.
     err.code = payload?.error ?? null
     if (payload?.missing) err.missing = payload.missing
+    // Some refusals carry detail worth showing — which parts fell short, and
+    // by how much. Kept on the error so a screen can name them instead of
+    // printing the generic sentence for the code.
+    if (payload?.shortfalls) err.shortfalls = payload.shortfalls
     throw err
   }
   return payload

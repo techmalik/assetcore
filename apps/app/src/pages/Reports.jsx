@@ -4,6 +4,8 @@ import Topbar from '../components/Topbar.jsx'
 import { listReports, requestReport, generateReport, downloadReport, getLocationAnalytics, REPORT_KINDS } from '../lib/db/reports'
 import { healthColor } from '../lib/health'
 import { errorText } from '../lib/errors'
+import { useAuth } from '../lib/AuthContext.jsx'
+import { can } from '../lib/rbac'
 
 const KIND_META = {
   asset_register:      { icon:'A', bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -41,6 +43,12 @@ function fmtNaira(cents) {
 }
 
 export default function Reports({ dark, toggleDark }) {
+  // Reading a report and writing one are different capabilities: an Executive
+  // holds report:read through the *:read wildcard and no report:create. The
+  // server refuses the POST either way — offering the control anyway just
+  // hands a read-only role a button that can only fail.
+  const { roleKey, extraCaps } = useAuth()
+  const canCreate = can(roleKey, 'report:create', extraCaps)
   const [tab, setTab]             = useState('library')
   const [reports, setReports]     = useState([])
   const [loading, setLoading]     = useState(true)
@@ -73,6 +81,7 @@ export default function Reports({ dark, toggleDark }) {
     const template = TEMPLATES.find(t => t.key === selectedKind)
     const title = `${template.label} — ${new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}`
     setRequesting(true)
+    setErr(null)
     try {
       const row = await requestReport({ title, kind: selectedKind, format, params: { dateRange } })
       setReports(prev => [row, ...prev])
@@ -106,13 +115,15 @@ export default function Reports({ dark, toggleDark }) {
                 <p style={{fontSize:12,color:'var(--n500)'}}>Generate and download operational reports</p>
               </div>
               <div style={{flex:1}}/>
-              <button onClick={() => setTab('generate')} className="row-action" style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',borderRadius:4,fontSize:13,fontWeight:500,gap:6}}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                Generate Report
-              </button>
+              {canCreate && (
+                <button onClick={() => setTab('generate')} className="row-action" style={{height:32,padding:'0 14px',background:'var(--b500)',color:'#fff',borderRadius:4,fontSize:13,fontWeight:500,gap:6}}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                  Generate Report
+                </button>
+              )}
             </div>
             <div className="tab-strip" style={{gap:0}}>
-              {[{k:'library',label:'Report Library'},{k:'analytics',label:'Analytics'},{k:'generate',label:'Generate Report'}].map(t => (
+              {[{k:'library',label:'Report Library'},{k:'analytics',label:'Analytics'},...(canCreate ? [{k:'generate',label:'Generate Report'}] : [])].map(t => (
                 <button key={t.k} className={`tab-btn${tab===t.k?' active':''}`} onClick={() => setTab(t.k)}>{t.label}</button>
               ))}
             </div>
@@ -132,7 +143,7 @@ export default function Reports({ dark, toggleDark }) {
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M2 13V5l6-3 6 3v8" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><rect x="6" y="9" width="4" height="4" rx=".5" stroke="var(--n300)" strokeWidth="1.2"/><path d="M17 8v13M14 18l3 3 3-3" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>No reports yet</div>
                     <div style={{fontSize:13,color:'var(--n500)',maxWidth:300}}>Generate your first report from the templates to see it here.</div>
-                    <button onClick={() => setTab('generate')} className="btn btn-primary" style={{marginTop:8,height:34,padding:'0 16px',fontSize:13}}>Generate report</button>
+                    {canCreate && <button onClick={() => setTab('generate')} className="btn btn-primary" style={{marginTop:8,height:34,padding:'0 16px',fontSize:13}}>Generate report</button>}
                   </div>
                 ) : (
                   <div style={{padding:'20px 24px'}}>
@@ -290,6 +301,12 @@ export default function Reports({ dark, toggleDark }) {
 
                 {!selectedKind && (
                   <div style={{fontSize:12,color:'var(--n400)',marginBottom:12}}>Select a template above to generate a report.</div>
+                )}
+                {/* The refusal has to surface where the button is. This message
+                    used to be written only into the Report Library branch, so a
+                    403 here left the screen silent. */}
+                {err && (
+                  <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)',marginBottom:12}}>{err}</div>
                 )}
                 <button onClick={handleGenerate} disabled={!selectedKind||requesting} className="btn btn-primary" style={{height:40,padding:'0 24px',fontSize:14,display:'flex',alignItems:'center',gap:8}}>
                   {requesting ? (

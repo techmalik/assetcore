@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { isConfigured } from './lib/apiClient'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { NotificationsProvider } from './lib/NotificationsContext'
@@ -63,14 +63,40 @@ function ResetPasswordRoute({ authed, to }) {
   return <ResetPassword />
 }
 
+// A theme is a preference, not a session: it has to survive a reload, and the
+// first visit should follow the operating system rather than assume light.
+// Stored per browser, not per account — the same person on a bright control
+// room screen and a dark cab wants different answers.
+const THEME_KEY = 'assetcore:theme'
+
+function preferredTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY)
+    if (saved === 'dark' || saved === 'light') return saved === 'dark'
+  } catch { /* private window, or storage disabled */ }
+  return typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches
+    : false
+}
+
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : '')
+}
+
 function Routed() {
   const { loading, authed, orgId, needsOnboarding, mustChangePassword, roleKey, extraCaps } = useAuth()
-  const [dark, setDark] = useState(false)
+  const [dark, setDark] = useState(preferredTheme)
+
+  // The attribute lives on <html>, which React does not own, so it has to be
+  // written on mount as well as on toggle — otherwise a remembered preference
+  // is in state and invisible.
+  useEffect(() => { applyTheme(dark) }, [dark])
 
   const toggleDark = () => {
     const next = !dark
     setDark(next)
-    document.documentElement.setAttribute('data-theme', next ? 'dark' : '')
+    applyTheme(next)
+    try { localStorage.setItem(THEME_KEY, next ? 'dark' : 'light') } catch { /* private window */ }
   }
 
   if (loading) return <Splash />

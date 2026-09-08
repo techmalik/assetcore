@@ -115,14 +115,20 @@ reportsRouter.post('/reports', requireCap('report:create'), async (req, res) => 
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { title, kind, format, params } = parsed.data
 
-  const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(
+  // Insert then re-select through SELECT: `returning *` gives the raw row with
+  // no created_by_profile, so a freshly requested report showed '—' under BY
+  // until the page was reloaded — the one column on that row nobody can check
+  // by eye.
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query(
       `insert into public.reports (org_id, title, kind, format, params, status, created_by)
        values (current_org_id(), $1, $2, $3, $4, 'pending', current_user_id())
-       returning *`,
+       returning id`,
       [title, kind, format, params ?? {}]
-    ).then((r) => r.rows[0])
-  )
+    )
+    const { rows: full } = await c.query(`${SELECT} where r.id = $1`, [rows[0].id])
+    return full[0]
+  })
   res.status(201).json(row)
 })
 
@@ -174,12 +180,13 @@ reportsRouter.post('/reports/:id/generate', requireCap('report:create'), async (
     }
 
     const { size } = await stat(fullPath)
-    const { rows: updated } = await c.query(
+    await c.query(
       `update public.reports set status = 'ready', completed_at = now(),
          storage_path = $2, file_size_bytes = $3
-       where id = $1 returning *`,
+       where id = $1`,
       [req.params.id, `reports/${filename}`, size]
     )
+    const { rows: updated } = await c.query(`${SELECT} where r.id = $1`, [req.params.id])
     return { data: updated[0] }
   })
 

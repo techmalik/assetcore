@@ -738,7 +738,7 @@ function UsersTab() {
                       <tr key={m.id} style={{borderBottom:'var(--bdr)'}}>
                         <td style={{padding:'11px 14px'}}>
                           <div style={{display:'flex',alignItems:'center',gap:10}}>
-                            <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b700)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:600,color:'#fff',flexShrink:0}}>{initials(m.full_name)}</div>
+                            <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b-solid)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:600,color:'#fff',flexShrink:0}}>{initials(m.full_name)}</div>
                             <span style={{fontSize:13,fontWeight:500,color:'var(--n900)'}}>{m.full_name || '—'}{isSelf && <span style={{color:'var(--n400)',fontWeight:400}}> (you)</span>}</span>
                           </div>
                         </td>

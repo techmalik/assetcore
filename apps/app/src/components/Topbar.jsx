@@ -198,7 +198,7 @@ export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
         )}
         <nav className="topbar-breadcrumb" style={{display:'flex',alignItems:'center',gap:4,fontSize:13,flex:1,minWidth:0}}>
           <button onClick={() => nav('/dashboard')} title="Go to dashboard" style={{background:'none',border:'none',padding:0,fontFamily:'var(--ff-u)',fontSize:13,color:'var(--n400)',cursor:'pointer'}} onMouseEnter={(e)=>e.currentTarget.style.color='var(--b600)'} onMouseLeave={(e)=>e.currentTarget.style.color='var(--n400)'}>{org?.short_name || org?.name || '—'}</button>
-          <span style={{color:'var(--n300)',margin:'0 2px'}}>/</span>
+          <span style={{color:'var(--n400)',margin:'0 2px'}}>/</span>
           <span style={{color:'var(--n900)',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{breadcrumb}</span>
         </nav>
 
@@ -227,14 +227,14 @@ export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
           <div style={{position:'relative'}} ref={menuRef}>
             <button onClick={() => setMenuOpen((o) => !o)} title="Account" aria-haspopup="menu" aria-expanded={menuOpen}
               style={{display:'flex',alignItems:'center',gap:6,padding:2,paddingRight:6,border:'1px solid var(--n200)',borderRadius:20,background:'var(--n0)',cursor:'pointer'}}>
-              <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b700)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'#fff'}}>{initials}</div>
+              <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b-solid)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'#fff'}}>{initials}</div>
               <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{transition:'transform .15s', transform: menuOpen ? 'rotate(180deg)' : 'none'}}><path d="M3 4.5l3 3 3-3" stroke="var(--n500)" strokeWidth="1.3" strokeLinecap="round"/></svg>
             </button>
 
             {menuOpen && (
               <div role="menu" style={{position:'absolute',top:'calc(100% + 8px)',right:0,width:250,maxWidth:'calc(100vw - 24px)',background:'var(--n0)',border:'var(--bdr)',borderRadius:10,boxShadow:'var(--sh-lg)',zIndex:60,overflow:'hidden'}}>
                 <div style={{padding:'14px 14px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:10}}>
-                  <div style={{width:36,height:36,borderRadius:'50%',background:'var(--b700)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:600,color:'#fff',flexShrink:0}}>{initials}</div>
+                  <div style={{width:36,height:36,borderRadius:'50%',background:'var(--b-solid)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:600,color:'#fff',flexShrink:0}}>{initials}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:'var(--n900)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fullName || '—'}</div>
                     <div style={{fontSize:11,color:'var(--n500)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user?.email || ''}</div>

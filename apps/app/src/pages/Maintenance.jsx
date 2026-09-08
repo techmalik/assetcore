@@ -309,7 +309,7 @@ export default function Maintenance({ dark, toggleDark }) {
                               </div>
                             )
                           })}
-                          {dayTasks.length === 0 && <div style={{marginLeft:32,fontSize:11,color:'var(--n300)'}}>No tasks</div>}
+                          {dayTasks.length === 0 && <div style={{marginLeft:32,fontSize:11,color:'var(--n400)'}}>No tasks</div>}
                         </div>
                       )
                     })}
