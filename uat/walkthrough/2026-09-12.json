@@ -85,7 +85,7 @@
      "roles": [
       "Setup"
      ],
-     "intro": "<strong>Why this card exists:</strong> the sign-in form allows <strong>ten sign-ins per fifteen minutes</strong>, and counts successful ones too. Because of a server setting found while writing this plan, that limit is currently shared by <em>every user on the site</em>, not just you — so a burst of account-switching can lock NGML's evaluators out as well. Plan the session so you rarely sign out.",
+     "intro": "<strong>Why this card exists:</strong> the sign-in form allows <strong>ten sign-ins per fifteen minutes</strong> from one internet address, and counts successful ones too. Until the evening before this session that limit was shared by <em>every user on the site</em> — a bug found while writing this plan, now fixed — but you and your colleague sitting in the same office still share one address between you. Plan the session so you rarely sign out.",
      "steps": [
       "Keep <strong>this browser window</strong> signed in as yourself (the owner) all session.",
       "Open a <strong>second browser</strong> (or a private window) for the office roles — HSE Officer, Operations Manager, and later the Viewer, Auditor and Engineer.",
@@ -304,13 +304,14 @@
      "roles": [
       "System Admin"
      ],
-     "intro": "<strong>What it is:</strong> a PM schedule is recurring planned work — quarterly calibration, monthly lubrication. The system generates a task each time one falls due, puts it on the calendar and chases it if it goes overdue. <strong>Known gap, found while writing this plan:</strong> the form has no Asset field, so a schedule made here belongs to no asset, and its tasks never feed the asset's health score. The server supports it; the form never sends it. Mention it rather than be surprised by it.",
+     "intro": "<strong>What it is:</strong> a PM schedule is recurring planned work — quarterly calibration, monthly lubrication. The system generates a task each time one falls due, puts it on the calendar and chases it if it goes overdue. Attaching it to an asset is what makes those tasks appear on the asset's own record and count towards its condition score. <em>(This form had no Asset field at all until the evening before this session — found while writing this plan, and fixed.)</em>",
      "steps": [
-      "Maintenance &rarr; create a PM schedule.",
-      "Title <code>UAT Quarterly meter calibration — Skid A</code> · Description <code>Verify against master meter; check transducer paths</code> · Frequency <strong>Quarterly</strong> · First due <code>19/09/2026</code> · Default assignee <strong>UAT Maintenance Engineer</strong>. Save.",
-      "Look for an Asset field on the form, and note there isn't one."
+      "Maintenance &rarr; <strong>+ Schedule PM</strong>.",
+      "Title <code>UAT Quarterly meter calibration — Skid A</code> · Description <code>Verify against master meter; check transducer paths</code> · Frequency <strong>Quarterly</strong> · First due <code>19/09/2026</code>.",
+      "Asset <strong>UAT-MTR-0001 — UAT Apapa Custody Meter Skid A</strong> · Default assignee <strong>UAT Maintenance Engineer</strong>. Save Schedule.",
+      "Read the line under the Asset field aloud — it says what happens to a schedule left without one."
      ],
-     "expect": "The schedule saves and lists as Quarterly, with a first task due <em>19 Sept 26</em> assigned to the Maintenance Engineer. There is no way to link it to Skid A — that is the known gap, not something you did wrong.",
+     "expect": "The schedule lists as <strong>Quarterly</strong> against <em>UAT Apapa Custody Meter Skid A</em>, with its first task due <em>19 Sept 26</em> and the Maintenance Engineer as default assignee. Leaving the asset blank is still allowed — some schedules are site-wide — and the note says what that costs.",
      "signin": [
       "owner"
      ]
