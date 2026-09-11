@@ -13,6 +13,15 @@ import { filesRouter } from './files.js'
 // scheduling cron jobs.
 export const app = express()
 
+// One proxy hop: deploy/nginx sits in front of this and forwards the caller's
+// address in X-Forwarded-For. Without this, req.ip was nginx for every request,
+// so express-rate-limit keyed its per-IP buckets on a single value and the
+// login limiter became instance-wide — ten sign-ins in fifteen minutes locked
+// out every user at once, and ten wrong passwords from any one person locked
+// out everybody. Trusting exactly one hop is what the deployment has; trusting
+// more would let a caller forge the header and choose their own bucket.
+app.set('trust proxy', 1)
+
 app.use(helmet())
 if (isDev) {
   app.use(cors({ origin: config.APP_ORIGIN, credentials: true }))
