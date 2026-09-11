@@ -1,0 +1,776 @@
+{
+ "app": "AssetCore Walkthrough",
+ "title": "AssetCore Walkthrough",
+ "headline": "Every workflow, in the order a working day runs",
+ "tagline": "A guided pass through the whole of AssetCore on production — what each part is for, what to type, and what you should see.",
+ "round": 1,
+ "round_label": "12 Sept walkthrough",
+ "intro": "Each card opens with <strong>what the feature is</strong>, in words you can say out loud, then the exact data to enter. Everything you create is prefixed <code>UAT</code> so it can be found and archived afterwards — this is production, and NGML's two evaluators (Paul O. and Hayatu S.) work in the same organisation. Read card 02 before you sign in as anyone else: the site allows only ten sign-ins every fifteen minutes, <em>for everyone at once</em>.",
+ "url_hint": "The app is live at <code>https://myassetcore.com</code>. Nothing needs starting.",
+ "theme": {
+  "accent": "#1272AB",
+  "brand": "#1A3A5C",
+  "display_font": "Bricolage Grotesque",
+  "body_font": "IBM Plex Sans",
+  "mono_font": "IBM Plex Mono"
+ },
+ "accounts": [
+  {
+   "key": "owner",
+   "name": "You",
+   "email": "your own login",
+   "role": "System Admin (owner) — your existing password"
+  },
+  {
+   "key": "ops",
+   "name": "UAT Ops Manager",
+   "email": "yourname+uat-ops@yourdomain",
+   "role": "Operations Manager — password <code>UatWalk2026!</code>"
+  },
+  {
+   "key": "eng",
+   "name": "UAT Maintenance Engineer",
+   "email": "yourname+uat-eng@yourdomain",
+   "role": "Maintenance Engineer — password <code>UatWalk2026!</code>"
+  },
+  {
+   "key": "tech",
+   "name": "UAT Field Technician",
+   "email": "yourname+uat-tech@yourdomain",
+   "role": "Field Technician — password <code>UatWalk2026!</code>"
+  },
+  {
+   "key": "hse",
+   "name": "UAT HSE Officer",
+   "email": "yourname+uat-hse@yourdomain",
+   "role": "HSE / Compliance Officer — password <code>UatWalk2026!</code>"
+  },
+  {
+   "key": "auditor",
+   "name": "UAT Auditor",
+   "email": "yourname+uat-audit@yourdomain",
+   "role": "Auditor — password <code>UatWalk2026!</code>"
+  },
+  {
+   "key": "viewer",
+   "name": "UAT Viewer",
+   "email": "yourname+uat-view@yourdomain",
+   "role": "Executive / Viewer — password <code>UatWalk2026!</code>"
+  }
+ ],
+ "sections": [
+  {
+   "title": "Before you start",
+   "blurb": "AssetCore is an asset-management and maintenance system for gas infrastructure: it keeps the register of every physical asset, schedules the maintenance and inspections that keep them safe, turns what inspectors find into jobs, and tracks the money, compliance and risk around all of it. These two cards get you signed in and set up so the rest of the session runs without a lockout.",
+   "tests": [
+    {
+     "title": "Sign in to production and read the dashboard",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> the Operations Dashboard is the first thing everyone lands on — a live summary of the whole network. Network Health is the average condition score across assets; the tiles count assets, open work, overdue preventive maintenance and compliance alerts; Active Alerts lists what needs attention now. The left-hand menu is filtered by role, so what you see as System Admin is the fullest view anyone gets.",
+     "steps": [
+      "Open <code>https://myassetcore.com</code>.",
+      "Sign in with your own System Admin login.",
+      "Read each tile aloud and say what it counts. Open the <strong>All my locations</strong> filter at the top and note it narrows every page to one region.",
+      "Walk down the left-hand menu once, top to bottom, naming each section — the cards below visit every one."
+     ],
+     "expect": "The dashboard loads for the <strong>Demo Client</strong> organisation with a Network Health score, the six tiles and an Active Alerts list. Your name and <em>System Admin</em> sit at the bottom of the menu.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Agree how you will switch between people",
+     "roles": [
+      "Setup"
+     ],
+     "intro": "<strong>Why this card exists:</strong> the sign-in form allows <strong>ten sign-ins per fifteen minutes</strong>, and counts successful ones too. Because of a server setting found while writing this plan, that limit is currently shared by <em>every user on the site</em>, not just you — so a burst of account-switching can lock NGML's evaluators out as well. Plan the session so you rarely sign out.",
+     "steps": [
+      "Keep <strong>this browser window</strong> signed in as yourself (the owner) all session.",
+      "Open a <strong>second browser</strong> (or a private window) for the office roles — HSE Officer, Operations Manager, and later the Viewer, Auditor and Engineer.",
+      "Ask your colleague to play the <strong>Field Technician</strong> on their own laptop. The job-execution cards then run as a real hand-off between two people.",
+      "Keep a running tally of sign-ins on paper. Never make more than eight inside fifteen minutes.",
+      "If a sign-in ever says <em>Too many attempts. Wait about 15 minutes and try again.</em>, stop signing in and carry on with an owner-window card instead."
+     ],
+     "expect": "You have three places to be three people at once, and a tally sheet. The whole plan needs about twelve sign-ins spread across the session — well inside the limit if they are paced."
+    }
+   ]
+  },
+  {
+   "title": "Set up the organisation",
+   "blurb": "Before any asset can exist, the organisation needs its geography and its vocabulary: <strong>locations</strong> (a region or state), <strong>sites</strong> inside them (a physical facility), <strong>categories</strong> (what kind of asset something is), the people who will use it, and the rule for who signs off spending. All of this lives under <strong>Admin</strong>.",
+   "tests": [
+    {
+     "title": "Create a location and a site",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> the location hierarchy. A <em>location</em> is a region — Lagos, Delta — and a <em>site</em> is a real facility inside it, like a metering yard or compressor station. Every asset sits on a site, and a user can be limited to certain locations or sites, which is how a regional engineer only sees their own patch.",
+     "steps": [
+      "Admin &rarr; <strong>Locations</strong> &rarr; <strong>+ Add Location</strong>.",
+      "Location Name <code>UAT Lagos</code> · Short Code <code>UATLG</code>. Save.",
+      "Admin &rarr; <strong>Sites</strong> &rarr; add a site.",
+      "Site Name <code>UAT Apapa Metering Yard</code> · Site Code <code>UAT-APP01</code> · Region <code>South West</code> · Location <strong>UAT Lagos</strong>. Save."
+     ],
+     "expect": "<code>UAT Lagos</code> appears as a location card reading <em>1 site</em>, and <code>UAT Apapa Metering Yard</code> lists under it. Leaving the site name or code empty is refused with <em>Name and code are required.</em>",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Create an asset category",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> a category is the kind of asset — Metering Station, Compressor, Pressure Regulator. It is required on every asset, it is how the register is filtered, and it can carry default depreciation settings for everything in it. A brand-new organisation has none, so this has to exist before the first asset.",
+     "steps": [
+      "Admin &rarr; <strong>Asset Categories</strong> &rarr; add one.",
+      "Category Name <code>UAT Metering Station</code> · Short Code <code>UATMS</code>. Save."
+     ],
+     "expect": "<code>UAT Metering Station</code> appears in the category list and will be offered as an <em>Asset type</em> on the asset form.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Read the organisation's rules — look, don't change",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> Configuration holds two organisation-wide settings. <em>Health thresholds</em>: when an asset's condition score drops below 50% the system raises an inspection for it automatically, and below 30% it drafts a work order. <em>Depreciation defaults</em>: the method (straight-line, declining balance or none), whether it runs from the install or purchase date, and the default useful life and residual value. Only the System Admin and Operations Manager can change these.",
+     "steps": [
+      "Admin &rarr; <strong>Configuration</strong>.",
+      "Read the health thresholds and the depreciation defaults aloud.",
+      "Settings &rarr; <strong>Organisation</strong> &rarr; look at the <strong>Currency</strong> block: every figure is held in the base currency, and a second currency can be shown beside it at a rate someone types in.",
+      "<strong>Change nothing here.</strong> Both screens are organisation-wide on production and NGML's evaluators would see the change."
+     ],
+     "expect": "Configuration shows the two thresholds and the depreciation defaults with the note <em>Only a System Admin or Operations Manager can change this.</em> Currency shows NGN as the base with no second currency.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Invite the team — one account per role",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> AssetCore has seven roles, and each sees a different app. <em>System Admin</em> — everything. <em>Operations Manager</em> — runs operations and sites, approves spend, cannot manage people. <em>Maintenance Engineer</em> — works and updates jobs, can approve. <em>Field Technician</em> — does the jobs assigned to them. <em>HSE / Compliance Officer</em> — inspections, defects, licences, audits and risk. <em>Auditor</em> — reads everything plus the audit log. <em>Executive / Viewer</em> — reads, never writes.",
+     "steps": [
+      "Use six addresses you can receive mail at. Most inboxes accept a <code>+tag</code> — <code>yourname+uat-ops@yourdomain</code> delivers to <code>yourname@yourdomain</code>.",
+      "Admin &rarr; <strong>Users &amp; Roles</strong> &rarr; <strong>+ Invite User</strong>. Full name <code>UAT Ops Manager</code>, email your <code>+uat-ops</code> address, role <strong>Operations Manager</strong>. Leave Access scope and Extra permissions untouched. Send Invite.",
+      "Repeat for <code>UAT Maintenance Engineer</code> (+uat-eng), <code>UAT Field Technician</code> (+uat-tech), <code>UAT HSE Officer</code> (+uat-hse), <code>UAT Auditor</code> (+uat-audit) and <code>UAT Viewer</code> (+uat-view), each with its matching role.",
+      "Each invite either shows a set-password link on screen or emails one. Open each link <strong>in the second browser</strong>, set the password to <code>UatWalk2026!</code>, and <strong>do not sign in yet</strong> — setting a password costs no sign-in; signing in does.",
+      "While the invite form is open once more, try pressing <kbd>Enter</kbd> in the name field instead of clicking Send — see card 37."
+     ],
+     "expect": "Six invites go out, each with its own link. Users &amp; Roles then lists seven members — you plus six — each <strong>Active</strong> with the right role label. Setting a password returns you to the sign-in page rather than signing you in.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Decide who signs off job spend — the approval matrix",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> the approval matrix says which role must sign off what, by amount. A band of <em>₦1,000 to ₦500,000 on work-order spend → Operations Manager</em> means any job costing inside that range needs an Operations Manager's approval before it is authorised. The system also refuses anyone approving their own request, and anyone deciding a request that is waiting on a different role.",
+     "steps": [
+      "Approvals &rarr; <strong>Matrix</strong> &rarr; add a band.",
+      "Name <code>UAT job spend up to ₦500,000</code> · Applies to <strong>Work order</strong> · Kind <strong>Spend authorisation</strong> · Floor <code>1000</code> · Ceiling <code>500000</code> · Signed off by <strong>Operations Manager</strong>. Save.",
+      "Now try to save a second band with Floor <code>90000</code> and Ceiling <code>5000</code>."
+     ],
+     "expect": "The first band appears in the matrix with its range and <em>Operations Manager</em>. The second is refused in place with <strong>The ceiling has to be above the floor.</strong> — a sentence, not an error code.",
+     "signin": [
+      "owner"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "The asset register",
+   "blurb": "The <strong>asset register</strong> is the heart of the product: one record per physical asset, with its identity (the AIN — asset identification number), where it is, what it is worth, when it was last and next maintained, and a live <strong>health score</strong> built from inspections, defects, overdue work and risk. Assets can be entered by hand, imported from a spreadsheet, labelled with QR codes and found in the field by scanning.",
+   "tests": [
+    {
+     "title": "Register an asset by hand",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> the full asset record. The starred fields are required; the rest feed other parts of the product — value and useful life drive depreciation, the maintenance dates drive the calendar, and the coordinates put the asset on the map.",
+     "steps": [
+      "Assets &rarr; <strong>+ Add Asset</strong>.",
+      "Asset name <code>UAT Apapa Custody Meter Skid A</code> · AIN <code>UAT-MTR-0001</code> · Asset type <strong>UAT Metering Station</strong> · Location <strong>UAT Lagos</strong> · Site <strong>UAT Apapa Metering Yard</strong> · Status <strong>Operational</strong>.",
+      "Manufacturer <code>Emerson</code> · Model <code>Daniel 3818 Ultrasonic</code> · Serial <code>UAT-SN-24001</code> · Install date <code>15/03/2022</code> · Purchase date <code>20/02/2022</code> · Runtime <code>18240</code>.",
+      "Asset value (₦) <code>185000000</code> · Last maintenance <code>01/07/2026</code> · Next maintenance <code>01/10/2026</code>.",
+      "Depreciation method <strong>Organisation default</strong> · Useful life <code>15</code> · Salvage value (₦) <code>18500000</code> · Tags <code>custody-transfer, critical</code> · Latitude <code>6.4474</code> · Longitude <code>3.3645</code>.",
+      "Save. Then try saving a second asset with the AIN left empty."
+     ],
+     "expect": "The asset saves and appears in the register as <code>UAT-MTR-0001</code>, Operational, with a health bar and next maintenance <em>1 Oct 26</em>. The empty-AIN attempt is refused and names what is missing.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Read the asset record and its health working",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> the health score is AssetCore's single most important number, and it explains itself. <em>Show the working</em> lists the five signals — inspection condition, open defects, overdue maintenance, risk level, and age against useful life — each with its score and weight. A signal with no evidence yet is left out rather than counted as zero, and the page says so. This card is the <em>before</em> picture for the inspection in card 16.",
+     "steps": [
+      "Assets &rarr; <strong>View</strong> on <code>UAT-MTR-0001</code>.",
+      "Read the Financials block: purchase value, book value (NBV — what it is worth after depreciation) and accumulated depreciation.",
+      "Press <strong>Show the working</strong>. Note the headline score and which signals say <em>no data</em>.",
+      "Write down the score. You will come back to it."
+     ],
+     "expect": "The panel shows ₦185,000,000.00 as purchase value and a book value below it. <em>Show the working</em> lists all five signals with weights; the ones with no evidence yet (no inspection, for instance) are marked <em>no data</em> with a reason, and the header says how many of the five were used.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Import two assets from a spreadsheet",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> bulk import, for loading an existing register in one go. Category, location and site are matched by name or short code (capital letters don't matter), dates are written <code>YYYY-MM-DD</code>, maintenance dates are required on every row, and a bad row is reported rather than silently dropped.",
+     "steps": [
+      "Assets &rarr; <strong>Import CSV</strong> and download the template it offers, to see the columns.",
+      "In any text editor, save a file <code>uat-assets.csv</code> containing exactly these three lines:<br><code>ain,name,category,location,site,status,manufacturer,model,serial_number,install_date,purchase_date,runtime_hours,value,last_maintenance_date,next_maintenance_date,tags,lat,lng</code><br><code>UAT-PRG-0001,UAT Apapa Pressure Regulator 1,UAT Metering Station,UAT Lagos,UAT Apapa Metering Yard,operational,Fisher,EZH-1,UAT-SN-24002,2023-05-10,2023-04-02,9800,42000000,2026-08-01,2026-11-01,regulator,6.4480,3.3651</code><br><code>UAT-VLV-0001,UAT Apapa Inlet Isolation Valve,UAT Metering Station,UAT Lagos,UAT Apapa Metering Yard,operational,Cameron,T31,UAT-SN-24003,2021-11-20,2021-10-15,31000,12500000,2026-06-15,2026-12-15,valve,6.4468,3.3639</code>",
+      "Import it.",
+      "Search the register for <code>UAT</code>."
+     ],
+     "expect": "The import reports both rows as <strong>created</strong>. Searching <code>UAT</code> shows three assets — Skid A, the regulator and the valve — all on UAT Apapa Metering Yard.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Print QR labels and use the scan page",
+     "roles": [
+      "System Admin",
+      "Field Technician"
+     ],
+     "intro": "<strong>What it is:</strong> every asset can carry a QR label. A technician standing at a piece of equipment scans it and lands straight on its record — history, open jobs and condition — without searching. <strong>Labels</strong> prints whatever the register is currently filtered to, four to a row.",
+     "steps": [
+      "On Assets, search <code>UAT</code> so only the three UAT assets show, then press <strong>Labels</strong>.",
+      "Check each label names its AIN, then print or print-preview the sheet (allow pop-ups if the browser asks).",
+      "Open <code>https://myassetcore.com/scan</code>. On a phone, point the camera at one label; on a laptop, type <code>UAT-MTR-0001</code> into the tag field."
+     ],
+     "expect": "The sheet shows three labels, each with a QR code and its AIN. The scan page resolves <code>UAT-MTR-0001</code> to Skid A's card, showing Manufacturer <em>Emerson</em> and its installation date.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Attach a photo and open it full size",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> photos and documents on the asset record — nameplates, datasheets, before-and-after pictures. Files are only ever served to a signed-in user whose access covers that asset.",
+     "steps": [
+      "Have any photo of equipment ready on your computer.",
+      "Assets &rarr; <strong>Edit</strong> on <code>UAT-MTR-0001</code> &rarr; <strong>Images</strong> &rarr; choose the photo. Save.",
+      "Open the asset and click the thumbnail. Close the full-size view with <kbd>Escape</kbd>."
+     ],
+     "expect": "The photo uploads, shows as a thumbnail on the record, opens full size in a lightbox, and closes on Escape. <em>(This has never been tested before — it needs a real file picker.)</em>",
+     "signin": [
+      "owner"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Stores and planned maintenance",
+   "blurb": "<strong>Spare Parts</strong> is the parts store: what is on the shelf, what it cost, and every movement in or out, so stock can be reserved against a job and drawn when the job closes. <strong>Maintenance</strong> holds the preventive schedules — the recurring work that stops things breaking — which generate tasks on their own at the frequency you set.",
+   "tests": [
+    {
+     "title": "Add a spare part and record stock going out",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> each part carries a reorder level. When stock falls to it or below, the part is flagged <em>Reorder</em>. Every change is recorded as a movement — a receipt, an issue, a return or an adjustment — so the balance always has a reason behind it.",
+     "steps": [
+      "Spare Parts &rarr; <strong>Add Part</strong>.",
+      "Part number <code>UAT-SP-0001</code> · Category <code>Instrumentation</code> · Name <code>UAT Ultrasonic transducer pair</code> · Unit <code>each</code> · Unit cost (₦) <code>420000</code> · Reorder level <code>3</code> · Reorder quantity <code>4</code> · Supplier <code>Emerson Nigeria</code> · Storage location <code>Apapa Store / Bin 4</code> · Opening stock <code>6</code>. Add part.",
+      "On its row press <strong>Adjust</strong> &rarr; <strong>Issue</strong> · Quantity <code>3</code> · Reference <code>UAT issued to Apapa calibration crew</code>. Watch the preview line before recording.",
+      "Record movement."
+     ],
+     "expect": "The part saves with <em>6 each</em> on hand. The adjust dialog previews <strong>Stock moves to 3 each</strong>. After recording, on-hand reads 3, the row gains an amber <strong>Reorder</strong> badge, and <em>At or below reorder level</em> goes up by one.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Create a preventive maintenance schedule",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> a PM schedule is recurring planned work — quarterly calibration, monthly lubrication. The system generates a task each time one falls due, puts it on the calendar and chases it if it goes overdue. <strong>Known gap, found while writing this plan:</strong> the form has no Asset field, so a schedule made here belongs to no asset, and its tasks never feed the asset's health score. The server supports it; the form never sends it. Mention it rather than be surprised by it.",
+     "steps": [
+      "Maintenance &rarr; create a PM schedule.",
+      "Title <code>UAT Quarterly meter calibration — Skid A</code> · Description <code>Verify against master meter; check transducer paths</code> · Frequency <strong>Quarterly</strong> · First due <code>19/09/2026</code> · Default assignee <strong>UAT Maintenance Engineer</strong>. Save.",
+      "Look for an Asset field on the form, and note there isn't one."
+     ],
+     "expect": "The schedule saves and lists as Quarterly, with a first task due <em>19 Sept 26</em> assigned to the Maintenance Engineer. There is no way to link it to Skid A — that is the known gap, not something you did wrong.",
+     "signin": [
+      "owner"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "The core loop: inspection → defect → job",
+   "blurb": "This is the chain the product exists for. An <strong>inspection</strong> checks an asset and rates its condition 1–5; what it finds goes on the <strong>defect register</strong>; a defect becomes a <strong>work order</strong> (a job); the job is assigned, worked, costed, signed off and closed; closing it resolves the defect and moves the asset's health. Four roles take part — run it as the hand-off it really is, with your colleague as the technician.",
+   "tests": [
+    {
+     "title": "Schedule an inspection against the asset",
+     "roles": [
+      "HSE Officer"
+     ],
+     "intro": "<strong>What it is:</strong> inspections are the eyes on the network — routine condition checks, safety inspections, regulatory integrity checks. Attaching one to an asset is what lets its rating reach that asset's health score. (Checklist templates exist in the system but there is no screen to create one yet, so this inspection records free-text findings.)",
+     "steps": [
+      "In the second browser, sign in as the HSE Officer. <em>(Sign-in 2.)</em>",
+      "Inspections &rarr; <strong>+ New Inspection</strong>.",
+      "Title <code>UAT Condition inspection — Custody Meter Skid A</code> · Type <strong>Condition</strong> · Scheduled date <code>12/09/2026</code> · Checklist <strong>— No checklist —</strong> · Asset <strong>UAT-MTR-0001</strong> (the Site fills itself in) · Inspector <strong>UAT HSE Officer</strong>. Create."
+     ],
+     "expect": "The inspection lists as <strong>Scheduled</strong> with ASSET <code>UAT-MTR-0001</code> and SITE <em>UAT Apapa Metering Yard</em>. Choosing the asset set the site automatically.",
+     "signin": [
+      "hse"
+     ]
+    },
+    {
+     "title": "Complete it with a poor rating, and watch the asset's health take it in",
+     "roles": [
+      "HSE Officer",
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> completion is where the inspection counts. The 1–5 condition rating is required — the system will not complete an inspection without one, because a health score built on a rating nobody gave would be a guess. The rating becomes a quarter of the asset's health score.",
+     "steps": [
+      "As the HSE Officer, press <strong>Complete</strong> on the inspection.",
+      "Try <strong>Mark Complete</strong> with no rating chosen, and note the button stays disabled.",
+      "Choose <strong>2 — Poor</strong>. Findings <code>Path 3 transducer signal-to-noise below 20 dB; flow computer display intermittently blank; light corrosion on inlet flange bolts.</code> Mark Complete.",
+      "Back in your owner window, open <code>UAT-MTR-0001</code> &rarr; Show the working, and compare with the score from card 09."
+     ],
+     "expect": "Completion is impossible without a rating. Afterwards the inspection moves to <strong>Completed</strong>, and Skid A's breakdown now carries <strong>Inspection condition 25/100 — Rated 2 of 5 on 12 Sept 2026</strong>. The headline still reconciles with the signals listed beneath it.",
+     "signin": [
+      "hse"
+     ]
+    },
+    {
+     "title": "Log the defect the inspection found",
+     "roles": [
+      "HSE Officer"
+     ],
+     "intro": "<strong>What it is:</strong> the defect register is the list of things actually wrong, each with a severity. Linking a defect to the inspection that found it is what lets anyone trace a job back to the walk-round that started it. Severity sets the priority of any job raised from it.",
+     "steps": [
+      "As the HSE Officer, Defects &rarr; new defect.",
+      "What is wrong <code>UAT Path 3 transducer signal degraded</code> · Detail <code>SNR 17 dB against a 20 dB minimum; custody measurement uncertainty exceeds tolerance.</code> · Severity <strong>Major</strong> · Asset <strong>UAT-MTR-0001</strong> · Site <strong>UAT Apapa Metering Yard</strong> · Found during <strong>UAT Condition inspection — Custody Meter Skid A</strong> · Identified on <code>12/09/2026</code> · Fix by <code>26/09/2026</code> · Category <code>instrumentation</code>. Save."
+     ],
+     "expect": "A defect with a <code>DEF-2026-…</code> reference appears on the register as <strong>Major · Open</strong>, naming the asset and showing where it came from: the inspection it was found during.",
+     "signin": [
+      "hse"
+     ]
+    },
+    {
+     "title": "Turn the defect into a work order and assign it",
+     "roles": [
+      "Operations Manager"
+     ],
+     "intro": "<strong>What it is:</strong> a work order is a job. Raising one from a defect carries the link both ways — the job says what it came from, the defect shows its job — and closing the job resolves the defect. The priority comes from the severity: a Major defect makes a High-priority job.",
+     "steps": [
+      "In the second browser, sign out and sign in as the Operations Manager. <em>(Sign-in 3.)</em>",
+      "Defects &rarr; open <em>UAT Path 3 transducer signal degraded</em> &rarr; <strong>Raise a work order</strong>. SLA due <code>19/09/2026</code>. Raise it.",
+      "Open the new job from Work Orders &rarr; <strong>Edit</strong> &rarr; Estimated cost (₦) <code>420000</code> · Assign to <strong>UAT Field Technician</strong>. Save."
+     ],
+     "expect": "A <code>WO-2026-…</code> job exists at <strong>High</strong> priority, type Corrective, showing <em>Raised from DEF-2026-… · Closing this job resolves it</em>. The defect now shows its job. After saving, the job is assigned to the Field Technician and records who assigned it and when.",
+     "signin": [
+      "ops"
+     ]
+    },
+    {
+     "title": "The technician picks it up: checklist, parts, spend request",
+     "roles": [
+      "Field Technician"
+     ],
+     "intro": "<strong>What it is:</strong> the technician's side. Assigned work arrives in <em>My Open Work</em> and as a notification — nobody should have to type a URL to find their job. On the job they build a checklist of steps, reserve parts from the store, and send the cost for approval.",
+     "steps": [
+      "On your colleague's laptop, open <code>https://myassetcore.com</code> and sign in as the Field Technician. <em>(Sign-in 4.)</em>",
+      "Check the dashboard's <strong>My Open Work</strong> tile and the notification bell — open the job from there.",
+      "Checklist: add <code>Isolate meter run and depressurise</code>, <code>Replace path 3 transducer pair</code>, <code>Re-zero and verify against master meter</code>. Tick the first.",
+      "Parts: choose <strong>UAT-SP-0001 — UAT Ultrasonic transducer pair</strong>, quantity <code>1</code>, Add.",
+      "Spend authorisation: <strong>Request spend approval</strong>, note <code>Replacement transducer pair for path 3</code>, Send for approval.",
+      "Move the job to <strong>In Progress</strong>."
+     ],
+     "expect": "The job is in the technician's own list and notification. The checklist reads <strong>1/3 done</strong>. The parts line reads <em>1× UAT Ultrasonic transducer pair · Reserved</em> with a ₦420,000 total. The spend section reads <strong>With Operations Manager · ₦420,000 · Pending</strong>.",
+     "signin": [
+      "tech"
+     ]
+    },
+    {
+     "title": "Approve the spend as the Operations Manager",
+     "roles": [
+      "Operations Manager"
+     ],
+     "intro": "<strong>What it is:</strong> the sign-off. The request went to the Operations Manager because the ₦420,000 cost falls inside the band set in card 07. Someone holding approval rights, but in a different role, cannot decide it — and nobody can approve their own request. <strong>Worth saying aloud:</strong> an approval <em>records</em> the sign-off; it does not yet physically stop a job from being closed.",
+     "steps": [
+      "In the second browser (still the Operations Manager), open <strong>Approvals</strong> &rarr; <strong>Waiting on me</strong>.",
+      "Open the request, add the note <code>Approved — critical custody meter</code>, and Approve."
+     ],
+     "expect": "The request is listed under <em>Waiting on me</em> and names the technician as requester. After approving, it moves to <strong>Approved</strong> and the technician's job shows the decision.",
+     "signin": [
+      "ops"
+     ]
+    },
+    {
+     "title": "Finish and close the job",
+     "roles": [
+      "Field Technician"
+     ],
+     "intro": "<strong>What it is:</strong> the job's lifecycle. Each move is limited to what makes sense next (a closed job cannot reopen), every change is stamped with who and when, and closing does real work: it draws reserved parts out of the store and resolves the defect the job came from.",
+     "steps": [
+      "On your colleague's laptop, tick the other two checklist steps (3/3).",
+      "Move the job <strong>In Progress &rarr; Inspection &rarr; Closed</strong>, reading the <em>Move to</em> buttons offered at each step."
+     ],
+     "expect": "Each step offers only valid next statuses. Once Closed, the <em>Move to</em> section disappears — there is no way back. The part line reads <em>Taken</em>.",
+     "signin": [
+      "tech"
+     ]
+    },
+    {
+     "title": "Check the loop closed everywhere",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> the payoff — one job moved several parts of the system. This card checks each one from the owner's chair.",
+     "steps": [
+      "Defects: the UAT defect now reads <strong>Resolved</strong>.",
+      "Spare Parts: <code>UAT-SP-0001</code> on hand fell from 3 to <strong>2</strong>, and its history shows a movement <em>Used on job · WO-2026-…</em>.",
+      "Analytics &rarr; Performance: <strong>MTTR</strong> (mean time to repair) now reports a figure, including the job you just closed.",
+      "Assets &rarr; <code>UAT-MTR-0001</code> &rarr; Show the working: open defects no longer counts the resolved one."
+     ],
+     "expect": "Defect Resolved; part stock 2 with a consumption movement naming the job; MTTR shows hours per repair and a job count; and the asset's open-defects signal has recovered.",
+     "signin": [
+      "owner"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Money: depreciation",
+   "blurb": "<strong>Depreciation</strong> writes an asset's value down over its useful life, so the register shows what equipment is actually worth today — its net book value (NBV). AssetCore keeps it as a proper schedule of yearly charges that are <em>posted</em>, like entries in a ledger, so the book value always has an audit trail.",
+   "tests": [
+    {
+     "title": "Build a depreciation schedule for the asset",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> the preview shows the full year-by-year schedule before anything is saved, worked out from the asset's own record. Straight-line spreads the value evenly: (cost − salvage value) ÷ useful life, per year.",
+     "steps": [
+      "Depreciation &rarr; <strong>New Schedule</strong> (or <em>Create first schedule</em>).",
+      "Asset <strong>UAT-MTR-0001</strong> · Method <strong>Straight line</strong>. Leave the basis override closed — it reads the asset's own figures.",
+      "Read the preview: method, cost, salvage, life and start date, then the table.",
+      "Create schedule. <strong>Do not post periods</strong> — posting writes entries to the books; on production, leave that decision for real data."
+     ],
+     "expect": "The basis reads cost <strong>₦185,000,000</strong>, salvage <strong>₦18,500,000</strong>, life <strong>15 years</strong>, from the install date <em>2022-03-15</em>. Every yearly charge is <strong>₦11,100,000.00</strong> — that is (185,000,000 − 18,500,000) ÷ 15. After creating, the register lists the schedule with <em>0 / 15 posted</em>.",
+     "signin": [
+      "owner"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Compliance and risk",
+   "blurb": "<strong>Compliance</strong> tracks the licences and certificates an operator must hold — each with an issuing authority and an expiry date, flagged well before it lapses — and the audits carried out against standards like ISO 9001. The <strong>risk register</strong> scores what could go wrong on a 5×5 grid of likelihood against consequence, twice: before controls (inherent) and after them (residual).",
+   "tests": [
+    {
+     "title": "Record a licence that is about to expire",
+     "roles": [
+      "HSE Officer"
+     ],
+     "intro": "<strong>What it is:</strong> the licence register is how an operator avoids running a facility on a lapsed permit. Anything inside its expiry window is flagged <em>Expiring</em>, and counted on the dashboard's Compliance Alerts tile.",
+     "steps": [
+      "In the second browser, sign out and sign in as the HSE Officer. <em>(Sign-in 5.)</em>",
+      "Compliance &rarr; Licences &amp; Certificates &rarr; <strong>+ Add Licence</strong>.",
+      "Name <code>UAT Custody Transfer Metering Licence — Apapa</code> · Reference <code>NMDPRA/CTM/2025/UAT-001</code> · Regulatory authority <code>NMDPRA</code> · Site <strong>UAT Apapa Metering Yard</strong> · Issued <code>01/10/2025</code> · Expiry <code>30/09/2026</code>. Save."
+     ],
+     "expect": "The licence lists as <strong>Expiring</strong> with <em>18d</em> left (30 Sept is 18 days after the 12th). The Expiring filter count goes up by one, and so does the dashboard's Compliance Alerts <em>expiring</em> figure.",
+     "signin": [
+      "hse"
+     ]
+    },
+    {
+     "title": "Run an audit from scheduled to completed, with a finding",
+     "roles": [
+      "HSE Officer"
+     ],
+     "intro": "<strong>What it is:</strong> audits record inspections against a standard, with a lifecycle — scheduled, in progress, completed — and an outcome that is required before completion. Each finding can be pushed straight onto the defect register, so an audit gap becomes tracked work.",
+     "steps": [
+      "Compliance &rarr; <strong>Audits &amp; Attestations</strong> &rarr; <strong>+ New Audit</strong>.",
+      "Title <code>UAT ISO 9001 surveillance audit — Apapa</code> · Standard <code>ISO 9001:2015</code> · ISO certificate reference <code>UAT-9001-2026-01</code> · Audit date <code>12/09/2026</code> · Site <strong>UAT Apapa Metering Yard</strong> · Asset <strong>UAT-MTR-0001</strong> · Stage <strong>Scheduled</strong>. Save.",
+      "Edit it to <strong>In progress</strong>, save; then to <strong>Completed</strong> with no outcome, and note the refusal. Choose outcome <strong>Pass with findings</strong> and save.",
+      "Open <strong>Findings</strong>: severity <strong>Major</strong> · clause <code>ISO 9001 §7.1.5</code> · text <code>Master meter calibration certificate expired in August; measurements since are not traceable.</code> Save, then <strong>Raise a defect</strong> on it."
+     ],
+     "expect": "The form opens at <em>Scheduled</em> and saves first time. Completing without an outcome is refused with <strong>An outcome is required to complete an audit.</strong> The finding raises a <code>DEF-2026-…</code> and its button is replaced by <em>On the register as DEF-2026-…</em>, so it cannot be raised twice.",
+     "signin": [
+      "hse"
+     ]
+    },
+    {
+     "title": "Put a risk on the matrix, before and after controls",
+     "roles": [
+      "HSE Officer"
+     ],
+     "intro": "<strong>What it is:</strong> each risk is scored likelihood × consequence, 1–25, and banded Low, Medium, High or Extreme. <em>Inherent</em> is the risk with nothing in place; <em>residual</em> is what is left once the controls work. The gap between them shows what the controls are worth, and the residual feeds the asset's health score.",
+     "steps": [
+      "Risk &rarr; new risk.",
+      "What could happen <code>UAT Gas release at Skid A inlet flange during transducer change</code> · Category <strong>Safety</strong> · Asset <strong>UAT-MTR-0001</strong> · Site <strong>UAT Apapa Metering Yard</strong>.",
+      "Inherent: likelihood <strong>4</strong>, consequence <strong>5</strong>.",
+      "Controls in place <code>Permit to work; isolation and depressurisation; portable gas detection; standby fire watch</code>. Residual: likelihood <strong>2</strong>, consequence <strong>3</strong>. Review by <code>12/12/2026</code>. Save.",
+      "Switch the matrix between <em>Before controls</em> and <em>After controls</em>."
+     ],
+     "expect": "The form reads <strong>Inherent 20 · Extreme</strong> and <strong>Residual 6 · Medium</strong>. The risk sits in the score-20 cell under the inherent view and moves to the score-6 cell under the residual view.",
+     "signin": [
+      "hse"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Oversight: seeing the whole picture",
+   "blurb": "The rest of the product is how managers watch the network without opening records one at a time: reliability figures and a map, a calendar of everything scheduled, exportable reports, automatic chasing of anything left too long, connections to field devices and other systems, and a tamper-proof log of who did what.",
+   "tests": [
+    {
+     "title": "Analytics: reliability figures and the asset map",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> the maintenance KPIs. <em>MTBF</em> (mean time between failures) is how long assets run between breakdowns; <em>MTTR</em> (mean time to repair) is how long a repair takes once started; <em>Availability</em> is uptime as a percentage; the <em>backlog</em> sorts open work by age. Every figure shows its sample size, so a number built on one job never passes for a trend.",
+     "steps": [
+      "Analytics &rarr; <strong>Performance</strong>. Read each tile and its explanatory line.",
+      "Switch the period between Last 30 days, Last 90 days and Last 12 months.",
+      "Open the <strong>Map</strong> tab."
+     ],
+     "expect": "Each tile has a unit and a sentence saying what it was built from. Changing the period changes MTBF and its operating-hours basis. The map plots the three UAT assets near Apapa and says how many assets are not shown for lack of coordinates; clicking a pin opens that asset.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "The calendar",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> one grid for every date in the system — work orders by due date, PM tasks, inspections — with overdue items in red and filters for each kind.",
+     "steps": [
+      "Open <strong>Calendar</strong> on September 2026.",
+      "Find the UAT inspection on the 12th and the PM task on the 19th.",
+      "Untick <strong>Work orders</strong>, then move to October and back with <strong>Today</strong>."
+     ],
+     "expect": "The inspection sits on 12 Sept and the calibration task on 19 Sept. Unticking a type removes exactly those entries; month navigation works both ways.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Generate a report and check it against the screen",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> exports for people outside the app — an asset register, a work-order summary, a compliance register, a PM history — as a spreadsheet or CSV. What leaves the building has to match what the screen says.",
+     "steps": [
+      "Reports &rarr; <strong>Generate</strong> &rarr; <strong>Asset Register</strong>, format <strong>XLSX</strong>.",
+      "Download it from the Report Library and open it.",
+      "Find the <code>UAT-MTR-0001</code> row and compare its health score and purchase value with the asset panel."
+     ],
+     "expect": "The report appears in the library naming you as requester, downloads as a real spreadsheet, and the Skid A row matches the screen: same health score, purchase value ₦185,000,000.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Escalation rules: who gets chased, and when",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> escalations chase work left too long. A rule says <em>if this kind of record has been in this state for this long, notify this role</em>. Rules run every morning at 07:15 and on demand, and each record is escalated once, not every day. <strong>On production this rule applies to every record in the organisation</strong>, so this card creates it, explains it, and retires it.",
+     "steps": [
+      "Admin &rarr; <strong>Escalations</strong> &rarr; <strong>+ Add Rule</strong>.",
+      "Rule name <code>UAT — critical work orders unassigned after 1 day</code> · Applies to <strong>Work order</strong> · When it has been <strong>Unassigned</strong> · For at least <code>1</code> day · Only when priority is <strong>Critical</strong> · Notify <strong>Operations Manager</strong>. Save.",
+      "Change <em>Applies to</em> on a new rule to <strong>Compliance licence</strong> and note the trigger list shrinks to what makes sense for a licence. Cancel.",
+      "On the UAT rule press <strong>Retire</strong> and confirm."
+     ],
+     "expect": "The rule saves and lists with its condition and the role it notifies. The trigger options change with the record type. After Retire it stops being evaluated, and any escalations it already raised are kept.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Devices and integrations — look, don't connect",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>What it is:</strong> <em>Devices</em> are field instruments and gateways that report live readings (over MQTT and similar protocols), each tied to an asset and site, and shown as Online, Offline, Error or Unprovisioned. <em>Integrations</em> connect AssetCore to other systems: SAP S/4HANA (sync the asset master, push work orders back), Termii SMS (text alerts to field technicians), and SCADA/Historian (process data — marked <em>Coming soon</em>).",
+     "steps": [
+      "Open <strong>Devices</strong> and read the status summary and the supported protocols.",
+      "Optionally add one: name <code>UAT Skid A flow transmitter gateway</code> · IP <code>10.20.4.15</code> · Protocol <strong>MQTT</strong> · Serial <code>UAT-GW-0001</code> · Firmware <code>v2.3.1</code> · Asset <strong>UAT-MTR-0001</strong> · Site <strong>UAT Apapa Metering Yard</strong>.",
+      "Open <strong>Integrations</strong> and read each card. <strong>Enter no credentials</strong> — secrets typed here are stored and used for real."
+     ],
+     "expect": "Devices shows the status chips and protocol list; a new device appears as <strong>Unprovisioned</strong>, because nothing has reported yet. Integrations shows SAP and Termii as configurable and SCADA as <em>Coming soon</em>.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "The audit log",
+     "roles": [
+      "Auditor"
+     ],
+     "intro": "<strong>What it is:</strong> an append-only record of every significant action — who, what, which record, when. Nobody can edit or delete an entry, the System Admin included. The Auditor role exists to read it.",
+     "steps": [
+      "In the second browser, sign out and sign in as the Auditor. <em>(Sign-in 6.)</em>",
+      "Admin &rarr; <strong>Audit Log</strong>.",
+      "Find today's entries: the six invites, the work order closed, the defects raised.",
+      "Look for any control that edits or deletes an entry."
+     ],
+     "expect": "Admin shows only the <strong>Audit Log</strong> and a read-only <strong>Escalations</strong> tab — no Users &amp; Roles, Locations or Configuration. Entries name the actor and time, and none can be changed.",
+     "signin": [
+      "auditor"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Who can do what",
+   "blurb": "Permissions are enforced by the server, not just by hiding buttons. For each role, check what it should see, then <strong>type a forbidden address straight into the browser</strong> — the page must refuse, not load. This is the most common way real systems leak data, which is why it gets its own section.",
+   "tests": [
+    {
+     "title": "Executive / Viewer: sees everything, changes nothing",
+     "roles": [
+      "Executive / Viewer"
+     ],
+     "intro": "<strong>What it is:</strong> the read-only role for leadership. It can open every operational page but create, edit or approve nothing, and it has no access to Admin or the audit log.",
+     "steps": [
+      "Sign out, sign in as the Viewer. <em>(Sign-in 7.)</em>",
+      "Note <strong>Admin</strong> is missing from the menu, then type <code>https://myassetcore.com/admin</code>.",
+      "Open the UAT work order: look for Edit, status buttons, the comment box and Attach file.",
+      "Open Reports and look for a Generate control."
+     ],
+     "expect": "<code>/admin</code> sends you back to the dashboard. The work order shows no Edit, no Move-to buttons, no comment box and no Attach file. Reports offers the library and analytics but no way to generate.",
+     "signin": [
+      "viewer"
+     ]
+    },
+    {
+     "title": "Field Technician: cannot reach management pages",
+     "roles": [
+      "Field Technician"
+     ],
+     "intro": "<strong>What it is:</strong> the technician sees their work, the assets and the parts store — not finance, analytics or administration.",
+     "steps": [
+      "On your colleague's laptop (still the Technician), type each of these: <code>/reports</code>, <code>/analytics</code>, <code>/depreciation</code>, <code>/admin</code>.",
+      "Open Risk and look for a way to add a risk."
+     ],
+     "expect": "All four addresses return to the dashboard. The technician can read the risk register but cannot create a risk.",
+     "signin": [
+      "tech"
+     ]
+    },
+    {
+     "title": "Maintenance Engineer: works jobs, cannot administer",
+     "roles": [
+      "Maintenance Engineer"
+     ],
+     "intro": "<strong>What it is:</strong> engineers update assets and jobs and can approve, but cannot change the organisation, its people, the approval matrix or escalation rules.",
+     "steps": [
+      "In the second browser, sign out and sign in as the Engineer. <em>(Sign-in 8.)</em>",
+      "Check the Maintenance page shows the calibration task assigned to you.",
+      "Type <code>/admin</code>. Open Approvals &rarr; Matrix. Open Settings &rarr; Organisation."
+     ],
+     "expect": "The PM task from card 14 is waiting for this user. <code>/admin</code> returns to the dashboard; the matrix cannot be edited; currency and organisation details are read-only.",
+     "signin": [
+      "eng"
+     ]
+    },
+    {
+     "title": "Operations Manager: runs sites and categories, not people",
+     "roles": [
+      "Operations Manager"
+     ],
+     "intro": "<strong>What it is:</strong> the one deliberate exception. The Operations Manager can maintain the location, site and category structure and the configuration, and can read the escalation rules and the audit log, but cannot invite or manage users, or change who approves what or who gets chased.",
+     "steps": [
+      "Sign out, sign in as the Operations Manager. <em>(Sign-in 9.)</em>",
+      "Open Admin and list the tabs you get.",
+      "Look for Users &amp; Roles; try adding an approval band; try adding an escalation rule."
+     ],
+     "expect": "Admin shows Locations, Sites, Asset Categories and Configuration, plus Escalations and the Audit Log to read — but <strong>not Users &amp; Roles</strong>. No approval band or escalation rule can be added by this role.",
+     "signin": [
+      "ops"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Things only a person can settle",
+   "blurb": "Three rounds of automated testing could not prove these, because the testing tool's simulated keyboard does not behave like a real one. With a physical keyboard and a phone they take five minutes, and they close the last open questions from earlier rounds.",
+   "tests": [
+    {
+     "title": "Keyboard: Enter submits, Tab moves, Escape closes",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>Why it matters:</strong> people who work fast, or cannot use a mouse, rely on the keyboard. Earlier rounds could not tell whether <kbd>Enter</kbd> submits a form or a real key press activates a button — this card settles it for good.",
+     "steps": [
+      "On the sign-in page (when you next sign in), type the email and password and press <kbd>Enter</kbd> instead of clicking.",
+      "Admin &rarr; Users &amp; Roles &rarr; Invite User: type a name and press <kbd>Enter</kbd> in the name field. Cancel if it submits.",
+      "Press <kbd>Tab</kbd> repeatedly on the dashboard and watch the focus ring move.",
+      "Open any modal and press <kbd>Escape</kbd>."
+     ],
+     "expect": "<kbd>Enter</kbd> submits both forms; <kbd>Tab</kbd> shows a visible focus ring moving in reading order; <kbd>Escape</kbd> closes the modal. <strong>If Enter does nothing, mark this Fail</strong> — that is a genuine accessibility defect nobody has been able to confirm until now.",
+     "signin": [
+      "owner"
+     ]
+    },
+    {
+     "title": "Phone width and dark mode",
+     "roles": [
+      "Field Technician"
+     ],
+     "intro": "<strong>Why it matters:</strong> technicians work from phones, and the app has a dark theme for low light. Dark mode was reworked in round 3 for contrast and now remembers your choice.",
+     "steps": [
+      "Open <code>https://myassetcore.com</code> on a phone and sign in as the Technician <em>(or narrow a desktop window to phone width, to save a sign-in)</em>.",
+      "Open the dashboard, the work-order list, a work order, and the scan page. Open the menu.",
+      "Turn on dark mode from the account menu, reload, and read the dashboard and Analytics."
+     ],
+     "expect": "Nothing scrolls sideways; wide tables scroll inside their own box; the menu opens and closes; every button can be reached. Dark mode survives the reload and all text stays readable.",
+     "signin": [
+      "tech"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Leave production tidy",
+   "blurb": "Everything this session made is prefixed <code>UAT</code>. Archiving hides records without deleting them, and every step can be undone.",
+   "tests": [
+    {
+     "title": "Archive what you made and disable the accounts",
+     "roles": [
+      "System Admin"
+     ],
+     "intro": "<strong>Why it matters:</strong> NGML's evaluators work in this organisation. Leaving UAT assets, alerts and accounts live muddies what they see. Archived assets drop out of the register, the dashboard and the map, but stay restorable.",
+     "steps": [
+      "Assets: archive <code>UAT-MTR-0001</code>, <code>UAT-PRG-0001</code> and <code>UAT-VLV-0001</code> (confirm each).",
+      "Compliance: archive the UAT licence and the UAT audit.",
+      "Escalations: check the UAT rule shows as retired (card 30).",
+      "Admin &rarr; Users &amp; Roles: <strong>Disable</strong> the six UAT members — or keep them if you will run this again.",
+      "Leave the UAT spare part, PM schedule, depreciation schedule, risk and defects: they are clearly labelled, and archiving the asset takes them out of the headline figures."
+     ],
+     "expect": "The three UAT assets vanish from the register, dashboard and map, and appear under <em>Archived</em>. The six members read <strong>Disabled</strong>, and a disabled account's next sign-in is refused with <em>This account has been disabled. Ask an administrator to re-enable it.</em>",
+     "signin": [
+      "owner"
+     ]
+    }
+   ]
+  }
+ ],
+ "artifact_url": "https://claude.ai/code/artifact/d98e8832-dd0c-405c-a650-b2761af9ca9e"
+}

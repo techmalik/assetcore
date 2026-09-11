@@ -1,0 +1,2054 @@
+<title>AssetCore Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<!--uat:style:start--><style>
+  :root {
+    --paper: #EFF2F6;
+    --surface: #FFFFFF;
+    --sunk: #F5F7FA;
+    --ink: #12151C;
+    --ink-2: #4A5261;
+    --ink-3: #79808F;
+    --line: #DCE1E9;
+    --line-soft: #E8ECF2;
+    --brand: #1A3A5C;
+    --accent: #1272AB;
+    --pass: #1D7A3E;
+    --pass-bg: #E7F2EB;
+    --fail: #B5352A;
+    --fail-bg: #FBEBE9;
+    --blocked: #9A6206;
+    --blocked-bg: #F9F0DF;
+    --pending: #9AA0AB;
+    --shadow: 0 1px 2px rgba(18,21,28,.05), 0 8px 24px -14px rgba(18,21,28,.3);
+    --radius: 12px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0C1017; --surface: #141A24; --sunk: #101621;
+      --ink: #E9ECF3; --ink-2: #A7AEBC; --ink-3: #767E8D;
+      --line: #242C3A; --line-soft: #1D2431;
+      --brand: #C3CEEA; --accent: #7FA8DC;
+      --pass: #6FC38C; --pass-bg: #14301F;
+      --fail: #E88C82; --fail-bg: #331917;
+      --blocked: #DFAE5C; --blocked-bg: #302410;
+      --pending: #5C6473;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -16px rgba(0,0,0,.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #0C1017; --surface: #141A24; --sunk: #101621;
+    --ink: #E9ECF3; --ink-2: #A7AEBC; --ink-3: #767E8D;
+    --line: #242C3A; --line-soft: #1D2431;
+    --brand: #C3CEEA; --accent: #7FA8DC;
+    --pass: #6FC38C; --pass-bg: #14301F;
+    --fail: #E88C82; --fail-bg: #331917;
+    --blocked: #DFAE5C; --blocked-bg: #302410;
+    --pending: #5C6473;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -16px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  code, kbd {
+    font-family: var(--font-mono); font-size: .88em;
+    background: var(--sunk); border: 1px solid var(--line-soft);
+    border-radius: 4px; padding: 1px 5px; overflow-wrap: anywhere;
+  }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 20px 96px; }
+
+  /* ---- Masthead ---- */
+
+  .mast { padding: 52px 0 8px; }
+
+  .eyebrow {
+    display: flex; align-items: center; gap: 12px; margin: 0;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+
+  .eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  h1 {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: clamp(32px, 4.6vw, 44px); line-height: 1.09; letter-spacing: -.015em;
+    margin: 18px 0 0; text-wrap: balance; color: var(--brand);
+  }
+
+  .standfirst { margin: 14px 0 0; max-width: 62ch; font-size: 16.5px; color: var(--ink-2); }
+
+  .howto {
+    margin: 16px 0 0; max-width: 66ch; padding: 12px 14px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; font-size: 13.5px; color: var(--ink-2);
+  }
+
+  .howto strong { color: var(--ink); font-weight: 600; }
+  .howto-url { display: block; margin-top: 6px; color: var(--ink-3); font-size: 12.5px; }
+
+  .saved {
+    display: flex; align-items: center; gap: 7px; margin: 10px 0 0;
+    font-size: 12px; color: var(--pass);
+  }
+
+  .saved[hidden] { display: none; }
+  .saved-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--pass); }
+
+  /* ---- Round tabs ---- */
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 26px; }
+
+  .tab {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
+    border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+  }
+
+  .tab--sm { padding: 5px 11px; font-size: 12px; }
+  .tab:hover { background: var(--sunk); }
+  .tab[aria-selected="true"] { background: var(--brand); border-color: var(--brand); color: var(--surface); }
+
+  .round { display: none; }
+  .round.is-active { display: block; }
+
+  .round-intro { margin: 20px 0 0; max-width: 66ch; font-size: 14.5px; color: var(--ink-2); }
+
+  /* ---- Nav board ---- */
+
+  .nav {
+    margin-top: 20px; padding: 14px 16px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+
+  .navgroup { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+
+  .navgroup-label {
+    flex: none; width: 168px; font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3);
+  }
+
+  .navchips { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; min-width: 200px; }
+
+  .navchip {
+    font-family: var(--font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums;
+    width: 30px; height: 26px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--sunk); color: var(--ink-2);
+  }
+
+  .navchip:hover { border-color: var(--accent); color: var(--ink); }
+  .navchip[data-state="pass"] { background: var(--pass-bg); border-color: transparent; color: var(--pass); }
+  .navchip[data-state="fail"] { background: var(--fail-bg); border-color: transparent; color: var(--fail); }
+  .navchip[data-state="blocked"] { background: var(--blocked-bg); border-color: transparent; color: var(--blocked); }
+
+  /* ---- Progress bar ---- */
+
+  .bar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-top: 14px; padding: 12px 16px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+
+  .tally { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; flex: 1; min-width: 240px; }
+
+  .tally-item {
+    display: flex; align-items: baseline; gap: 6px; white-space: nowrap;
+    font-size: 12.5px; color: var(--ink-2);
+  }
+
+  .tally-item b {
+    font-family: var(--font-mono); font-size: 16px; font-weight: 500;
+    font-variant-numeric: tabular-nums; color: var(--ink);
+  }
+
+  .tally-item.is-pass b { color: var(--pass); }
+  .tally-item.is-fail b { color: var(--fail); }
+  .tally-item.is-blocked b { color: var(--blocked); }
+
+  .meter { flex-basis: 100%; height: 4px; border-radius: 2px; background: var(--line-soft); overflow: hidden; display: flex; }
+  .meter span { height: 100%; width: 0; transition: width .25s ease; }
+  .meter .m-pass { background: var(--pass); }
+  .meter .m-fail { background: var(--fail); }
+  .meter .m-blocked { background: var(--blocked); }
+
+  .bar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .btn {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 13px;
+    border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  }
+
+  .btn:hover { background: var(--sunk); }
+  .btn--primary { background: var(--brand); border-color: var(--brand); color: var(--surface); }
+  .btn--primary:hover { filter: brightness(1.12); }
+
+  .btn:focus-visible, .tab:focus-visible, .navchip:focus-visible,
+  .card-head:focus-visible, .step:focus-visible, .res:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  /* ---- Sections ---- */
+
+  .band { margin-top: 40px; }
+  .band-head { margin-bottom: 14px; }
+
+  .band-head h2 {
+    font-family: var(--font-display); font-weight: 600; font-size: 23px;
+    letter-spacing: -.01em; margin: 0; color: var(--brand);
+  }
+
+  .band-head p { margin: 6px 0 0; max-width: 66ch; color: var(--ink-2); font-size: 14.5px; }
+
+  /* ---- Cards ---- */
+
+  .card {
+    position: relative; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    margin-top: 10px; overflow: hidden;
+  }
+
+  /* The stripe is state, not decoration: on a page of collapsed cards it is
+     the only thing that says at a scroll which ones are still open. */
+  .card::before {
+    content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--pending);
+  }
+
+  .card[data-result="pass"]::before { background: var(--pass); }
+  .card[data-result="fail"]::before { background: var(--fail); }
+  .card[data-result="blocked"]::before { background: var(--blocked); }
+
+  .card-head {
+    display: flex; align-items: center; gap: 14px; width: 100%;
+    padding: 15px 18px 15px 24px; text-align: left; cursor: pointer;
+    font: inherit; color: var(--ink); background: none; border: 0;
+  }
+
+  .card-head:hover { background: var(--sunk); }
+
+  .num {
+    font-family: var(--font-mono); font-size: 13px;
+    font-variant-numeric: tabular-nums; color: var(--ink-3);
+  }
+
+  .card-head-main { flex: 1; min-width: 0; }
+
+  .card-title {
+    display: block; font-size: 16px; font-weight: 600;
+    letter-spacing: -.01em; text-wrap: balance;
+  }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+  .chip, .was {
+    font-size: 11px; font-weight: 600; letter-spacing: .02em;
+    padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--ink-2); background: var(--sunk);
+  }
+
+  .was--fail { color: var(--fail); background: var(--fail-bg); border-color: transparent; }
+  .was--blocked { color: var(--blocked); background: var(--blocked-bg); border-color: transparent; }
+  .was--pass { color: var(--pass); background: var(--pass-bg); border-color: transparent; }
+
+  .verdict {
+    flex: none; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--pending);
+  }
+
+  .card[data-result="pass"] .verdict { color: var(--pass); }
+  .card[data-result="fail"] .verdict { color: var(--fail); }
+  .card[data-result="blocked"] .verdict { color: var(--blocked); }
+
+  .chev { flex: none; width: 17px; height: 17px; color: var(--ink-3); transition: transform .18s ease; }
+  .card[data-local-expanded="true"] .chev { transform: rotate(180deg); }
+
+  .card-body { display: none; padding: 2px 18px 18px 24px; }
+  .card[data-local-expanded="true"] .card-body { display: block; }
+
+  .intro { margin: 8px 0 0; color: var(--ink-2); font-size: 14.5px; max-width: 68ch; }
+
+  /* ---- Accounts ---- */
+
+  .who {
+    margin-top: 14px; padding: 12px 14px; background: var(--sunk);
+    border: 1px solid var(--line-soft); border-radius: 9px;
+  }
+
+  .who-label {
+    margin: 0 0 8px; font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+  }
+
+  .who-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 3px 0; font-size: 13.5px; }
+  .who-name { font-weight: 600; min-width: 110px; }
+  .who-mail { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent); }
+  .who-role { font-size: 11.5px; color: var(--ink-3); }
+  .who-pass { margin: 8px 0 0; font-size: 12px; color: var(--ink-3); }
+
+  /* ---- Steps ---- */
+
+  .steps { margin-top: 14px; display: flex; flex-direction: column; }
+
+  .step {
+    display: flex; align-items: flex-start; gap: 10px; width: 100%;
+    text-align: left; font: inherit; font-size: 14px; color: var(--ink);
+    background: none; border: 0; border-bottom: 1px dashed var(--line-soft);
+    padding: 9px 2px; cursor: pointer;
+  }
+
+  .step:last-child { border-bottom: 0; }
+  .step:hover .step-box { border-color: var(--accent); }
+
+  .step-box {
+    flex: none; width: 15px; height: 15px; margin-top: 3px; position: relative;
+    border: 1.5px solid var(--line); border-radius: 4px; background: var(--surface);
+  }
+
+  .step[aria-checked="true"] .step-box { background: var(--pass); border-color: var(--pass); }
+
+  .step[aria-checked="true"] .step-box::after {
+    content: ""; position: absolute; left: 4px; top: .5px; width: 4px; height: 8px;
+    border: solid var(--surface); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg);
+  }
+
+  .step[aria-checked="true"] .step-text { color: var(--ink-3); text-decoration: line-through; }
+  .step-text { flex: 1; }
+
+  /* ---- Expect, result, notes ---- */
+
+  .expect {
+    margin: 14px 0 0; padding: 11px 14px; background: var(--pass-bg);
+    border-radius: 9px; font-size: 14px; color: var(--ink);
+  }
+
+  .expect span {
+    display: block; margin-bottom: 3px; font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--pass);
+  }
+
+  .res-group { display: inline-flex; margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+
+  .res {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 18px; cursor: pointer;
+    background: var(--surface); color: var(--ink-2); border: 0; border-right: 1px solid var(--line);
+  }
+
+  .res:last-child { border-right: 0; }
+  .res:hover { background: var(--sunk); }
+  .card[data-result="pass"] .res--pass { background: var(--pass); color: var(--surface); }
+  .card[data-result="fail"] .res--fail { background: var(--fail); color: var(--surface); }
+  .card[data-result="blocked"] .res--blocked { background: var(--blocked); color: var(--surface); }
+
+  .notes { margin-top: 10px; }
+
+  textarea {
+    width: 100%; font: inherit; font-size: 13.5px; line-height: 1.5;
+    padding: 9px 11px; border-radius: 8px; resize: vertical;
+    border: 1px solid var(--line); background: var(--sunk); color: var(--ink);
+  }
+
+  textarea::placeholder { color: var(--ink-3); }
+
+  /* ---- Export sheet ---- */
+
+  dialog {
+    width: min(780px, 92vw); margin: auto; padding: 0;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  }
+
+  dialog::backdrop { background: rgba(12,16,23,.5); }
+
+  .sheet-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; padding: 14px 18px; border-bottom: 1px solid var(--line);
+  }
+
+  .sheet-head h2 { margin: 0; font-family: var(--font-display); font-size: 19px; font-weight: 600; }
+  .sheet-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sheet-opts { display: flex; gap: 18px; flex-wrap: wrap; padding: 12px 18px 0; font-size: 12.5px; color: var(--ink-2); }
+  .sheet-opts label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .sheet-body { padding: 12px 18px; }
+  .sheet-body textarea { min-height: 320px; font-family: var(--font-mono); font-size: 12px; }
+  .sheet-foot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 0 18px 16px; }
+  .sheet-note { font-size: 12px; color: var(--ink-3); flex: 1; min-width: 180px; }
+
+  .foot {
+    margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line);
+    font-size: 13px; color: var(--ink-3);
+  }
+
+  @media (max-width: 640px) {
+    .card-head { padding: 14px 14px 14px 20px; }
+    .card-body { padding: 2px 14px 16px 20px; }
+    .bar { position: static; }
+    .navgroup-label { width: auto; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+:root{--font-display:"Bricolage Grotesque",Georgia,serif;--font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;}</style><!--uat:style:end-->
+<div class="wrap" data-app="AssetCore Walkthrough">
+<!--uat:head:start-->
+  <header class="mast">
+    <p class="eyebrow">AssetCore Walkthrough &middot; user acceptance testing</p>
+    <h1>Every workflow, in the order a working day runs</h1>
+    <p class="standfirst">A guided pass through the whole of AssetCore on production — what each part is for, what to type, and what you should see.</p>
+    <p class="howto">
+      Every test starts collapsed. Open one, work the steps, mark it, and write what you saw.
+      <strong>Your marks are saved as you make them</strong>, so closing the tab loses nothing.
+      When you are done, <strong>Export feedback</strong> and paste it back to Claude Code.
+      <span class="howto-url">The app is live at <code>https://myassetcore.com</code>. Nothing needs starting.</span>
+    </p>
+    <p class="saved" data-saved hidden><span class="saved-dot" aria-hidden="true"></span><span data-saved-text>Saved</span></p>
+  </header><!--uat:head:end-->
+  <div class="tabs" role="tablist" aria-label="Test rounds">
+<!--uat:tabs:start--><button type="button" class="tab" role="tab" data-round-tab="1" aria-selected="false">12 Sept walkthrough</button><!--uat:tabs:end-->
+  </div>
+<!--uat:rounds:start-->
+  <div class="round" data-round="1" data-round-label="12 Sept walkthrough"
+       data-total="39">
+    <p class="round-intro">Each card opens with <strong>what the feature is</strong>, in words you can say out loud, then the exact data to enter. Everything you create is prefixed <code>UAT</code> so it can be found and archived afterwards — this is production, and NGML's two evaluators (Paul O. and Hayatu S.) work in the same organisation. Read card 02 before you sign in as anyone else: the site allows only ten sign-ins every fifteen minutes, <em>for everyone at once</em>.</p>
+    <nav class="nav" aria-label="Tests in this round"><div class="navgroup"><span class="navgroup-label">Before you start</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t01" title="Sign in to production and read the dashboard">01</button><button type="button" class="navchip" data-goto="r1t02" title="Agree how you will switch between people">02</button></div></div><div class="navgroup"><span class="navgroup-label">Set up the organisation</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t03" title="Create a location and a site">03</button><button type="button" class="navchip" data-goto="r1t04" title="Create an asset category">04</button><button type="button" class="navchip" data-goto="r1t05" title="Read the organisation&#x27;s rules — look, don&#x27;t change">05</button><button type="button" class="navchip" data-goto="r1t06" title="Invite the team — one account per role">06</button><button type="button" class="navchip" data-goto="r1t07" title="Decide who signs off job spend — the approval matrix">07</button></div></div><div class="navgroup"><span class="navgroup-label">The asset register</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t08" title="Register an asset by hand">08</button><button type="button" class="navchip" data-goto="r1t09" title="Read the asset record and its health working">09</button><button type="button" class="navchip" data-goto="r1t10" title="Import two assets from a spreadsheet">10</button><button type="button" class="navchip" data-goto="r1t11" title="Print QR labels and use the scan page">11</button><button type="button" class="navchip" data-goto="r1t12" title="Attach a photo and open it full size">12</button></div></div><div class="navgroup"><span class="navgroup-label">Stores and planned maintenance</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t13" title="Add a spare part and record stock going out">13</button><button type="button" class="navchip" data-goto="r1t14" title="Create a preventive maintenance schedule">14</button></div></div><div class="navgroup"><span class="navgroup-label">The core loop: inspection → defect → job</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t15" title="Schedule an inspection against the asset">15</button><button type="button" class="navchip" data-goto="r1t16" title="Complete it with a poor rating, and watch the asset&#x27;s health take it in">16</button><button type="button" class="navchip" data-goto="r1t17" title="Log the defect the inspection found">17</button><button type="button" class="navchip" data-goto="r1t18" title="Turn the defect into a work order and assign it">18</button><button type="button" class="navchip" data-goto="r1t19" title="The technician picks it up: checklist, parts, spend request">19</button><button type="button" class="navchip" data-goto="r1t20" title="Approve the spend as the Operations Manager">20</button><button type="button" class="navchip" data-goto="r1t21" title="Finish and close the job">21</button><button type="button" class="navchip" data-goto="r1t22" title="Check the loop closed everywhere">22</button></div></div><div class="navgroup"><span class="navgroup-label">Money: depreciation</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t23" title="Build a depreciation schedule for the asset">23</button></div></div><div class="navgroup"><span class="navgroup-label">Compliance and risk</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t24" title="Record a licence that is about to expire">24</button><button type="button" class="navchip" data-goto="r1t25" title="Run an audit from scheduled to completed, with a finding">25</button><button type="button" class="navchip" data-goto="r1t26" title="Put a risk on the matrix, before and after controls">26</button></div></div><div class="navgroup"><span class="navgroup-label">Oversight: seeing the whole picture</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t27" title="Analytics: reliability figures and the asset map">27</button><button type="button" class="navchip" data-goto="r1t28" title="The calendar">28</button><button type="button" class="navchip" data-goto="r1t29" title="Generate a report and check it against the screen">29</button><button type="button" class="navchip" data-goto="r1t30" title="Escalation rules: who gets chased, and when">30</button><button type="button" class="navchip" data-goto="r1t31" title="Devices and integrations — look, don&#x27;t connect">31</button><button type="button" class="navchip" data-goto="r1t32" title="The audit log">32</button></div></div><div class="navgroup"><span class="navgroup-label">Who can do what</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t33" title="Executive / Viewer: sees everything, changes nothing">33</button><button type="button" class="navchip" data-goto="r1t34" title="Field Technician: cannot reach management pages">34</button><button type="button" class="navchip" data-goto="r1t35" title="Maintenance Engineer: works jobs, cannot administer">35</button><button type="button" class="navchip" data-goto="r1t36" title="Operations Manager: runs sites and categories, not people">36</button></div></div><div class="navgroup"><span class="navgroup-label">Things only a person can settle</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t37" title="Keyboard: Enter submits, Tab moves, Escape closes">37</button><button type="button" class="navchip" data-goto="r1t38" title="Phone width and dark mode">38</button></div></div><div class="navgroup"><span class="navgroup-label">Leave production tidy</span><div class="navchips"><button type="button" class="navchip" data-goto="r1t39" title="Archive what you made and disable the accounts">39</button></div></div></nav>
+    <div class="bar">
+      <div class="tally">
+        <span class="tally-item is-pass"><b data-count="pass">0</b> pass</span>
+        <span class="tally-item is-fail"><b data-count="fail">0</b> fail</span>
+        <span class="tally-item is-blocked"><b data-count="blocked">0</b> blocked</span>
+        <span class="tally-item"><b data-count="pending">39</b> not run</span>
+        <div class="meter" aria-hidden="true">
+          <span class="m-pass"></span><span class="m-fail"></span><span class="m-blocked"></span>
+        </div>
+      </div>
+      <div class="bar-actions">
+        <button type="button" class="btn" data-expand-all>Expand all</button>
+        <button type="button" class="btn" data-collapse-all>Collapse all</button>
+        <button type="button" class="btn" data-jump>Next unrun</button>
+        <button type="button" class="btn btn--primary" data-export>Export feedback</button>
+      </div>
+    </div>
+    
+      <section class="band">
+        <div class="band-head">
+          <h2>Before you start</h2>
+          <p>AssetCore is an asset-management and maintenance system for gas infrastructure: it keeps the register of every physical asset, schedules the maintenance and inspections that keep them safe, turns what inspectors find into jobs, and tracks the money, compliance and risk around all of it. These two cards get you signed in and set up so the rest of the session runs without a lockout.</p>
+        </div>
+        
+        <article class="card" data-test id="r1t01" data-result=""
+                 data-number="01" data-round="1"
+                 data-title="Sign in to production and read the dashboard"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t01-body">
+            <span class="num">01</span>
+            <span class="card-head-main">
+              <span class="card-title">Sign in to production and read the dashboard</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t01-body">
+            <p class="intro"><strong>What it is:</strong> the Operations Dashboard is the first thing everyone lands on — a live summary of the whole network. Network Health is the average condition score across assets; the tiles count assets, open work, overdue preventive maintenance and compliance alerts; Active Alerts lists what needs attention now. The left-hand menu is filtered by role, so what you see as System Admin is the fullest view anyone gets.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>https://myassetcore.com</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign in with your own System Admin login.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read each tile aloud and say what it counts. Open the <strong>All my locations</strong> filter at the top and note it narrows every page to one region.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Walk down the left-hand menu once, top to bottom, naming each section — the cards below visit every one.</span></button></div>
+            <p class="expect"><span>Expect</span>The dashboard loads for the <strong>Demo Client</strong> organisation with a Network Health score, the six tiles and an Active Alerts list. Your name and <em>System Admin</em> sit at the bottom of the menu.</p>
+            <div class="res-group" role="group" aria-label="Result for test 01"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t01-notes">Notes for test 01</label>
+              <textarea id="r1t01-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t02" data-result=""
+                 data-number="02" data-round="1"
+                 data-title="Agree how you will switch between people"
+                 data-roles="Setup">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t02-body">
+            <span class="num">02</span>
+            <span class="card-head-main">
+              <span class="card-title">Agree how you will switch between people</span>
+              <span class="tags"><span class="chip">Setup</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t02-body">
+            <p class="intro"><strong>Why this card exists:</strong> the sign-in form allows <strong>ten sign-ins per fifteen minutes</strong>, and counts successful ones too. Because of a server setting found while writing this plan, that limit is currently shared by <em>every user on the site</em>, not just you — so a burst of account-switching can lock NGML's evaluators out as well. Plan the session so you rarely sign out.</p>
+            
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Keep <strong>this browser window</strong> signed in as yourself (the owner) all session.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open a <strong>second browser</strong> (or a private window) for the office roles — HSE Officer, Operations Manager, and later the Viewer, Auditor and Engineer.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Ask your colleague to play the <strong>Field Technician</strong> on their own laptop. The job-execution cards then run as a real hand-off between two people.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Keep a running tally of sign-ins on paper. Never make more than eight inside fifteen minutes.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">If a sign-in ever says <em>Too many attempts. Wait about 15 minutes and try again.</em>, stop signing in and carry on with an owner-window card instead.</span></button></div>
+            <p class="expect"><span>Expect</span>You have three places to be three people at once, and a tally sheet. The whole plan needs about twelve sign-ins spread across the session — well inside the limit if they are paced.</p>
+            <div class="res-group" role="group" aria-label="Result for test 02"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t02-notes">Notes for test 02</label>
+              <textarea id="r1t02-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Set up the organisation</h2>
+          <p>Before any asset can exist, the organisation needs its geography and its vocabulary: <strong>locations</strong> (a region or state), <strong>sites</strong> inside them (a physical facility), <strong>categories</strong> (what kind of asset something is), the people who will use it, and the rule for who signs off spending. All of this lives under <strong>Admin</strong>.</p>
+        </div>
+        
+        <article class="card" data-test id="r1t03" data-result=""
+                 data-number="03" data-round="1"
+                 data-title="Create a location and a site"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t03-body">
+            <span class="num">03</span>
+            <span class="card-head-main">
+              <span class="card-title">Create a location and a site</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t03-body">
+            <p class="intro"><strong>What it is:</strong> the location hierarchy. A <em>location</em> is a region — Lagos, Delta — and a <em>site</em> is a real facility inside it, like a metering yard or compressor station. Every asset sits on a site, and a user can be limited to certain locations or sites, which is how a regional engineer only sees their own patch.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; <strong>Locations</strong> &rarr; <strong>+ Add Location</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Location Name <code>UAT Lagos</code> · Short Code <code>UATLG</code>. Save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; <strong>Sites</strong> &rarr; add a site.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Site Name <code>UAT Apapa Metering Yard</code> · Site Code <code>UAT-APP01</code> · Region <code>South West</code> · Location <strong>UAT Lagos</strong>. Save.</span></button></div>
+            <p class="expect"><span>Expect</span><code>UAT Lagos</code> appears as a location card reading <em>1 site</em>, and <code>UAT Apapa Metering Yard</code> lists under it. Leaving the site name or code empty is refused with <em>Name and code are required.</em></p>
+            <div class="res-group" role="group" aria-label="Result for test 03"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t03-notes">Notes for test 03</label>
+              <textarea id="r1t03-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t04" data-result=""
+                 data-number="04" data-round="1"
+                 data-title="Create an asset category"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t04-body">
+            <span class="num">04</span>
+            <span class="card-head-main">
+              <span class="card-title">Create an asset category</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t04-body">
+            <p class="intro"><strong>What it is:</strong> a category is the kind of asset — Metering Station, Compressor, Pressure Regulator. It is required on every asset, it is how the register is filtered, and it can carry default depreciation settings for everything in it. A brand-new organisation has none, so this has to exist before the first asset.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; <strong>Asset Categories</strong> &rarr; add one.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Category Name <code>UAT Metering Station</code> · Short Code <code>UATMS</code>. Save.</span></button></div>
+            <p class="expect"><span>Expect</span><code>UAT Metering Station</code> appears in the category list and will be offered as an <em>Asset type</em> on the asset form.</p>
+            <div class="res-group" role="group" aria-label="Result for test 04"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t04-notes">Notes for test 04</label>
+              <textarea id="r1t04-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t05" data-result=""
+                 data-number="05" data-round="1"
+                 data-title="Read the organisation&#x27;s rules — look, don&#x27;t change"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t05-body">
+            <span class="num">05</span>
+            <span class="card-head-main">
+              <span class="card-title">Read the organisation&#x27;s rules — look, don&#x27;t change</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t05-body">
+            <p class="intro"><strong>What it is:</strong> Configuration holds two organisation-wide settings. <em>Health thresholds</em>: when an asset's condition score drops below 50% the system raises an inspection for it automatically, and below 30% it drafts a work order. <em>Depreciation defaults</em>: the method (straight-line, declining balance or none), whether it runs from the install or purchase date, and the default useful life and residual value. Only the System Admin and Operations Manager can change these.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; <strong>Configuration</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the health thresholds and the depreciation defaults aloud.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Settings &rarr; <strong>Organisation</strong> &rarr; look at the <strong>Currency</strong> block: every figure is held in the base currency, and a second currency can be shown beside it at a rate someone types in.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text"><strong>Change nothing here.</strong> Both screens are organisation-wide on production and NGML's evaluators would see the change.</span></button></div>
+            <p class="expect"><span>Expect</span>Configuration shows the two thresholds and the depreciation defaults with the note <em>Only a System Admin or Operations Manager can change this.</em> Currency shows NGN as the base with no second currency.</p>
+            <div class="res-group" role="group" aria-label="Result for test 05"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t05-notes">Notes for test 05</label>
+              <textarea id="r1t05-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t06" data-result=""
+                 data-number="06" data-round="1"
+                 data-title="Invite the team — one account per role"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t06-body">
+            <span class="num">06</span>
+            <span class="card-head-main">
+              <span class="card-title">Invite the team — one account per role</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t06-body">
+            <p class="intro"><strong>What it is:</strong> AssetCore has seven roles, and each sees a different app. <em>System Admin</em> — everything. <em>Operations Manager</em> — runs operations and sites, approves spend, cannot manage people. <em>Maintenance Engineer</em> — works and updates jobs, can approve. <em>Field Technician</em> — does the jobs assigned to them. <em>HSE / Compliance Officer</em> — inspections, defects, licences, audits and risk. <em>Auditor</em> — reads everything plus the audit log. <em>Executive / Viewer</em> — reads, never writes.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Use six addresses you can receive mail at. Most inboxes accept a <code>+tag</code> — <code>yourname+uat-ops@yourdomain</code> delivers to <code>yourname@yourdomain</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; <strong>Users &amp; Roles</strong> &rarr; <strong>+ Invite User</strong>. Full name <code>UAT Ops Manager</code>, email your <code>+uat-ops</code> address, role <strong>Operations Manager</strong>. Leave Access scope and Extra permissions untouched. Send Invite.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Repeat for <code>UAT Maintenance Engineer</code> (+uat-eng), <code>UAT Field Technician</code> (+uat-tech), <code>UAT HSE Officer</code> (+uat-hse), <code>UAT Auditor</code> (+uat-audit) and <code>UAT Viewer</code> (+uat-view), each with its matching role.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Each invite either shows a set-password link on screen or emails one. Open each link <strong>in the second browser</strong>, set the password to <code>UatWalk2026!</code>, and <strong>do not sign in yet</strong> — setting a password costs no sign-in; signing in does.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">While the invite form is open once more, try pressing <kbd>Enter</kbd> in the name field instead of clicking Send — see card 37.</span></button></div>
+            <p class="expect"><span>Expect</span>Six invites go out, each with its own link. Users &amp; Roles then lists seven members — you plus six — each <strong>Active</strong> with the right role label. Setting a password returns you to the sign-in page rather than signing you in.</p>
+            <div class="res-group" role="group" aria-label="Result for test 06"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t06-notes">Notes for test 06</label>
+              <textarea id="r1t06-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t07" data-result=""
+                 data-number="07" data-round="1"
+                 data-title="Decide who signs off job spend — the approval matrix"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t07-body">
+            <span class="num">07</span>
+            <span class="card-head-main">
+              <span class="card-title">Decide who signs off job spend — the approval matrix</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t07-body">
+            <p class="intro"><strong>What it is:</strong> the approval matrix says which role must sign off what, by amount. A band of <em>₦1,000 to ₦500,000 on work-order spend → Operations Manager</em> means any job costing inside that range needs an Operations Manager's approval before it is authorised. The system also refuses anyone approving their own request, and anyone deciding a request that is waiting on a different role.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Approvals &rarr; <strong>Matrix</strong> &rarr; add a band.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Name <code>UAT job spend up to ₦500,000</code> · Applies to <strong>Work order</strong> · Kind <strong>Spend authorisation</strong> · Floor <code>1000</code> · Ceiling <code>500000</code> · Signed off by <strong>Operations Manager</strong>. Save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Now try to save a second band with Floor <code>90000</code> and Ceiling <code>5000</code>.</span></button></div>
+            <p class="expect"><span>Expect</span>The first band appears in the matrix with its range and <em>Operations Manager</em>. The second is refused in place with <strong>The ceiling has to be above the floor.</strong> — a sentence, not an error code.</p>
+            <div class="res-group" role="group" aria-label="Result for test 07"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t07-notes">Notes for test 07</label>
+              <textarea id="r1t07-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>The asset register</h2>
+          <p>The <strong>asset register</strong> is the heart of the product: one record per physical asset, with its identity (the AIN — asset identification number), where it is, what it is worth, when it was last and next maintained, and a live <strong>health score</strong> built from inspections, defects, overdue work and risk. Assets can be entered by hand, imported from a spreadsheet, labelled with QR codes and found in the field by scanning.</p>
+        </div>
+        
+        <article class="card" data-test id="r1t08" data-result=""
+                 data-number="08" data-round="1"
+                 data-title="Register an asset by hand"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t08-body">
+            <span class="num">08</span>
+            <span class="card-head-main">
+              <span class="card-title">Register an asset by hand</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t08-body">
+            <p class="intro"><strong>What it is:</strong> the full asset record. The starred fields are required; the rest feed other parts of the product — value and useful life drive depreciation, the maintenance dates drive the calendar, and the coordinates put the asset on the map.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; <strong>+ Add Asset</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Asset name <code>UAT Apapa Custody Meter Skid A</code> · AIN <code>UAT-MTR-0001</code> · Asset type <strong>UAT Metering Station</strong> · Location <strong>UAT Lagos</strong> · Site <strong>UAT Apapa Metering Yard</strong> · Status <strong>Operational</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Manufacturer <code>Emerson</code> · Model <code>Daniel 3818 Ultrasonic</code> · Serial <code>UAT-SN-24001</code> · Install date <code>15/03/2022</code> · Purchase date <code>20/02/2022</code> · Runtime <code>18240</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Asset value (₦) <code>185000000</code> · Last maintenance <code>01/07/2026</code> · Next maintenance <code>01/10/2026</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Depreciation method <strong>Organisation default</strong> · Useful life <code>15</code> · Salvage value (₦) <code>18500000</code> · Tags <code>custody-transfer, critical</code> · Latitude <code>6.4474</code> · Longitude <code>3.3645</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Save. Then try saving a second asset with the AIN left empty.</span></button></div>
+            <p class="expect"><span>Expect</span>The asset saves and appears in the register as <code>UAT-MTR-0001</code>, Operational, with a health bar and next maintenance <em>1 Oct 26</em>. The empty-AIN attempt is refused and names what is missing.</p>
+            <div class="res-group" role="group" aria-label="Result for test 08"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t08-notes">Notes for test 08</label>
+              <textarea id="r1t08-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t09" data-result=""
+                 data-number="09" data-round="1"
+                 data-title="Read the asset record and its health working"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t09-body">
+            <span class="num">09</span>
+            <span class="card-head-main">
+              <span class="card-title">Read the asset record and its health working</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t09-body">
+            <p class="intro"><strong>What it is:</strong> the health score is AssetCore's single most important number, and it explains itself. <em>Show the working</em> lists the five signals — inspection condition, open defects, overdue maintenance, risk level, and age against useful life — each with its score and weight. A signal with no evidence yet is left out rather than counted as zero, and the page says so. This card is the <em>before</em> picture for the inspection in card 16.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; <strong>View</strong> on <code>UAT-MTR-0001</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the Financials block: purchase value, book value (NBV — what it is worth after depreciation) and accumulated depreciation.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <strong>Show the working</strong>. Note the headline score and which signals say <em>no data</em>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Write down the score. You will come back to it.</span></button></div>
+            <p class="expect"><span>Expect</span>The panel shows ₦185,000,000.00 as purchase value and a book value below it. <em>Show the working</em> lists all five signals with weights; the ones with no evidence yet (no inspection, for instance) are marked <em>no data</em> with a reason, and the header says how many of the five were used.</p>
+            <div class="res-group" role="group" aria-label="Result for test 09"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t09-notes">Notes for test 09</label>
+              <textarea id="r1t09-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t10" data-result=""
+                 data-number="10" data-round="1"
+                 data-title="Import two assets from a spreadsheet"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t10-body">
+            <span class="num">10</span>
+            <span class="card-head-main">
+              <span class="card-title">Import two assets from a spreadsheet</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t10-body">
+            <p class="intro"><strong>What it is:</strong> bulk import, for loading an existing register in one go. Category, location and site are matched by name or short code (capital letters don't matter), dates are written <code>YYYY-MM-DD</code>, maintenance dates are required on every row, and a bad row is reported rather than silently dropped.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; <strong>Import CSV</strong> and download the template it offers, to see the columns.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">In any text editor, save a file <code>uat-assets.csv</code> containing exactly these three lines:<br><code>ain,name,category,location,site,status,manufacturer,model,serial_number,install_date,purchase_date,runtime_hours,value,last_maintenance_date,next_maintenance_date,tags,lat,lng</code><br><code>UAT-PRG-0001,UAT Apapa Pressure Regulator 1,UAT Metering Station,UAT Lagos,UAT Apapa Metering Yard,operational,Fisher,EZH-1,UAT-SN-24002,2023-05-10,2023-04-02,9800,42000000,2026-08-01,2026-11-01,regulator,6.4480,3.3651</code><br><code>UAT-VLV-0001,UAT Apapa Inlet Isolation Valve,UAT Metering Station,UAT Lagos,UAT Apapa Metering Yard,operational,Cameron,T31,UAT-SN-24003,2021-11-20,2021-10-15,31000,12500000,2026-06-15,2026-12-15,valve,6.4468,3.3639</code></span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Import it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Search the register for <code>UAT</code>.</span></button></div>
+            <p class="expect"><span>Expect</span>The import reports both rows as <strong>created</strong>. Searching <code>UAT</code> shows three assets — Skid A, the regulator and the valve — all on UAT Apapa Metering Yard.</p>
+            <div class="res-group" role="group" aria-label="Result for test 10"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t10-notes">Notes for test 10</label>
+              <textarea id="r1t10-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t11" data-result=""
+                 data-number="11" data-round="1"
+                 data-title="Print QR labels and use the scan page"
+                 data-roles="System Admin, Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t11-body">
+            <span class="num">11</span>
+            <span class="card-head-main">
+              <span class="card-title">Print QR labels and use the scan page</span>
+              <span class="tags"><span class="chip">System Admin</span><span class="chip">Field Technician</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t11-body">
+            <p class="intro"><strong>What it is:</strong> every asset can carry a QR label. A technician standing at a piece of equipment scans it and lands straight on its record — history, open jobs and condition — without searching. <strong>Labels</strong> prints whatever the register is currently filtered to, four to a row.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On Assets, search <code>UAT</code> so only the three UAT assets show, then press <strong>Labels</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check each label names its AIN, then print or print-preview the sheet (allow pop-ups if the browser asks).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>https://myassetcore.com/scan</code>. On a phone, point the camera at one label; on a laptop, type <code>UAT-MTR-0001</code> into the tag field.</span></button></div>
+            <p class="expect"><span>Expect</span>The sheet shows three labels, each with a QR code and its AIN. The scan page resolves <code>UAT-MTR-0001</code> to Skid A's card, showing Manufacturer <em>Emerson</em> and its installation date.</p>
+            <div class="res-group" role="group" aria-label="Result for test 11"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t11-notes">Notes for test 11</label>
+              <textarea id="r1t11-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t12" data-result=""
+                 data-number="12" data-round="1"
+                 data-title="Attach a photo and open it full size"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t12-body">
+            <span class="num">12</span>
+            <span class="card-head-main">
+              <span class="card-title">Attach a photo and open it full size</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t12-body">
+            <p class="intro"><strong>What it is:</strong> photos and documents on the asset record — nameplates, datasheets, before-and-after pictures. Files are only ever served to a signed-in user whose access covers that asset.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Have any photo of equipment ready on your computer.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; <strong>Edit</strong> on <code>UAT-MTR-0001</code> &rarr; <strong>Images</strong> &rarr; choose the photo. Save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the asset and click the thumbnail. Close the full-size view with <kbd>Escape</kbd>.</span></button></div>
+            <p class="expect"><span>Expect</span>The photo uploads, shows as a thumbnail on the record, opens full size in a lightbox, and closes on Escape. <em>(This has never been tested before — it needs a real file picker.)</em></p>
+            <div class="res-group" role="group" aria-label="Result for test 12"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t12-notes">Notes for test 12</label>
+              <textarea id="r1t12-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Stores and planned maintenance</h2>
+          <p><strong>Spare Parts</strong> is the parts store: what is on the shelf, what it cost, and every movement in or out, so stock can be reserved against a job and drawn when the job closes. <strong>Maintenance</strong> holds the preventive schedules — the recurring work that stops things breaking — which generate tasks on their own at the frequency you set.</p>
+        </div>
+        
+        <article class="card" data-test id="r1t13" data-result=""
+                 data-number="13" data-round="1"
+                 data-title="Add a spare part and record stock going out"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t13-body">
+            <span class="num">13</span>
+            <span class="card-head-main">
+              <span class="card-title">Add a spare part and record stock going out</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t13-body">
+            <p class="intro"><strong>What it is:</strong> each part carries a reorder level. When stock falls to it or below, the part is flagged <em>Reorder</em>. Every change is recorded as a movement — a receipt, an issue, a return or an adjustment — so the balance always has a reason behind it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Spare Parts &rarr; <strong>Add Part</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Part number <code>UAT-SP-0001</code> · Category <code>Instrumentation</code> · Name <code>UAT Ultrasonic transducer pair</code> · Unit <code>each</code> · Unit cost (₦) <code>420000</code> · Reorder level <code>3</code> · Reorder quantity <code>4</code> · Supplier <code>Emerson Nigeria</code> · Storage location <code>Apapa Store / Bin 4</code> · Opening stock <code>6</code>. Add part.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On its row press <strong>Adjust</strong> &rarr; <strong>Issue</strong> · Quantity <code>3</code> · Reference <code>UAT issued to Apapa calibration crew</code>. Watch the preview line before recording.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Record movement.</span></button></div>
+            <p class="expect"><span>Expect</span>The part saves with <em>6 each</em> on hand. The adjust dialog previews <strong>Stock moves to 3 each</strong>. After recording, on-hand reads 3, the row gains an amber <strong>Reorder</strong> badge, and <em>At or below reorder level</em> goes up by one.</p>
+            <div class="res-group" role="group" aria-label="Result for test 13"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t13-notes">Notes for test 13</label>
+              <textarea id="r1t13-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t14" data-result=""
+                 data-number="14" data-round="1"
+                 data-title="Create a preventive maintenance schedule"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t14-body">
+            <span class="num">14</span>
+            <span class="card-head-main">
+              <span class="card-title">Create a preventive maintenance schedule</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t14-body">
+            <p class="intro"><strong>What it is:</strong> a PM schedule is recurring planned work — quarterly calibration, monthly lubrication. The system generates a task each time one falls due, puts it on the calendar and chases it if it goes overdue. <strong>Known gap, found while writing this plan:</strong> the form has no Asset field, so a schedule made here belongs to no asset, and its tasks never feed the asset's health score. The server supports it; the form never sends it. Mention it rather than be surprised by it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Maintenance &rarr; create a PM schedule.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Title <code>UAT Quarterly meter calibration — Skid A</code> · Description <code>Verify against master meter; check transducer paths</code> · Frequency <strong>Quarterly</strong> · First due <code>19/09/2026</code> · Default assignee <strong>UAT Maintenance Engineer</strong>. Save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for an Asset field on the form, and note there isn't one.</span></button></div>
+            <p class="expect"><span>Expect</span>The schedule saves and lists as Quarterly, with a first task due <em>19 Sept 26</em> assigned to the Maintenance Engineer. There is no way to link it to Skid A — that is the known gap, not something you did wrong.</p>
+            <div class="res-group" role="group" aria-label="Result for test 14"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t14-notes">Notes for test 14</label>
+              <textarea id="r1t14-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>The core loop: inspection → defect → job</h2>
+          <p>This is the chain the product exists for. An <strong>inspection</strong> checks an asset and rates its condition 1–5; what it finds goes on the <strong>defect register</strong>; a defect becomes a <strong>work order</strong> (a job); the job is assigned, worked, costed, signed off and closed; closing it resolves the defect and moves the asset's health. Four roles take part — run it as the hand-off it really is, with your colleague as the technician.</p>
+        </div>
+        
+        <article class="card" data-test id="r1t15" data-result=""
+                 data-number="15" data-round="1"
+                 data-title="Schedule an inspection against the asset"
+                 data-roles="HSE Officer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t15-body">
+            <span class="num">15</span>
+            <span class="card-head-main">
+              <span class="card-title">Schedule an inspection against the asset</span>
+              <span class="tags"><span class="chip">HSE Officer</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t15-body">
+            <p class="intro"><strong>What it is:</strong> inspections are the eyes on the network — routine condition checks, safety inspections, regulatory integrity checks. Attaching one to an asset is what lets its rating reach that asset's health score. (Checklist templates exist in the system but there is no screen to create one yet, so this inspection records free-text findings.)</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT HSE Officer</span><span class="who-mail">yourname+uat-hse@yourdomain</span><span class="who-role">HSE / Compliance Officer — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">In the second browser, sign in as the HSE Officer. <em>(Sign-in 2.)</em></span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Inspections &rarr; <strong>+ New Inspection</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Title <code>UAT Condition inspection — Custody Meter Skid A</code> · Type <strong>Condition</strong> · Scheduled date <code>12/09/2026</code> · Checklist <strong>— No checklist —</strong> · Asset <strong>UAT-MTR-0001</strong> (the Site fills itself in) · Inspector <strong>UAT HSE Officer</strong>. Create.</span></button></div>
+            <p class="expect"><span>Expect</span>The inspection lists as <strong>Scheduled</strong> with ASSET <code>UAT-MTR-0001</code> and SITE <em>UAT Apapa Metering Yard</em>. Choosing the asset set the site automatically.</p>
+            <div class="res-group" role="group" aria-label="Result for test 15"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t15-notes">Notes for test 15</label>
+              <textarea id="r1t15-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t16" data-result=""
+                 data-number="16" data-round="1"
+                 data-title="Complete it with a poor rating, and watch the asset&#x27;s health take it in"
+                 data-roles="HSE Officer, System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t16-body">
+            <span class="num">16</span>
+            <span class="card-head-main">
+              <span class="card-title">Complete it with a poor rating, and watch the asset&#x27;s health take it in</span>
+              <span class="tags"><span class="chip">HSE Officer</span><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t16-body">
+            <p class="intro"><strong>What it is:</strong> completion is where the inspection counts. The 1–5 condition rating is required — the system will not complete an inspection without one, because a health score built on a rating nobody gave would be a guess. The rating becomes a quarter of the asset's health score.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT HSE Officer</span><span class="who-mail">yourname+uat-hse@yourdomain</span><span class="who-role">HSE / Compliance Officer — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the HSE Officer, press <strong>Complete</strong> on the inspection.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Try <strong>Mark Complete</strong> with no rating chosen, and note the button stays disabled.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Choose <strong>2 — Poor</strong>. Findings <code>Path 3 transducer signal-to-noise below 20 dB; flow computer display intermittently blank; light corrosion on inlet flange bolts.</code> Mark Complete.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Back in your owner window, open <code>UAT-MTR-0001</code> &rarr; Show the working, and compare with the score from card 09.</span></button></div>
+            <p class="expect"><span>Expect</span>Completion is impossible without a rating. Afterwards the inspection moves to <strong>Completed</strong>, and Skid A's breakdown now carries <strong>Inspection condition 25/100 — Rated 2 of 5 on 12 Sept 2026</strong>. The headline still reconciles with the signals listed beneath it.</p>
+            <div class="res-group" role="group" aria-label="Result for test 16"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t16-notes">Notes for test 16</label>
+              <textarea id="r1t16-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t17" data-result=""
+                 data-number="17" data-round="1"
+                 data-title="Log the defect the inspection found"
+                 data-roles="HSE Officer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t17-body">
+            <span class="num">17</span>
+            <span class="card-head-main">
+              <span class="card-title">Log the defect the inspection found</span>
+              <span class="tags"><span class="chip">HSE Officer</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t17-body">
+            <p class="intro"><strong>What it is:</strong> the defect register is the list of things actually wrong, each with a severity. Linking a defect to the inspection that found it is what lets anyone trace a job back to the walk-round that started it. Severity sets the priority of any job raised from it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT HSE Officer</span><span class="who-mail">yourname+uat-hse@yourdomain</span><span class="who-role">HSE / Compliance Officer — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">As the HSE Officer, Defects &rarr; new defect.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">What is wrong <code>UAT Path 3 transducer signal degraded</code> · Detail <code>SNR 17 dB against a 20 dB minimum; custody measurement uncertainty exceeds tolerance.</code> · Severity <strong>Major</strong> · Asset <strong>UAT-MTR-0001</strong> · Site <strong>UAT Apapa Metering Yard</strong> · Found during <strong>UAT Condition inspection — Custody Meter Skid A</strong> · Identified on <code>12/09/2026</code> · Fix by <code>26/09/2026</code> · Category <code>instrumentation</code>. Save.</span></button></div>
+            <p class="expect"><span>Expect</span>A defect with a <code>DEF-2026-…</code> reference appears on the register as <strong>Major · Open</strong>, naming the asset and showing where it came from: the inspection it was found during.</p>
+            <div class="res-group" role="group" aria-label="Result for test 17"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t17-notes">Notes for test 17</label>
+              <textarea id="r1t17-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t18" data-result=""
+                 data-number="18" data-round="1"
+                 data-title="Turn the defect into a work order and assign it"
+                 data-roles="Operations Manager">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t18-body">
+            <span class="num">18</span>
+            <span class="card-head-main">
+              <span class="card-title">Turn the defect into a work order and assign it</span>
+              <span class="tags"><span class="chip">Operations Manager</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t18-body">
+            <p class="intro"><strong>What it is:</strong> a work order is a job. Raising one from a defect carries the link both ways — the job says what it came from, the defect shows its job — and closing the job resolves the defect. The priority comes from the severity: a Major defect makes a High-priority job.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Ops Manager</span><span class="who-mail">yourname+uat-ops@yourdomain</span><span class="who-role">Operations Manager — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">In the second browser, sign out and sign in as the Operations Manager. <em>(Sign-in 3.)</em></span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Defects &rarr; open <em>UAT Path 3 transducer signal degraded</em> &rarr; <strong>Raise a work order</strong>. SLA due <code>19/09/2026</code>. Raise it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the new job from Work Orders &rarr; <strong>Edit</strong> &rarr; Estimated cost (₦) <code>420000</code> · Assign to <strong>UAT Field Technician</strong>. Save.</span></button></div>
+            <p class="expect"><span>Expect</span>A <code>WO-2026-…</code> job exists at <strong>High</strong> priority, type Corrective, showing <em>Raised from DEF-2026-… · Closing this job resolves it</em>. The defect now shows its job. After saving, the job is assigned to the Field Technician and records who assigned it and when.</p>
+            <div class="res-group" role="group" aria-label="Result for test 18"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t18-notes">Notes for test 18</label>
+              <textarea id="r1t18-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t19" data-result=""
+                 data-number="19" data-round="1"
+                 data-title="The technician picks it up: checklist, parts, spend request"
+                 data-roles="Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t19-body">
+            <span class="num">19</span>
+            <span class="card-head-main">
+              <span class="card-title">The technician picks it up: checklist, parts, spend request</span>
+              <span class="tags"><span class="chip">Field Technician</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t19-body">
+            <p class="intro"><strong>What it is:</strong> the technician's side. Assigned work arrives in <em>My Open Work</em> and as a notification — nobody should have to type a URL to find their job. On the job they build a checklist of steps, reserve parts from the store, and send the cost for approval.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Field Technician</span><span class="who-mail">yourname+uat-tech@yourdomain</span><span class="who-role">Field Technician — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On your colleague's laptop, open <code>https://myassetcore.com</code> and sign in as the Field Technician. <em>(Sign-in 4.)</em></span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the dashboard's <strong>My Open Work</strong> tile and the notification bell — open the job from there.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Checklist: add <code>Isolate meter run and depressurise</code>, <code>Replace path 3 transducer pair</code>, <code>Re-zero and verify against master meter</code>. Tick the first.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Parts: choose <strong>UAT-SP-0001 — UAT Ultrasonic transducer pair</strong>, quantity <code>1</code>, Add.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Spend authorisation: <strong>Request spend approval</strong>, note <code>Replacement transducer pair for path 3</code>, Send for approval.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Move the job to <strong>In Progress</strong>.</span></button></div>
+            <p class="expect"><span>Expect</span>The job is in the technician's own list and notification. The checklist reads <strong>1/3 done</strong>. The parts line reads <em>1× UAT Ultrasonic transducer pair · Reserved</em> with a ₦420,000 total. The spend section reads <strong>With Operations Manager · ₦420,000 · Pending</strong>.</p>
+            <div class="res-group" role="group" aria-label="Result for test 19"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t19-notes">Notes for test 19</label>
+              <textarea id="r1t19-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t20" data-result=""
+                 data-number="20" data-round="1"
+                 data-title="Approve the spend as the Operations Manager"
+                 data-roles="Operations Manager">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t20-body">
+            <span class="num">20</span>
+            <span class="card-head-main">
+              <span class="card-title">Approve the spend as the Operations Manager</span>
+              <span class="tags"><span class="chip">Operations Manager</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t20-body">
+            <p class="intro"><strong>What it is:</strong> the sign-off. The request went to the Operations Manager because the ₦420,000 cost falls inside the band set in card 07. Someone holding approval rights, but in a different role, cannot decide it — and nobody can approve their own request. <strong>Worth saying aloud:</strong> an approval <em>records</em> the sign-off; it does not yet physically stop a job from being closed.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Ops Manager</span><span class="who-mail">yourname+uat-ops@yourdomain</span><span class="who-role">Operations Manager — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">In the second browser (still the Operations Manager), open <strong>Approvals</strong> &rarr; <strong>Waiting on me</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the request, add the note <code>Approved — critical custody meter</code>, and Approve.</span></button></div>
+            <p class="expect"><span>Expect</span>The request is listed under <em>Waiting on me</em> and names the technician as requester. After approving, it moves to <strong>Approved</strong> and the technician's job shows the decision.</p>
+            <div class="res-group" role="group" aria-label="Result for test 20"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t20-notes">Notes for test 20</label>
+              <textarea id="r1t20-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t21" data-result=""
+                 data-number="21" data-round="1"
+                 data-title="Finish and close the job"
+                 data-roles="Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t21-body">
+            <span class="num">21</span>
+            <span class="card-head-main">
+              <span class="card-title">Finish and close the job</span>
+              <span class="tags"><span class="chip">Field Technician</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t21-body">
+            <p class="intro"><strong>What it is:</strong> the job's lifecycle. Each move is limited to what makes sense next (a closed job cannot reopen), every change is stamped with who and when, and closing does real work: it draws reserved parts out of the store and resolves the defect the job came from.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Field Technician</span><span class="who-mail">yourname+uat-tech@yourdomain</span><span class="who-role">Field Technician — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On your colleague's laptop, tick the other two checklist steps (3/3).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Move the job <strong>In Progress &rarr; Inspection &rarr; Closed</strong>, reading the <em>Move to</em> buttons offered at each step.</span></button></div>
+            <p class="expect"><span>Expect</span>Each step offers only valid next statuses. Once Closed, the <em>Move to</em> section disappears — there is no way back. The part line reads <em>Taken</em>.</p>
+            <div class="res-group" role="group" aria-label="Result for test 21"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t21-notes">Notes for test 21</label>
+              <textarea id="r1t21-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t22" data-result=""
+                 data-number="22" data-round="1"
+                 data-title="Check the loop closed everywhere"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t22-body">
+            <span class="num">22</span>
+            <span class="card-head-main">
+              <span class="card-title">Check the loop closed everywhere</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t22-body">
+            <p class="intro"><strong>What it is:</strong> the payoff — one job moved several parts of the system. This card checks each one from the owner's chair.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Defects: the UAT defect now reads <strong>Resolved</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Spare Parts: <code>UAT-SP-0001</code> on hand fell from 3 to <strong>2</strong>, and its history shows a movement <em>Used on job · WO-2026-…</em>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Analytics &rarr; Performance: <strong>MTTR</strong> (mean time to repair) now reports a figure, including the job you just closed.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets &rarr; <code>UAT-MTR-0001</code> &rarr; Show the working: open defects no longer counts the resolved one.</span></button></div>
+            <p class="expect"><span>Expect</span>Defect Resolved; part stock 2 with a consumption movement naming the job; MTTR shows hours per repair and a job count; and the asset's open-defects signal has recovered.</p>
+            <div class="res-group" role="group" aria-label="Result for test 22"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t22-notes">Notes for test 22</label>
+              <textarea id="r1t22-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Money: depreciation</h2>
+          <p><strong>Depreciation</strong> writes an asset's value down over its useful life, so the register shows what equipment is actually worth today — its net book value (NBV). AssetCore keeps it as a proper schedule of yearly charges that are <em>posted</em>, like entries in a ledger, so the book value always has an audit trail.</p>
+        </div>
+        
+        <article class="card" data-test id="r1t23" data-result=""
+                 data-number="23" data-round="1"
+                 data-title="Build a depreciation schedule for the asset"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t23-body">
+            <span class="num">23</span>
+            <span class="card-head-main">
+              <span class="card-title">Build a depreciation schedule for the asset</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t23-body">
+            <p class="intro"><strong>What it is:</strong> the preview shows the full year-by-year schedule before anything is saved, worked out from the asset's own record. Straight-line spreads the value evenly: (cost − salvage value) ÷ useful life, per year.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Depreciation &rarr; <strong>New Schedule</strong> (or <em>Create first schedule</em>).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Asset <strong>UAT-MTR-0001</strong> · Method <strong>Straight line</strong>. Leave the basis override closed — it reads the asset's own figures.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Read the preview: method, cost, salvage, life and start date, then the table.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Create schedule. <strong>Do not post periods</strong> — posting writes entries to the books; on production, leave that decision for real data.</span></button></div>
+            <p class="expect"><span>Expect</span>The basis reads cost <strong>₦185,000,000</strong>, salvage <strong>₦18,500,000</strong>, life <strong>15 years</strong>, from the install date <em>2022-03-15</em>. Every yearly charge is <strong>₦11,100,000.00</strong> — that is (185,000,000 − 18,500,000) ÷ 15. After creating, the register lists the schedule with <em>0 / 15 posted</em>.</p>
+            <div class="res-group" role="group" aria-label="Result for test 23"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t23-notes">Notes for test 23</label>
+              <textarea id="r1t23-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Compliance and risk</h2>
+          <p><strong>Compliance</strong> tracks the licences and certificates an operator must hold — each with an issuing authority and an expiry date, flagged well before it lapses — and the audits carried out against standards like ISO 9001. The <strong>risk register</strong> scores what could go wrong on a 5×5 grid of likelihood against consequence, twice: before controls (inherent) and after them (residual).</p>
+        </div>
+        
+        <article class="card" data-test id="r1t24" data-result=""
+                 data-number="24" data-round="1"
+                 data-title="Record a licence that is about to expire"
+                 data-roles="HSE Officer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t24-body">
+            <span class="num">24</span>
+            <span class="card-head-main">
+              <span class="card-title">Record a licence that is about to expire</span>
+              <span class="tags"><span class="chip">HSE Officer</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t24-body">
+            <p class="intro"><strong>What it is:</strong> the licence register is how an operator avoids running a facility on a lapsed permit. Anything inside its expiry window is flagged <em>Expiring</em>, and counted on the dashboard's Compliance Alerts tile.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT HSE Officer</span><span class="who-mail">yourname+uat-hse@yourdomain</span><span class="who-role">HSE / Compliance Officer — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">In the second browser, sign out and sign in as the HSE Officer. <em>(Sign-in 5.)</em></span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compliance &rarr; Licences &amp; Certificates &rarr; <strong>+ Add Licence</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Name <code>UAT Custody Transfer Metering Licence — Apapa</code> · Reference <code>NMDPRA/CTM/2025/UAT-001</code> · Regulatory authority <code>NMDPRA</code> · Site <strong>UAT Apapa Metering Yard</strong> · Issued <code>01/10/2025</code> · Expiry <code>30/09/2026</code>. Save.</span></button></div>
+            <p class="expect"><span>Expect</span>The licence lists as <strong>Expiring</strong> with <em>18d</em> left (30 Sept is 18 days after the 12th). The Expiring filter count goes up by one, and so does the dashboard's Compliance Alerts <em>expiring</em> figure.</p>
+            <div class="res-group" role="group" aria-label="Result for test 24"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t24-notes">Notes for test 24</label>
+              <textarea id="r1t24-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t25" data-result=""
+                 data-number="25" data-round="1"
+                 data-title="Run an audit from scheduled to completed, with a finding"
+                 data-roles="HSE Officer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t25-body">
+            <span class="num">25</span>
+            <span class="card-head-main">
+              <span class="card-title">Run an audit from scheduled to completed, with a finding</span>
+              <span class="tags"><span class="chip">HSE Officer</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t25-body">
+            <p class="intro"><strong>What it is:</strong> audits record inspections against a standard, with a lifecycle — scheduled, in progress, completed — and an outcome that is required before completion. Each finding can be pushed straight onto the defect register, so an audit gap becomes tracked work.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT HSE Officer</span><span class="who-mail">yourname+uat-hse@yourdomain</span><span class="who-role">HSE / Compliance Officer — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compliance &rarr; <strong>Audits &amp; Attestations</strong> &rarr; <strong>+ New Audit</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Title <code>UAT ISO 9001 surveillance audit — Apapa</code> · Standard <code>ISO 9001:2015</code> · ISO certificate reference <code>UAT-9001-2026-01</code> · Audit date <code>12/09/2026</code> · Site <strong>UAT Apapa Metering Yard</strong> · Asset <strong>UAT-MTR-0001</strong> · Stage <strong>Scheduled</strong>. Save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Edit it to <strong>In progress</strong>, save; then to <strong>Completed</strong> with no outcome, and note the refusal. Choose outcome <strong>Pass with findings</strong> and save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <strong>Findings</strong>: severity <strong>Major</strong> · clause <code>ISO 9001 §7.1.5</code> · text <code>Master meter calibration certificate expired in August; measurements since are not traceable.</code> Save, then <strong>Raise a defect</strong> on it.</span></button></div>
+            <p class="expect"><span>Expect</span>The form opens at <em>Scheduled</em> and saves first time. Completing without an outcome is refused with <strong>An outcome is required to complete an audit.</strong> The finding raises a <code>DEF-2026-…</code> and its button is replaced by <em>On the register as DEF-2026-…</em>, so it cannot be raised twice.</p>
+            <div class="res-group" role="group" aria-label="Result for test 25"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t25-notes">Notes for test 25</label>
+              <textarea id="r1t25-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t26" data-result=""
+                 data-number="26" data-round="1"
+                 data-title="Put a risk on the matrix, before and after controls"
+                 data-roles="HSE Officer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t26-body">
+            <span class="num">26</span>
+            <span class="card-head-main">
+              <span class="card-title">Put a risk on the matrix, before and after controls</span>
+              <span class="tags"><span class="chip">HSE Officer</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t26-body">
+            <p class="intro"><strong>What it is:</strong> each risk is scored likelihood × consequence, 1–25, and banded Low, Medium, High or Extreme. <em>Inherent</em> is the risk with nothing in place; <em>residual</em> is what is left once the controls work. The gap between them shows what the controls are worth, and the residual feeds the asset's health score.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT HSE Officer</span><span class="who-mail">yourname+uat-hse@yourdomain</span><span class="who-role">HSE / Compliance Officer — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Risk &rarr; new risk.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">What could happen <code>UAT Gas release at Skid A inlet flange during transducer change</code> · Category <strong>Safety</strong> · Asset <strong>UAT-MTR-0001</strong> · Site <strong>UAT Apapa Metering Yard</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Inherent: likelihood <strong>4</strong>, consequence <strong>5</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Controls in place <code>Permit to work; isolation and depressurisation; portable gas detection; standby fire watch</code>. Residual: likelihood <strong>2</strong>, consequence <strong>3</strong>. Review by <code>12/12/2026</code>. Save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Switch the matrix between <em>Before controls</em> and <em>After controls</em>.</span></button></div>
+            <p class="expect"><span>Expect</span>The form reads <strong>Inherent 20 · Extreme</strong> and <strong>Residual 6 · Medium</strong>. The risk sits in the score-20 cell under the inherent view and moves to the score-6 cell under the residual view.</p>
+            <div class="res-group" role="group" aria-label="Result for test 26"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t26-notes">Notes for test 26</label>
+              <textarea id="r1t26-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Oversight: seeing the whole picture</h2>
+          <p>The rest of the product is how managers watch the network without opening records one at a time: reliability figures and a map, a calendar of everything scheduled, exportable reports, automatic chasing of anything left too long, connections to field devices and other systems, and a tamper-proof log of who did what.</p>
+        </div>
+        
+        <article class="card" data-test id="r1t27" data-result=""
+                 data-number="27" data-round="1"
+                 data-title="Analytics: reliability figures and the asset map"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t27-body">
+            <span class="num">27</span>
+            <span class="card-head-main">
+              <span class="card-title">Analytics: reliability figures and the asset map</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t27-body">
+            <p class="intro"><strong>What it is:</strong> the maintenance KPIs. <em>MTBF</em> (mean time between failures) is how long assets run between breakdowns; <em>MTTR</em> (mean time to repair) is how long a repair takes once started; <em>Availability</em> is uptime as a percentage; the <em>backlog</em> sorts open work by age. Every figure shows its sample size, so a number built on one job never passes for a trend.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Analytics &rarr; <strong>Performance</strong>. Read each tile and its explanatory line.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Switch the period between Last 30 days, Last 90 days and Last 12 months.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the <strong>Map</strong> tab.</span></button></div>
+            <p class="expect"><span>Expect</span>Each tile has a unit and a sentence saying what it was built from. Changing the period changes MTBF and its operating-hours basis. The map plots the three UAT assets near Apapa and says how many assets are not shown for lack of coordinates; clicking a pin opens that asset.</p>
+            <div class="res-group" role="group" aria-label="Result for test 27"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t27-notes">Notes for test 27</label>
+              <textarea id="r1t27-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t28" data-result=""
+                 data-number="28" data-round="1"
+                 data-title="The calendar"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t28-body">
+            <span class="num">28</span>
+            <span class="card-head-main">
+              <span class="card-title">The calendar</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t28-body">
+            <p class="intro"><strong>What it is:</strong> one grid for every date in the system — work orders by due date, PM tasks, inspections — with overdue items in red and filters for each kind.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <strong>Calendar</strong> on September 2026.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Find the UAT inspection on the 12th and the PM task on the 19th.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Untick <strong>Work orders</strong>, then move to October and back with <strong>Today</strong>.</span></button></div>
+            <p class="expect"><span>Expect</span>The inspection sits on 12 Sept and the calibration task on 19 Sept. Unticking a type removes exactly those entries; month navigation works both ways.</p>
+            <div class="res-group" role="group" aria-label="Result for test 28"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t28-notes">Notes for test 28</label>
+              <textarea id="r1t28-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t29" data-result=""
+                 data-number="29" data-round="1"
+                 data-title="Generate a report and check it against the screen"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t29-body">
+            <span class="num">29</span>
+            <span class="card-head-main">
+              <span class="card-title">Generate a report and check it against the screen</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t29-body">
+            <p class="intro"><strong>What it is:</strong> exports for people outside the app — an asset register, a work-order summary, a compliance register, a PM history — as a spreadsheet or CSV. What leaves the building has to match what the screen says.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Reports &rarr; <strong>Generate</strong> &rarr; <strong>Asset Register</strong>, format <strong>XLSX</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Download it from the Report Library and open it.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Find the <code>UAT-MTR-0001</code> row and compare its health score and purchase value with the asset panel.</span></button></div>
+            <p class="expect"><span>Expect</span>The report appears in the library naming you as requester, downloads as a real spreadsheet, and the Skid A row matches the screen: same health score, purchase value ₦185,000,000.</p>
+            <div class="res-group" role="group" aria-label="Result for test 29"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t29-notes">Notes for test 29</label>
+              <textarea id="r1t29-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t30" data-result=""
+                 data-number="30" data-round="1"
+                 data-title="Escalation rules: who gets chased, and when"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t30-body">
+            <span class="num">30</span>
+            <span class="card-head-main">
+              <span class="card-title">Escalation rules: who gets chased, and when</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t30-body">
+            <p class="intro"><strong>What it is:</strong> escalations chase work left too long. A rule says <em>if this kind of record has been in this state for this long, notify this role</em>. Rules run every morning at 07:15 and on demand, and each record is escalated once, not every day. <strong>On production this rule applies to every record in the organisation</strong>, so this card creates it, explains it, and retires it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; <strong>Escalations</strong> &rarr; <strong>+ Add Rule</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Rule name <code>UAT — critical work orders unassigned after 1 day</code> · Applies to <strong>Work order</strong> · When it has been <strong>Unassigned</strong> · For at least <code>1</code> day · Only when priority is <strong>Critical</strong> · Notify <strong>Operations Manager</strong>. Save.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Change <em>Applies to</em> on a new rule to <strong>Compliance licence</strong> and note the trigger list shrinks to what makes sense for a licence. Cancel.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On the UAT rule press <strong>Retire</strong> and confirm.</span></button></div>
+            <p class="expect"><span>Expect</span>The rule saves and lists with its condition and the role it notifies. The trigger options change with the record type. After Retire it stops being evaluated, and any escalations it already raised are kept.</p>
+            <div class="res-group" role="group" aria-label="Result for test 30"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t30-notes">Notes for test 30</label>
+              <textarea id="r1t30-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t31" data-result=""
+                 data-number="31" data-round="1"
+                 data-title="Devices and integrations — look, don&#x27;t connect"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t31-body">
+            <span class="num">31</span>
+            <span class="card-head-main">
+              <span class="card-title">Devices and integrations — look, don&#x27;t connect</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t31-body">
+            <p class="intro"><strong>What it is:</strong> <em>Devices</em> are field instruments and gateways that report live readings (over MQTT and similar protocols), each tied to an asset and site, and shown as Online, Offline, Error or Unprovisioned. <em>Integrations</em> connect AssetCore to other systems: SAP S/4HANA (sync the asset master, push work orders back), Termii SMS (text alerts to field technicians), and SCADA/Historian (process data — marked <em>Coming soon</em>).</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <strong>Devices</strong> and read the status summary and the supported protocols.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Optionally add one: name <code>UAT Skid A flow transmitter gateway</code> · IP <code>10.20.4.15</code> · Protocol <strong>MQTT</strong> · Serial <code>UAT-GW-0001</code> · Firmware <code>v2.3.1</code> · Asset <strong>UAT-MTR-0001</strong> · Site <strong>UAT Apapa Metering Yard</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <strong>Integrations</strong> and read each card. <strong>Enter no credentials</strong> — secrets typed here are stored and used for real.</span></button></div>
+            <p class="expect"><span>Expect</span>Devices shows the status chips and protocol list; a new device appears as <strong>Unprovisioned</strong>, because nothing has reported yet. Integrations shows SAP and Termii as configurable and SCADA as <em>Coming soon</em>.</p>
+            <div class="res-group" role="group" aria-label="Result for test 31"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t31-notes">Notes for test 31</label>
+              <textarea id="r1t31-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t32" data-result=""
+                 data-number="32" data-round="1"
+                 data-title="The audit log"
+                 data-roles="Auditor">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t32-body">
+            <span class="num">32</span>
+            <span class="card-head-main">
+              <span class="card-title">The audit log</span>
+              <span class="tags"><span class="chip">Auditor</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t32-body">
+            <p class="intro"><strong>What it is:</strong> an append-only record of every significant action — who, what, which record, when. Nobody can edit or delete an entry, the System Admin included. The Auditor role exists to read it.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Auditor</span><span class="who-mail">yourname+uat-audit@yourdomain</span><span class="who-role">Auditor — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">In the second browser, sign out and sign in as the Auditor. <em>(Sign-in 6.)</em></span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; <strong>Audit Log</strong>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Find today's entries: the six invites, the work order closed, the defects raised.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for any control that edits or deletes an entry.</span></button></div>
+            <p class="expect"><span>Expect</span>Admin shows only the <strong>Audit Log</strong> and a read-only <strong>Escalations</strong> tab — no Users &amp; Roles, Locations or Configuration. Entries name the actor and time, and none can be changed.</p>
+            <div class="res-group" role="group" aria-label="Result for test 32"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t32-notes">Notes for test 32</label>
+              <textarea id="r1t32-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Who can do what</h2>
+          <p>Permissions are enforced by the server, not just by hiding buttons. For each role, check what it should see, then <strong>type a forbidden address straight into the browser</strong> — the page must refuse, not load. This is the most common way real systems leak data, which is why it gets its own section.</p>
+        </div>
+        
+        <article class="card" data-test id="r1t33" data-result=""
+                 data-number="33" data-round="1"
+                 data-title="Executive / Viewer: sees everything, changes nothing"
+                 data-roles="Executive / Viewer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t33-body">
+            <span class="num">33</span>
+            <span class="card-head-main">
+              <span class="card-title">Executive / Viewer: sees everything, changes nothing</span>
+              <span class="tags"><span class="chip">Executive / Viewer</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t33-body">
+            <p class="intro"><strong>What it is:</strong> the read-only role for leadership. It can open every operational page but create, edit or approve nothing, and it has no access to Admin or the audit log.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Viewer</span><span class="who-mail">yourname+uat-view@yourdomain</span><span class="who-role">Executive / Viewer — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign out, sign in as the Viewer. <em>(Sign-in 7.)</em></span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Note <strong>Admin</strong> is missing from the menu, then type <code>https://myassetcore.com/admin</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the UAT work order: look for Edit, status buttons, the comment box and Attach file.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open Reports and look for a Generate control.</span></button></div>
+            <p class="expect"><span>Expect</span><code>/admin</code> sends you back to the dashboard. The work order shows no Edit, no Move-to buttons, no comment box and no Attach file. Reports offers the library and analytics but no way to generate.</p>
+            <div class="res-group" role="group" aria-label="Result for test 33"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t33-notes">Notes for test 33</label>
+              <textarea id="r1t33-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t34" data-result=""
+                 data-number="34" data-round="1"
+                 data-title="Field Technician: cannot reach management pages"
+                 data-roles="Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t34-body">
+            <span class="num">34</span>
+            <span class="card-head-main">
+              <span class="card-title">Field Technician: cannot reach management pages</span>
+              <span class="tags"><span class="chip">Field Technician</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t34-body">
+            <p class="intro"><strong>What it is:</strong> the technician sees their work, the assets and the parts store — not finance, analytics or administration.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Field Technician</span><span class="who-mail">yourname+uat-tech@yourdomain</span><span class="who-role">Field Technician — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On your colleague's laptop (still the Technician), type each of these: <code>/reports</code>, <code>/analytics</code>, <code>/depreciation</code>, <code>/admin</code>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open Risk and look for a way to add a risk.</span></button></div>
+            <p class="expect"><span>Expect</span>All four addresses return to the dashboard. The technician can read the risk register but cannot create a risk.</p>
+            <div class="res-group" role="group" aria-label="Result for test 34"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t34-notes">Notes for test 34</label>
+              <textarea id="r1t34-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t35" data-result=""
+                 data-number="35" data-round="1"
+                 data-title="Maintenance Engineer: works jobs, cannot administer"
+                 data-roles="Maintenance Engineer">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t35-body">
+            <span class="num">35</span>
+            <span class="card-head-main">
+              <span class="card-title">Maintenance Engineer: works jobs, cannot administer</span>
+              <span class="tags"><span class="chip">Maintenance Engineer</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t35-body">
+            <p class="intro"><strong>What it is:</strong> engineers update assets and jobs and can approve, but cannot change the organisation, its people, the approval matrix or escalation rules.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Maintenance Engineer</span><span class="who-mail">yourname+uat-eng@yourdomain</span><span class="who-role">Maintenance Engineer — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">In the second browser, sign out and sign in as the Engineer. <em>(Sign-in 8.)</em></span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Check the Maintenance page shows the calibration task assigned to you.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Type <code>/admin</code>. Open Approvals &rarr; Matrix. Open Settings &rarr; Organisation.</span></button></div>
+            <p class="expect"><span>Expect</span>The PM task from card 14 is waiting for this user. <code>/admin</code> returns to the dashboard; the matrix cannot be edited; currency and organisation details are read-only.</p>
+            <div class="res-group" role="group" aria-label="Result for test 35"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t35-notes">Notes for test 35</label>
+              <textarea id="r1t35-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t36" data-result=""
+                 data-number="36" data-round="1"
+                 data-title="Operations Manager: runs sites and categories, not people"
+                 data-roles="Operations Manager">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t36-body">
+            <span class="num">36</span>
+            <span class="card-head-main">
+              <span class="card-title">Operations Manager: runs sites and categories, not people</span>
+              <span class="tags"><span class="chip">Operations Manager</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t36-body">
+            <p class="intro"><strong>What it is:</strong> the one deliberate exception. The Operations Manager can maintain the location, site and category structure and the configuration, and can read the escalation rules and the audit log, but cannot invite or manage users, or change who approves what or who gets chased.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Ops Manager</span><span class="who-mail">yourname+uat-ops@yourdomain</span><span class="who-role">Operations Manager — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Sign out, sign in as the Operations Manager. <em>(Sign-in 9.)</em></span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open Admin and list the tabs you get.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Look for Users &amp; Roles; try adding an approval band; try adding an escalation rule.</span></button></div>
+            <p class="expect"><span>Expect</span>Admin shows Locations, Sites, Asset Categories and Configuration, plus Escalations and the Audit Log to read — but <strong>not Users &amp; Roles</strong>. No approval band or escalation rule can be added by this role.</p>
+            <div class="res-group" role="group" aria-label="Result for test 36"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t36-notes">Notes for test 36</label>
+              <textarea id="r1t36-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Things only a person can settle</h2>
+          <p>Three rounds of automated testing could not prove these, because the testing tool's simulated keyboard does not behave like a real one. With a physical keyboard and a phone they take five minutes, and they close the last open questions from earlier rounds.</p>
+        </div>
+        
+        <article class="card" data-test id="r1t37" data-result=""
+                 data-number="37" data-round="1"
+                 data-title="Keyboard: Enter submits, Tab moves, Escape closes"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t37-body">
+            <span class="num">37</span>
+            <span class="card-head-main">
+              <span class="card-title">Keyboard: Enter submits, Tab moves, Escape closes</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t37-body">
+            <p class="intro"><strong>Why it matters:</strong> people who work fast, or cannot use a mouse, rely on the keyboard. Earlier rounds could not tell whether <kbd>Enter</kbd> submits a form or a real key press activates a button — this card settles it for good.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">On the sign-in page (when you next sign in), type the email and password and press <kbd>Enter</kbd> instead of clicking.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; Users &amp; Roles &rarr; Invite User: type a name and press <kbd>Enter</kbd> in the name field. Cancel if it submits.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Press <kbd>Tab</kbd> repeatedly on the dashboard and watch the focus ring move.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open any modal and press <kbd>Escape</kbd>.</span></button></div>
+            <p class="expect"><span>Expect</span><kbd>Enter</kbd> submits both forms; <kbd>Tab</kbd> shows a visible focus ring moving in reading order; <kbd>Escape</kbd> closes the modal. <strong>If Enter does nothing, mark this Fail</strong> — that is a genuine accessibility defect nobody has been able to confirm until now.</p>
+            <div class="res-group" role="group" aria-label="Result for test 37"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t37-notes">Notes for test 37</label>
+              <textarea id="r1t37-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+        <article class="card" data-test id="r1t38" data-result=""
+                 data-number="38" data-round="1"
+                 data-title="Phone width and dark mode"
+                 data-roles="Field Technician">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t38-body">
+            <span class="num">38</span>
+            <span class="card-head-main">
+              <span class="card-title">Phone width and dark mode</span>
+              <span class="tags"><span class="chip">Field Technician</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t38-body">
+            <p class="intro"><strong>Why it matters:</strong> technicians work from phones, and the app has a dark theme for low light. Dark mode was reworked in round 3 for contrast and now remembers your choice.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">UAT Field Technician</span><span class="who-mail">yourname+uat-tech@yourdomain</span><span class="who-role">Field Technician — password &lt;code&gt;UatWalk2026!&lt;/code&gt;</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open <code>https://myassetcore.com</code> on a phone and sign in as the Technician <em>(or narrow a desktop window to phone width, to save a sign-in)</em>.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Open the dashboard, the work-order list, a work order, and the scan page. Open the menu.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Turn on dark mode from the account menu, reload, and read the dashboard and Analytics.</span></button></div>
+            <p class="expect"><span>Expect</span>Nothing scrolls sideways; wide tables scroll inside their own box; the menu opens and closes; every button can be reached. Dark mode survives the reload and all text stays readable.</p>
+            <div class="res-group" role="group" aria-label="Result for test 38"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t38-notes">Notes for test 38</label>
+              <textarea id="r1t38-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="band">
+        <div class="band-head">
+          <h2>Leave production tidy</h2>
+          <p>Everything this session made is prefixed <code>UAT</code>. Archiving hides records without deleting them, and every step can be undone.</p>
+        </div>
+        
+        <article class="card" data-test id="r1t39" data-result=""
+                 data-number="39" data-round="1"
+                 data-title="Archive what you made and disable the accounts"
+                 data-roles="System Admin">
+          <button type="button" class="card-head" aria-expanded="false" aria-controls="r1t39-body">
+            <span class="num">39</span>
+            <span class="card-head-main">
+              <span class="card-title">Archive what you made and disable the accounts</span>
+              <span class="tags"><span class="chip">System Admin</span></span>
+            </span>
+            <span class="verdict" data-verdict>Not run</span>
+            <svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.7"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="card-body" id="r1t39-body">
+            <p class="intro"><strong>Why it matters:</strong> NGML's evaluators work in this organisation. Leaving UAT assets, alerts and accounts live muddies what they see. Archived assets drop out of the register, the dashboard and the map, but stay restorable.</p>
+            <div class="who"><p class="who-label">Sign in as</p><div class="who-row"><span class="who-name">You</span><span class="who-mail">your own login</span><span class="who-role">System Admin (owner) — your existing password</span></div></div>
+            <div class="steps"><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Assets: archive <code>UAT-MTR-0001</code>, <code>UAT-PRG-0001</code> and <code>UAT-VLV-0001</code> (confirm each).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Compliance: archive the UAT licence and the UAT audit.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Escalations: check the UAT rule shows as retired (card 30).</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Admin &rarr; Users &amp; Roles: <strong>Disable</strong> the six UAT members — or keep them if you will run this again.</span></button><button type="button" class="step" role="checkbox" aria-checked="false"><span class="step-box" aria-hidden="true"></span><span class="step-text">Leave the UAT spare part, PM schedule, depreciation schedule, risk and defects: they are clearly labelled, and archiving the asset takes them out of the headline figures.</span></button></div>
+            <p class="expect"><span>Expect</span>The three UAT assets vanish from the register, dashboard and map, and appear under <em>Archived</em>. The six members read <strong>Disabled</strong>, and a disabled account's next sign-in is refused with <em>This account has been disabled. Ask an administrator to re-enable it.</em></p>
+            <div class="res-group" role="group" aria-label="Result for test 39"><button type="button" class="res res--pass" data-value="pass">Pass</button><button type="button" class="res res--fail" data-value="fail">Fail</button><button type="button" class="res res--blocked" data-value="blocked">Blocked</button></div>
+            <div class="notes" data-notes="">
+              <label class="sr-only" for="r1t39-notes">Notes for test 39</label>
+              <textarea id="r1t39-notes" rows="2"
+                        placeholder="What happened, what you would change&hellip;"></textarea>
+            </div>
+          </div>
+        </article>
+      </section>
+  </div><!--uat:rounds:end-->
+  <p class="foot">
+    Marks and notes live in this page and save as you go. Export gives the same thing as a note to
+    Claude Code, as Markdown, JSON or CSV.
+  </p>
+</div>
+
+<artifact-local>
+  <dialog id="sheet">
+    <div class="sheet-head">
+      <h2>Your feedback</h2>
+      <div class="sheet-tabs" role="tablist">
+        <button type="button" class="tab tab--sm" role="tab" data-format="claude" aria-selected="true">For Claude</button>
+        <button type="button" class="tab tab--sm" role="tab" data-format="md" aria-selected="false">Markdown</button>
+        <button type="button" class="tab tab--sm" role="tab" data-format="json" aria-selected="false">JSON</button>
+        <button type="button" class="tab tab--sm" role="tab" data-format="csv" aria-selected="false">CSV</button>
+      </div>
+    </div>
+    <div class="sheet-opts">
+      <label><input type="checkbox" data-only-problems> Only failures and blocked</label>
+      <label><input type="checkbox" data-all-rounds> Every round, not just this one</label>
+    </div>
+    <div class="sheet-body">
+      <label class="sr-only" for="sheet-text">Exported feedback</label>
+      <textarea id="sheet-text" readonly></textarea>
+    </div>
+    <div class="sheet-foot">
+      <button type="button" class="btn btn--primary" data-copy>Copy to clipboard</button>
+      <button type="button" class="btn" data-save hidden>Save as file</button>
+      <button type="button" class="btn" data-close>Close</button>
+      <span class="sheet-note" data-sheet-note></span>
+    </div>
+  </dialog>
+</artifact-local>
+
+<!--uat:script:start--><script>
+(function () {
+  "use strict";
+
+  var wrap = document.querySelector(".wrap");
+  var APP = (wrap && wrap.dataset.app) || "app";
+  var STORE = "uat:" + APP.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+  /* Browser storage is the safety net, not the record. The record is the
+     page: marks made by a click or a keystroke are saved into it. This
+     mirror only refills fields the page came back without, which is what
+     happens if a save could not land. */
+  function readMirror() {
+    try { return JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { return {}; }
+  }
+
+  function writeMirror(next) {
+    try { localStorage.setItem(STORE, JSON.stringify(next)); } catch (e) { /* private window */ }
+  }
+
+  var mirror = readMirror();
+
+  function remember(card) {
+    mirror[card.id] = {
+      result: card.dataset.result || "",
+      notes: card.querySelector(".notes").dataset.notes || "",
+      steps: Array.prototype.map.call(card.querySelectorAll(".step"), function (s) {
+        return s.getAttribute("aria-checked") === "true";
+      }),
+      at: Date.now()
+    };
+    writeMirror(mirror);
+    flagSaved();
+  }
+
+  var savedNode = document.querySelector("[data-saved]");
+  var savedText = document.querySelector("[data-saved-text]");
+
+  function flagSaved() {
+    if (!savedNode) return;
+    savedNode.hidden = false;
+    var now = new Date();
+    savedText.textContent = "Saved " +
+      String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  }
+
+  /* ---- Rounds ---- */
+
+  var rounds = Array.prototype.slice.call(document.querySelectorAll(".round"));
+  var tabs = Array.prototype.slice.call(document.querySelectorAll("[data-round-tab]"));
+
+  function showRound(number) {
+    rounds.forEach(function (round) {
+      round.classList.toggle("is-active", round.dataset.round === String(number));
+    });
+    tabs.forEach(function (tab) {
+      tab.setAttribute("aria-selected", String(tab.dataset.roundTab === String(number)));
+    });
+    try { localStorage.setItem(STORE + ":round", String(number)); } catch (e) {}
+  }
+
+  var wanted = null;
+  try { wanted = localStorage.getItem(STORE + ":round"); } catch (e) {}
+  var known = rounds.map(function (r) { return r.dataset.round; });
+  showRound(known.indexOf(wanted) >= 0 ? wanted : known[known.length - 1]);
+
+  /* ---- Cards: collapsed by default, remembered after that ---- */
+
+  var openIds = [];
+  try { openIds = JSON.parse(localStorage.getItem(STORE + ":open") || "[]"); } catch (e) {}
+
+  function setOpen(card, open) {
+    card.dataset.localExpanded = open ? "true" : "false";
+    card.querySelector(".card-head").setAttribute("aria-expanded", open ? "true" : "false");
+    var at = openIds.indexOf(card.id);
+    if (open && at < 0) openIds.push(card.id);
+    if (!open && at >= 0) openIds.splice(at, 1);
+    try { localStorage.setItem(STORE + ":open", JSON.stringify(openIds)); } catch (e) {}
+  }
+
+  var cards = Array.prototype.slice.call(document.querySelectorAll("[data-test]"));
+
+  cards.forEach(function (card) {
+    var notes = card.querySelector(".notes");
+    var area = notes.querySelector("textarea");
+    var saved = mirror[card.id];
+
+    /* The page wins; the mirror only fills what the page is missing. */
+    if (!card.dataset.result && saved && saved.result) card.dataset.result = saved.result;
+    if (!notes.dataset.notes && saved && saved.notes) notes.dataset.notes = saved.notes;
+    if (saved && saved.steps) {
+      card.querySelectorAll(".step").forEach(function (step, index) {
+        if (step.getAttribute("aria-checked") !== "true" && saved.steps[index]) {
+          step.setAttribute("aria-checked", "true");
+        }
+      });
+    }
+    area.value = notes.dataset.notes || "";
+    setOpen(card, openIds.indexOf(card.id) >= 0);
+  });
+
+  /* ---- Tally and the nav board ---- */
+
+  function paint() {
+    rounds.forEach(function (round) {
+      var own = Array.prototype.slice.call(round.querySelectorAll("[data-test]"));
+      var counts = { pass: 0, fail: 0, blocked: 0, pending: 0 };
+      own.forEach(function (card) {
+        var value = card.dataset.result;
+        if (counts.hasOwnProperty(value)) counts[value] += 1;
+        else counts.pending += 1;
+        var verdict = card.querySelector("[data-verdict]");
+        if (verdict) {
+          verdict.textContent = value ? value.charAt(0).toUpperCase() + value.slice(1) : "Not run";
+        }
+        var chip = round.querySelector('[data-goto="' + card.id + '"]');
+        if (chip) chip.dataset.state = value || "";
+      });
+      Object.keys(counts).forEach(function (key) {
+        var node = round.querySelector('[data-count="' + key + '"]');
+        if (node) node.textContent = String(counts[key]);
+      });
+      var total = own.length || 1;
+      ["pass", "fail", "blocked"].forEach(function (key) {
+        var bar = round.querySelector(".m-" + key);
+        if (bar) bar.style.width = (counts[key] / total * 100) + "%";
+      });
+    });
+  }
+
+  paint();
+
+  /* ---- Gestures. Each one changes the page, which is how it is saved. ---- */
+
+  document.addEventListener("click", function (event) {
+    var tab = event.target.closest("[data-round-tab]");
+    if (tab) { showRound(tab.dataset.roundTab); return; }
+
+    var goto = event.target.closest("[data-goto]");
+    if (goto) {
+      var target = document.getElementById(goto.dataset.goto);
+      if (target) {
+        setOpen(target, true);
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+
+    var head = event.target.closest(".card-head");
+    if (head) {
+      var card = head.closest("[data-test]");
+      setOpen(card, card.dataset.localExpanded !== "true");
+      return;
+    }
+
+    var step = event.target.closest(".step");
+    if (step) {
+      step.setAttribute("aria-checked", step.getAttribute("aria-checked") === "true" ? "false" : "true");
+      remember(step.closest("[data-test]"));
+      return;
+    }
+
+    var res = event.target.closest(".res");
+    if (res) {
+      var owner = res.closest("[data-test]");
+      owner.dataset.result = owner.dataset.result === res.dataset.value ? "" : res.dataset.value;
+      remember(owner);
+      paint();
+      return;
+    }
+
+    var round = activeRound();
+
+    if (event.target.closest("[data-expand-all]")) {
+      round.querySelectorAll("[data-test]").forEach(function (c) { setOpen(c, true); });
+      return;
+    }
+    if (event.target.closest("[data-collapse-all]")) {
+      round.querySelectorAll("[data-test]").forEach(function (c) { setOpen(c, false); });
+      return;
+    }
+    if (event.target.closest("[data-jump]")) {
+      var next = Array.prototype.slice.call(round.querySelectorAll("[data-test]"))
+        .filter(function (c) { return !c.dataset.result; })[0];
+      if (next) {
+        setOpen(next, true);
+        next.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+    if (event.target.closest("[data-export]")) openSheet();
+  });
+
+  /* Notes are held on the wrapper, not written back into the textarea: doing
+     that while somebody is typing would move their caret. */
+  document.addEventListener("input", function (event) {
+    var area = event.target.closest(".notes textarea");
+    if (!area) return;
+    var notes = area.closest(".notes");
+    notes.dataset.notes = area.value;
+    remember(area.closest("[data-test]"));
+  });
+
+  function activeRound() {
+    return document.querySelector(".round.is-active") || rounds[0];
+  }
+
+  /* ---- Export ---- */
+
+  var sheet = document.getElementById("sheet");
+  var sheetText = document.getElementById("sheet-text");
+  var sheetNote = document.querySelector("[data-sheet-note]");
+  var saveButton = document.querySelector("[data-save]");
+  var onlyProblems = document.querySelector("[data-only-problems]");
+  var allRounds = document.querySelector("[data-all-rounds]");
+  var format = "claude";
+  var downloads = null;
+
+  function stamp() {
+    var now = new Date();
+    return now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") +
+      "-" + String(now.getDate()).padStart(2, "0");
+  }
+
+  function read(card) {
+    return {
+      round: Number(card.dataset.round),
+      number: card.dataset.number,
+      title: card.dataset.title,
+      roles: card.dataset.roles,
+      result: card.dataset.result || "not run",
+      notes: card.querySelector(".notes").dataset.notes || "",
+      steps: Array.prototype.map.call(card.querySelectorAll(".step"), function (s) {
+        return { done: s.getAttribute("aria-checked") === "true", text: s.querySelector(".step-text").textContent.trim() };
+      })
+    };
+  }
+
+  function rows() {
+    var scope = allRounds.checked ? document : activeRound();
+    var all = Array.prototype.map.call(scope.querySelectorAll("[data-test]"), read);
+    if (onlyProblems.checked) {
+      all = all.filter(function (r) { return r.result === "fail" || r.result === "blocked"; });
+    }
+    return all;
+  }
+
+  function block(row) {
+    var lines = ["## " + row.number + " " + row.title + " — " + row.result.toUpperCase()];
+    if (row.roles) lines.push("*" + row.roles + "*");
+    var undone = row.steps.filter(function (s) { return !s.done; });
+    if (undone.length && row.result !== "not run") {
+      lines.push("", "Steps not completed:");
+      undone.forEach(function (s) { lines.push("- [ ] " + s.text); });
+    }
+    if (row.notes) lines.push("", row.notes);
+    lines.push("");
+    return lines.join("\n");
+  }
+
+  function summary(list) {
+    var counts = { pass: 0, fail: 0, blocked: 0, "not run": 0 };
+    list.forEach(function (row) { counts[row.result] = (counts[row.result] || 0) + 1; });
+    return counts.pass + " pass · " + counts.fail + " fail · " +
+      counts.blocked + " blocked · " + counts["not run"] + " not run";
+  }
+
+  function build() {
+    var list = rows();
+    var round = activeRound().dataset.roundLabel;
+    if (format === "json") {
+      return JSON.stringify({ app: APP, round: round, recorded: stamp(), tests: list }, null, 2);
+    }
+    if (format === "csv") {
+      var out = ["round,number,title,roles,result,steps_done,steps_total,notes"];
+      list.forEach(function (row) {
+        var done = row.steps.filter(function (s) { return s.done; }).length;
+        out.push([row.round, row.number, row.title, row.roles, row.result, done, row.steps.length, row.notes]
+          .map(function (cell) { return '"' + String(cell).replace(/"/g, '""') + '"'; }).join(","));
+      });
+      return out.join("\n");
+    }
+    var head = format === "claude"
+      ? ["I ran the acceptance tests for " + APP + " (" + round + "). Here is what I found.",
+         "",
+         "Please fix the failures and anything blocked, working across the whole app rather than",
+         "only the screen each one was found on. When the fixes are in, add the next round to the",
+         "same test artifact.",
+         "",
+         "**" + summary(list) + "**", ""]
+      : ["# " + APP + " acceptance tests — " + round, "", "Recorded " + stamp() + ".", "",
+         "**" + summary(list) + "**", ""];
+    return head.join("\n") + "\n" + list.map(block).join("\n");
+  }
+
+  function refresh() {
+    sheetText.value = build();
+    sheetNote.textContent = "";
+  }
+
+  function openSheet() {
+    refresh();
+    if (typeof sheet.showModal === "function") sheet.showModal();
+    else sheet.setAttribute("open", "");
+  }
+
+  document.addEventListener("change", function (event) {
+    if (event.target.closest(".sheet-opts")) refresh();
+  });
+
+  document.addEventListener("click", function (event) {
+    var tab = event.target.closest("[data-format]");
+    if (tab) {
+      format = tab.dataset.format;
+      document.querySelectorAll("[data-format]").forEach(function (other) {
+        other.setAttribute("aria-selected", String(other === tab));
+      });
+      refresh();
+      return;
+    }
+
+    if (event.target.closest("[data-close]")) {
+      if (typeof sheet.close === "function") sheet.close();
+      else sheet.removeAttribute("open");
+      return;
+    }
+
+    if (event.target.closest("[data-copy]")) {
+      var text = sheetText.value;
+      var done = function (ok) {
+        sheetNote.textContent = ok
+          ? "Copied. Paste it into Claude Code."
+          : "Could not copy — select the text and copy it.";
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      } else {
+        sheetText.select();
+        done(document.execCommand && document.execCommand("copy"));
+      }
+      return;
+    }
+
+    if (event.target.closest("[data-save]") && downloads) {
+      var name = "uat-" + stamp() + "." + (format === "csv" ? "csv" : format === "json" ? "json" : "md");
+      downloads.save({ filename: name, data: sheetText.value }).then(function () {
+        sheetNote.textContent = "Saved as " + name + ".";
+      }, function () {
+        sheetNote.textContent = "The save was declined.";
+      });
+    }
+  });
+
+  /* Offering a file save at all depends on the viewer. Copy always works. */
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("downloads").then(function (api) {
+      if (!api) return;
+      downloads = api;
+      saveButton.hidden = false;
+    }, function () {});
+  }
+})();
+</script><!--uat:script:end-->
