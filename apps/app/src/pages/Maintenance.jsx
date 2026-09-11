@@ -9,6 +9,7 @@ import CompliancePanel from '../components/CompliancePanel.jsx'
 import { listPMSchedules, createPMSchedule, softDeletePMSchedule } from '../lib/db/pmSchedules'
 import { listPMTasks, updatePMTask, generatePMTasks, uploadMaintenanceReport } from '../lib/db/pmTasks'
 import { listOrgUsers } from '../lib/db/orgMembers'
+import { listAssets } from '../lib/db/assets'
 import { api } from '../lib/apiClient'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
@@ -40,8 +41,8 @@ function weekDays(refDate) {
 }
 
 // ── Schedule Modal ────────────────────────────────────────────────────────────
-function ScheduleModal({ onClose, onSaved, users }) {
-  const [form, setForm] = useState({ title:'', frequency:'monthly', next_due:isoToday(), assignee_id:'' })
+function ScheduleModal({ onClose, onSaved, users, assets }) {
+  const [form, setForm] = useState({ title:'', frequency:'monthly', next_due:isoToday(), assignee_id:'', asset_id:'' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
 
@@ -54,6 +55,10 @@ function ScheduleModal({ onClose, onSaved, users }) {
       await createPMSchedule({
         title:form.title.trim(), frequency:form.frequency, next_due:form.next_due,
         description:form.description||null, assignee_id: form.assignee_id || null,
+        // The API has always accepted this; the form never sent it, so every
+        // schedule built here belonged to no asset and its tasks could never
+        // reach that asset's record or its "overdue maintenance" health signal.
+        asset_id: form.asset_id || null,
       })
       onSaved()
     } catch(e) { setErr(errorText(e)) } finally { setSaving(false) }
@@ -84,6 +89,16 @@ function ScheduleModal({ onClose, onSaved, users }) {
               <input type="date" value={form.next_due} onChange={e=>set('next_due',e.target.value)} style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 10px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',boxSizing:'border-box'}}/>
             </label>
           </div>
+          <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Asset
+            <select value={form.asset_id} onChange={e=>set('asset_id',e.target.value)} style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 8px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',background:'var(--n0)'}}>
+              <option value="">— Not asset-specific —</option>
+              {(assets||[]).map(a => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
+            </select>
+          </label>
+          <p style={{fontSize:11.5,color:'var(--n500)',lineHeight:1.5,marginTop:-4}}>
+            A schedule left without an asset still generates tasks, but they belong to no
+            asset — they never show on an asset&apos;s record and never count towards its health score.
+          </p>
           <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Default assignee
             <select value={form.assignee_id} onChange={e=>set('assignee_id',e.target.value)} style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 8px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',background:'var(--n0)'}}>
               <option value="">Unassigned</option>
@@ -128,6 +143,7 @@ export default function Maintenance({ dark, toggleDark }) {
   const [tasks, setTasks] = useState([])
   const [schedules, setSchedules] = useState([])
   const [users, setUsers] = useState([])
+  const [assets, setAssets] = useState([])
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState(null)
   const [showModal, setShowModal] = useState(false)
@@ -142,14 +158,16 @@ export default function Maintenance({ dark, toggleDark }) {
     if (tab !== 'pm') return
     setLoading(true); setErr(null)
     try {
-      const [t, s, u] = await Promise.all([
+      const [t, s, u, a] = await Promise.all([
         listPMTasks({ statuses:['pending','in_progress','overdue'], dueBefore: addDays(today,30), locationId: globalLocationId }),
         listPMSchedules(),
         listOrgUsers().catch(() => []),
+        listAssets().catch(() => []),
       ])
       setTasks(t)
       setSchedules(s)
       setUsers(u)
+      setAssets(a)
     } catch(e) {
       setErr(errorText(e))
     } finally { setLoading(false) }
@@ -338,7 +356,7 @@ export default function Maintenance({ dark, toggleDark }) {
         </div>
       </div>
 
-      {showModal && <ScheduleModal users={users} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load() }}/>}
+      {showModal && <ScheduleModal users={users} assets={assets} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load() }}/>}
       {completing && <CompleteTaskModal task={completing} onClose={() => setCompleting(null)} onDone={onTaskCompleted}/>}
       {assigning && (
         <AssignModal title="Assign task" subtitle={assigning.title} users={users} currentId={assigning.assignee_id}
