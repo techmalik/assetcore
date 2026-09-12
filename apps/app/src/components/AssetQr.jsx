@@ -50,7 +50,9 @@ export function PrintQrSheet({ assets, onClose }) {
         <div style={{ padding: '18px 24px', borderBottom: 'var(--bdr)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)' }}>Print asset labels</h3>
-            <p style={{ fontSize: 12, color: 'var(--n500)' }}>{assets.length} label{assets.length === 1 ? '' : 's'} · 4 per row</p>
+            {/* "4 per row" describes the sheet layout, which says nothing
+                when there is only one label on it. */}
+            <p style={{ fontSize: 12, color: 'var(--n500)' }}>{assets.length} label{assets.length === 1 ? '' : 's · 4 per row'}</p>
           </div>
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>

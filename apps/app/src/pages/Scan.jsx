@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { getAssetByAin } from '../lib/db/assets'
 import { errorText } from '../lib/errors'
+import { useToast } from '../lib/ToastContext'
 
 const CRITICALITY_CLASS = { critical: 'badge-r', high: 'badge-a', medium: 'badge-b', low: 'badge-n' }
 const STATUS_CLASS = { critical: 'badge-r', attention: 'badge-a', operational: 'badge-g', offline: 'badge-n' }
@@ -31,6 +32,7 @@ function Field({ label, value, mono }) {
 
 export default function Scan({ dark, toggleDark }) {
   const nav = useNavigate()
+  const toast = useToast()
   const [params] = useSearchParams()
   const [manual, setManual] = useState('')
   const [asset, setAsset] = useState(null)
@@ -44,20 +46,26 @@ export default function Scan({ dark, toggleDark }) {
   const streamRef = useRef(null)
   const rafRef = useRef(null)
 
-  const lookup = useCallback(async (rawTag) => {
+  const lookup = useCallback(async (rawTag, { fromCamera = false } = {}) => {
     const tag = tagFromScan(rawTag)
     if (!tag) return
     setLooking(true)
     setError('')
     setAsset(null)
     try {
-      setAsset(await getAssetByAin(tag))
+      const found = await getAssetByAin(tag)
+      setAsset(found)
+      setManual(found.ain)
+      // A successful camera scan closes the camera — without this the preview
+      // just vanishes and the only evidence is a card further down the page,
+      // which reads as the camera crashing.
+      if (fromCamera) toast.success(`Scanned ${found.ain} — ${found.name}`)
     } catch (e) {
       setError(e.status === 404 ? `No asset with tag "${tag}" in this organisation.` : errorText(e, 'Lookup failed.'))
     } finally {
       setLooking(false)
     }
-  }, [])
+  }, [toast])
 
   const stopCamera = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -76,6 +84,13 @@ export default function Scan({ dark, toggleDark }) {
       rafRef.current = requestAnimationFrame(tick)
       return
     }
+    // A frame can report HAVE_ENOUGH_DATA before it has dimensions; asking
+    // for a 0x0 image throws inside the rAF callback and kills the loop, so
+    // the camera stays on and silently stops scanning.
+    if (!video.videoWidth || !video.videoHeight) {
+      rafRef.current = requestAnimationFrame(tick)
+      return
+    }
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
@@ -84,7 +99,7 @@ export default function Scan({ dark, toggleDark }) {
     const code = jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' })
     if (code?.data) {
       stopCamera()
-      lookup(code.data)
+      lookup(code.data, { fromCamera: true })
       return
     }
     rafRef.current = requestAnimationFrame(tick)
@@ -132,56 +147,20 @@ export default function Scan({ dark, toggleDark }) {
             <div>
               <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Scan asset tag</h1>
               <p style={{ fontSize: 12.5, color: 'var(--n500)', marginTop: 2 }}>
-                Point the camera at a label, or type the AIN if the sticker is damaged.
+                {asset
+                  ? 'Scanned. Open it in the registry below, or scan another tag.'
+                  : 'Point the camera at a label, or type the AIN if the sticker is damaged.'}
               </p>
             </div>
 
-            {/* Camera */}
-            <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, overflow: 'hidden' }}>
-              {scanning ? (
-                <div style={{ position: 'relative', background: '#000' }}>
-                  <video ref={videoRef} playsInline muted style={{ width: '100%', display: 'block', maxHeight: 340, objectFit: 'cover' }} />
-                  <div style={{ position: 'absolute', inset: '15% 22%', border: '2px solid rgba(255,255,255,.85)', borderRadius: 8, pointerEvents: 'none' }} />
-                  <button onClick={stopCamera} className="btn btn-secondary" style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', height: 32, padding: '0 14px', fontSize: 12 }}>
-                    Stop camera
-                  </button>
-                </div>
-              ) : (
-                <div style={{ padding: 24, textAlign: 'center' }}>
-                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 10px', display: 'block' }}>
-                    <path d="M3 8V5a2 2 0 012-2h3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M21 16v3a2 2 0 01-2 2h-3" stroke="var(--n400)" strokeWidth="1.6" strokeLinecap="round" />
-                    <path d="M3 12h18" stroke="var(--b500)" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-                  <button onClick={startCamera} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Start camera</button>
-                  {cameraError && <p style={{ fontSize: 12, color: 'var(--sat)', marginTop: 10 }}>{cameraError}</p>}
-                </div>
-              )}
-              <canvas ref={canvasRef} style={{ display: 'none' }} />
-            </div>
-
-            {/* Manual entry */}
-            <form
-              onSubmit={(e) => { e.preventDefault(); lookup(manual) }}
-              style={{ display: 'flex', gap: 8 }}
-            >
-              <input
-                className="input"
-                value={manual}
-                onChange={(e) => setManual(e.target.value)}
-                placeholder="e.g. NGML-MTR-0042"
-                style={{ flex: 1, fontFamily: 'var(--ff-m)' }}
-              />
-              <button type="submit" disabled={looking || !manual.trim()} className="btn btn-secondary" style={{ height: 38, padding: '0 16px', fontSize: 13 }}>
-                {looking ? 'Looking…' : 'Find'}
-              </button>
-            </form>
-
+            {/* Result first: arriving here from a phone's camera (or from a
+                scan that just closed the camera), the answer is what you came
+                for — the camera and the manual field are how you ask again. */}
             {error && (
               <div style={{ background: 'var(--srb)', border: '1px solid var(--srbr)', borderRadius: 6, padding: '12px 14px', fontSize: 12.5, color: 'var(--srt)' }}>
                 {error}
               </div>
             )}
-
             {asset && (
               <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, overflow: 'hidden' }}>
                 <div style={{ padding: '14px 16px', borderBottom: 'var(--bdr)' }}>
@@ -212,6 +191,53 @@ export default function Scan({ dark, toggleDark }) {
                 </div>
               </div>
             )}
+            {/* Camera */}
+            <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, overflow: 'hidden' }}>
+              {scanning ? (
+                <div style={{ position: 'relative', background: '#000' }}>
+                  <video ref={videoRef} playsInline muted style={{ width: '100%', display: 'block', maxHeight: 340, objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', inset: '15% 22%', border: '2px solid rgba(255,255,255,.85)', borderRadius: 8, pointerEvents: 'none' }} />
+                  <button onClick={stopCamera} className="btn btn-secondary" style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', height: 32, padding: '0 14px', fontSize: 12 }}>
+                    Stop camera
+                  </button>
+                </div>
+              ) : (
+                <div style={{ padding: 24, textAlign: 'center' }}>
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 10px', display: 'block' }}>
+                    <path d="M3 8V5a2 2 0 012-2h3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M21 16v3a2 2 0 01-2 2h-3" stroke="var(--n400)" strokeWidth="1.6" strokeLinecap="round" />
+                    <path d="M3 12h18" stroke="var(--b500)" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                  <button onClick={startCamera} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{asset ? 'Scan another tag' : 'Start camera'}</button>
+                  {cameraError && <p style={{ fontSize: 12, color: 'var(--sat)', marginTop: 10 }}>{cameraError}</p>}
+                </div>
+              )}
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
+            </div>
+            {/* Manual entry */}
+            <form
+              onSubmit={(e) => { e.preventDefault(); lookup(manual) }}
+              style={{ display: 'flex', gap: 8 }}
+            >
+              <input
+                className="input"
+                value={manual}
+                onChange={(e) => setManual(e.target.value)}
+                // Explicit rather than relying on the form's implicit submit:
+                // a phone keyboard's Go key is the natural way to finish
+                // typing a tag, and it is not worth it failing quietly if a
+                // browser declines to submit implicitly.
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); lookup(manual) } }}
+                inputMode="text"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="e.g. NGML-MTR-0042"
+                style={{ flex: 1, fontFamily: 'var(--ff-m)' }}
+              />
+              <button type="submit" disabled={looking || !manual.trim()} className="btn btn-secondary" style={{ height: 38, padding: '0 16px', fontSize: 13 }}>
+                {looking ? 'Looking…' : 'Find'}
+              </button>
+            </form>
           </div>
         </div>
       </div>

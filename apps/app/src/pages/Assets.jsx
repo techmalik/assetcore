@@ -5,7 +5,7 @@ import Topbar from '../components/Topbar.jsx'
 import AuthImage from '../components/AuthImage.jsx'
 import ImageLightbox from '../components/ImageLightbox.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
-import { PrintQrSheet } from '../components/AssetQr.jsx'
+import { PrintQrSheet, AssetQrCode } from '../components/AssetQr.jsx'
 import {
   listAssets, createAsset, updateAsset, softDeleteAsset, restoreAsset, importAssets,
   uploadAssetPhoto, deleteAssetPhoto, uploadAssetDocument, deleteAssetDocument, listAssetActivity, addAssetComment,
@@ -913,6 +913,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
   const [posting, setPosting] = useState(false)
   const [lightbox, setLightbox] = useState(null) // { images, index } | null
   const [completingTask, setCompletingTask] = useState(null) // pm_task being completed via the confirm modal
+  const [printLabel, setPrintLabel] = useState(false)
   const archived = Boolean(asset.deleted_at)
   const s = asset.specs || {}
 
@@ -1041,6 +1042,25 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
                 <span style={{ color: 'var(--n800)', fontWeight: 500, textAlign: 'right' }}>{v}</span>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Asset label. The QR only existed behind Registry → Labels, which
+            is where you go to print a batch — not where you are when you have
+            an asset open and need to scan it, or need one more label for a
+            unit whose sticker has worn off. */}
+        <div>
+          <div style={section}>Asset label</div>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, padding: 12 }}>
+            <AssetQrCode ain={asset.ain} size={96} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 12, color: 'var(--n600)', lineHeight: 1.5 }}>
+                Scan with any phone camera to open this asset.
+              </div>
+              <button type="button" onClick={() => setPrintLabel(true)} className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12, marginTop: 10 }}>
+                Print label
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1214,6 +1234,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
         </div>
       </div>
       {lightbox && <ImageLightbox images={lightbox.images} index={lightbox.index} onClose={() => setLightbox(null)} />}
+      {printLabel && <PrintQrSheet assets={[asset]} onClose={() => setPrintLabel(false)} />}
       {completingTask && (
         <PMTaskCompleteModal
           task={completingTask}

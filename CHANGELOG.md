@@ -5,6 +5,23 @@ first licensed release shipped to a client (NGML).
 
 ## Unreleased
 
+- **The QR label is on the asset itself.** Registry → Labels prints a batch,
+  which is no help when you have one asset open and want to scan it, or need
+  to replace one worn-off sticker. The detail panel now carries the asset's
+  own code with a Print label button beside it. (`AssetQrCode` had been
+  written for exactly this and was never mounted anywhere.)
+
+- **A camera scan says what it found.** On a hit the scanner closes the camera
+  — correct, since leaving it running re-fires on the same code every frame —
+  but it said nothing, so the preview appeared to crash a second after opening
+  while the answer landed in a card further down the page. It now confirms the
+  scan and puts the result above the camera, which is also the right order for
+  arriving from a phone's camera app: the answer first, the ways to ask again
+  below it. A frame that reports itself ready before it has dimensions is
+  skipped rather than throwing inside the animation loop and leaving the
+  camera on but no longer scanning, and Enter in the tag field is handled
+  explicitly so a phone keyboard's Go key always submits.
+
 - **The audit log can be filtered.** Admin → Audit Log gained actor, activity,
   entity-type, entity-name and date-range filters, all applied server-side so
   the count and the pager describe the filtered set rather than the whole log.
