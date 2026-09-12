@@ -100,7 +100,7 @@ export function BarChart({ data = [], height = 180, valueFormat = (v) => v, empt
  *
  * `series`: [{ name, color, values: number[] }], `labels`: string[]
  */
-export function LineChart({ series = [], labels = [], height = 200, area = false, emptyMessage = 'No data yet' }) {
+export function LineChart({ series = [], labels = [], height = 200, area = false, valueFormat = (v) => Math.round(v), emptyMessage = 'No data yet' }) {
   const hasPoints = series.some((s) => s.values.length > 0)
   if (!hasPoints) return <EmptyChart height={height} message={emptyMessage} />
 
@@ -127,7 +127,7 @@ export function LineChart({ series = [], labels = [], height = 200, area = false
           return (
             <g key={t}>
               <line x1={padL} x2={W - 8} y1={y} y2={y} stroke="var(--n200)" strokeWidth="1" />
-              <text x={padL - 5} y={y + 3} textAnchor="end" {...AXIS_LABEL}>{Math.round(max * t)}</text>
+              <text x={padL - 5} y={y + 3} textAnchor="end" {...AXIS_LABEL}>{valueFormat(max * t)}</text>
             </g>
           )
         })}
@@ -145,7 +145,7 @@ export function LineChart({ series = [], labels = [], height = 200, area = false
               <path d={d} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
               {pts.map(([x, y], i) => (
                 <circle key={i} cx={x} cy={y} r={pts.length > 18 ? 1.6 : 2.6} fill={color}>
-                  <title>{`${s.name} — ${labels[i] ?? i}: ${s.values[i]}`}</title>
+                  <title>{`${s.name} — ${labels[i] ?? i}: ${valueFormat(s.values[i])}`}</title>
                 </circle>
               ))}
             </g>

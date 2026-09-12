@@ -15,10 +15,14 @@ depreciationRouter.use(requireAuth, requireOrg, requireActiveMembership)
 const SELECT = `
   select d.*,
     case when a.id is null then null else jsonb_build_object('id', a.id, 'ain', a.ain, 'name', a.name, 'nbv_cents', a.nbv_cents) end as asset,
+    -- Who set the basis up. A schedule fixes an asset's book value for years,
+    -- so the person who chose the method and life is part of reading it.
+    case when cu.id is null then null else jsonb_build_object('full_name', cu.full_name) end as creator,
     (select count(*)::int from public.depreciation_entries e where e.schedule_id = d.id) as entry_count,
     (select count(*)::int from public.depreciation_entries e where e.schedule_id = d.id and e.posted) as posted_count
   from public.depreciation_schedules d
   left join public.assets a on a.id = d.asset_id
+  left join public.users cu on cu.id = d.created_by
 `
 
 const scheduleInput = z.object({

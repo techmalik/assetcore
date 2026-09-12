@@ -409,6 +409,15 @@ a { text-decoration: none; color: inherit; }
   border-radius: 10px;
 }
 
+/* A grid of read-only facts (schedule basis, asset summary). Auto-fits rather
+   than fixing a column count, so the same block reads on a phone and on a wide
+   modal without a breakpoint per screen. */
+.fact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
 /* Two-column form grid — collapses to one column at 600px regardless of the 768px shell breakpoint */
 .form-grid {
   display: grid;

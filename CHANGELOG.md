@@ -5,6 +5,14 @@ first licensed release shipped to a client (NGML).
 
 ## Unreleased
 
+- **A depreciation schedule shows its workings.** Opening one gave a 400px
+  panel with year, charge and closing. It now opens a full view: the basis it
+  was set up from (cost, salvage, depreciable amount, method and rate, life,
+  start, who created it), the book value curve over the whole life — which is
+  what makes a front-loaded method legible at a glance — and an amortisation
+  table carrying opening, charge, accumulated and closing for every period,
+  with the current year marked and each period's posted state.
+
 - **The work-order board moves work.** Cards on Board view were display-only —
   a board whose whole point is moving a job between columns. They now drag
   between columns, performing the same transition the detail panel's status

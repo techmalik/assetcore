@@ -10,6 +10,7 @@ import { listAssets } from '../lib/db/assets'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { useMoney, Money } from '../lib/money'
+import { LineChart } from '../components/Charts.jsx'
 import { errorText } from '../lib/errors'
 
 const THIS_YEAR = new Date().getFullYear()
@@ -204,6 +205,149 @@ function NewScheduleModal({ assets, onClose, onCreated }) {
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
+const METHOD_ABBR = {
+  straight_line: 'SL',
+  declining_balance: 'DB',
+  sum_of_years_digits: 'SYD',
+  units_of_production: 'UOP',
+}
+
+/** One fact, in the grid above the chart. */
+function Fact({ label, value, hint }) {
+  return (
+    <div style={{ background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 6, padding: '10px 12px', minWidth: 0 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)' }}>{label}</div>
+      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--n900)', marginTop: 3, lineHeight: 1.35, wordBreak: 'break-word' }}>{value}</div>
+      {hint && <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 1 }}>{hint}</div>}
+    </div>
+  )
+}
+
+/**
+ * The whole basis for one asset's book value: what it was set up from, the
+ * curve it follows, and the year-by-year workings.
+ *
+ * A modal rather than the 400px side panel it replaces — four money columns
+ * with a converted amount under each will not fit a panel, and the curve is
+ * the part that makes the method legible at a glance.
+ */
+function ScheduleDetail({ detail, canManage, busy, onPost, onRetire, onClose }) {
+  const { money, moneyFull } = useMoney()
+  const entries = detail.entries || []
+  const depreciable = Number(detail.cost_cents) - Number(detail.salvage_value_cents || 0)
+  const startYear = Number(String(detail.start_date).slice(0, 4))
+
+  // The curve starts at cost in the opening year, then follows each period's
+  // closing value — otherwise the first year's fall is invisible.
+  const chartLabels = [String(startYear), ...entries.map((e) => String(e.period_year))]
+  const chartValues = [Number(detail.cost_cents) / 100, ...entries.map((e) => Number(e.closing_cents) / 100)]
+  const salvage = Number(detail.salvage_value_cents || 0) / 100
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
+      <div style={{ position: 'relative', zIndex: 1, width: 860, maxWidth: '100%', maxHeight: '92vh', background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 10, boxShadow: 'var(--sh-lg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '18px 24px', borderBottom: 'var(--bdr)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)' }}>Depreciation schedule</h3>
+              <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--ff-m)', padding: '2px 8px', borderRadius: 99, background: 'var(--b50)', color: 'var(--b700)', border: '1px solid var(--b200)' }}>
+                {METHOD_ABBR[detail.method] || detail.method}
+              </span>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--n500)', marginTop: 2 }}>
+              {detail.asset?.ain} — {detail.asset?.name} · {detail.posted_count} of {detail.entry_count} periods posted
+            </p>
+          </div>
+          <button type="button" onClick={onClose} style={{ width: 28, height: 28, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--n500)', flexShrink: 0 }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+          </button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div className="fact-grid">
+            <Fact label="Asset" value={detail.asset?.name || '—'} hint={detail.asset?.ain} />
+            <Fact label="Method" value={METHOD_LABEL[detail.method] || detail.method}
+              hint={detail.method === 'declining_balance' ? `${Number(detail.declining_factor)}× rate` : undefined} />
+            <Fact label="Cost" value={<Money cents={detail.cost_cents} full />} />
+            <Fact label="Salvage value" value={<Money cents={detail.salvage_value_cents} full />} />
+            <Fact label="Useful life" value={`${Number(detail.useful_life_years)} years`} />
+            <Fact label="Start" value={detail.start_date} />
+            {/* Cost less salvage — the amount the method actually spreads. */}
+            <Fact label="Depreciable" value={<Money cents={depreciable} full />} />
+            <Fact label="Created by" value={detail.creator?.full_name || '—'} />
+          </div>
+
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)', marginBottom: 8 }}>Book value over time</div>
+            <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, padding: '14px 12px 6px' }}>
+              <LineChart
+                series={[{ name: 'Closing book value', values: chartValues, color: 'var(--b500)' }]}
+                labels={chartLabels}
+                area
+                height={200}
+                valueFormat={(v) => money(Math.round(v) * 100)}
+                emptyMessage="No periods to plot yet"
+              />
+              {salvage > 0 && (
+                <p style={{ fontSize: 11, color: 'var(--n500)', padding: '6px 4px 4px' }}>
+                  The curve flattens at the salvage value ({moneyFull(detail.salvage_value_cents)}), which is never written off.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)', marginBottom: 8 }}>Amortisation table</div>
+            <div className="table-scroll" style={{ border: 'var(--bdr)', borderRadius: 6, overflow: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: 'var(--n50)' }}>
+                    {['Year', 'Opening', 'Charge', 'Accumulated', 'Closing', ''].map((h) => (
+                      <th key={h} style={{ padding: '9px 14px', textAlign: h === 'Year' || h === '' ? 'left' : 'right', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', borderBottom: 'var(--bdr)', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((e) => {
+                    const current = e.period_year === THIS_YEAR
+                    return (
+                      <tr key={e.id} style={{ borderBottom: 'var(--bdr)', background: current ? 'var(--b50)' : 'transparent' }}>
+                        <td style={{ padding: '9px 14px', fontFamily: 'var(--ff-m)', color: 'var(--n800)', whiteSpace: 'nowrap' }}>
+                          {e.period_year}
+                          {current && <span className="badge badge-b" style={{ marginLeft: 6 }}>This year</span>}
+                        </td>
+                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)', whiteSpace: 'nowrap' }}>{exact(e.opening_cents)}</td>
+                        {/* The charge is the only figure that leaves the
+                            balance sheet, so it is the one shown as a fall. */}
+                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--srt)', fontWeight: 500, whiteSpace: 'nowrap' }}>−{exact(e.charge_cents)}</td>
+                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)', whiteSpace: 'nowrap' }}>{exact(e.accumulated_cents)}</td>
+                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n900)', fontWeight: 500, whiteSpace: 'nowrap' }}>{exact(e.closing_cents)}</td>
+                        <td style={{ padding: '9px 14px' }}>
+                          {e.posted ? <span className="badge badge-g">Posted</span> : <span className="badge badge-n">Open</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {canManage && (
+          <div style={{ padding: '14px 24px', borderTop: 'var(--bdr)', display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', flexShrink: 0 }}>
+            <button onClick={() => onRetire(detail.id)} style={{ height: 34, padding: '0 14px', fontSize: 12.5, background: 'none', border: '1px solid var(--srbr)', color: 'var(--srt)', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit' }}>Retire schedule</button>
+            <button onClick={() => onPost(detail.id, detail.asset_id)} disabled={busy} className="btn btn-primary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>
+              Post everything through {THIS_YEAR}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Depreciation({ dark, toggleDark }) {
   const { money } = useMoney()
   const { roleKey } = useAuth()
@@ -394,60 +538,20 @@ export default function Depreciation({ dark, toggleDark }) {
               )}
             </div>
 
-            {detail && !detail.loading && (
-              <div style={{ width: 400, flexShrink: 0, borderLeft: 'var(--bdr)', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ padding: '16px 20px', borderBottom: 'var(--bdr)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b600)', marginBottom: 2 }}>{detail.asset?.ain}</div>
-                    <div style={{ fontFamily: 'var(--ff-d)', fontSize: 16, fontWeight: 700, color: 'var(--n950)', letterSpacing: '-.2px' }}>{detail.asset?.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--n500)', marginTop: 3 }}>
-                      {METHOD_LABEL[detail.method]} · {detail.useful_life_years} years from {detail.start_date}
-                    </div>
-                  </div>
-                  <button onClick={() => setDetail(null)} style={{ width: 26, height: 26, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--n500)', flexShrink: 0 }}>
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-                  </button>
-                </div>
-
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead style={{ position: 'sticky', top: 0 }}>
-                      <tr style={{ background: 'var(--n50)' }}>
-                        {['Year', 'Charge', 'Closing', ''].map((h) => (
-                          <th key={h} style={{ padding: '8px 14px', textAlign: h === 'Year' ? 'left' : 'right', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', borderBottom: 'var(--bdr)' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.entries?.map((e) => (
-                        <tr key={e.id} style={{ borderBottom: 'var(--bdr)' }}>
-                          <td style={{ padding: '8px 14px', fontFamily: 'var(--ff-m)', color: 'var(--n700)' }}>{e.period_year}</td>
-                          <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n900)', fontWeight: 500 }}>{exact(e.charge_cents)}</td>
-                          <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{exact(e.closing_cents)}</td>
-                          <td style={{ padding: '8px 14px', textAlign: 'right' }}>
-                            {e.posted
-                              ? <span className="badge badge-g">Posted</span>
-                              : <span className="badge badge-n">Open</span>}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {canManage && (
-                  <div style={{ padding: '14px 20px', borderTop: 'var(--bdr)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <button onClick={() => post(detail.id, detail.asset_id)} disabled={busy} className="btn btn-primary" style={{ width: '100%', height: 36, fontSize: 13 }}>
-                      Post everything through {THIS_YEAR}
-                    </button>
-                    <button onClick={() => retire(detail.id)} style={{ height: 32, fontSize: 12.5, background: 'none', border: '1px solid var(--srbr)', color: 'var(--srt)', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit' }}>Retire schedule</button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {detail && !detail.loading && (
+        <ScheduleDetail
+          detail={detail}
+          canManage={canManage}
+          busy={busy}
+          onPost={post}
+          onRetire={retire}
+          onClose={() => setDetail(null)}
+        />
+      )}
 
       {creating && (
         <NewScheduleModal
