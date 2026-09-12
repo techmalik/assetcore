@@ -193,7 +193,19 @@ export default function Maintenance({ dark, toggleDark }) {
 
   const handleGenerate = async () => {
     setGenerating(true)
-    try { await generatePMTasks(); await load() } catch { /* ignore */ } finally { setGenerating(false) }
+    try {
+      const count = await generatePMTasks()
+      await load()
+      // Generation legitimately produces nothing most of the time — a schedule
+      // is skipped when it already has an open task or is not due within seven
+      // days. Saying so is the difference between "there was nothing to do"
+      // and what this looked like before: a button that reloads the page and
+      // never explains itself.
+      if (count > 0) toast.success(`${count} task${count === 1 ? '' : 's'} generated.`)
+      else toast.info('Nothing to generate — every active schedule already has a task open, or is not due within the next 7 days.')
+    } catch (e) {
+      toast.error(errorText(e, 'Failed to generate tasks.'))
+    } finally { setGenerating(false) }
   }
 
   const [completing, setCompleting] = useState(null)

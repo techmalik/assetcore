@@ -5,6 +5,31 @@ first licensed release shipped to a client (NGML).
 
 ## Unreleased
 
+- **The work-order board moves work.** Cards on Board view were display-only —
+  a board whose whole point is moving a job between columns. They now drag
+  between columns, performing the same transition the detail panel's status
+  control does, gated on the same `wo:transition` capability. While a card is
+  in the air only the columns it may legally move to accept it and the rest
+  dim, so the board shows the transition rules rather than letting you drop
+  somewhere the API would refuse. The move is optimistic and rolls back with
+  the reason if the API declines — closing a job whose parts are not in stock,
+  most often. Dragging is mouse-only; on a touch device the status control in
+  the detail panel is still the way.
+
+- **"Generate Tasks" says what it did.** It swallowed every outcome —
+  `catch { /* ignore */ }` — so a run that generated nothing (the usual case:
+  every active schedule already has a task open, or is not due within seven
+  days) looked exactly like a failure, and an actual failure looked like
+  nothing at all. It now reports the count, the reason there was nothing to
+  do, or the error.
+
+- **A risk matrix cell opens in the side panel.** Picking a cell listed its
+  risks in a strip underneath the grid, which pushed the grid up the page and
+  read as a different kind of thing from the register's detail panel — same
+  content, so it now uses the same panel. A cell holding one risk (the usual
+  case) opens that risk directly; a cell holding several lists them, with a
+  way back to the list from a risk.
+
 - **The QR label is on the asset itself.** Registry → Labels prints a batch,
   which is no help when you have one asset open and want to scan it, or need
   to replace one worn-off sticker. The detail panel now carries the asset's

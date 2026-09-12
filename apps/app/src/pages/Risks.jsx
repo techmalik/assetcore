@@ -429,7 +429,7 @@ export default function Risks({ dark, toggleDark }) {
 
             <div style={{ display: 'flex' }}>
               {[{ k: 'matrix', l: 'Matrix' }, { k: 'register', l: `Register (${risks.length})` }].map((t) => (
-                <button key={t.k} className={`tab-btn${tab === t.k ? ' active' : ''}`} onClick={() => { setTab(t.k); setCellPick(null) }}>{t.l}</button>
+                <button key={t.k} className={`tab-btn${tab === t.k ? ' active' : ''}`} onClick={() => { setTab(t.k); setCellPick(null); setDetail(null) }}>{t.l}</button>
               ))}
             </div>
           </div>
@@ -458,25 +458,16 @@ export default function Risks({ dark, toggleDark }) {
                   <Matrix
                     matrix={matrix}
                     selectedCell={cellPick && `${cellPick.likelihood}-${cellPick.consequence}`}
-                    onPick={(cell) => setCellPick(cell.count > 0 ? cell : null)}
+                    onPick={(cell) => {
+                      const same = cellPick && cellPick.likelihood === cell.likelihood && cellPick.consequence === cell.consequence
+                      if (!cell.count || same) { setCellPick(null); setDetail(null); return }
+                      setCellPick(cell)
+                      // A cell almost always holds one risk — open it rather
+                      // than showing a list of one to click through.
+                      if (cell.risks.length === 1) openDetail(cell.risks[0].id)
+                      else setDetail(null)
+                    }}
                   />
-
-                  {cellPick && (
-                    <div style={{ marginTop: 20, border: 'var(--bdr)', borderRadius: 8, background: 'var(--n0)', overflow: 'hidden' }}>
-                      <div style={{ padding: '10px 14px', borderBottom: 'var(--bdr)', fontSize: 12, color: 'var(--n700)' }}>
-                        Likelihood {cellPick.likelihood} × consequence {cellPick.consequence} —
-                        {' '}<strong>score {cellPick.score}, {BAND_META[cellPick.band].label.toLowerCase()}</strong>
-                      </div>
-                      {cellPick.risks.map((r) => (
-                        <div key={r.id} className="row-hover" onClick={() => { setTab('register'); openDetail(r.id) }}
-                          style={{ padding: '10px 14px', borderBottom: 'var(--bdr)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)' }}>{r.ref}</span>
-                          <span style={{ flex: 1, fontSize: 12.5, color: 'var(--n800)' }}>{r.title}</span>
-                          <span className="badge badge-n">{CATEGORY_LABEL[r.category] || r.category}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
                   <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
                     {Object.entries(BAND_META).map(([key, m]) => (
@@ -547,18 +538,54 @@ export default function Risks({ dark, toggleDark }) {
               )}
             </div>
 
-            {detail && tab === 'register' && (
+            {/* One panel for both tabs. A cell used to open its risks in a strip
+                under the grid, which pushed the grid up and read as a different
+                kind of thing from the register's detail — same content, so the
+                same place. */}
+            {(detail || cellPick) && (
               <div style={{ width: 380, flexShrink: 0, borderLeft: 'var(--bdr)', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {detail.loading ? (
+                {!detail ? (
+                  <>
+                    <div style={{ padding: '16px 20px', borderBottom: 'var(--bdr)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--ff-d)', fontSize: 16, fontWeight: 700, color: 'var(--n950)', letterSpacing: '-.2px' }}>
+                          {cellPick.count} risk{cellPick.count === 1 ? '' : 's'} here
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--n500)', marginTop: 2 }}>
+                          Likelihood {cellPick.likelihood} × consequence {cellPick.consequence} —
+                          {' '}<strong style={{ color: BAND_META[cellPick.band].c }}>score {cellPick.score}, {BAND_META[cellPick.band].label.toLowerCase()}</strong>
+                        </div>
+                      </div>
+                      <button onClick={() => setCellPick(null)} style={{ width: 26, height: 26, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--n500)', flexShrink: 0 }}>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                      </button>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto' }}>
+                      {cellPick.risks.map((r) => (
+                        <div key={r.id} className="row-hover" onClick={() => openDetail(r.id)}
+                          style={{ padding: '11px 20px', borderBottom: 'var(--bdr)', cursor: 'pointer' }}>
+                          <div style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)' }}>{r.ref}</div>
+                          <div style={{ fontSize: 12.5, color: 'var(--n800)', margin: '2px 0 5px' }}>{r.title}</div>
+                          <span className="badge badge-n">{CATEGORY_LABEL[r.category] || r.category}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : detail.loading ? (
                   <div style={{ padding: 24, fontSize: 13, color: 'var(--n400)' }}>Loading…</div>
                 ) : (
                   <>
                     <div style={{ padding: '16px 20px', borderBottom: 'var(--bdr)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                       <div style={{ minWidth: 0 }}>
+                        {cellPick && cellPick.risks.length > 1 && (
+                          <button onClick={() => setDetail(null)} style={{ background: 'none', border: 'none', padding: 0, marginBottom: 4, fontSize: 11, color: 'var(--b600)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                            ← the {cellPick.count} risks in this cell
+                          </button>
+                        )}
                         <div style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b600)', marginBottom: 2 }}>{detail.ref}</div>
                         <div style={{ fontFamily: 'var(--ff-d)', fontSize: 16, fontWeight: 700, color: 'var(--n950)', letterSpacing: '-.2px' }}>{detail.title}</div>
                       </div>
-                      <button onClick={() => setDetail(null)} style={{ width: 26, height: 26, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--n500)', flexShrink: 0 }}>
+                      <button onClick={() => { setDetail(null); setCellPick(null) }} style={{ width: 26, height: 26, border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--n500)', flexShrink: 0 }}>
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
                       </button>
                     </div>
