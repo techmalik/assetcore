@@ -5,6 +5,27 @@ first licensed release shipped to a client (NGML).
 
 ## Unreleased
 
+- **Phone and tablet pass over the whole app.** Every route was measured at
+  390px, 820px and 1024px; nothing overflows its viewport at any of them now.
+  What was wrong and is fixed:
+  - Four detail panels (approvals, defects, spare parts, risk) were a fixed
+    380px that never became an overlay, so on a 390px phone the list beside
+    them was ten pixels wide. They use the shared panel class now.
+  - The panel class declared its desktop width *after* the media blocks that
+    turn it into an overlay, so those blocks lost the cascade and even a phone
+    got a 360px panel pinned to one side. Re-asserted at the end of the sheet.
+  - Nothing covered 768–1024px: a portrait iPad or Galaxy Tab got the desktop
+    shell — 220px of sidebar plus a 380px panel — leaving a table about 200px
+    wide. A tablet tier now puts the sidebar behind the hamburger up to 900px,
+    caps the panel to 320px in landscape, and keeps the tables scrolling.
+  - Page headers, tab strips and filter rows wrap or scroll instead of running
+    off the edge (asset state filters, maintenance tabs, the calendar's month
+    nav).
+  - On a touch device, buttons, pills, tabs and inputs take a minimum height —
+    24px controls are fine with a mouse and not with a thumb.
+  - The map is built for it: drag to pan, pinch to zoom, and a bare scroll
+    still scrolls the page rather than zooming the map out from under you.
+
 - **An asset map, and the scanner, are now reachable.** Both existed and
   neither was in the sidebar — the scanner especially, which is the one a
   technician standing at the plant actually wants. Asset Map and Scan Tag now

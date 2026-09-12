@@ -118,7 +118,7 @@ export default function Analytics({ dark, toggleDark }) {
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px 0', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
               <div>
                 <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Analytics</h1>
                 <p style={{ fontSize: 12, color: 'var(--n500)' }}>Reliability, backlog and where the work is</p>
@@ -130,7 +130,7 @@ export default function Analytics({ dark, toggleDark }) {
                 </select>
               )}
             </div>
-            <div style={{ display: 'flex' }}>
+            <div className="tab-strip" style={{ display: 'flex' }}>
               {[{ k: 'performance', l: 'Performance' }, { k: 'map', l: 'Map' }].map((t) => (
                 <button key={t.k} className={`tab-btn${tab === t.k ? ' active' : ''}`} onClick={() => setTab(t.k)}>{t.l}</button>
               ))}

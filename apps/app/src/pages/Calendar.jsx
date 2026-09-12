@@ -138,18 +138,18 @@ export default function Calendar({ dark, toggleDark }) {
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px 12px', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
               <div>
                 <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Calendar</h1>
                 <p style={{ fontSize: 12, color: 'var(--n500)' }}>Jobs, scheduled maintenance and inspections on one grid</p>
               </div>
               <div style={{ flex: 1 }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <button onClick={() => step(-1)} className="btn btn-secondary" style={{ height: 30, width: 30, padding: 0, fontSize: 13 }} title="Previous month">‹</button>
                 <button onClick={() => setCursor({ year: today.getUTCFullYear(), month: today.getUTCMonth() })}
                   className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12.5 }}>Today</button>
                 <button onClick={() => step(1)} className="btn btn-secondary" style={{ height: 30, width: 30, padding: 0, fontSize: 13 }} title="Next month">›</button>
-                <span style={{ fontFamily: 'var(--ff-d)', fontSize: 15, fontWeight: 600, color: 'var(--n900)', marginLeft: 8, minWidth: 140 }}>{monthLabel}</span>
+                <span style={{ fontFamily: 'var(--ff-d)', fontSize: 15, fontWeight: 600, color: 'var(--n900)', marginLeft: 8 }}>{monthLabel}</span>
               </div>
             </div>
 

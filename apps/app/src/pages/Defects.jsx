@@ -372,7 +372,7 @@ export default function Defects({ dark, toggleDark }) {
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px 12px', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
               <div>
                 <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Defects</h1>
                 <p style={{ fontSize: 12, color: 'var(--n500)' }}>Everything found and not yet put right</p>
@@ -481,7 +481,7 @@ export default function Defects({ dark, toggleDark }) {
             </div>
 
             {detail && (
-              <div style={{ width: 380, flexShrink: 0, borderLeft: 'var(--bdr)', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div className="detail-panel" style={{ '--panel-w': '380px', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 {detail.loading ? (
                   <div style={{ padding: 24, fontSize: 13, color: 'var(--n400)' }}>Loading…</div>
                 ) : (

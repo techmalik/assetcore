@@ -420,7 +420,7 @@ export default function Depreciation({ dark, toggleDark }) {
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px 0', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
               <div>
                 <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Depreciation</h1>
                 <p style={{ fontSize: 12, color: 'var(--n500)' }}>Annual periods · net book value comes from posted entries</p>
@@ -449,7 +449,7 @@ export default function Depreciation({ dark, toggleDark }) {
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 4 }}>
+            <div className="tab-strip" style={{ display: 'flex', gap: 4 }}>
               {[['schedules', 'Schedules'], ['forecast', 'Year by year']].map(([v, l]) => (
                 <button key={v} onClick={() => setTab(v)} className={`tab-btn${tab === v ? ' active' : ''}`}>{l}</button>
               ))}

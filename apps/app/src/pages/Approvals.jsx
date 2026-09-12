@@ -425,7 +425,7 @@ export default function Approvals({ dark, toggleDark }) {
               </div>
             )}
 
-            <div style={{ display: 'flex' }}>
+            <div className="tab-strip" style={{ display: 'flex' }}>
               {tabs.map((t) => (
                 <button key={t.k} className={`tab-btn${tab === t.k ? ' active' : ''}`} onClick={() => { setTab(t.k); setDetail(null) }}>{t.l}</button>
               ))}
@@ -500,7 +500,7 @@ export default function Approvals({ dark, toggleDark }) {
               </div>
 
               {detail && (
-                <div style={{ width: 380, flexShrink: 0, borderLeft: 'var(--bdr)', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div className="detail-panel" style={{ '--panel-w': '380px', background: 'var(--n0)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   {detail.loading ? (
                     <div style={{ padding: 24, fontSize: 13, color: 'var(--n400)' }}>Loading…</div>
                   ) : (

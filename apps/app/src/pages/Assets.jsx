@@ -1413,13 +1413,13 @@ export default function Assets({ dark, toggleDark }) {
                 rows still carry them (0012 kept them valid but nothing writes
                 them any more), so they disappear from a clean database instead
                 of sitting there always returning nothing. */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n400)', fontFamily: 'var(--ff-m)' }}>State</span>
               {STATE_FILTERS.filter(([v]) => !LEGACY_STATUS_KEYS.includes(v) || hasLegacyStatus || filter === v).map(([v, l]) => (
                 <button key={v} onClick={() => setFilter(v)} className="filter-pill" style={{ height: 30, padding: '0 12px', border: `1px solid ${filter === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: filter === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: filter === v ? 'var(--b700)' : 'var(--n600)', fontWeight: filter === v ? 500 : 400, cursor: 'pointer' }}>{l}</button>
               ))}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n400)', fontFamily: 'var(--ff-m)' }}>Health</span>
               {[['', 'Any'], ['good', 'Healthy'], ['attention', 'Needs attention'], ['critical', 'Critical']].map(([v, l]) => (
                 <button key={v || 'any'} onClick={() => setHealthFilter(v)} className="filter-pill" style={{ height: 30, padding: '0 12px', border: `1px solid ${healthFilter === v ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 4, background: healthFilter === v ? 'var(--b50)' : 'var(--n0)', fontSize: 12, color: healthFilter === v ? 'var(--b700)' : 'var(--n600)', fontWeight: healthFilter === v ? 500 : 400, cursor: 'pointer' }}>{l}</button>

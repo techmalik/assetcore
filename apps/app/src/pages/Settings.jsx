@@ -407,7 +407,7 @@ export default function Settings({ dark, toggleDark }) {
             <div style={{ marginBottom: 12 }}>
               <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Settings</h1>
             </div>
-            <div style={{ display: 'flex' }}>
+            <div className="tab-strip" style={{ display: 'flex' }}>
               {[{ k: 'profile', l: 'Profile' }, { k: 'org', l: 'Organisation' }].map(t => (
                 <button key={t.k} className={`tab-btn${tab === t.k ? ' active' : ''}`} onClick={() => setTab(t.k)}>{t.l}</button>
               ))}

@@ -391,6 +391,55 @@ a { text-decoration: none; color: inherit; }
   .topbar-mobile-search-btn { display: flex; }
 }
 
+/* ── Tablet ───────────────────────────────────────────────────────────────
+   Between the phone rules above and the desktop layout sits the size nobody
+   designs for: an iPad or Galaxy Tab in portrait, 768–1024 CSS px. The shell
+   there is desktop — a 220px sidebar and a 380px detail panel — which leaves
+   a table about 200px wide to live in. So:
+
+     - the sidebar keeps its drawer behaviour up to 900px (a portrait tablet
+       is held like a big phone, and the content needs the width more than the
+       nav does);
+     - a detail panel stays beside the list in landscape but is capped, and
+       tables keep their scroll floor rather than crushing columns.  */
+@media (min-width: 769px) and (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+    z-index: 100;
+    width: 240px;
+  }
+  .sidebar.sidebar--mobile-open { transform: translateX(0); box-shadow: var(--sh-lg); }
+  .sidebar-overlay { display: block !important; }
+  .sidebar-hamburger { display: flex !important; }
+  .sidebar-collapse-btn { display: none; }
+
+  /* A panel beside a list leaves neither enough room at this width. */
+  .detail-panel { position: fixed; inset: 0; width: auto; z-index: 150; border-left: none; }
+  .table-scroll table { min-width: 560px; }
+  .page-header { flex-wrap: wrap; }
+  .tab-strip { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  /* Landscape tablet: the panel can stay, but not at its desktop width. */
+  .detail-panel { width: min(var(--panel-w, 360px), 320px); }
+  .table-scroll table { min-width: 520px; }
+  .page-header { flex-wrap: wrap; }
+  .tab-strip { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+}
+
+/* Touch targets. A pointer:coarse device is a finger, and 24px controls that
+   are fine with a mouse are not fine with one. */
+@media (pointer: coarse) {
+  .btn { min-height: 40px; }
+  .filter-pill, .tab-btn { min-height: 36px; }
+  .row-action { min-height: 36px; min-width: 36px; }
+  .input, .select { min-height: 38px; }
+}
+
 /* Modal overlay/card — width caps at 92vw so no modal can overflow a phone screen */
 .modal-overlay {
   position: fixed;
@@ -414,7 +463,10 @@ a { text-decoration: none; color: inherit; }
    modal without a breakpoint per screen. */
 .fact-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  /* 132px so two facts still sit side by side inside a phone-width modal;
+     below that the min() lets a single column take the full width rather than
+     overflowing. */
+  grid-template-columns: repeat(auto-fit, minmax(min(132px, 100%), 1fr));
   gap: 10px;
 }
 
@@ -514,4 +566,17 @@ a { text-decoration: none; color: inherit; }
 }
 .select {
   font-family: var(--ff-u);
+}
+
+/* ── Panel widths, last word ──────────────────────────────────────────────
+   `.detail-panel` declares its desktop width further up this file but *after*
+   the media blocks that make it an overlay, so those blocks lost the cascade
+   on `width` alone and a phone got a 360px panel pinned to the left of a
+   360px screen rather than a full-screen one. Re-asserted here, at the end,
+   where they win. */
+@media (max-width: 900px) {
+  .detail-panel { width: auto; }
+}
+@media (min-width: 901px) and (max-width: 1180px) {
+  .detail-panel { width: min(var(--panel-w, 360px), 320px); }
 }

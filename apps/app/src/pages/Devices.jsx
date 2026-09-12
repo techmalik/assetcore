@@ -183,7 +183,7 @@ export default function Devices({ dark, toggleDark }) {
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {/* Header */}
           <div style={{ padding: '14px 24px 12px', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
               <div>
                 <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Devices</h1>
                 <p style={{ fontSize: 12, color: 'var(--n500)' }}>IoT sensors, meters, gateways & telemetry endpoints</p>
