@@ -6,6 +6,7 @@ import Topbar from '../components/Topbar.jsx'
 import { getAssetByAin } from '../lib/db/assets'
 import { errorText } from '../lib/errors'
 import { useToast } from '../lib/ToastContext'
+import AssetMap from '../components/AssetMap.jsx'
 
 const CRITICALITY_CLASS = { critical: 'badge-r', high: 'badge-a', medium: 'badge-b', low: 'badge-n' }
 const STATUS_CLASS = { critical: 'badge-r', attention: 'badge-a', operational: 'badge-g', offline: 'badge-n' }
@@ -138,7 +139,7 @@ export default function Scan({ dark, toggleDark }) {
 
   return (
     <div className="app-shell">
-      <Sidebar active="assets" />
+      <Sidebar active="scan" />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Topbar breadcrumb="Scan Asset" dark={dark} toggleDark={toggleDark} />
 
@@ -184,6 +185,30 @@ export default function Scan({ dark, toggleDark }) {
                 <Field label="Installed" value={asset.install_date} mono />
                 <Field label="Warranty expires" value={asset.warranty_expiry} mono />
                 <Field label="Custodian" value={asset.custodian?.full_name} />
+                {/* Where it is, for the half of scans that happen because
+                    someone is looking for the *next* one. An asset with no fix
+                    of its own falls back to its site. */}
+                {(() => {
+                  const lat = asset.lat ?? asset.site?.lat
+                  const lng = asset.lng ?? asset.site?.lng
+                  if (lat == null || lng == null) return null
+                  return (
+                    <div style={{ padding: 14, borderBottom: 'var(--bdr)' }}>
+                      <AssetMap
+                        assets={[{ ...asset, lat, lng }]}
+                        colourBy="status"
+                        height={180}
+                        showLegend={false}
+                        note={false}
+                        embedded
+                      />
+                      <div style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n500)', marginTop: 6 }}>
+                        {Number(lat).toFixed(5)}, {Number(lng).toFixed(5)}
+                        {asset.lat == null && asset.site && <span style={{ color: 'var(--n400)' }}> · from {asset.site.name}</span>}
+                      </div>
+                    </div>
+                  )
+                })()}
                 <div style={{ padding: 14 }}>
                   <button onClick={() => nav(`/assets?ain=${encodeURIComponent(asset.ain)}`)} className="btn btn-primary" style={{ width: '100%', height: 36, fontSize: 13 }}>
                     Open in registry

@@ -6,6 +6,7 @@ import AuthImage from '../components/AuthImage.jsx'
 import ImageLightbox from '../components/ImageLightbox.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { PrintQrSheet, AssetQrCode } from '../components/AssetQr.jsx'
+import AssetMap from '../components/AssetMap.jsx'
 import {
   listAssets, createAsset, updateAsset, softDeleteAsset, restoreAsset, importAssets,
   uploadAssetPhoto, deleteAssetPhoto, uploadAssetDocument, deleteAssetDocument, listAssetActivity, addAssetComment,
@@ -1213,6 +1214,46 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
               ))}
             </div>
           )}
+        </div>
+
+        {/* Where it is. Last, because it answers "how do I get to it" rather
+            than "what is wrong with it" — and an asset with no fix of its own
+            still shows its site, which is where someone would drive to. */}
+        <div>
+          <div style={section}>Location</div>
+          {(() => {
+            const lat = asset.lat ?? asset.site?.lat
+            const lng = asset.lng ?? asset.site?.lng
+            if (lat == null || lng == null) {
+              return (
+                <p style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.6 }}>
+                  No coordinates on this asset{asset.site ? ' or on its site' : ''}. Add a latitude and longitude
+                  {canEdit ? ' by editing the asset' : ''} and it will appear here and on the asset map.
+                </p>
+              )
+            }
+            return (
+              <>
+                <AssetMap
+                  assets={[{ ...asset, lat, lng }]}
+                  colourBy="status"
+                  height={190}
+                  showLegend={false}
+                  note={false}
+                  embedded
+                />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n500)' }}>
+                    {Number(lat).toFixed(5)}, {Number(lng).toFixed(5)}
+                    {asset.lat == null && asset.site && <span style={{ color: 'var(--n400)' }}> · from {asset.site.name}</span>}
+                  </span>
+                  <button type="button" onClick={() => nav('/asset-map')} style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--b600)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    See it among the others →
+                  </button>
+                </div>
+              </>
+            )
+          })()}
         </div>
 
         {/* Actions */}

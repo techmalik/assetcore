@@ -68,7 +68,9 @@ const DEPRECIATION_INPUTS = [
 // always stay in sync from the single site_id the asset stores.
 const SELECT = `
   select a.*,
-    case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name, 'location_id', s.location_id) end as site,
+    -- lat/lng travel with the site so an asset with no fix of its own can
+    -- still be shown on a map at the place it lives.
+    case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name, 'location_id', s.location_id, 'lat', s.lat, 'lng', s.lng) end as site,
     case when loc.id is null then null else jsonb_build_object('id', loc.id, 'name', loc.name) end as location,
     case when c.id is null then null else jsonb_build_object('id', c.id, 'name', c.name) end as category,
     case when op.id is null then null else jsonb_build_object('id', op.id, 'full_name', op.full_name) end as operator

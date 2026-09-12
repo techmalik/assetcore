@@ -5,6 +5,31 @@ first licensed release shipped to a client (NGML).
 
 ## Unreleased
 
+- **An asset map, and the scanner, are now reachable.** Both existed and
+  neither was in the sidebar — the scanner especially, which is the one a
+  technician standing at the plant actually wants. Asset Map and Scan Tag now
+  sit under Assets. The map filters by location, site, category, condition,
+  criticality and outstanding work, searches by AIN or name, and colours its
+  pins by condition, health score, criticality or open work, with a legend
+  built from the same table that colours the pins.
+
+- **A real basemap, when the browser can reach one.** Positions were drawn on
+  a bare grid. They now sit on map tiles — configurable per instance
+  (`VITE_MAP_TILE_URL`, `VITE_MAP_TILES=off`), defaulting to OpenStreetMap. A
+  failed tile is not an error: the tiles are dropped, a graticule is drawn
+  instead, and the assets keep their true positions, so an instance on a plant
+  network with no route out still gets a usable map. Drag to pan, pinch or
+  +/− to zoom; a bare scroll still scrolls the page.
+
+- **Every asset can be placed.** An asset with no coordinates of its own falls
+  back to its site's, marked as such — almost nobody geotags every valve, and
+  a map showing only the few with their own fix maps the survey effort rather
+  than the plant.
+
+- **The asset detail panel ends with where the thing is**, and a scanned tag
+  shows the same pin — the answer to "where is the next one" while standing at
+  this one.
+
 - **A depreciation schedule shows its workings.** Opening one gave a 400px
   panel with year, charge and closing. It now opens a full view: the basis it
   was set up from (cost, salvage, depreciable amount, method and rate, life,

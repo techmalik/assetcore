@@ -194,9 +194,19 @@ analyticsRouter.get('/analytics/asset-map', async (req, res) => {
   const payload = await withOrgContext(claimsFromReq(req), async (c) => {
     const [{ rows: placed }, { rows: missing }] = await Promise.all([
       c.query(
-        `select a.id, a.ain, a.name, a.lat, a.lng, a.status, a.criticality,
-           a.health_score, a.lifecycle_status,
+        // An asset falls back to its site's coordinates. Almost nobody
+        // geotags every valve, but every asset belongs somewhere, and a map
+        // that only shows the handful with their own fix is a map of the
+        // survey effort rather than of the plant. position_source says which
+        // it is, so the UI can be honest about the precision.
+        `select a.id, a.ain, a.name,
+           coalesce(a.lat, s.lat) as lat,
+           coalesce(a.lng, s.lng) as lng,
+           case when a.lat is not null and a.lng is not null then 'asset' else 'site' end as position_source,
+           a.status, a.criticality, a.health_score, a.lifecycle_status,
            case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name) end as site,
+           case when l.id is null then null else jsonb_build_object('id', l.id, 'name', l.name) end as location,
+           case when c.id is null then null else jsonb_build_object('id', c.id, 'name', c.name) end as category,
            (select count(*)::int from public.work_orders w
              where w.asset_id = a.id and w.deleted_at is null and w.status <> 'closed') as open_work_orders,
            (select count(*)::int from public.defects d
@@ -204,12 +214,18 @@ analyticsRouter.get('/analytics/asset-map', async (req, res) => {
                and d.status in ('open','acknowledged','in_progress','deferred'))         as open_defects
          from public.assets a
          left join public.sites s on s.id = a.site_id
-         where a.deleted_at is null and a.lat is not null and a.lng is not null
+         left join public.locations l on l.id = s.location_id
+         left join public.asset_categories c on c.id = a.category_id
+         where a.deleted_at is null
+           and coalesce(a.lat, s.lat) is not null
+           and coalesce(a.lng, s.lng) is not null
          order by a.ain`
       ),
       c.query(
-        `select count(*)::int as n from public.assets
-         where deleted_at is null and (lat is null or lng is null)`
+        `select count(*)::int as n from public.assets a
+         left join public.sites s on s.id = a.site_id
+         where a.deleted_at is null
+           and (coalesce(a.lat, s.lat) is null or coalesce(a.lng, s.lng) is null)`
       ),
     ])
     return { assets: placed, unplaced: missing[0]?.n ?? 0 }

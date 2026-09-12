@@ -30,6 +30,7 @@ import Calendar from './pages/Calendar.jsx'
 import SpareParts from './pages/SpareParts.jsx'
 import Depreciation from './pages/Depreciation.jsx'
 import Scan from './pages/Scan.jsx'
+import AssetMapPage from './pages/AssetMapPage.jsx'
 import Inspections from './pages/Inspections.jsx'
 import Devices from './pages/Devices.jsx'
 import Integrations from './pages/Integrations.jsx'
@@ -144,6 +145,7 @@ function Routed() {
       <Route path="/work-orders" element={gate(<WorkOrders {...props} />)} />
       <Route path="/maintenance" element={gate(<Maintenance {...props} />)} />
       <Route path="/scan" element={gate(<Scan {...props} />)} />
+      <Route path="/asset-map" element={gate(<AssetMapPage {...props} />)} />
       <Route path="/calendar" element={gate(<Calendar {...props} />)} />
       <Route path="/spare-parts" element={gate(can(roleKey, 'parts:read', extraCaps) ? <SpareParts {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/defects" element={gate(can(roleKey, 'defect:read', extraCaps) ? <Defects {...props} /> : <Navigate to="/dashboard" replace />)} />

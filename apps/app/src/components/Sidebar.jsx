@@ -28,12 +28,19 @@ const icons = {
   depreciation: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 3.5v9h11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M5 6.5l2.5 2.5 2-2 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   analytics: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 13.5V9M6.2 13.5V4M9.8 13.5V6.8M13.5 13.5V2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
   calendar: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3.5" width="11" height="10" rx="1.3" stroke="currentColor" strokeWidth="1.3"/><path d="M2.5 6.5h11" stroke="currentColor" strokeWidth="1.3"/><path d="M5.5 2.2v2.4M10.5 2.2v2.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  map: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 14.2s4.6-4.2 4.6-7.4A4.6 4.6 0 003.4 6.8c0 3.2 4.6 7.4 4.6 7.4Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><circle cx="8" cy="6.6" r="1.7" stroke="currentColor" strokeWidth="1.2"/></svg>,
+  scan: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 5.5V4a1.5 1.5 0 011.5-1.5h1.5M13.5 5.5V4A1.5 1.5 0 0012 2.5h-1.5M2.5 10.5V12A1.5 1.5 0 004 13.5h1.5M13.5 10.5V12a1.5 1.5 0 01-1.5 1.5h-1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M2.5 8h11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   settings: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2"/><path d="M6.8 2.1l-.5 1.5A4.6 4.6 0 005 4.4L3.5 4l-1.2 2 1.1 1.1a4.5 4.5 0 000 1.8L2.3 10l1.2 2 1.5-.4A4.6 4.6 0 006.3 12.4l.5 1.5h2.4l.5-1.5A4.6 4.6 0 0011 11.6l1.5.4 1.2-2-1.1-1.1a4.5 4.5 0 000-1.8l1.1-1.1-1.2-2-1.5.4A4.6 4.6 0 009.7 3.6L9.2 2.1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>,
 }
 
 const OPERATIONS = [
   { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: icons.dashboard },
   { key: 'assets', label: 'Assets', path: '/assets', icon: icons.assets },
+  // The map and the scanner are both ways into the asset register, and both
+  // were unreachable without knowing the URL — the scanner especially, which
+  // is the one a technician standing at the plant actually wants.
+  { key: 'asset-map', label: 'Asset Map', path: '/asset-map', icon: icons.map },
+  { key: 'scan', label: 'Scan Tag', path: '/scan', icon: icons.scan },
   { key: 'work-orders', label: 'Work Orders', path: '/work-orders', icon: icons.workorders },
   { key: 'maintenance', label: 'Maintenance', path: '/maintenance', icon: icons.maintenance },
   { key: 'calendar', label: 'Calendar', path: '/calendar', icon: icons.calendar },
