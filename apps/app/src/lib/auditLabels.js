@@ -70,6 +70,42 @@ export const ACTION_LABEL = {
   'device.update': 'Updated device',
   'device.delete': 'Removed device',
 
+  // Defects, risk and approvals
+  'defect.create': 'Raised defect',
+  'defect.update': 'Updated defect',
+  'defect.archive': 'Archived defect',
+  'defect.raise_work_order': 'Raised a work order from defect',
+  'risk.create': 'Registered risk',
+  'risk.update': 'Updated risk',
+  'risk.archive': 'Archived risk',
+  'approval.submit': 'Submitted for approval',
+  'approval.approve': 'Approved',
+  'approval.reject': 'Rejected',
+  'approval.recall': 'Recalled approval request',
+  'approval.rule.create': 'Created approval rule',
+  'approval.rule.update': 'Updated approval rule',
+  'approval.rule.retire': 'Retired approval rule',
+  'compliance_audit.finding.raise_defect': 'Raised a defect from audit finding',
+  'inspection.template.create': 'Created inspection template',
+
+  // Spare parts
+  'part.create': 'Added spare part',
+  'part.update': 'Updated spare part',
+  'part.archive': 'Archived spare part',
+
+  // Depreciation
+  'depreciation.schedule.create': 'Created depreciation schedule',
+  'depreciation.schedule.retire': 'Retired depreciation schedule',
+  'depreciation.post': 'Posted depreciation',
+  'depreciation.post_all': 'Posted depreciation for every asset',
+
+  // Documents and escalations
+  'document.upload': 'Uploaded document',
+  'document.delete': 'Deleted document',
+  'escalation.rule.create': 'Created escalation rule',
+  'escalation.rule.update': 'Updated escalation rule',
+  'escalation.rule.retire': 'Retired escalation rule',
+
   // People
   'user.invite': 'Invited',
   'user.role': 'Changed the role of',
@@ -98,8 +134,8 @@ export function entityTypeLabel(entityType) {
 /** Colour by verb rather than by exact string — the old map covered 9 of 40. */
 export function actionColor(action) {
   const a = String(action || '')
-  if (/\.(create|import|invite|enable|restore)$/.test(a)) return 'var(--sgt)'
-  if (/\.(delete|archive|disable|remove)$/.test(a) || a.endsWith('.attachment.remove')) return 'var(--srt)'
-  if (/\.(complete|transition)$/.test(a)) return 'var(--b600)'
+  if (/\.(create|import|invite|enable|restore|upload|submit)$/.test(a)) return 'var(--sgt)'
+  if (/\.(delete|archive|disable|remove|retire|reject)$/.test(a) || a.endsWith('.attachment.remove')) return 'var(--srt)'
+  if (/\.(complete|transition|approve|post|post_all)$/.test(a)) return 'var(--b600)'
   return 'var(--sat)'
 }

@@ -240,3 +240,68 @@ describe('audit entity labels', () => {
     })
   })
 })
+
+describe('audit log filters', () => {
+  // One work order created by ops gives every filter something real to match.
+  let woId: string
+  let woRef: string
+  beforeAll(async () => {
+    const res = await ops.post('/api/work-orders').send({
+      title: `Filterable WO ${uniqueSuffix()}`, type: 'corrective', priority: 'medium', site_id: SITE_A1,
+    })
+    expect(res.status).toBe(201)
+    woId = res.body.id
+    woRef = res.body.ref
+  })
+
+  it('offers only facet values the log actually contains', async () => {
+    const res = await owner.get('/api/audit-log/facets')
+    expect(res.status).toBe(200)
+    expect(res.body.actions).toContain('wo.create')
+    expect(res.body.entity_types).toContain('work_order')
+    expect(res.body.actors.some((a: { id: string }) => a.id === USERS.opsManagerA.id)).toBe(true)
+    // Facets are org-scoped like the log itself.
+    expect(res.body.actors.every((a: { id: string }) => a.id !== USERS.ownerB.id)).toBe(true)
+  })
+
+  it('filters by actor, action and entity type, and counts what it filtered', async () => {
+    const res = await owner.get(
+      `/api/audit-log?actor_id=${USERS.opsManagerA.id}&action=wo.create&entity_type=work_order&limit=200`
+    )
+    expect(res.status).toBe(200)
+    expect(res.body.rows.length).toBeGreaterThan(0)
+    expect(res.body.rows.every((r: { action: string }) => r.action === 'wo.create')).toBe(true)
+    expect(res.body.rows.every((r: { actor_id: string }) => r.actor_id === USERS.opsManagerA.id)).toBe(true)
+    // total must describe the filtered set, or the pager offers pages that
+    // cannot be reached.
+    expect(res.body.total).toBe(res.body.rows.length)
+    expect(res.body.rows.some((r: { entity_id: string }) => r.entity_id === woId)).toBe(true)
+  })
+
+  it('searches the entity label', async () => {
+    const res = await owner.get(`/api/audit-log?q=${encodeURIComponent(woRef)}`)
+    expect(res.status).toBe(200)
+    expect(res.body.rows.length).toBeGreaterThan(0)
+    expect(res.body.rows.every((r: { entity_label: string }) => r.entity_label.includes(woRef))).toBe(true)
+  })
+
+  it('includes events from the whole of the end day, not just its midnight', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const res = await owner.get(`/api/audit-log?from=${today}&to=${today}&limit=200`)
+    expect(res.status).toBe(200)
+    expect(res.body.rows.some((r: { entity_id: string }) => r.entity_id === woId)).toBe(true)
+  })
+
+  it('excludes the event when the range ends before it', async () => {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+    const res = await owner.get(`/api/audit-log?to=${yesterday}&limit=200`)
+    expect(res.status).toBe(200)
+    expect(res.body.rows.every((r: { entity_id: string }) => r.entity_id !== woId)).toBe(true)
+  })
+
+  it('ignores an unparseable filter rather than failing the page', async () => {
+    const res = await owner.get('/api/audit-log?actor_id=not-a-uuid')
+    expect(res.status).toBe(200)
+    expect(res.body.rows.length).toBeGreaterThan(0)
+  })
+})

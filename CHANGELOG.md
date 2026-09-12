@@ -5,6 +5,33 @@ first licensed release shipped to a client (NGML).
 
 ## Unreleased
 
+- **The audit log can be filtered.** Admin → Audit Log gained actor, activity,
+  entity-type, entity-name and date-range filters, all applied server-side so
+  the count and the pager describe the filtered set rather than the whole log.
+  The dropdowns are built from `GET /audit-log/facets` — the values the log
+  actually contains — so no filter is offered that can only return nothing.
+  The end of a date range includes the whole of that day; a plain
+  `created_at <= date` would have silently dropped everything after midnight.
+
+- **Access chip groups have "Select all / Clear".** Narrowing someone's access
+  meant unticking locations, sites or permissions one chip at a time, which was
+  tedious enough to be skipped. "Select all" for sites deliberately skips sites
+  already granted through a selected location, so it doesn't leave a redundant
+  grant behind once that location is deselected.
+
+- Plain-English labels for the actions and capabilities added since 1.1.0 —
+  defects, risk, approvals, spare parts, depreciation, documents and
+  escalations were reaching admins as raw strings (`defect.create`,
+  `parts:adjust`) in both the audit log and the access editor.
+
+- **Email delivery is honest about itself.** `sendMail` now reports whether the
+  message was actually delivered and swallows a relay failure instead of
+  rolling back the invite that produced it, so the invite modal no longer
+  claims "SMTP isn't configured in dev" on an instance that had just emailed
+  the invite. Added `SMTP_SECURE` (defaults to on for port 465, which is what
+  a hosted relay like Resend or SendGrid expects) and a section in
+  `docs/DEPLOYMENT.md` covering the three ways to configure mail.
+
 - Two NGML evaluation logins (Paul O., Hayatu S.) added as migration `0019`,
   so they are created by the same `migrate.mjs` run a deploy already performs.
   Migration `0020` then promotes both to `owner`, so the evaluation covers org

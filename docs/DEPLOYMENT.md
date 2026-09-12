@@ -14,7 +14,8 @@ or the client's ICT team, with root/sudo on the target host, are following it.
   that terminates TLS (see `deploy/nginx/nginx.conf` for both options).
 - An SMTP relay for password-reset and invite emails (host, port, credentials).
   Without one, the API prints those emails to its container logs instead —
-  acceptable for a first commissioning, not for steady-state production.
+  acceptable for a first commissioning, not for steady-state production. See
+  *Email delivery (SMTP)* below for the options, including hosted services.
 - A **staging instance recommended**: a second Compose project on the same
   host (different `HTTP_PORT`, different Postgres volume) where updates are
   applied and smoke-tested before production. This is the safe update path
@@ -134,6 +135,60 @@ branded per `VITE_INSTANCE_*`) and starts all three services.
 That's a working instance. For day-2 operations (backups, monitoring, user
 admin, licence renewal), see `docs/OPERATIONS.md`. For applying a later
 release, see `docs/UPGRADE.md`.
+
+## Email delivery (SMTP)
+
+AssetCore sends exactly three transactional emails — the invite, the
+admin-triggered password reset, and the self-service "forgot password" — all
+through one nodemailer SMTP transport (`apps/api/src/auth/mailer.ts`). There is
+no provider SDK, so anything that speaks SMTP works, configured entirely in
+`deploy/.env.deploy`:
+
+```
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587           # 587 = STARTTLS, 465 = implicit TLS, 25 = unauthenticated relay
+SMTP_SECURE=            # leave blank: follows the port (465 → on)
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=AssetCore <no-reply@client.example>
+```
+
+Three options, in the order we recommend them:
+
+1. **The client's own relay** (Exchange, Postfix, their ISP's smarthost).
+   The default for a licensed on-prem instance: mail leaves from a domain the
+   client already owns, no third party sees their user list, and nothing new
+   has to be procured. Ask their ICT team for host, port, and whether the
+   instance's IP may relay unauthenticated (common internally, `SMTP_USER`
+   and `SMTP_PASS` then stay blank).
+2. **Microsoft 365 / Google Workspace**, if they have no relay but do have
+   mailboxes. `smtp.office365.com:587` or `smtp.gmail.com:587` with a
+   dedicated service account. Both need an app password or SMTP AUTH enabled
+   on that account, and both throttle hard — fine for this volume.
+3. **A hosted sending service** — Resend (`smtp.resend.com:465`, user
+   `resend`, pass = API key) or SendGrid (`smtp.sendgrid.net:587`, user
+   `apikey`, pass = API key). Both expose plain SMTP, so they need no code
+   change, only these five variables. Use this when the client has no usable
+   relay or their outbound mail keeps landing in spam. It does mean a third
+   party handles their mail, and the instance needs outbound internet — check
+   both against the client's policy before proposing it.
+
+Whichever is chosen, publish SPF (and DKIM where the provider supports it) for
+the `SMTP_FROM` domain, or password-reset mail will be filtered.
+
+**Verify after configuring**: trigger a real send rather than trusting the
+config. Admin → Users & Roles → invite a throwaway address. The confirmation
+reads "Invite sent — we emailed the set-password link" when delivery
+succeeded, and "Invite created — email delivery isn't available on this
+instance" when it did not. The link is shown either way, so an admin can
+always hand it over; `docker compose logs api` carries the SMTP error behind a
+failure.
+
+With no `SMTP_HOST` the API prints each message to its container logs and the
+UI falls back to showing the link. That is a workable commissioning state and
+an acceptable one for a small instance whose admin onboards everyone by hand —
+it is not acceptable where users reset their own passwords, since the
+self-service flow has nowhere to show a link.
 
 ## Appendix: what the automated VPS deploy does (and its migration lag)
 

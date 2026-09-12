@@ -4,7 +4,7 @@ import Topbar from '../components/Topbar.jsx'
 import { listSites, createSite, updateSite, softDeleteSite } from '../lib/db/sites.js'
 import { listLocations, createLocation, updateLocation, softDeleteLocation } from '../lib/db/locations.js'
 import { listCategories, createCategory, updateCategory, deleteCategory } from '../lib/db/categories.js'
-import { listAuditLog } from '../lib/db/audit.js'
+import { listAuditLog, auditFacets } from '../lib/db/audit.js'
 import { actionLabel, actionColor, entityTypeLabel } from '../lib/auditLabels.js'
 import { listOrgMembers, inviteOrgMember, updateOrgMemberRole, updateOrgMemberAccess, setOrgMemberStatus, resetOrgMemberPassword } from '../lib/db/orgMembers.js'
 import { getOrg, updateOrgSettings } from '../lib/db/org.js'
@@ -34,6 +34,15 @@ const CAP_LABELS = {
   'inspection:update': 'Update inspection status',
   'compliance:create': 'Create compliance records',
   'compliance:update': 'Manage compliance',
+  'parts:create': 'Add spare parts',
+  'parts:update': 'Edit spare parts',
+  'parts:adjust': 'Adjust stock levels',
+  'defect:create': 'Raise defects',
+  'defect:update': 'Update defects',
+  'risk:create': 'Register risks',
+  'risk:update': 'Update risks',
+  'approval:create': 'Submit for approval',
+  'approval:decide': 'Approve or reject requests',
   'report:create': 'Generate reports',
   'audit:read': 'View audit log',
 }
@@ -57,6 +66,23 @@ function Chip({ on, disabled, onClick, children, title }) {
   )
 }
 
+// "Select all / Clear" for a chip group. Deselecting a long list one chip at a
+// time was the only way to undo a broad grant, which made narrowing someone's
+// access tedious enough to be skipped.
+function BulkToggle({ onAll, onNone, allOn, noneOn }) {
+  const link = (disabled) => ({
+    background: 'none', border: 'none', padding: 0, fontSize: 11, fontFamily: 'var(--ff-u)',
+    color: disabled ? 'var(--n400)' : 'var(--b600)', cursor: disabled ? 'default' : 'pointer',
+  })
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+      <button type="button" onClick={onAll} disabled={allOn} style={link(allOn)}>Select all</button>
+      <span style={{ color: 'var(--n300)', fontSize: 11 }}>·</span>
+      <button type="button" onClick={onNone} disabled={noneOn} style={link(noneOn)}>Clear</button>
+    </span>
+  )
+}
+
 // Shared scope + capability picker used by the invite and edit-access modals.
 // Locations and sites are separated visually and sites are grouped under their
 // location, so it's obvious what a selection grants (a location grants every
@@ -66,6 +92,7 @@ function ScopeCapsFields({ locations, sites, value, onChange }) {
     const cur = value[field] || []
     onChange({ ...value, [field]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] })
   }
+  const setField = (field, ids) => onChange({ ...value, [field]: ids })
   const locSel = value.location_scope || []
   const siteSel = value.site_scope || []
   const capSel = value.extra_caps || []
@@ -79,6 +106,10 @@ function ScopeCapsFields({ locations, sites, value, onChange }) {
   }
   const orphans = sites.filter((s) => !s.location_id || !locations.some((l) => l.id === s.location_id))
   if (orphans.length) groups.push({ id: 'none', name: 'Unassigned', sites: orphans })
+
+  // Sites a bulk "select all" should actually touch: everything not already
+  // granted through a selected location.
+  const selectableSites = sites.filter((s) => !s.location_id || !locSel.includes(s.location_id))
 
   const summary = scoped
     ? `Limited to ${locSel.length ? `${locSel.length} location${locSel.length !== 1 ? 's' : ''}` : ''}${locSel.length && siteSel.length ? ' + ' : ''}${siteSel.length ? `${siteSel.length} site${siteSel.length !== 1 ? 's' : ''}` : ''}.`
@@ -99,7 +130,17 @@ function ScopeCapsFields({ locations, sites, value, onChange }) {
         <div style={secHint}>{summary}</div>
 
         <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--n700)' }}>Locations</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--n700)' }}>Locations</div>
+            {locations.length > 0 && (
+              <BulkToggle
+                allOn={locSel.length === locations.length}
+                noneOn={locSel.length === 0}
+                onAll={() => setField('location_scope', locations.map((l) => l.id))}
+                onNone={() => setField('location_scope', [])}
+              />
+            )}
+          </div>
           <div style={{ fontSize: 11, color: 'var(--n500)' }}>Selecting a location grants every site inside it.</div>
           <div style={box}>
             {locations.map((l) => (
@@ -112,7 +153,20 @@ function ScopeCapsFields({ locations, sites, value, onChange }) {
         </div>
 
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--n700)' }}>Individual sites</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--n700)' }}>Individual sites</div>
+            {selectableSites.length > 0 && (
+              <BulkToggle
+                allOn={selectableSites.every((s) => siteSel.includes(s.id))}
+                noneOn={siteSel.length === 0}
+                // Sites already covered by a selected location are left out —
+                // adding them would be a redundant grant that survives if the
+                // location is later deselected.
+                onAll={() => setField('site_scope', selectableSites.map((s) => s.id))}
+                onNone={() => setField('site_scope', [])}
+              />
+            )}
+          </div>
           <div style={{ fontSize: 11, color: 'var(--n500)' }}>Add specific sites for oversight beyond the locations above.</div>
           {groups.map((g) => (
             <div key={g.id} style={{ marginTop: 8 }}>
@@ -137,7 +191,15 @@ function ScopeCapsFields({ locations, sites, value, onChange }) {
 
       {/* Extra permissions */}
       <div style={{ borderTop: 'var(--bdr)', paddingTop: 16 }}>
-        <div style={secLabel}>Extra permissions</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={secLabel}>Extra permissions</div>
+          <BulkToggle
+            allOn={capSel.length === GRANTABLE_CAPS.length}
+            noneOn={capSel.length === 0}
+            onAll={() => setField('extra_caps', GRANTABLE_CAPS.map((c) => c.key))}
+            onNone={() => setField('extra_caps', [])}
+          />
+        </div>
         <div style={secHint}>Granted on top of the role's defaults.{capSel.length ? ` (${capSel.length} added)` : ''}</div>
         <div style={box}>
           {GRANTABLE_CAPS.map((c) => <Chip key={c.key} on={capSel.includes(c.key)} onClick={() => toggle('extra_caps', c.key)}>{c.label}</Chip>)}
@@ -558,13 +620,13 @@ function InviteModal({ locations, sites, onClose, onInvited }) {
     if (!form.email.trim() || !form.full_name.trim()) { setErr('Email and name are required.'); return }
     setBusy(true); setErr('')
     try {
-      const { invite_link } = await inviteOrgMember({
+      const { invite_link, email_sent } = await inviteOrgMember({
         ...form,
         location_scope: scope.location_scope.length ? scope.location_scope : null,
         site_scope: scope.site_scope.length ? scope.site_scope : null,
         extra_caps: scope.extra_caps,
       })
-      if (invite_link) setLink(invite_link)
+      if (invite_link) setLink({ url: invite_link, emailed: Boolean(email_sent) })
       else { toast.success(`Invite sent to ${form.email}.`); onInvited(); onClose() }
     } catch (ex) { setErr(errorText(ex)) } finally { setBusy(false) }
   }
@@ -573,9 +635,16 @@ function InviteModal({ locations, sites, onClose, onInvited }) {
     return (
       <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
         <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
-          <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:10}}>Invite sent</div>
-          <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>SMTP isn't configured in dev — share this set-password link with {form.email} directly:</p>
-          <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all',marginBottom:16}}>{link}</code>
+          {/* The server says whether the mail actually went out; this used to
+              claim SMTP was unconfigured even on an instance that had just
+              emailed the invite. */}
+          <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:10}}>{link.emailed ? 'Invite sent' : 'Invite created'}</div>
+          <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>
+            {link.emailed
+              ? <>We emailed the set-password link to {form.email}. If it doesn't arrive, share this link directly:</>
+              : <>Email delivery isn't available on this instance — share this set-password link with {form.email} directly:</>}
+          </p>
+          <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all',marginBottom:16}}>{link.url}</code>
           <div style={{display:'flex',justifyContent:'flex-end'}}>
             <button className="btn btn-primary" onClick={() => { onInvited(); onClose() }}>Done</button>
           </div>
@@ -693,8 +762,8 @@ function UsersTab() {
 
   async function sendReset(m) {
     try {
-      const { action_link } = await resetOrgMemberPassword(m.id)
-      setResetLink(action_link || 'Link generated (check email delivery settings).')
+      const { action_link, email_sent } = await resetOrgMemberPassword(m.id)
+      setResetLink({ url: action_link || 'Link generated (check email delivery settings).', emailed: Boolean(email_sent) })
       toast.success('Password reset link generated.')
     } catch (e) { toast.error(errorText(e, 'Failed to generate reset link.')) }
   }
@@ -798,8 +867,12 @@ function UsersTab() {
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
             <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:10}}>Password reset link</div>
-            <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>Share this one-time link with the user (also emailed if SMTP is configured):</p>
-            <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all',marginBottom:16}}>{resetLink}</code>
+            <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>
+              {resetLink.emailed
+                ? 'We emailed this one-time link to the user. Share it directly only if it does not arrive:'
+                : 'Email delivery isn\'t available on this instance — share this one-time link with the user directly:'}
+            </p>
+            <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all',marginBottom:16}}>{resetLink.url}</code>
             <div style={{display:'flex',justifyContent:'flex-end'}}>
               <button className="btn btn-primary" onClick={() => setResetLink(null)}>Close</button>
             </div>
@@ -819,28 +892,51 @@ function AuditTab() {
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
   const [offset, setOffset] = useState(0)
+  // Facets come from the log itself, so the dropdowns only ever offer a value
+  // that has at least one row behind it — a list of every action the app could
+  // write would mostly be dead ends.
+  const [facets, setFacets] = useState({ actors: [], actions: [], entity_types: [] })
+  const [filters, setFilters] = useState({ actor_id: '', action: '', entity_type: '', q: '', from: '', to: '' })
+  const [qInput, setQInput] = useState('')
   const PAGE = 50
 
-  function load(off = 0) {
+  const active = Object.values(filters).some(Boolean)
+
+  function load(off, f) {
     setLoading(true)
-    listAuditLog({ limit: PAGE, offset: off })
+    listAuditLog({ limit: PAGE, offset: off, filters: f })
       .then(({ rows: r, total: t }) => { setRows(r); setTotal(t); setLoading(false) })
       .catch(e => { setErr(errorText(e)); setLoading(false) })
   }
 
-  useEffect(() => { load(0) }, [])
+  useEffect(() => { auditFacets().then(setFacets).catch(() => {}) }, [])
+
+  // Every filter change restarts at page 1 — staying on page 3 of a narrower
+  // result set shows an empty table and looks like the filter found nothing.
+  useEffect(() => { setOffset(0); load(0, filters) }, [filters])
+
+  // Typing shouldn't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setFilters(f => (f.q === qInput ? f : { ...f, q: qInput })), 300)
+    return () => clearTimeout(t)
+  }, [qInput])
 
   function page(dir) {
     const next = offset + dir * PAGE
     setOffset(next)
-    load(next)
+    load(next, filters)
   }
+
+  function set(key, value) { setFilters(f => ({ ...f, [key]: value })) }
+  function clearAll() { setQInput(''); setFilters({ actor_id: '', action: '', entity_type: '', q: '', from: '', to: '' }) }
+
+  const sel = { height: 30, fontSize: 12, padding: '0 8px', border: '1px solid var(--n200)', borderRadius: 3, background: 'var(--n0)', color: 'var(--n700)', fontFamily: 'var(--ff-u)', maxWidth: 190 }
 
   return (
     <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
       <div style={{padding:'12px 24px',borderBottom:'var(--bdr)',display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
         <div style={{fontSize:13,fontWeight:500,color:'var(--n600)'}}>
-          {total > 0 ? `${total} total events` : 'Audit log'}
+          {active ? `${total} matching event${total === 1 ? '' : 's'}` : total > 0 ? `${total} total events` : 'Audit log'}
         </div>
         <div style={{flex:1}}/>
         {total > PAGE && (
@@ -851,13 +947,44 @@ function AuditTab() {
           </div>
         )}
       </div>
+
+      {/* Filter bar. Actions are shown with the same plain-English labels as the
+          table, so the filter and the rows it produces read alike. */}
+      <div style={{padding:'10px 24px',borderBottom:'var(--bdr)',display:'flex',flexWrap:'wrap',alignItems:'center',gap:8,flexShrink:0,background:'var(--n50)'}}>
+        <select style={sel} value={filters.actor_id} onChange={e => set('actor_id', e.target.value)}>
+          <option value="">All actors</option>
+          {facets.actors.map(a => <option key={a.id} value={a.id}>{a.full_name || a.email}</option>)}
+        </select>
+        <select style={sel} value={filters.action} onChange={e => set('action', e.target.value)}>
+          <option value="">All activity</option>
+          {facets.actions.map(a => <option key={a} value={a}>{actionLabel(a)}</option>)}
+        </select>
+        <select style={sel} value={filters.entity_type} onChange={e => set('entity_type', e.target.value)}>
+          <option value="">All entity types</option>
+          {facets.entity_types.map(t => <option key={t} value={t} style={{textTransform:'capitalize'}}>{entityTypeLabel(t)}</option>)}
+        </select>
+        <input value={qInput} onChange={e => setQInput(e.target.value)} placeholder="Search entity…"
+          style={{...sel, width:170, maxWidth:'none'}}/>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <span style={{fontSize:12,color:'var(--n500)'}}>From</span>
+          <input type="date" value={filters.from} max={filters.to || undefined} onChange={e => set('from', e.target.value)} style={{...sel,width:140,maxWidth:'none'}}/>
+          <span style={{fontSize:12,color:'var(--n500)'}}>to</span>
+          <input type="date" value={filters.to} min={filters.from || undefined} onChange={e => set('to', e.target.value)} style={{...sel,width:140,maxWidth:'none'}}/>
+        </div>
+        {active && (
+          <button onClick={clearAll} style={{height:30,padding:'0 10px',border:'1px solid var(--n300)',borderRadius:3,background:'var(--n0)',fontSize:12,color:'var(--n700)',cursor:'pointer'}}>Clear filters</button>
+        )}
+      </div>
+
       <div style={{flex:1,overflowY:'auto'}}>
         {loading ? (
           <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
         ) : err ? (
           <div style={{padding:16,color:'var(--srt)',fontSize:13}}>{err}</div>
         ) : rows.length === 0 ? (
-          <div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>No audit events yet.</div>
+          <div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>
+            {active ? 'No events match these filters.' : 'No audit events yet.'}
+          </div>
         ) : (
           <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead style={{position:'sticky',top:0,zIndex:10}}>

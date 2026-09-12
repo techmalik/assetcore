@@ -118,14 +118,19 @@ orgMembersRouter.post('/org/members/invite', async (req, res) => {
     )
 
     let inviteLink: string | null = null
+    // Whether the invite actually reached the mailbox — the UI words its
+    // confirmation differently when there is no relay and the admin has to
+    // pass the link on by hand.
+    let emailSent = false
     if (sendInvite) {
       const token = await issueToken(client, userId, 'invite')
       inviteLink = `${config.APP_ORIGIN}/reset-password?token=${token}`
-      await sendMail({
+      const sent = await sendMail({
         to: email,
         subject: "You've been invited to AssetCore",
         text: `You've been invited to join AssetCore. Set your password: ${inviteLink}\n\nThis link expires in 7 days.`,
       })
+      emailSent = sent.delivered
     }
 
     await writeAuditLog(client, {
@@ -133,7 +138,7 @@ orgMembersRouter.post('/org/members/invite', async (req, res) => {
       after: { email, full_name, role_key },
     })
     await client.query('commit')
-    res.status(201).json({ user_id: userId, invite_link: inviteLink })
+    res.status(201).json({ user_id: userId, invite_link: inviteLink, email_sent: emailSent })
   } catch (err) {
     await client.query('rollback')
     throw err
@@ -261,9 +266,9 @@ orgMembersRouter.post('/org/members/:id/reset-password', async (req, res) => {
 
     const token = await issueToken(client, membership.user_id, 'reset')
     const link = `${config.APP_ORIGIN}/reset-password?token=${token}`
-    await sendMail({ to: membership.email, subject: 'Reset your AssetCore password', text: `Reset your password: ${link}\n\nThis link expires in 1 hour.` })
+    const sent = await sendMail({ to: membership.email, subject: 'Reset your AssetCore password', text: `Reset your password: ${link}\n\nThis link expires in 1 hour.` })
     await writeAuditLog(client, { orgId, actorId: req.claims!.sub, action: 'user.reset_password', entityType: 'membership', entityId: req.params.id })
-    res.json({ action_link: link })
+    res.json({ action_link: link, email_sent: sent.delivered })
   } finally {
     client.release()
   }

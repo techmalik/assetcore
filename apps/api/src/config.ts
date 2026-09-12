@@ -13,6 +13,14 @@ const schema = z.object({
   TZ: z.string().default('Africa/Lagos'),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
+  // Implicit TLS. Left unset it follows the port (465 = on), which is what
+  // every relay we've pointed this at expects. Compose passes unset variables
+  // through as an empty string, so '' has to mean "unset" and not fail the
+  // whole config parse.
+  SMTP_SECURE: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : v),
+    z.enum(['true', 'false']).transform((v) => v === 'true').optional()
+  ),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('AssetCore <no-reply@assetcore.local>'),
