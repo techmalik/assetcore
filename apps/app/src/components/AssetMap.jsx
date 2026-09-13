@@ -31,6 +31,8 @@ const STATUS_COLOR = {
   attention: 'var(--sa)',
   critical: 'var(--sr)',
   offline: 'var(--n400)',
+  // At a shut-down site. Lighter than offline so the two stay distinguishable.
+  inactive: 'var(--n300)',
 }
 
 const CRITICALITY_COLOR = {
@@ -44,7 +46,7 @@ const CRITICALITY_COLOR = {
 export const MAP_COLOUR_MODES = {
   status: {
     label: 'Condition',
-    legend: [['Operational', 'var(--sg)'], ['Needs attention', 'var(--sa)'], ['Critical', 'var(--sr)'], ['Offline', 'var(--n400)']],
+    legend: [['Operational', 'var(--sg)'], ['Needs attention', 'var(--sa)'], ['Critical', 'var(--sr)'], ['Offline', 'var(--n400)'], ['Inactive', 'var(--n300)']],
     of: (a) => STATUS_COLOR[a.status] || 'var(--n400)',
   },
   health: {

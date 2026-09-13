@@ -14,7 +14,9 @@ auditRouter.use(requireAuth, requireOrg, requireActiveMembership)
 // done to, and when. Anything unparseable is dropped rather than 400'd — a
 // stale bookmark with a filter value that no longer exists should show the
 // unfiltered log, not an error page.
-const filters = z.object({
+// Exported with buildWhere so the audit_log export (routes/exports.ts) filters
+// exactly as the on-screen log does — the file must match what was on screen.
+export const filters = z.object({
   actor_id: z.string().uuid().optional(),
   action: z.string().min(1).max(120).optional(),
   entity_type: z.string().min(1).max(60).optional(),
@@ -25,7 +27,7 @@ const filters = z.object({
 
 /** Builds the shared where-clause so the page query and its count can never
  * disagree about what is being filtered. */
-function buildWhere(q: z.infer<typeof filters>): { sql: string; params: unknown[] } {
+export function buildWhere(q: z.infer<typeof filters>): { sql: string; params: unknown[] } {
   const clauses: string[] = []
   const params: unknown[] = []
   const add = (sql: string, value: unknown) => {

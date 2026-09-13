@@ -697,7 +697,7 @@ export default function CompliancePanel({ embedded = false, selectedId = null, o
   const { roleKey, extraCaps } = useAuth()
   // Was 'wo:create'. POST /compliance-licences is gated on compliance:create,
   // so an HSE officer — the role that owns compliance — could not see the
-  // button their own role exists for, while an ops_manager saw a button whose
+  // button their own role exists for, while a manager saw a button whose
   // request would 403.
   const canCreate = can(roleKey, 'compliance:create', extraCaps)
   const canAudit = can(roleKey, 'compliance:create', extraCaps)

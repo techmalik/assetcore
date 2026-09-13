@@ -150,7 +150,7 @@ maintenanceEventsRouter.post(
       })
 
       await notifyRoleHolders(c, {
-        orgId: asset.org_id, siteId: asset.site_id, roles: ['owner', 'ops_manager'],
+        orgId: asset.org_id, siteId: asset.site_id, roles: ['owner', 'admin', 'manager'],
         actorId: req.claims!.sub, kind: 'work_completed',
         title: `Maintenance completed on ${asset.name || 'asset'}`,
         body: reportUrl ? 'Completed. Report attached.' : (notes || 'Completed.'),
@@ -200,7 +200,7 @@ maintenanceEventsRouter.post(
         const { rows: full } = await c.query('select * from public.maintenance_events where id = $1', [req.params.id])
         await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'maintenance_event.attachment.add', entityType: 'maintenance_event', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
         await notifyRoleHolders(c, {
-          orgId: rows[0].org_id, siteId: rows[0].site_id, roles: ['owner', 'ops_manager'],
+          orgId: rows[0].org_id, siteId: rows[0].site_id, roles: ['owner', 'admin', 'manager'],
           actorId: req.claims!.sub, kind: 'report_uploaded',
           title: 'Maintenance report uploaded', body: req.file!.originalname,
           entityType: 'asset', entityId: rows[0].asset_id,

@@ -5,6 +5,7 @@ import Topbar from '../components/Topbar.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import AssignModal, { assignmentSummary } from '../components/AssignModal.jsx'
 import InspectionsPanel from '../components/InspectionsPanel.jsx'
+import SendForApproval from '../components/SendForApproval.jsx'
 import CompliancePanel from '../components/CompliancePanel.jsx'
 import { listPMSchedules, createPMSchedule, softDeletePMSchedule } from '../lib/db/pmSchedules'
 import { listPMTasks, updatePMTask, generatePMTasks, uploadMaintenanceReport } from '../lib/db/pmTasks'
@@ -92,7 +93,8 @@ function ScheduleModal({ onClose, onSaved, users, assets }) {
           <label style={{fontSize:12,fontWeight:500,color:'var(--n800)'}}>Asset
             <select value={form.asset_id} onChange={e=>set('asset_id',e.target.value)} style={{marginTop:4,width:'100%',height:34,border:'1px solid var(--n200)',borderRadius:4,padding:'0 8px',fontSize:13,fontFamily:'var(--ff-u)',outline:'none',background:'var(--n0)'}}>
               <option value="">— Not asset-specific —</option>
-              {(assets||[]).map(a => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
+              {/* Inactive = at a shut-down site, where the API refuses new schedules. */}
+              {(assets||[]).map(a => <option key={a.id} value={a.id} disabled={a.status === 'inactive'}>{a.ain} — {a.name}{a.status === 'inactive' ? ' (site shut down)' : ''}</option>)}
             </select>
           </label>
           <p style={{fontSize:11.5,color:'var(--n500)',lineHeight:1.5,marginTop:-4}}>
@@ -150,6 +152,11 @@ export default function Maintenance({ dark, toggleDark }) {
   const [generating, setGenerating] = useState(false)
   const [assigning, setAssigning] = useState(null) // task being (re)assigned
   const [mineOnly, setMineOnly] = useState(false)
+  // A completed task drops out of the active list, which left nowhere to send
+  // its maintenance report for approval. This view brings the last 60 days
+  // back, each with a "Submit report" action.
+  const [showCompleted, setShowCompleted] = useState(false)
+  const [reporting, setReporting] = useState(null) // task whose report is being sent
   const today = isoToday()
   const weekStart = weekDays(today)[0].toISOString().slice(0,10)
   const weekEnd   = weekDays(today)[6].toISOString().slice(0,10)
@@ -159,7 +166,9 @@ export default function Maintenance({ dark, toggleDark }) {
     setLoading(true); setErr(null)
     try {
       const [t, s, u, a] = await Promise.all([
-        listPMTasks({ statuses:['pending','in_progress','overdue'], dueBefore: addDays(today,30), locationId: globalLocationId }),
+        listPMTasks(showCompleted
+          ? { statuses:['completed'], dueAfter: addDays(today,-60), locationId: globalLocationId }
+          : { statuses:['pending','in_progress','overdue'], dueBefore: addDays(today,30), locationId: globalLocationId }),
         listPMSchedules(),
         listOrgUsers().catch(() => []),
         listAssets().catch(() => []),
@@ -171,7 +180,7 @@ export default function Maintenance({ dark, toggleDark }) {
     } catch(e) {
       setErr(errorText(e))
     } finally { setLoading(false) }
-  }, [tab, today, globalLocationId])
+  }, [tab, today, globalLocationId, showCompleted])
 
   useEffect(() => { load() }, [load])
 
@@ -210,9 +219,14 @@ export default function Maintenance({ dark, toggleDark }) {
 
   const [completing, setCompleting] = useState(null)
 
+  // The report is to hand straight after a task is marked done, so sending it
+  // for approval is offered then, rather than left for someone to find later.
+  const canSendReport = can(roleKey, 'approval:create', extraCaps)
   const onTaskCompleted = (taskId) => {
+    const done = completing
     setCompleting(null)
     setTasks(prev => prev.filter(t => t.id !== taskId))
+    if (done && canSendReport) setReporting({ ...done, status: 'completed', justCompleted: true })
   }
 
   const weekTaskMap = {}
@@ -247,6 +261,10 @@ export default function Maintenance({ dark, toggleDark }) {
                   <button onClick={() => setMineOnly(m => !m)} className="filter-pill"
                     style={{height:32,padding:'0 12px',border:`1px solid ${mineOnly?'var(--b300)':'var(--n200)'}`,borderRadius:99,background:mineOnly?'var(--b50)':'var(--n0)',fontSize:12,fontWeight:mineOnly?600:400,color:mineOnly?'var(--b700)':'var(--n600)',cursor:'pointer'}}>
                     Assigned to me
+                  </button>
+                  <button onClick={() => setShowCompleted(v => !v)} className="filter-pill" title="Maintenance completed in the last 60 days, to send its report for approval"
+                    style={{height:32,padding:'0 12px',border:`1px solid ${showCompleted?'var(--b300)':'var(--n200)'}`,borderRadius:99,background:showCompleted?'var(--b50)':'var(--n0)',fontSize:12,fontWeight:showCompleted?600:400,color:showCompleted?'var(--b700)':'var(--n600)',cursor:'pointer'}}>
+                    Completed
                   </button>
                   {canCreate && (
                     <button onClick={handleGenerate} disabled={generating} className="row-action" style={{height:32,padding:'0 14px',background:'var(--n0)',color:'var(--n700)',border:'1px solid var(--n200)',borderRadius:4,fontSize:13}}>
@@ -297,6 +315,10 @@ export default function Maintenance({ dark, toggleDark }) {
                         <EmptyPM onSchedule={() => setShowModal(true)} canCreate={canCreate} locationName={globalLocation?.name} onShowAll={() => setGlobalLocationId(null)} />
                       )}
                     </div>
+                  ) : showCompleted && visibleTasks.length === 0 ? (
+                    <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>
+                      No maintenance completed in the last 60 days{mineOnly ? ' on tasks assigned to you' : ''}.
+                    </div>
                   ) : visibleTasks.length === 0 && schedules.length === 0 ? (
                     <EmptyPM onSchedule={() => setShowModal(true)} canCreate={canCreate} locationName={globalLocation?.name} onShowAll={() => setGlobalLocationId(null)} />
                   ) : visibleTasks.length === 0 ? (
@@ -306,7 +328,8 @@ export default function Maintenance({ dark, toggleDark }) {
                       <SchedulesView schedules={schedules} canManage={canCreate} onArchive={handleArchiveSchedule} />
                     )
                   ) : (
-                    <TasksTable tasks={visibleTasks} onComplete={setCompleting} onAssign={canAssign ? setAssigning : null} />
+                    <TasksTable tasks={visibleTasks} onComplete={setCompleting} onAssign={canAssign ? setAssigning : null}
+                      onReport={canSendReport ? setReporting : null} />
                   )}
                 </div>
 
@@ -370,6 +393,7 @@ export default function Maintenance({ dark, toggleDark }) {
 
       {showModal && <ScheduleModal users={users} assets={assets} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load() }}/>}
       {completing && <CompleteTaskModal task={completing} onClose={() => setCompleting(null)} onDone={onTaskCompleted}/>}
+      {reporting && <ReportModal task={reporting} onClose={() => setReporting(null)} />}
       {assigning && (
         <AssignModal title="Assign task" subtitle={assigning.title} users={users} currentId={assigning.assignee_id}
           current={assignmentSummary({ assignee: assigning.assignee, assigner: assigning.assigner, assignedAt: assigning.assigned_at })}
@@ -424,7 +448,36 @@ function CompleteTaskModal({ task, onClose, onDone }) {
   )
 }
 
-function TasksTable({ tasks, onComplete, onAssign }) {
+// Sends a completed task's maintenance report to a named person for approval.
+// Keyed to the PM task because that is what this page lists. A task with no
+// asset never gets a maintenance_events row to key it to.
+function ReportModal({ task, onClose }) {
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,.35)'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:24,width:440,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto'}}>
+        <div style={{display:'flex',alignItems:'center',marginBottom:6}}>
+          <h2 style={{fontFamily:'var(--ff-d)',fontSize:17,fontWeight:700,color:'var(--n950)',flex:1}}>
+            {task.justCompleted ? 'Send the report for approval?' : 'Submit maintenance report'}
+          </h2>
+          <button onClick={onClose} style={{width:28,height:28,border:'none',background:'none',cursor:'pointer',color:'var(--n500)',fontSize:20,lineHeight:1}}>×</button>
+        </div>
+        <p style={{fontSize:12,color:'var(--n600)',marginBottom:14,lineHeight:1.5}}>
+          {task.title}{task.asset ? ` · ${task.asset.name}` : ''}
+          {task.justCompleted
+            ? '. Marked done. Send its report to your line manager, or anyone who can accept it. You can also do this later from the Completed list.'
+            : ''}
+        </p>
+        <SendForApproval entityType="pm_task" entityId={task.id} kind="maintenance_report"
+          title={`Maintenance report: ${task.title}`} heading="Report approval" />
+        <div style={{display:'flex',justifyContent:'flex-end',marginTop:18}}>
+          <button onClick={onClose} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>Close</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TasksTable({ tasks, onComplete, onAssign, onReport }) {
   return (
     <>
       <table className="table-view-desktop" style={{width:'100%',borderCollapse:'collapse'}}>
@@ -480,6 +533,9 @@ function TasksTable({ tasks, onComplete, onAssign }) {
                         {t.assignee ? 'Reassign' : 'Assign'}
                       </button>
                     )}
+                    {onReport && t.status === 'completed' && (
+                      <button onClick={() => onReport(t)} className="row-action" style={{fontSize:11,color:'var(--b600)'}}>Submit report</button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -506,6 +562,9 @@ function TasksTable({ tasks, onComplete, onAssign }) {
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginTop:8,flexWrap:'wrap'}}>
                 <span style={{fontFamily:'var(--ff-m)',fontSize:11,color:t.status==='overdue'?'var(--srt)':'var(--n600)'}}>{fmtDate(t.due_date)}</span>
                 <div style={{display:'flex',gap:8}}>
+                  {onReport && t.status === 'completed' && (
+                    <button onClick={() => onReport(t)} className="btn btn-secondary" style={{height:36,padding:'0 14px',fontSize:12}}>Submit report</button>
+                  )}
                   {onAssign && t.status !== 'completed' && t.status !== 'skipped' && (
                     <button onClick={() => onAssign(t)} className="btn btn-secondary" style={{height:36,padding:'0 14px',fontSize:12}}>{t.assignee ? 'Reassign' : 'Assign'}</button>
                   )}

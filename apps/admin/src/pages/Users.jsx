@@ -12,7 +12,7 @@ import { useAdminAuth } from '../lib/AdminAuthContext'
 import DataState from '../components/DataState.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 
-const TENANT_ROLES = ['owner', 'ops_manager', 'maint_engineer', 'field_tech', 'hse_officer', 'viewer']
+const TENANT_ROLES = ['owner', 'admin', 'managing_director', 'executive_director', 'manager', 'supervisor', 'officer', 'hse_officer', 'auditor', 'viewer']
 
 export default function Users() {
   const { can } = useAdminAuth()

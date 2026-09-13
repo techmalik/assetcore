@@ -22,7 +22,7 @@ async function makeRule(api: Awaited<ReturnType<typeof apiAs>>, min: number, max
     kind: 'wo_cost',
     min_amount_cents: min,
     max_amount_cents: max,
-    levels: [{ role_key: 'ops_manager', label: null }],
+    levels: [{ role_key: 'manager', label: null }],
   })
   expect(res.status).toBe(201)
   return res.body.id as string

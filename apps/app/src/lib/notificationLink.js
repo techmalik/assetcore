@@ -16,6 +16,7 @@ const ROUTES = {
   inspection: (id) => `/inspections?id=${id}`,
   asset: (id) => `/assets?id=${id}`,
   compliance_licence: (id) => `/compliance?id=${id}`,
+  approval: (id) => `/approvals?id=${id}`,
 }
 
 // Human label for the button that opens the target.
@@ -25,6 +26,7 @@ const LABELS = {
   inspection: 'Open inspection',
   asset: 'Open asset',
   compliance_licence: 'Open licence',
+  approval: 'Open request',
 }
 
 /** Route for a notification, or null when it isn't linkable. */

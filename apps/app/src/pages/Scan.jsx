@@ -9,7 +9,7 @@ import { useToast } from '../lib/ToastContext'
 import AssetMap from '../components/AssetMap.jsx'
 
 const CRITICALITY_CLASS = { critical: 'badge-r', high: 'badge-a', medium: 'badge-b', low: 'badge-n' }
-const STATUS_CLASS = { critical: 'badge-r', attention: 'badge-a', operational: 'badge-g', offline: 'badge-n' }
+const STATUS_CLASS = { critical: 'badge-r', attention: 'badge-a', operational: 'badge-g', offline: 'badge-n', inactive: 'badge-n' }
 
 // A label encodes {origin}/scan?ain=XXX, but a generic barcode scanner may emit
 // the bare tag instead — accept either.

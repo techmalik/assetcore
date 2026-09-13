@@ -8,9 +8,11 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap, hasCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
+import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadTo, cleanupOrphanedUpload } from '../files.js'
 import { notifyUsers, notifyWorkOrderClosed } from '../notify.js'
+import { eligibleAssignee, insertDirectApproval, loadApproval } from '../approvalRouting.js'
 
 export const workOrdersRouter = Router()
 workOrdersRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -252,9 +254,99 @@ async function syncAssetStatusForWorkOrder(c: import('pg').PoolClient, assetId: 
   )
 }
 
+/**
+ * Create a job and send it to a named person for approval, in one transaction.
+ *
+ * The job is created as a draft: WO_TRANSITIONS already treats draft as
+ * "proposed, waiting on someone to let it go ahead", and nothing in the normal
+ * flow picks up a draft. Accepting the approval moves it to New
+ * (approvalRouting.applyDirectOutcome). One transaction, so a refused approver
+ * never leaves an orphan draft that nobody was asked to look at.
+ *
+ * Carries the same guards as the plain create path above it, which it returns
+ * before reaching.
+ */
+async function createForApproval(
+  req: import('express').Request,
+  res: import('express').Response,
+  data: z.infer<typeof woInput>,
+  approverId: string,
+  notes: string | null
+) {
+  if (await withOrgContext(claimsFromReq(req), (c) => isSiteShutdown(c, data.site_id, data.asset_id))) {
+    return res.status(422).json(SITE_SHUTDOWN_ERROR)
+  }
+  if (data.assignee_id && !hasCap(req, 'wo:assign')) {
+    return res.status(403).json({ error: 'forbidden', capability: 'wo:assign' })
+  }
+  const { ref: providedRef, ...rest } = data
+  const { columns, placeholders, values } = buildInsert({ ...rest, status: 'draft' }, ALLOWED.filter((c) => c !== 'ref'), 1)
+
+  const result = await withOrgContext(claimsFromReq(req), async (c) => {
+    const approver = await eligibleAssignee(c, approverId, req.claims!.sub)
+    if (!approver) return { error: 'invalid_assignee' as const }
+
+    const ref = providedRef || (await generateWoRef(c))
+    const { rows } = await c.query(
+      `insert into public.work_orders (org_id, created_by, ref, ${columns})
+       values (current_org_id(), current_user_id(), $1, ${placeholders})
+       returning id`,
+      [ref, ...values]
+    )
+    const woId = rows[0].id
+    if (data.assignee_id) {
+      await recordAssignment(c, req.claims!.org_id!, woId, req.claims!.sub, data.assignee_id)
+    }
+    const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [woId])
+    const wo = full[0]
+    await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.create', entityType: 'work_order', entityId: wo.id, after: wo })
+
+    const estimate = wo.estimated_cost_cents ?? wo.cost_cents
+    const ap = await insertDirectApproval(c, {
+      entity_type: 'work_order', entity_id: wo.id, kind: 'wo_approval',
+      title: `${wo.ref} — ${wo.title}`, notes,
+      amount_cents: estimate == null ? null : Number(estimate),
+      assignee_id: approverId,
+    }, {
+      userId: req.claims!.sub,
+      roleKey: req.membership?.roleKey ?? req.claims!.role_key ?? null,
+      assigneeName: approver.full_name,
+    })
+    await c.query(
+      `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body)
+       values (current_org_id(), $1, current_user_id(), 'comment', $2)`,
+      [wo.id, `Sent to ${approver.full_name || 'a reviewer'} for approval. Stays in Draft until accepted.`]
+    )
+    return { data: { ...wo, approval: await loadApproval(c, ap.id) } }
+  })
+
+  if ('error' in result) return res.status(422).json({ error: result.error })
+  return res.status(201).json(result.data)
+}
+
+// Sending a new job to a named person for approval, in the same request that
+// creates it. Parsed apart from woInput so a PATCH can never carry it.
+const woApprovalInput = z.object({
+  approver_id: z.string().uuid().optional(),
+  approval_notes: z.string().max(2000).nullable().optional(),
+})
+
 workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) => {
   const parsed = woInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const approvalParsed = woApprovalInput.safeParse(req.body ?? {})
+  if (!parsed.success || !approvalParsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const approverId = approvalParsed.data.approver_id
+  // It raises an approval request as well as a job, so it needs the
+  // capability POST /approvals asks for.
+  if (approverId && !hasCap(req, 'approval:create')) {
+    return res.status(403).json({ error: 'forbidden', capability: 'approval:create' })
+  }
+  if (approverId) return createForApproval(req, res, parsed.data, approverId, approvalParsed.data.approval_notes ?? null)
+  // No work is raised at a shut-down site — by a person here, or by the health
+  // crossings in SQL (is_work_suspended, 0027).
+  if (await withOrgContext(claimsFromReq(req), (c) => isSiteShutdown(c, parsed.data.site_id, parsed.data.asset_id))) {
+    return res.status(422).json(SITE_SHUTDOWN_ERROR)
+  }
   // Any wo:create holder may create a WO, but only wo:assign holders may hand
   // it to someone at the same time — otherwise wo:create alone would let a
   // caller route work to a colleague without the assignment capability.

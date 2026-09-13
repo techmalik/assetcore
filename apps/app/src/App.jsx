@@ -27,7 +27,8 @@ import Risks from './pages/Risks.jsx'
 import Approvals from './pages/Approvals.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Calendar from './pages/Calendar.jsx'
-import SpareParts from './pages/SpareParts.jsx'
+import ComingSoon from './pages/ComingSoon.jsx'
+import Integrity from './pages/Integrity.jsx'
 import Depreciation from './pages/Depreciation.jsx'
 import Scan from './pages/Scan.jsx'
 import AssetMapPage from './pages/AssetMapPage.jsx'
@@ -35,7 +36,7 @@ import Inspections from './pages/Inspections.jsx'
 import Devices from './pages/Devices.jsx'
 import Integrations from './pages/Integrations.jsx'
 import Notifications from './pages/Notifications.jsx'
-import Reports from './pages/Reports.jsx'
+import Export from './pages/Export.jsx'
 import Settings from './pages/Settings.jsx'
 import Admin from './pages/Admin.jsx'
 
@@ -147,7 +148,9 @@ function Routed() {
       <Route path="/scan" element={gate(<Scan {...props} />)} />
       <Route path="/asset-map" element={gate(<AssetMapPage {...props} />)} />
       <Route path="/calendar" element={gate(<Calendar {...props} />)} />
-      <Route path="/spare-parts" element={gate(can(roleKey, 'parts:read', extraCaps) ? <SpareParts {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/spare-parts" element={gate(<ComingSoon {...props} active="spare-parts" title="Warehouse Inventory"
+        description="Stock levels, bin locations and issues to work orders across your warehouses. This module is being prepared and will open here." />)} />
+      <Route path="/integrity" element={gate(['inspection:read', 'risk:read'].some((c) => can(roleKey, c, extraCaps)) ? <Integrity {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/defects" element={gate(can(roleKey, 'defect:read', extraCaps) ? <Defects {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/risks" element={gate(can(roleKey, 'risk:read', extraCaps) ? <Risks {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/approvals" element={gate(can(roleKey, 'approval:read', extraCaps) ? <Approvals {...props} /> : <Navigate to="/dashboard" replace />)} />
@@ -159,7 +162,9 @@ function Routed() {
       <Route path="/integrations" element={gate(<Integrations {...props} />)} />
       <Route path="/notifications" element={gate(<Notifications {...props} />)} />
       <Route path="/settings" element={gate(<Settings {...props} />)} />
-      <Route path="/reports" element={gate(can(roleKey, 'report:read', extraCaps) ? <Reports {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/export" element={gate(can(roleKey, 'report:read', extraCaps) ? <Export {...props} /> : <Navigate to="/dashboard" replace />)} />
+      {/* Reports became Export; old bookmarks still land somewhere real. */}
+      <Route path="/reports" element={<Navigate to="/export" replace />} />
       <Route path="/admin" element={gate(ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c, extraCaps)) ? <Admin {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

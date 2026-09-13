@@ -93,7 +93,7 @@ const settingsPatch = z.object({ settings: z.record(z.unknown()) })
 
 // org_update RLS (see the PATCH /org comment above) restricts direct writes
 // on this table to role_key='owner' — but org:manage is deliberately also
-// granted to ops_manager (see rbac.ts) so operations managers can maintain
+// granted to admin and manager (see @assetcore/rbac) so operations managers can maintain
 // things like the health-inspection threshold without full admin rights.
 // The Configuration tab's UI already reflected that (gated on org:manage),
 // but every save silently 403'd for anyone who wasn't literally the owner

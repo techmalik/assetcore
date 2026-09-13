@@ -8,6 +8,7 @@ import { requireActiveMembership } from '../middleware/requireActiveMembership.j
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
+import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 
 export const pmSchedulesRouter = Router()
 pmSchedulesRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -51,6 +52,12 @@ pmSchedulesRouter.get('/pm-schedules', async (req, res) => {
 pmSchedulesRouter.post('/pm-schedules', requireCap('pm:create'), async (req, res) => {
   const parsed = scheduleInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  // A schedule is refused outright rather than accepted and left idle:
+  // generate_pm_tasks() would skip it (0027), and a schedule that silently
+  // produces nothing is worse than being told why.
+  if (await withOrgContext(claimsFromReq(req), (c) => isSiteShutdown(c, parsed.data.site_id, parsed.data.asset_id))) {
+    return res.status(422).json(SITE_SHUTDOWN_ERROR)
+  }
   const { columns, placeholders, values } = buildInsert(parsed.data, ALLOWED)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {

@@ -10,8 +10,9 @@ import AssetMap from '../components/AssetMap.jsx'
 import {
   listAssets, createAsset, updateAsset, softDeleteAsset, restoreAsset, importAssets,
   uploadAssetPhoto, deleteAssetPhoto, uploadAssetDocument, deleteAssetDocument, listAssetActivity, addAssetComment,
-  getAssetHealth,
+  getAssetHealth, listAssetTransfers,
 } from '../lib/db/assets'
+import TransferAssetsModal from '../components/TransferAssetsModal.jsx'
 import { listSites } from '../lib/db/sites'
 import { listLocations } from '../lib/db/locations'
 import { listCategories } from '../lib/db/categories'
@@ -42,6 +43,8 @@ const STATUS_STYLE = {
   maintenance: { bg: 'var(--sab)', c: 'var(--sat)', br: 'var(--sabr)', label: 'Maintenance' },
   standby:     { bg: 'var(--slb)', c: 'var(--slt)', br: 'var(--slbr)', label: 'Standby' },
   offline:     { bg: 'var(--n100)', c: 'var(--n500)', br: 'var(--n300)', label: 'Offline' },
+  // At a shut-down site (0027). Set by the shutdown, never picked on a form.
+  inactive:    { bg: 'var(--n50)', c: 'var(--n500)', br: 'var(--n200)', label: 'Inactive' },
   // Legacy values (pre-TASK-4.2) — still valid on existing rows.
   critical:    { bg: 'var(--srb)', c: 'var(--srt)', br: 'var(--srbr)', label: 'Critical' },
   attention:   { bg: 'var(--sab)', c: 'var(--sat)', br: 'var(--sabr)', label: 'Attention' },
@@ -64,7 +67,7 @@ const STATUS_PICKER_KEYS = ['operational', 'standby', 'offline']
 const LEGACY_STATUS_KEYS = ['attention', 'critical']
 const STATE_FILTERS = [
   ['all', 'All'], ['operational', 'Operational'], ['maintenance', 'Maintenance'],
-  ['standby', 'Standby'], ['offline', 'Offline'],
+  ['standby', 'Standby'], ['offline', 'Offline'], ['inactive', 'Inactive'],
   ['attention', 'Attention'], ['critical', 'Critical'],
 ]
 
@@ -900,7 +903,17 @@ const PRIORITY_C = { low: 'var(--sgt)', medium: 'var(--n600)', high: 'var(--sat)
 // completion or health alert read at a glance without opening every entry.
 const ACTIVITY_DOT_C = { maintenance: 'var(--sgt)', alert: 'var(--srt)', inspection: 'var(--sat)', comment: 'var(--b400)', status_change: 'var(--b400)', attachment: 'var(--b400)' }
 
-function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdit, onArchive, onRestore, onRaiseWO, onCompleteMaintenance, onClose, refreshToken, allAssets = [], orgDepreciation = null }) {
+function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdit, onArchive, onRestore, onRaiseWO, onCompleteMaintenance, onTransfer, onClose, refreshToken, allAssets = [], orgDepreciation = null }) {
+  // Where the asset has been. Own state, loaded beside the other lists below
+  // and refetched on the same refreshToken, so a transfer made from this panel
+  // shows up here without closing it.
+  const [transfers, setTransfers] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    setTransfers(null)
+    listAssetTransfers(asset.id).then((t) => !cancelled && setTransfers(t)).catch(() => !cancelled && setTransfers([]))
+    return () => { cancelled = true }
+  }, [asset.id, refreshToken])
   const nav = useNavigate()
   const toast = useToast()
   const { roleKey, extraCaps } = useAuth()
@@ -1256,14 +1269,41 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
           })()}
         </div>
 
+        {/* Transfer history */}
+        <div>
+          <div style={section}>Transfer history</div>
+          {transfers === null ? <div style={{ fontSize: 12, color: 'var(--n400)' }}>Loading…</div> : transfers.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--n400)' }}>Never moved{asset.site ? ` — at ${asset.site.name} since it was registered` : ''}.</div>
+          ) : transfers.map((t) => (
+            <div key={t.id} style={{ padding: '6px 0', fontSize: 12, borderBottom: 'var(--bdr)' }}>
+              <div style={{ color: 'var(--n800)' }}>
+                {t.from_site?.name || 'No site'} <span style={{ color: 'var(--n400)' }}>→</span> {t.to_site?.name}
+              </div>
+              {t.reason && <div style={{ fontSize: 11, color: 'var(--n600)', marginTop: 2 }}>{t.reason}</div>}
+              <div style={{ fontSize: 10, color: 'var(--n400)', marginTop: 2 }}>
+                {fmtDate(t.transferred_at)} · {t.transferred_by_user?.full_name || 'Unknown'}
+              </div>
+            </div>
+          ))}
+        </div>
+
         {/* Actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 4 }}>
           {archived ? (
             canEdit && <button onClick={onRestore} className="btn btn-primary" style={{ width: '100%', height: 36, fontSize: 13 }}>Restore asset</button>
           ) : (
             <>
-              {canCompleteMaintenance && <button onClick={onCompleteMaintenance} className="btn btn-primary" style={{ width: '100%', height: 36, fontSize: 13 }}>Complete Maintenance</button>}
-              {canWO && <button onClick={onRaiseWO} className="btn btn-secondary" style={{ width: '100%', height: 36, fontSize: 13 }}>Raise Work Order</button>}
+              {/* An inactive asset is at a shut-down site: completing maintenance
+                  or raising a job there is refused, so the buttons are not offered.
+                  Transfer is how it gets back to work. */}
+              {asset.status === 'inactive' && (
+                <div style={{ fontSize: 12, color: 'var(--n600)', background: 'var(--n50)', border: 'var(--bdr)', borderRadius: 6, padding: '8px 10px', lineHeight: 1.5 }}>
+                  {asset.site?.name || 'Its site'} is shut down, so no work can be raised on this asset. Transfer it to an active site, or reopen the site.
+                </div>
+              )}
+              {canCompleteMaintenance && asset.status !== 'inactive' && <button onClick={onCompleteMaintenance} className="btn btn-primary" style={{ width: '100%', height: 36, fontSize: 13 }}>Complete Maintenance</button>}
+              {canWO && asset.status !== 'inactive' && <button onClick={onRaiseWO} className="btn btn-secondary" style={{ width: '100%', height: 36, fontSize: 13 }}>Raise Work Order</button>}
+              {canEdit && onTransfer && <button onClick={onTransfer} className="btn btn-secondary" style={{ width: '100%', height: 36, fontSize: 13 }}>Transfer to another site</button>}
               {canEdit && (
                 <div className="form-grid" style={{ gap: 8 }}>
                   <button onClick={onEdit} className="btn btn-secondary" style={{ height: 34, fontSize: 13 }}>Edit Asset</button>
@@ -1389,6 +1429,21 @@ export default function Assets({ dark, toggleDark }) {
     return true
   })
 
+  // Bulk selection, for transfers. Held as ids and read back through
+  // visibleAssets, so an asset filtered out of view is never moved by a
+  // selection the user can no longer see.
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [transferList, setTransferList] = useState(null) // assets the transfer modal is open for
+  const canBulk = canEdit && !archivedView
+  const selectedAssets = canBulk ? visibleAssets.filter((a) => selectedIds.has(a.id)) : []
+  const allVisibleSelected = visibleAssets.length > 0 && selectedAssets.length === visibleAssets.length
+  const toggleSelected = (id) => setSelectedIds((prev) => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+  const toggleAllVisible = () => setSelectedIds(allVisibleSelected ? new Set() : new Set(visibleAssets.map((a) => a.id)))
+
   return (
     <div className="app-shell">
       <Sidebar active="assets" />
@@ -1497,9 +1552,25 @@ export default function Assets({ dark, toggleDark }) {
                 </div>
               ) : (
                 <>
+                  {selectedAssets.length > 0 && (
+                    <div style={{ position: 'sticky', top: 0, zIndex: 11, display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'var(--b50)', borderBottom: '1px solid var(--b200)', fontSize: 12, color: 'var(--b700)', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600 }}>{selectedAssets.length} selected</span>
+                      <span style={{ color: 'var(--b300)' }}>·</span>
+                      <button type="button" onClick={() => setTransferList(selectedAssets)} className="btn btn-primary" style={{ height: 28, padding: '0 12px', fontSize: 12 }}>Transfer to site…</button>
+                      <span style={{ color: 'var(--b300)' }}>·</span>
+                      <button type="button" onClick={() => setSelectedIds(new Set())} style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--b700)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>Clear</button>
+                    </div>
+                  )}
                   <table className="table-view-desktop" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                    <thead style={{ position: 'sticky', top: selectedAssets.length > 0 ? 44 : 0, zIndex: 10 }}>
                       <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
+                        {canBulk && (
+                          <th style={{ padding: '9px 0 9px 14px', width: 28, borderBottom: 'var(--bdr)' }}>
+                            <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible}
+                              aria-label={allVisibleSelected ? 'Clear selection' : `Select all ${visibleAssets.length} assets shown`}
+                              ref={(el) => { if (el) el.indeterminate = selectedAssets.length > 0 && !allVisibleSelected }} />
+                          </th>
+                        )}
                         {['AIN', 'Name & Model', 'Type', 'Location', 'Site', 'Status', 'Health', 'Next Maint.', 'Operator', 'Actions'].map((h) => (
                           <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
                         ))}
@@ -1507,7 +1578,14 @@ export default function Assets({ dark, toggleDark }) {
                     </thead>
                     <tbody>
                       {visibleAssets.map((a) => (
-                        <tr key={a.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selected?.id === a.id ? 'var(--b50)' : 'transparent' }} onClick={() => setSelected(a)}>
+                        <tr key={a.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: selected?.id === a.id || selectedIds.has(a.id) ? 'var(--b50)' : 'transparent' }} onClick={() => setSelected(a)}>
+                          {canBulk && (
+                            // stopPropagation so ticking a row selects it for a
+                            // bulk action without also opening its detail panel.
+                            <td style={{ padding: '11px 0 11px 14px', width: 28 }} onClick={(e) => e.stopPropagation()}>
+                              <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} aria-label={`Select ${a.ain}`} />
+                            </td>
+                          )}
                           <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, fontWeight: 500, color: 'var(--b700)', whiteSpace: 'nowrap' }}>{a.ain}</td>
                           <td style={{ padding: '11px 14px' }}>
                             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--n900)' }}>{a.name}</div>
@@ -1575,6 +1653,7 @@ export default function Assets({ dark, toggleDark }) {
                 onRestore={() => doRestore(selected.id)}
                 onRaiseWO={() => setWoAsset(selected)}
                 onCompleteMaintenance={() => setCompletingAsset(selected)}
+                onTransfer={canEdit ? () => setTransferList([selected]) : undefined}
                 onClose={() => setSelected(null)}
                 refreshToken={detailRefreshToken}
               />
@@ -1619,6 +1698,17 @@ export default function Assets({ dark, toggleDark }) {
       )}
       {/* The sheet prints whatever the filters have narrowed the list to, so
           "labels for the Warri site" is a search away rather than a feature. */}
+      {transferList && (
+        <TransferAssetsModal
+          assets={transferList}
+          sites={sites}
+          locations={locations}
+          onClose={() => setTransferList(null)}
+          // Clear the selection and refetch: the moved assets now show their
+          // new site, and a revived one its restored status.
+          onDone={() => { setSelectedIds(new Set()); setDetailRefreshToken((n) => n + 1); load() }}
+        />
+      )}
       {labelling && (
         <PrintQrSheet
           assets={visibleAssets}

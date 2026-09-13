@@ -17,7 +17,7 @@ devicesRouter.use(requireAuth, requireOrg, requireActiveMembership)
 // read-only — could create, edit and soft-delete devices. RLS kept it inside
 // the org and nothing else stopped it. Gated on asset:update rather than a new
 // device:* capability: a device is telemetry hardware attached to an asset,
-// and the roles that may edit an asset (owner, ops_manager, maint_engineer)
+// and the roles that may edit an asset (owner, admin, manager, supervisor)
 // are exactly the ones that should be able to edit its instrumentation.
 const DEVICE_WRITE_CAP = 'asset:update'
 

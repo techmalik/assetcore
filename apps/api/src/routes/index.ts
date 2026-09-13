@@ -15,6 +15,7 @@ import { devicesRouter } from './devices.js'
 import { integrationsRouter } from './integrations.js'
 import { notificationsRouter } from './notifications.js'
 import { reportsRouter } from './reports.js'
+import { exportsRouter } from './exports.js'
 import { auditRouter } from './audit.js'
 import { dashboardRouter } from './dashboard.js'
 import { orgRouter } from './org.js'
@@ -30,6 +31,7 @@ import { risksRouter } from './risks.js'
 import { approvalsRouter } from './approvals.js'
 import { escalationsRouter } from './escalations.js'
 import { analyticsRouter } from './analytics.js'
+import { integrityRouter } from './integrity.js'
 
 export const apiRouter = Router()
 
@@ -50,6 +52,7 @@ apiRouter.use(devicesRouter)
 apiRouter.use(integrationsRouter)
 apiRouter.use(notificationsRouter)
 apiRouter.use(reportsRouter)
+apiRouter.use(exportsRouter)
 apiRouter.use(auditRouter)
 apiRouter.use(dashboardRouter)
 apiRouter.use(orgRouter)
@@ -64,3 +67,4 @@ apiRouter.use(risksRouter)
 apiRouter.use(approvalsRouter)
 apiRouter.use(escalationsRouter)
 apiRouter.use(analyticsRouter)
+apiRouter.use(integrityRouter)

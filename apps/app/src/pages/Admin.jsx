@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
-import { listSites, createSite, updateSite, softDeleteSite } from '../lib/db/sites.js'
+import { listSites, createSite, updateSite, softDeleteSite, shutdownSite, reopenSite } from '../lib/db/sites.js'
 import { listLocations, createLocation, updateLocation, softDeleteLocation } from '../lib/db/locations.js'
 import { listCategories, createCategory, updateCategory, deleteCategory } from '../lib/db/categories.js'
 import { listAuditLog, auditFacets } from '../lib/db/audit.js'
@@ -259,12 +259,60 @@ function SiteModal({ site, locations, onClose, onSave }) {
   )
 }
 
+// Shutting a site down is reversible but not small — every asset there goes
+// Inactive and nobody can raise work at it — so it asks for a reason and says
+// how many assets it will touch before it does anything.
+function ShutdownSiteModal({ site, onClose, onDone }) {
+  const toast = useToast()
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const n = site.asset_count ?? 0
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!reason.trim()) { setErr('Give a reason — it is shown on the site and kept in the audit log.'); return }
+    setSaving(true); setErr('')
+    try {
+      const res = await shutdownSite(site.id, reason.trim())
+      toast.success(`${site.name} shut down. ${res.assets_affected} asset${res.assets_affected !== 1 ? 's' : ''} marked Inactive.`)
+      onDone()
+    } catch (ex) { setErr(errorText(ex, 'Could not shut the site down.')); setSaving(false) }
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:420,maxWidth:'92vw',padding:24,boxShadow:'var(--sh-lg)'}}>
+        <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:6}}>Shut down {site.name}</div>
+        <div style={{padding:'10px 12px',background:'var(--sab)',border:'1px solid var(--sabr)',borderRadius:6,fontSize:12,color:'var(--sat)',lineHeight:1.5,marginBottom:14}}>
+          {n} asset{n !== 1 ? 's' : ''} at this site will be marked Inactive and no new work can be raised there.
+          Reopening the site gives each asset back the status it has now.
+        </div>
+        <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
+          <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
+            Reason *
+            <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} maxLength={1000} className="input"
+              style={{height:'auto',padding:'8px 10px',resize:'vertical'}} placeholder="e.g. Field decommissioned pending sale" />
+          </label>
+          {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:6}}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-danger-soft" disabled={saving}>{saving ? 'Shutting down…' : 'Shut down site'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function SitesTab() {
+  const toast = useToast()
   const [sites, setSites] = useState([])
   const [locations, setLocations] = useState([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
   const [modal, setModal] = useState(null) // null | 'new' | site object
+  const [shuttingDown, setShuttingDown] = useState(null) // site being shut down
   const locName = (id) => locations.find(l => l.id === id)?.name
 
   function load() {
@@ -281,6 +329,15 @@ function SitesTab() {
     try { await softDeleteSite(id); load() } catch (e) { alert(errorText(e)) }
   }
 
+  async function reopen(s) {
+    if (!confirm(`Reopen ${s.name}? Its inactive assets get back the status they had before the shutdown, and work can be raised there again.`)) return
+    try {
+      const res = await reopenSite(s.id)
+      toast.success(`${s.name} reopened. ${res.assets_affected} asset${res.assets_affected !== 1 ? 's' : ''} restored.`)
+      load()
+    } catch (e) { toast.error(errorText(e, 'Could not reopen the site.')) }
+  }
+
   return (
     <div style={{flex:1,overflowY:'auto',padding:'20px 24px'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
@@ -295,25 +352,48 @@ function SitesTab() {
         <div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>No sites yet. Add your first site to get started.</div>
       ) : (
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:10}}>
-          {sites.map(s => (
-            <div key={s.id} style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:6,padding:'14px 16px',display:'flex',flexDirection:'column',gap:6}}>
+          {sites.map(s => {
+            const shut = s.status === 'shutdown'
+            return (
+            <div key={s.id} style={{background:shut ? 'var(--n50)' : 'var(--n0)',border:'var(--bdr)',borderRadius:6,padding:'14px 16px',display:'flex',flexDirection:'column',gap:6}}>
               <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:600,color:'var(--n900)'}}>{s.name}</div>
+                <div style={{minWidth:0}}>
+                  <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                    <span style={{fontSize:13,fontWeight:600,color:shut ? 'var(--n600)' : 'var(--n900)'}}>{s.name}</span>
+                    {shut && <span style={{padding:'1px 6px',border:'1px solid var(--n300)',borderRadius:2,background:'var(--n100)',fontSize:10,fontWeight:500,color:'var(--n600)'}}>Shut down</span>}
+                  </div>
                   <div style={{fontFamily:'var(--ff-m)',fontSize:11,color:'var(--b600)',marginTop:2}}>{s.code}</div>
                 </div>
-                <div style={{display:'flex',gap:4}}>
+                <div style={{display:'flex',gap:4,flexWrap:'wrap',justifyContent:'flex-end'}}>
                   <button onClick={() => setModal(s)} className="row-action" style={{padding:'3px 8px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:11,color:'var(--n600)',cursor:'pointer'}}>Edit</button>
+                  {shut
+                    ? <button onClick={() => reopen(s)} className="row-action" style={{padding:'3px 8px',border:'1px solid var(--sgbr)',borderRadius:3,background:'var(--sgb)',fontSize:11,color:'var(--sgt)',cursor:'pointer'}}>Reopen</button>
+                    : <button onClick={() => setShuttingDown(s)} className="row-action" style={{padding:'3px 8px',border:'1px solid var(--sabr)',borderRadius:3,background:'var(--sab)',fontSize:11,color:'var(--sat)',cursor:'pointer'}}>Shut down</button>}
                   <button onClick={() => archive(s.id)} className="row-action" style={{padding:'3px 8px',border:'1px solid var(--srbr)',borderRadius:3,background:'var(--srb)',fontSize:11,color:'var(--srt)',cursor:'pointer'}}>Archive</button>
                 </div>
               </div>
-              <div style={{fontSize:11,color:'var(--n500)',display:'flex',gap:8}}>
+              <div style={{fontSize:11,color:'var(--n500)',display:'flex',gap:8,flexWrap:'wrap'}}>
                 {locName(s.location_id) && <span style={{color:'var(--b600)'}}>📍 {locName(s.location_id)}</span>}
                 {s.region && <span>{s.region}</span>}
+                <span>{s.asset_count ?? 0} asset{s.asset_count === 1 ? '' : 's'}</span>
               </div>
+              {shut && (
+                <div style={{fontSize:11,color:'var(--n600)',lineHeight:1.5,borderTop:'var(--bdr)',paddingTop:6}}>
+                  Shut down {s.shutdown_at ? new Date(s.shutdown_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : ''}
+                  {s.shutdown_reason && <> — {s.shutdown_reason}</>}
+                </div>
+              )}
             </div>
-          ))}
+            )
+          })}
         </div>
+      )}
+      {shuttingDown && (
+        <ShutdownSiteModal
+          site={shuttingDown}
+          onClose={() => setShuttingDown(null)}
+          onDone={() => { setShuttingDown(null); load() }}
+        />
       )}
       {modal && (
         <SiteModal
@@ -525,13 +605,16 @@ function CategoriesTab() {
 // ── Users Tab ──────────────────────────────────────────────────────────────
 
 const ROLES_LIST = [
-  {key:'owner',label:'System Admin',desc:'Full access including team, locations, org settings and audit.',perms:['All modules','Admin','Team & RBAC']},
-  {key:'ops_manager',label:'Operations Manager',desc:'Full access to assets, work orders, maintenance, reports.',perms:['Assets (full)','Work Orders (full)','Maintenance (full)','Reports (full)']},
-  {key:'maint_engineer',label:'Maintenance Engineer',desc:'Create and complete work orders, log maintenance.',perms:['Assets (view/edit)','Work Orders (full)','Maintenance (full)']},
-  {key:'field_tech',label:'Field Technician',desc:'View and update assigned work orders.',perms:['Assets (view)','Work Orders (assigned only)','Maintenance (assigned only)']},
-  {key:'hse_officer',label:'HSE / Compliance Officer',desc:'Full access to compliance and inspections.',perms:['Assets (view)','Compliance (full)','Inspections (full)','Reports (view)']},
+  {key:'owner',label:'System Admin',desc:'Full access, including integrations and depreciation posting. Only a System Admin can grant or change this role.',perms:['All modules','Admin & Team','Integrations','Depreciation posting']},
+  {key:'admin',label:'Admin',desc:'Runs the organisation day to day: team, locations, approval matrix and escalations.',perms:['Assets, Work Orders, Maintenance (full)','Inspections & Compliance (full)','Parts (full)','Team, approval matrix & escalations','Audit log']},
+  {key:'managing_director',label:'Managing Director',desc:'Executive oversight: sees everything and signs off on approvals.',perms:['All modules (read)','Approvals (decide)','Export (all it can read)','Audit log']},
+  {key:'executive_director',label:'Executive Director',desc:'Executive oversight: sees everything and signs off on approvals.',perms:['All modules (read)','Approvals (decide)','Export (all it can read)','Audit log']},
+  {key:'manager',label:'Manager',desc:'Runs operations: assets, work orders, maintenance and the location hierarchy.',perms:['Assets, Work Orders, Maintenance (full)','Parts (full)','Defects & Risks (full)','Approvals (decide)','Locations & categories','Audit log']},
+  {key:'supervisor',label:'Supervisor',desc:'Raises and assigns work orders, runs inspections, completes maintenance.',perms:['Assets (view/edit)','Work Orders (create/assign/update)','Maintenance (complete)','Inspections (create/update)','Approvals (decide)']},
+  {key:'officer',label:'Officer',desc:'Works assigned jobs on site and logs inspections and defects.',perms:['Assets (view)','Work Orders (update)','Inspections (create)','Defects (report)']},
+  {key:'hse_officer',label:'HSE / Compliance Officer',desc:'Full access to compliance and inspections.',perms:['Assets (view)','Compliance (full)','Inspections (full)','Defects & Risks (full)','Approvals (decide)','Export (all it can read)']},
   {key:'auditor',label:'Auditor',desc:'Read-only across all modules, plus full audit-log visibility.',perms:['All modules (read)','Audit log']},
-  {key:'viewer',label:'Viewer',desc:'Read-only access to dashboard and reports.',perms:['Dashboard (view)','Reports (view)']},
+  {key:'viewer',label:'Viewer / Guest',desc:'Read-only access to business data.',perms:['All modules (read)']},
 ]
 
 // Capability groups for the read-only permissions matrix below — each ✓/–
@@ -546,7 +629,7 @@ const PERMISSION_MATRIX_GROUPS = [
   { label: 'Maintenance', cap: 'pm:read' },
   { label: 'Inspections', cap: 'inspection:read' },
   { label: 'Compliance', cap: 'compliance:read' },
-  { label: 'Reports', cap: 'report:read' },
+  { label: 'Export', cap: 'report:read' },
   { label: 'Admin', caps: ADMIN_ENTRY_CAPS },
 ]
 
@@ -609,7 +692,7 @@ function initials(name) {
 
 function InviteModal({ locations, sites, onClose, onInvited }) {
   const toast = useToast()
-  const [form, setForm] = useState({ email: '', full_name: '', role_key: 'field_tech' })
+  const [form, setForm] = useState({ email: '', full_name: '', role_key: 'officer' })
   const [scope, setScope] = useState({ location_scope: [], site_scope: [], extra_caps: [] })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -687,13 +770,16 @@ function InviteModal({ locations, sites, onClose, onInvited }) {
   )
 }
 
-function AccessModal({ member, locations, sites, onClose, onSaved }) {
+function AccessModal({ member, members = [], locations, sites, onClose, onSaved }) {
   const toast = useToast()
   const [scope, setScope] = useState({
     location_scope: member.location_scope || [],
     site_scope: member.site_scope || [],
     extra_caps: member.extra_caps || [],
   })
+  // Line manager (0028). Grants nothing: it is who this member's work and
+  // reports are preselected to go to when they send them for approval.
+  const [managerId, setManagerId] = useState(member.manager_id || '')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -704,10 +790,17 @@ function AccessModal({ member, locations, sites, onClose, onSaved }) {
         location_scope: scope.location_scope.length ? scope.location_scope : null,
         site_scope: scope.site_scope.length ? scope.site_scope : null,
         extra_caps: scope.extra_caps,
+        manager_id: managerId || null,
       })
       toast.success('Access updated.')
       onSaved()
-    } catch (e) { setErr(errorText(e)); setSaving(false) }
+    } catch (e) {
+      const managerErrors = {
+        invalid_manager: 'A line manager has to be another active member of this organisation.',
+        manager_cycle: 'That person already has this member as their line manager. Two people cannot manage each other.',
+      }
+      setErr(managerErrors[e.code] || errorText(e)); setSaving(false)
+    }
   }
 
   return (
@@ -715,6 +808,18 @@ function AccessModal({ member, locations, sites, onClose, onSaved }) {
       <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:480,maxWidth:'94vw',maxHeight:'92vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
         <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:4}}>Access & permissions</div>
         <div style={{fontSize:12,color:'var(--n500)',marginBottom:16}}>{member.full_name || member.email}</div>
+        <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)',marginBottom:14}}>
+          Line manager
+          <select className="input" value={managerId} onChange={e => setManagerId(e.target.value)}>
+            <option value="">No line manager</option>
+            {members.filter(m => m.user_id !== member.user_id && m.status === 'active').map(m => (
+              <option key={m.user_id} value={m.user_id}>{m.full_name || m.email}</option>
+            ))}
+          </select>
+          <span style={{fontSize:11,color:'var(--n400)',lineHeight:1.5}}>
+            Preselected when this member sends a work order or report for approval. It grants no access on its own.
+          </span>
+        </label>
         <ScopeCapsFields locations={locations} sites={sites} value={scope} onChange={setScope} />
         {err && <div style={{fontSize:12,color:'var(--srt)',marginTop:10}}>{err}</div>}
         <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:18}}>
@@ -794,7 +899,7 @@ function UsersTab() {
               <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead>
                   <tr style={{background:'var(--n50)'}}>
-                    {['User','Email','Role','Status',''].map(h => (
+                    {['User','Email','Line manager','Role','Status',''].map(h => (
                       <th key={h} style={{padding:'9px 14px',textAlign:'left',fontSize:10,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--n500)',borderBottom:'var(--bdr)'}}>{h}</th>
                     ))}
                   </tr>
@@ -812,6 +917,7 @@ function UsersTab() {
                           </div>
                         </td>
                         <td style={{padding:'11px 14px',fontSize:12,color:'var(--n600)'}}>{m.email}</td>
+                        <td style={{padding:'11px 14px',fontSize:12,color:m.manager_name?'var(--n700)':'var(--n400)',whiteSpace:'nowrap'}}>{m.manager_name || '—'}</td>
                         <td style={{padding:'11px 14px'}}>
                           <select value={m.role_key} disabled={!canManage} onChange={e => changeRole(m, e.target.value)} className="select"
                             style={{height:28,border:'1px solid var(--n200)',borderRadius:4,padding:'0 6px',fontSize:12,color:'var(--n700)',background:canManage?'var(--n0)':'var(--n50)'}}>
@@ -862,7 +968,7 @@ function UsersTab() {
         )}
       </div>
       {inviteOpen && <InviteModal locations={locations} sites={sites} onClose={() => setInviteOpen(false)} onInvited={load} />}
-      {accessMember && <AccessModal member={accessMember} locations={locations} sites={sites} onClose={() => setAccessMember(null)} onSaved={() => { setAccessMember(null); load() }} />}
+      {accessMember && <AccessModal member={accessMember} members={members} locations={locations} sites={sites} onClose={() => setAccessMember(null)} onSaved={() => { setAccessMember(null); load() }} />}
       {resetLink && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
@@ -898,9 +1004,25 @@ function AuditTab() {
   const [facets, setFacets] = useState({ actors: [], actions: [], entity_types: [] })
   const [filters, setFilters] = useState({ actor_id: '', action: '', entity_type: '', q: '', from: '', to: '' })
   const [qInput, setQInput] = useState('')
+  const [exporting, setExporting] = useState(null) // 'csv' | 'xlsx'
+  const [exportErr, setExportErr] = useState('')
   const PAGE = 50
 
   const active = Object.values(filters).some(Boolean)
+
+  // Exports the log exactly as filtered on screen (the server reuses the same
+  // where-clause), all pages rather than the one being viewed.
+  async function exportLog(format) {
+    setExporting(format); setExportErr('')
+    try {
+      const { downloadExport } = await import('../lib/db/exports.js')
+      await downloadExport('audit_log', format, filters)
+    } catch (e) {
+      setExportErr(errorText(e, 'The export did not download. Try again.'))
+    } finally {
+      setExporting(null)
+    }
+  }
 
   function load(off, f) {
     setLoading(true)
@@ -939,6 +1061,15 @@ function AuditTab() {
           {active ? `${total} matching event${total === 1 ? '' : 's'}` : total > 0 ? `${total} total events` : 'Audit log'}
         </div>
         <div style={{flex:1}}/>
+        {exportErr && <span style={{fontSize:12,color:'var(--srt)'}}>{exportErr}</span>}
+        <div style={{display:'flex',gap:6,alignItems:'center'}}>
+          <button disabled={!!exporting || total === 0} onClick={() => exportLog('csv')} className="btn btn-secondary" style={{height:28,padding:'0 10px',fontSize:12}}>
+            {exporting === 'csv' ? 'Exporting…' : 'Export CSV'}
+          </button>
+          <button disabled={!!exporting || total === 0} onClick={() => exportLog('xlsx')} className="btn btn-secondary" style={{height:28,padding:'0 10px',fontSize:12}}>
+            {exporting === 'xlsx' ? 'Exporting…' : 'Export Excel'}
+          </button>
+        </div>
         {total > PAGE && (
           <div style={{display:'flex',gap:6,alignItems:'center'}}>
             <button disabled={offset === 0} onClick={() => page(-1)} style={{height:28,padding:'0 10px',border:'1px solid var(--n200)',borderRadius:3,background:'var(--n0)',fontSize:12,color:'var(--n600)',cursor:'pointer',opacity:offset===0?.5:1}}>← Prev</button>
@@ -1236,7 +1367,7 @@ function RuleModal({ rule, onClose, onSaved }) {
     threshold_days: rule?.threshold_days ?? 3,
     priority: rule?.priority || '',
     severity: rule?.severity || '',
-    notify_role_key: rule?.notify_role_key || 'ops_manager',
+    notify_role_key: rule?.notify_role_key || 'manager',
     active: rule?.active ?? true,
   })
   const [saving, setSaving] = useState(false)

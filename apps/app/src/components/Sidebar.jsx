@@ -29,6 +29,7 @@ const icons = {
   analytics: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 13.5V9M6.2 13.5V4M9.8 13.5V6.8M13.5 13.5V2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
   calendar: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3.5" width="11" height="10" rx="1.3" stroke="currentColor" strokeWidth="1.3"/><path d="M2.5 6.5h11" stroke="currentColor" strokeWidth="1.3"/><path d="M5.5 2.2v2.4M10.5 2.2v2.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   map: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 14.2s4.6-4.2 4.6-7.4A4.6 4.6 0 003.4 6.8c0 3.2 4.6 7.4 4.6 7.4Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><circle cx="8" cy="6.6" r="1.7" stroke="currentColor" strokeWidth="1.2"/></svg>,
+  integrity: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1.8l5 2v4c0 3.1-2.2 5.4-5 6.4-2.8-1-5-3.3-5-6.4v-4l5-2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M5.6 8l1.7 1.7L10.6 6.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   scan: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 5.5V4a1.5 1.5 0 011.5-1.5h1.5M13.5 5.5V4A1.5 1.5 0 0012 2.5h-1.5M2.5 10.5V12A1.5 1.5 0 004 13.5h1.5M13.5 10.5V12a1.5 1.5 0 01-1.5 1.5h-1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><path d="M2.5 8h11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   settings: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2"/><path d="M6.8 2.1l-.5 1.5A4.6 4.6 0 005 4.4L3.5 4l-1.2 2 1.1 1.1a4.5 4.5 0 000 1.8L2.3 10l1.2 2 1.5-.4A4.6 4.6 0 006.3 12.4l.5 1.5h2.4l.5-1.5A4.6 4.6 0 0011 11.6l1.5.4 1.2-2-1.1-1.1a4.5 4.5 0 000-1.8l1.1-1.1-1.2-2-1.5.4A4.6 4.6 0 009.7 3.6L9.2 2.1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>,
 }
@@ -44,16 +45,25 @@ const OPERATIONS = [
   { key: 'work-orders', label: 'Work Orders', path: '/work-orders', icon: icons.workorders },
   { key: 'maintenance', label: 'Maintenance', path: '/maintenance', icon: icons.maintenance },
   { key: 'calendar', label: 'Calendar', path: '/calendar', icon: icons.calendar },
-  { key: 'spare-parts', label: 'Spare Parts', path: '/spare-parts', icon: icons.spareParts, cap: 'parts:read' },
-  { key: 'inspections', label: 'Inspections', path: '/inspections', icon: icons.inspections },
   { key: 'defects', label: 'Defects', path: '/defects', icon: icons.defects, cap: 'defect:read' },
-  { key: 'risks', label: 'Risk', path: '/risks', icon: icons.risks, cap: 'risk:read' },
   { key: 'approvals', label: 'Approvals', path: '/approvals', icon: icons.approvals, cap: 'approval:read' },
   { key: 'compliance', label: 'Compliance', path: '/compliance', icon: icons.compliance },
   { key: 'depreciation', label: 'Depreciation', path: '/depreciation', icon: icons.depreciation, cap: 'depreciation:read' },
   { key: 'analytics', label: 'Analytics', path: '/analytics', icon: icons.analytics, cap: 'report:read' },
-  { key: 'reports', label: 'Reports', path: '/reports', icon: icons.reports, cap: 'report:read' },
+  { key: 'export', label: 'Export', path: '/export', icon: icons.reports, cap: 'report:read' },
   { key: 'devices', label: 'Devices', path: '/devices', icon: icons.devices },
+  // Spare parts is being reworked into warehouse inventory. Listed so people
+  // know it is coming; `soon` makes the entry inert.
+  { key: 'spare-parts', label: 'Warehouse Inventory', path: '/spare-parts', icon: icons.spareParts, soon: true },
+]
+
+// Integrity asks whether an asset is sound: what inspections found and what
+// the risk register says would happen if it failed. Both used to sit loose
+// among the operational pages, which hid that they answer one question.
+const INTEGRITY = [
+  { key: 'integrity', label: 'Integrity Overview', path: '/integrity', icon: icons.integrity, anyCap: ['inspection:read', 'risk:read'] },
+  { key: 'inspections', label: 'Inspections', path: '/inspections', icon: icons.inspections, cap: 'inspection:read' },
+  { key: 'risks', label: 'Risk', path: '/risks', icon: icons.risks, cap: 'risk:read' },
 ]
 
 export default function Sidebar({ active }) {
@@ -88,7 +98,17 @@ export default function Sidebar({ active }) {
   const go = (path) => { nav(path); close() }
   const goMenu = (path) => { setOrgMenu(false); go(path) }
 
-  const NavItem = ({ item, count, countColor }) => (
+  const visible = (item) =>
+    (!item.cap || can(roleKey, item.cap, extraCaps)) &&
+    (!item.anyCap || item.anyCap.some((c) => can(roleKey, c, extraCaps)))
+  const integrityItems = INTEGRITY.filter(visible)
+  const sectionStyle = {padding:'12px 16px 4px',fontSize:10,fontWeight:600,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--n400)',fontFamily:'var(--ff-m)'}
+
+  const NavItem = ({ item, count, countColor }) => item.soon ? (
+    <div className="nav-item disabled" aria-disabled="true" title={`${item.label} — coming soon`}>
+      {item.icon}<span className="nav-label">{item.label}</span><span className="nav-soon">Soon</span>
+    </div>
+  ) : (
     <div className={`nav-item${active === item.key ? ' active' : ''}`} onClick={() => go(item.path)} title={item.label}>
       {item.icon}<span className="nav-label">{item.label}</span>
       {count > 0 && (
@@ -146,11 +166,18 @@ export default function Sidebar({ active }) {
       </div>
 
       <nav style={{flex:1,padding:'8px 0',overflowY:'auto'}}>
-        <div className="sidebar-section" style={{padding:'12px 16px 4px',fontSize:10,fontWeight:600,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--n400)',fontFamily:'var(--ff-m)'}}>Operations</div>
+        <div className="sidebar-section" style={sectionStyle}>Operations</div>
 
-        {OPERATIONS.filter((item) => !item.cap || can(roleKey, item.cap, extraCaps)).map((item) => (
+        {OPERATIONS.filter(visible).map((item) => (
           <NavItem key={item.key} item={item} count={item.key === 'work-orders' ? openWOCount : undefined} countColor="amber" />
         ))}
+
+        {integrityItems.length > 0 && (
+          <>
+            <div className="sidebar-section" style={sectionStyle}>Integrity</div>
+            {integrityItems.map((item) => <NavItem key={item.key} item={item} />)}
+          </>
+        )}
 
         <div style={{height:1,background:'var(--n200)',margin:'8px 16px'}}/>
 

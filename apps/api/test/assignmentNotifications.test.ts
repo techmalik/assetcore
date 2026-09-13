@@ -67,7 +67,7 @@ describe('wo_assigned notification + assignment activity', () => {
     expect(notifs.body.some((n: any) => n.kind === 'wo_assigned' && n.entity_id === woId)).toBe(false)
   })
 
-  it('a wo:update-only holder (field_tech) cannot reassign a work order', async () => {
+  it('a wo:update-only holder (officer) cannot reassign a work order', async () => {
     // site_id required: work_orders' RLS hides site_id-null (org-wide) rows
     // from site-scoped callers (0004_locations_rbac.sql) — fieldTechA1 is
     // scoped to SITE_A1, so the WO must live there for them to see it at all.
@@ -122,7 +122,7 @@ describe('pm_assigned notification', () => {
 })
 
 describe('work_completed notification on PM task completion', () => {
-  it('completing a PM task notifies owner/ops_manager but not the actor, and does not double-fire on a later patch', async () => {
+  it('completing a PM task notifies owner/manager but not the actor, and does not double-fire on a later patch', async () => {
     const task = await createPendingTask()
 
     const completeRes = await opsApi.patch(`/api/pm-tasks/${task.id}`).send({ status: 'completed', notes: 'done' })
@@ -169,7 +169,7 @@ describe('inspection_assigned + work_completed (site-scoped)', () => {
     expect(notifs.body.some((n: any) => n.kind === 'inspection_assigned' && n.entity_id === created.body.id)).toBe(true)
   })
 
-  it('completing a SITE_A1 inspection notifies owner/ops_manager/hse_officer but not the actor', async () => {
+  it('completing a SITE_A1 inspection notifies owner/manager/hse_officer but not the actor', async () => {
     const created = await hseApi.post('/api/inspections').send({
       title: `Test inspection complete A1 ${suffix()}`, kind: 'safety', scheduled_date: today(), site_id: SITE_A1,
     })

@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import {
   listApprovals, getApproval, getApprovalStats, listApprovalRules,
   createApprovalRule, updateApprovalRule, retireApprovalRule,
   approveRequest, rejectRequest, recallRequest,
-  APPROVAL_ENTITY_TYPES, ENTITY_LABEL, APPROVAL_KINDS, KIND_LABEL, APPROVAL_STATUS_META,
+  forwardRequest, returnRequest, discardRequest, resubmitRequest,
+  APPROVAL_ENTITY_TYPES, ENTITY_LABEL, APPROVAL_KINDS, KIND_LABEL,
+  approvalStatusMeta, EVENT_LABEL, DIRECT_ERROR_TEXT,
 } from '../lib/db/approvals'
+import { useApprovers, ApproverSelect } from '../components/SendForApproval.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can, ROLE_LABELS } from '../lib/rbac'
 import { useMoney, Money } from '../lib/money'
@@ -56,62 +60,115 @@ function LevelTrack({ approval }) {
 }
 
 // ── Decision ─────────────────────────────────────────────────────────────────
+// One modal for every action on a request, matrix or person-routed. The
+// actions differ mainly in whether they need a person (forward, resubmit), and
+// whether they need a reason the requester will read (reject, return, discard).
+const ACTION_VERB = {
+  approve: 'Approve', reject: 'Reject', recall: 'Recall',
+  forward: 'Forward', return: 'Return', discard: 'Discard', resubmit: 'Resubmit',
+}
+const NEEDS_REASON = ['reject', 'return', 'discard']
+const NEEDS_PERSON = ['forward', 'resubmit']
+
 function DecisionModal({ approval, action, onClose, onDone }) {
   const { money } = useMoney()
+  const { user } = useAuth()
+  const direct = approval.route === 'direct'
+  const needsPerson = NEEDS_PERSON.includes(action)
+  const needsReason = NEEDS_REASON.includes(action)
   const [notes, setNotes] = useState('')
+  const [to, setTo] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const { approvers, loaded: approversLoaded, lineManagerId } = useApprovers(needsPerson)
 
-  const verb = action === 'approve' ? 'Approve' : action === 'reject' ? 'Reject' : 'Recall'
+  // Forwarding goes "above me", which is usually my line manager, so
+  // preselect them. Never the requester, whom the API refuses as a target.
+  useEffect(() => {
+    if (needsPerson && !to && lineManagerId && lineManagerId !== approval.requester_id) setTo(lineManagerId)
+  }, [lineManagerId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const verb = direct && action === 'approve' ? 'Accept' : ACTION_VERB[action]
   const lastStep = approval.level >= approval.max_levels
+  const destructive = needsReason || action === 'recall'
 
   async function submit(e) {
     e.preventDefault()
     setErr('')
+    if (needsPerson && !to) { setErr('Choose who it goes to.'); return }
+    if (needsReason && !notes.trim()) { setErr('Say why. The requester sees this note.'); return }
     setBusy(true)
     try {
       if (action === 'approve') await approveRequest(approval.id, notes)
       else if (action === 'reject') await rejectRequest(approval.id, notes)
+      else if (action === 'forward') await forwardRequest(approval.id, to, notes)
+      else if (action === 'return') await returnRequest(approval.id, notes.trim())
+      else if (action === 'discard') await discardRequest(approval.id, notes.trim())
+      else if (action === 'resubmit') await resubmitRequest(approval.id, to, notes)
       else await recallRequest(approval.id, notes)
       onDone()
     } catch (ex) {
       const map = {
-        self_approval: 'You submitted this request, so you cannot sign it off. It needs someone else at this level.',
+        self_approval: 'You submitted this request, so you cannot sign it off. It needs someone else.',
         wrong_approver: 'This request is not waiting on your role.',
         not_pending: 'This request has already been decided.',
-        not_requester: 'Only the person who submitted a request can recall it.',
+        not_requester: 'Only the person who submitted a request can do that.',
+        ...DIRECT_ERROR_TEXT,
       }
       setErr(map[ex.code] || errorText(ex, 'That did not go through.'))
       setBusy(false)
     }
   }
 
+  const explain = {
+    approve: direct
+      ? ' — accepting concludes it and keeps it on record.'
+      : lastStep
+        ? ' — this is the final step; approving settles the request.'
+        : ` — step ${approval.level} of ${approval.max_levels}; approving passes it to the next level.`,
+    reject: ' — rejection ends the request. The requester submits again rather than it going back a step.',
+    forward: ' — it moves to the person you choose and leaves your inbox.',
+    return: ' — it goes back to the requester to fix and resubmit.',
+    discard: ' — this concludes it without accepting it. It stays on record.',
+    resubmit: ' — it goes to the person you choose for review again.',
+    recall: ' — pulling it back concludes it. Send it again if you still need it.',
+  }[action]
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
-      <form onSubmit={submit} style={{ position: 'relative', width: 460, background: 'var(--n0)', borderRadius: 10, boxShadow: 'var(--sh-lg)', zIndex: 1, padding: 24 }}>
+      <form onSubmit={submit} style={{ position: 'relative', width: 460, maxWidth: '94vw', background: 'var(--n0)', borderRadius: 10, boxShadow: 'var(--sh-lg)', zIndex: 1, padding: 24 }}>
         <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)' }}>{verb} request</h3>
         <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16, lineHeight: 1.55 }}>
           {approval.title || KIND_LABEL[approval.kind] || approval.kind}
           {approval.amount_cents != null ? ` · ${money(approval.amount_cents)}` : ''}
-          {action === 'approve' && (lastStep
-            ? ' — this is the final step; approving settles the request.'
-            : ` — step ${approval.level} of ${approval.max_levels}; approving passes it to the next level.`)}
-          {action === 'reject' && ' — rejection ends the request. The requester submits again rather than it going back a step.'}
+          {explain}
         </p>
 
+        {needsPerson && (
+          <div style={{ marginBottom: 12 }}>
+            <label className="label" style={{ display: 'block', marginBottom: 5 }}>{action === 'forward' ? 'Forward to *' : 'Send to *'}</label>
+            {approversLoaded && approvers.length === 0 ? (
+              <p style={{ fontSize: 12, color: 'var(--n500)' }}>Nobody else in the organisation can decide approvals.</p>
+            ) : (
+              <ApproverSelect approvers={approvers} value={to} onChange={setTo}
+                excludeIds={action === 'forward' ? [approval.requester_id, user?.id].filter(Boolean) : []} />
+            )}
+          </div>
+        )}
+
         <label className="label" style={{ display: 'block', marginBottom: 5 }}>
-          {action === 'reject' ? 'Why (the requester sees this) *' : 'Notes'}
+          {needsReason ? 'Why (the requester sees this) *' : 'Notes'}
         </label>
         <textarea className="input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
 
         {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12 }}>{err}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
           <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
-          <button type="submit" disabled={busy || (action === 'reject' && !notes.trim())}
-            className={action === 'approve' ? 'btn btn-primary' : 'btn btn-secondary'}
+          <button type="submit" disabled={busy || (needsReason && !notes.trim()) || (needsPerson && !to)}
+            className={destructive ? 'btn btn-secondary' : 'btn btn-primary'}
             style={{ height: 36, padding: '0 18px', fontSize: 13,
-              ...(action !== 'approve' ? { borderColor: 'var(--srbr)', color: 'var(--srt)' } : {}) }}>
+              ...(destructive ? { borderColor: 'var(--srbr)', color: 'var(--srt)' } : {}) }}>
             {busy ? 'Working…' : verb}
           </button>
         </div>
@@ -123,7 +180,7 @@ function DecisionModal({ approval, action, onClose, onDone }) {
 // ── The matrix ───────────────────────────────────────────────────────────────
 const EMPTY_RULE = {
   name: '', entity_type: 'work_order', kind: 'wo_cost',
-  min_naira: '0', max_naira: '', levels: [{ role_key: 'ops_manager', label: '' }],
+  min_naira: '0', max_naira: '', levels: [{ role_key: 'manager', label: '' }],
 }
 
 function RuleModal({ rule, onClose, onSave }) {
@@ -395,11 +452,28 @@ export default function Approvals({ dark, toggleDark }) {
     try { setDetail(await getApproval(id)) } catch { setDetail(null) }
   }
 
+  // ?id=<uuid> is how an approval notification ("sent to you", "forwarded",
+  // "returned") lands on the request itself rather than on a list to search.
+  const [searchParams] = useSearchParams()
+  const deepLinkId = searchParams.get('id')
+  useEffect(() => { if (deepLinkId) openDetail(deepLinkId) }, [deepLinkId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { extraCaps } = useAuth()
+  // The direct-route actions are gated server-side on approval:decide with
+  // per-user grants counted, so these buttons count the grants too.
+  const canDecideDirect = can(roleKey, 'approval:decide', extraCaps)
+
+  // Waiting on me: a matrix request routed to my role that I did not raise,
+  // or a request sent to me by name.
+  const isForMe = (a) => a.status === 'pending' && (a.route === 'direct'
+    ? a.assignee_id === userId
+    : a.requester_id !== userId && (a.current_role_key === roleKey || roleKey === 'owner'))
+
   const tabs = [
     { k: 'inbox', l: `Waiting on me${stats?.awaiting_me ? ` (${stats.awaiting_me})` : ''}` },
-    { k: 'mine', l: 'I submitted' },
+    { k: 'mine', l: `I submitted${stats?.returned_to_me ? ` (${stats.returned_to_me} returned)` : ''}` },
     { k: 'all', l: 'Everything' },
-    { k: 'matrix', l: 'Matrix' },
+    { k: 'matrix', l: 'Approval matrix' },
   ]
 
   return (
@@ -412,12 +486,16 @@ export default function Approvals({ dark, toggleDark }) {
           <div style={{ padding: '16px 24px 0', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
             <div style={{ marginBottom: 12 }}>
               <h1 style={{ fontFamily: 'var(--ff-d)', fontSize: 22, fontWeight: 700, letterSpacing: '-.3px', color: 'var(--n950)' }}>Approvals</h1>
-              <p style={{ fontSize: 12, color: 'var(--n500)' }}>Who signs off what, and where each request has got to</p>
+              <p style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.55 }}>
+                Work and reports <strong style={{ fontWeight: 600 }}>sent to a person</strong> (usually a line manager) and
+                requests routed by the <strong style={{ fontWeight: 600 }}>approval matrix</strong>. Who has each one, and where it has got to.
+              </p>
             </div>
 
             {stats && tab !== 'matrix' && (
-              <div style={{ display: 'flex', border: 'var(--bdr)', borderRadius: 6, marginBottom: 12, overflow: 'hidden', background: 'var(--n0)' }}>
+              <div style={{ display: 'flex', border: 'var(--bdr)', borderRadius: 6, marginBottom: 12, overflow: 'hidden', background: 'var(--n0)', flexWrap: 'wrap' }}>
                 <Stat label="Waiting on me" value={stats.awaiting_me} tone={stats.awaiting_me > 0 ? 'warn' : undefined} />
+                <Stat label="Returned to me" value={stats.returned_to_me ?? 0} tone={stats.returned_to_me > 0 ? 'warn' : undefined} />
                 <Stat label="Mine, still pending" value={stats.my_pending} />
                 <Stat label="Pending across the org" value={stats.pending} />
                 <Stat label="Approved" value={stats.approved} />
@@ -452,24 +530,26 @@ export default function Approvals({ dark, toggleDark }) {
                     <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>
                       {tab === 'inbox' ? 'Nothing waiting on you' : tab === 'mine' ? 'You have not submitted anything' : 'No approval requests yet'}
                     </p>
-                    <p style={{ fontSize: 13, color: 'var(--n400)', maxWidth: 400, margin: '0 auto', lineHeight: 1.6 }}>
-                      Requests are raised from the thing being approved — a job&apos;s closure or its spend — and routed here by the matrix.
+                    <p style={{ fontSize: 13, color: 'var(--n400)', maxWidth: 440, margin: '0 auto', lineHeight: 1.6 }}>
+                      Requests are raised from the record itself: a work order, inspection or maintenance report sent
+                      to a person, or a job&apos;s closure or spend routed by the approval matrix.
                     </p>
                   </div>
                 ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <div className="table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                       <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
-                        {['Request', 'For', 'Amount', 'Progress', 'With', 'Status', ''].map((h) => (
+                        {['Request', 'For', 'Amount', 'Where it is', 'Status', ''].map((h) => (
                           <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', whiteSpace: 'nowrap', borderBottom: 'var(--bdr)' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {rows.map((a) => {
-                        const meta = APPROVAL_STATUS_META[a.status] || APPROVAL_STATUS_META.pending
+                        const meta = approvalStatusMeta(a)
                         const mine = a.requester_id === userId
-                        const forMe = a.status === 'pending' && !mine && (a.current_role_key === roleKey || roleKey === 'owner')
+                        const forMe = isForMe(a)
+                        const direct = a.route === 'direct'
                         return (
                           <tr key={a.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: detail?.id === a.id ? 'var(--b50)' : 'transparent' }} onClick={() => openDetail(a.id)}>
                             <td style={{ padding: '11px 14px' }}>
@@ -478,16 +558,40 @@ export default function Approvals({ dark, toggleDark }) {
                             </td>
                             <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{KIND_LABEL[a.kind] || a.kind}</td>
                             <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}><Money cents={a.amount_cents} /></td>
-                            <td style={{ padding: '11px 14px' }}><LevelTrack approval={a} /></td>
-                            <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{a.current_role_label || '—'}</td>
+                            {/* A person-routed request has no levels to track, so it
+                                says who has it instead. */}
+                            <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
+                              {direct ? (
+                                <>
+                                  <div style={{ fontSize: 12, color: 'var(--n800)' }}>
+                                    {a.status === 'pending' ? `With: ${a.assignee?.full_name || '—'}`
+                                      : a.status === 'returned' ? `Returned to ${a.requester?.full_name || 'the requester'}`
+                                      : a.approver?.full_name ? `By ${a.approver.full_name}` : '—'}
+                                  </div>
+                                  <div style={{ fontSize: 10.5, color: 'var(--n500)' }}>Sent to a person</div>
+                                </>
+                              ) : (
+                                <>
+                                  <LevelTrack approval={a} />
+                                  {a.status === 'pending' && a.current_role_label && (
+                                    <div style={{ fontSize: 10.5, color: 'var(--n500)', marginTop: 2 }}>With {a.current_role_label}</div>
+                                  )}
+                                </>
+                              )}
+                            </td>
                             <td style={{ padding: '11px 14px' }}><span className={`badge ${meta.cls}`}>{meta.label}</span></td>
                             <td style={{ padding: '11px 14px', whiteSpace: 'nowrap', width: '1%' }}>
                               <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                              {forMe && canDecide && (
-                                <button onClick={(e) => { e.stopPropagation(); setDeciding({ approval: a, action: 'approve' }) }} className="btn btn-secondary" style={{ height: 26, padding: '0 10px', fontSize: 11.5 }}>Review</button>
+                              {forMe && (direct ? canDecideDirect : canDecide) && (
+                                // A direct request has four possible answers, so Review opens
+                                // the panel instead of jumping straight to Approve.
+                                <button onClick={(e) => { e.stopPropagation(); if (direct) openDetail(a.id); else setDeciding({ approval: a, action: 'approve' }) }} className="btn btn-secondary" style={{ height: 26, padding: '0 10px', fontSize: 11.5 }}>Review</button>
                               )}
                               {mine && a.status === 'pending' && (
                                 <button onClick={(e) => { e.stopPropagation(); setDeciding({ approval: a, action: 'recall' }) }} className="btn btn-secondary" style={{ height: 26, padding: '0 10px', fontSize: 11.5 }}>Recall</button>
+                              )}
+                              {mine && a.status === 'returned' && (
+                                <button onClick={(e) => { e.stopPropagation(); setDeciding({ approval: a, action: 'resubmit' }) }} className="btn btn-primary" style={{ height: 26, padding: '0 10px', fontSize: 11.5 }}>Resubmit</button>
                               )}
                               </div>
                             </td>
@@ -495,7 +599,7 @@ export default function Approvals({ dark, toggleDark }) {
                         )
                       })}
                     </tbody>
-                  </table>
+                  </table></div>
                 )}
               </div>
 
@@ -517,18 +621,25 @@ export default function Approvals({ dark, toggleDark }) {
 
                       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <span className={`badge ${(APPROVAL_STATUS_META[detail.status] || {}).cls}`}>{(APPROVAL_STATUS_META[detail.status] || {}).label}</span>
-                          <LevelTrack approval={detail} />
+                          <span className={`badge ${approvalStatusMeta(detail).cls}`}>{approvalStatusMeta(detail).label}</span>
+                          {detail.route === 'direct'
+                            ? <span className="badge badge-n">Sent to a person</span>
+                            : <LevelTrack approval={detail} />}
                         </div>
 
                         <div style={{ background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 6, overflow: 'hidden' }}>
                           <div style={{ padding: '10px 14px', borderBottom: 'var(--bdr)', fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)' }}>Details</div>
                           {[
                             ['Amount', detail.amount_cents == null ? null : <Money key="amt" cents={detail.amount_cents} />],
-                            ['Routed by', detail.rule?.name],
-                            ['Now with', detail.current_role_label],
+                            detail.route === 'direct' ? ['Route', 'Sent to a person'] : ['Routed by', detail.rule?.name],
+                            ['Now with', detail.status === 'pending'
+                              ? (detail.route === 'direct' ? detail.assignee?.full_name : detail.current_role_label)
+                              : detail.status === 'returned'
+                                ? `${detail.requester?.full_name || 'The requester'}, to fix and resubmit`
+                                : null],
                             ['Submitted by', detail.requester?.full_name],
-                            ['Decided by', detail.approver?.full_name],
+                            [detail.route === 'direct' && detail.status === 'approved' ? 'Accepted by'
+                              : detail.status === 'discarded' ? 'Discarded by' : 'Decided by', detail.approver?.full_name],
                             ['Decided', detail.decided_at ? fmtWhen(detail.decided_at) : null],
                           ].map(([k, v]) => (
                             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '9px 14px', borderBottom: 'var(--bdr)', fontSize: 12 }}>
@@ -545,10 +656,12 @@ export default function Approvals({ dark, toggleDark }) {
                           {(detail.events || []).map((e) => (
                             <div key={e.id} style={{ padding: '10px 14px', borderBottom: 'var(--bdr)' }}>
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                                <span style={{ fontFamily: 'var(--ff-m)', fontSize: 10.5, color: 'var(--n500)', width: 20 }}>L{e.level}</span>
+                                {/* Levels mean nothing on a person-routed request. */}
+                                <span style={{ fontFamily: 'var(--ff-m)', fontSize: 10.5, color: 'var(--n500)', width: 20 }}>{detail.route === 'direct' ? '•' : `L${e.level}`}</span>
                                 <span style={{ flex: 1, fontSize: 12, color: 'var(--n800)' }}>
-                                  <strong style={{ fontWeight: 600 }}>{e.actor?.full_name || 'Someone'}</strong> {e.action}
-                                  {e.role_key ? ` as ${ROLE_LABELS[e.role_key] || e.role_key}` : ''}
+                                  <strong style={{ fontWeight: 600 }}>{e.actor?.full_name || 'Someone'}</strong> {EVENT_LABEL[e.action] || e.action}
+                                  {e.to_user && <> {e.action === 'forwarded' ? '→' : 'to'} <strong style={{ fontWeight: 600 }}>{e.to_user.full_name}</strong></>}
+                                  {e.role_key && detail.route !== 'direct' ? ` as ${ROLE_LABELS[e.role_key] || e.role_key}` : ''}
                                 </span>
                                 <span style={{ fontSize: 10.5, color: 'var(--n400)', whiteSpace: 'nowrap' }}>{fmtWhen(e.created_at)}</span>
                               </div>
@@ -557,15 +670,54 @@ export default function Approvals({ dark, toggleDark }) {
                           ))}
                         </div>
 
+                        {/* Returned: back with the requester, who fixes it and sends it again. */}
+                        {detail.status === 'returned' && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 8 }}>
+                            {detail.requester_id === userId ? (
+                              <>
+                                <p style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.55 }}>
+                                  This was returned to you. Make the changes asked for in the history above, then resubmit it to whoever should review it.
+                                </p>
+                                <button onClick={() => setDeciding({ approval: detail, action: 'resubmit' })} className="btn btn-primary" style={{ height: 36, fontSize: 13 }}>Resubmit</button>
+                              </>
+                            ) : (
+                              <p style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.55 }}>
+                                Returned to {detail.requester?.full_name || 'the requester'} to fix and resubmit.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
                         {detail.status === 'pending' && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 8 }}>
                             {detail.requester_id === userId ? (
                               <>
                                 <p style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.55 }}>
-                                  You submitted this, so it needs someone else at this level. You can pull it back if it was raised in error.
+                                  {detail.route === 'direct'
+                                    ? `It is with ${detail.assignee?.full_name || 'the person you sent it to'}. You can pull it back if it was sent in error.`
+                                    : 'You submitted this, so it needs someone else at this level. You can pull it back if it was raised in error.'}
                                 </p>
                                 <button onClick={() => setDeciding({ approval: detail, action: 'recall' })} className="btn btn-secondary" style={{ height: 34, fontSize: 13 }}>Recall it</button>
                               </>
+                            ) : detail.route === 'direct' ? (
+                              detail.assignee_id === userId && canDecideDirect ? (
+                                <>
+                                  <p style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.55 }}>
+                                    Accept it to conclude it and keep it on record, forward it to someone above you,
+                                    return it for changes, or discard it.
+                                  </p>
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                    <button onClick={() => setDeciding({ approval: detail, action: 'approve' })} className="btn btn-primary" style={{ height: 36, fontSize: 13 }}>Accept</button>
+                                    <button onClick={() => setDeciding({ approval: detail, action: 'forward' })} className="btn btn-secondary" style={{ height: 36, fontSize: 13 }}>Forward</button>
+                                    <button onClick={() => setDeciding({ approval: detail, action: 'return' })} style={{ height: 36, fontSize: 13, background: 'none', border: '1px solid var(--sabr)', color: 'var(--sat)', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit' }}>Return</button>
+                                    <button onClick={() => setDeciding({ approval: detail, action: 'discard' })} style={{ height: 36, fontSize: 13, background: 'none', border: '1px solid var(--srbr)', color: 'var(--srt)', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit' }}>Discard</button>
+                                  </div>
+                                </>
+                              ) : (
+                                <p style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.55 }}>
+                                  With {detail.assignee?.full_name || 'someone else'}. Only they can act on it.
+                                </p>
+                              )
                             ) : canDecide && (detail.current_role_key === roleKey || roleKey === 'owner') ? (
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                                 <button onClick={() => setDeciding({ approval: detail, action: 'approve' })} className="btn btn-primary" style={{ height: 36, fontSize: 13 }}>Approve</button>

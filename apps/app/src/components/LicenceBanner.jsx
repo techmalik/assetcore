@@ -5,8 +5,8 @@ import { SUPPORT_EMAIL } from '../lib/instance'
 
 const WARN_DAYS = 60
 // Soft licence enforcement only — this banner never blocks usage, and is
-// shown only to the roles who'd act on it (renewal is an owner/ops concern).
-const VISIBLE_ROLES = ['owner', 'ops_manager']
+// shown only to the roles who'd act on it (renewal is an owner/admin/manager concern).
+const VISIBLE_ROLES = ['owner', 'admin', 'manager']
 
 export default function LicenceBanner() {
   const { authed, roleKey } = useAuth()

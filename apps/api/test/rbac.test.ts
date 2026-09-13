@@ -49,7 +49,7 @@ describe('TASK-1.1: org:manage gate on sites/locations/categories', () => {
     expect(res.status).toBe(403)
   })
 
-  it('ops_manager (granted org:manage) can create a site', async () => {
+  it('manager (granted org:manage) can create a site', async () => {
     const api = await apiAs(USERS.opsManagerA.email)
     const res = await api.post('/api/sites').send({ name: 'Created By Ops Manager Test' })
     expect(res.status).toBe(201)
@@ -69,7 +69,7 @@ describe('device writes require a capability', () => {
     ops = await apiAs(USERS.opsManagerA.email)
   })
 
-  it('ops_manager (holds asset:update) can create a device, viewer cannot', async () => {
+  it('manager (holds asset:update) can create a device, viewer cannot', async () => {
     const created = await ops.post('/api/devices').send({ name: 'Created By Ops Manager', kind: 'sensor' })
     expect(created.status).toBe(201)
 

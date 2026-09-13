@@ -155,7 +155,7 @@ pmTasksRouter.patch('/pm-tasks/:id', requireCap('pm:update'), async (req, res) =
       // the supervisors who'd otherwise only find out via the asset's
       // activity feed, site-scoped the same way check_licence_expiry() is.
       await notifyRoleHolders(c, {
-        orgId: task.org_id, siteId: task.site_id, roles: ['owner', 'ops_manager'],
+        orgId: task.org_id, siteId: task.site_id, roles: ['owner', 'admin', 'manager'],
         actorId: req.claims!.sub, kind: 'work_completed',
         title: `Maintenance completed: ${task.title}`,
         body: task.notes ? String(task.notes).slice(0, 120) : 'Completed.',
@@ -190,7 +190,7 @@ pmTasksRouter.post('/pm-tasks/:id/report', requireCap('pm:update'), reportUpload
       const task = full[0]
       await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'pm_task.attachment.add', entityType: 'pm_task', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
       await notifyRoleHolders(c, {
-        orgId: task.org_id, siteId: task.site_id, roles: ['owner', 'ops_manager'],
+        orgId: task.org_id, siteId: task.site_id, roles: ['owner', 'admin', 'manager'],
         actorId: req.claims!.sub, kind: 'report_uploaded',
         title: `Maintenance report uploaded: ${task.title}`,
         body: req.file!.originalname, entityType: 'pm_task', entityId: task.id,

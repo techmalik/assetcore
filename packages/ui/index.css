@@ -147,6 +147,16 @@ a { text-decoration: none; color: inherit; }
   transition: background 0.1s;
 }
 .nav-item:hover { background: var(--n50); }
+/* A module that is on the way but not open yet: visible so people know it is
+   coming, inert so nobody lands on a half-built page. */
+.nav-item.disabled { cursor: default; color: var(--n400); }
+.nav-item.disabled:hover { background: none; }
+.nav-soon {
+  margin-left: auto; font-family: var(--ff-m); font-size: 9px; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase; padding: 1px 5px; border-radius: 999px;
+  background: var(--n100); color: var(--n500); border: 1px solid var(--n200); flex-shrink: 0;
+}
+@media (min-width: 769px) { .sidebar.collapsed .nav-soon { display: none; } }
 .nav-item.active {
   background: var(--b50);
   border-left-color: var(--b500);
@@ -526,6 +536,59 @@ a { text-decoration: none; color: inherit; }
 @media (max-width: 768px) {
   .dash-main-grid,
   .dash-bottom-grid { grid-template-columns: 1fr; }
+}
+
+/* Dashboard stat cards — an accent rule across the top and a tinted icon
+   tile. The accent is one custom property per card; the tile tint is mixed
+   from it against the surface, so the same card reads in light and dark. */
+.stat-row { display: grid; gap: 14px; margin-bottom: 14px; }
+.stat-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stat-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stat-row-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.stat-row-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1180px) {
+  .stat-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat-row-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-row-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .stat-row-3, .stat-row-4, .stat-row-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+.stat-card {
+  position: relative; background: var(--n0); border: var(--bdr); border-radius: 10px;
+  padding: 18px 18px 16px; box-shadow: var(--sh-sm); overflow: hidden; min-width: 0;
+  text-align: left; font-family: var(--ff-u);
+}
+.stat-card::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--accent);
+}
+.stat-card-label {
+  font-family: var(--ff-m); font-size: 11px; font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--n600); line-height: 1.35; margin-bottom: 10px;
+}
+.stat-card-main { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.stat-card-value {
+  font-family: var(--ff-d); font-size: 30px; font-weight: 700; letter-spacing: -.5px;
+  color: var(--n950); line-height: 1.05; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.stat-card-icon {
+  width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); background: color-mix(in oklch, var(--accent) 13%, var(--n0));
+}
+.stat-card-sub {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+  margin-top: 10px; font-size: 13px; color: var(--n500); line-height: 1.35;
+}
+.stat-card-pill {
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; background: var(--srb); color: var(--srt); border: 1px solid var(--srbr);
+}
+@media (max-width: 600px) {
+  .stat-card { padding: 14px 12px 12px; }
+  .stat-card-value { font-size: 24px; }
+  .stat-card-icon { width: 32px; height: 32px; border-radius: 8px; }
+  .stat-card-label { font-size: 10px; }
 }
 
 /* Page header row */

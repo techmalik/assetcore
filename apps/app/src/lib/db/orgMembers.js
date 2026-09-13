@@ -18,8 +18,10 @@ export async function updateOrgMemberRole(id, role_key) {
   return api.patch(`/org/members/${id}/role`, { role_key })
 }
 
-export async function updateOrgMemberAccess(id, { site_scope, location_scope, extra_caps }) {
-  return api.patch(`/org/members/${id}/access`, { site_scope, location_scope, extra_caps })
+// manager_id (0028) is optional: left undefined it drops out of the JSON body,
+// so a save that only touches scope never clears a line manager.
+export async function updateOrgMemberAccess(id, { site_scope, location_scope, extra_caps, manager_id }) {
+  return api.patch(`/org/members/${id}/access`, { site_scope, location_scope, extra_caps, manager_id })
 }
 
 export async function setOrgMemberStatus(id, enable) {

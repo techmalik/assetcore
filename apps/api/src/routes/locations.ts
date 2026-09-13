@@ -31,7 +31,7 @@ locationsRouter.get('/locations', async (req, res) => {
 
 // Locations the CALLER's own site scope actually reaches — unlike GET
 // /locations above (an admin-management listing, intentionally org-wide so
-// e.g. an unscoped ops_manager can still administer every location), this
+// e.g. an unscoped manager can still administer every location), this
 // backs the topbar location-filter switcher (EPIC-2), where offering a
 // site-scoped user a location none of their sites belong to would be
 // pointless and confusing. current_site_ids() is null for unscoped callers

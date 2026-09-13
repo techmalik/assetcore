@@ -1,8 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import ExcelJS from 'exceljs'
 import { mkdirSync } from 'node:fs'
-import { stat } from 'node:fs/promises'
+import { stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
@@ -11,7 +10,7 @@ import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap, hasCap } from '../middleware/rbac.js'
 import { config } from '../config.js'
-import { buildReportData, REPORT_KINDS, type ReportKind } from '../reportBuilders.js'
+import { buildReportData, renderCsv, renderXlsx, REPORT_KINDS, type ReportKind } from '../reportBuilders.js'
 
 export const reportsRouter = Router()
 reportsRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -132,17 +131,6 @@ reportsRouter.post('/reports', requireCap('report:create'), async (req, res) => 
   res.status(201).json(row)
 })
 
-function toCell(v: unknown): string {
-  if (v === null || v === undefined) return ''
-  if (v instanceof Date) return v.toISOString()
-  return String(v)
-}
-
-function csvEscape(v: string): string {
-  if (/[",\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`
-  return v
-}
-
 // Builds the report file synchronously (small orgs, small files — no queue needed)
 // and writes it to FILES_DIR/{org_id}/reports/. Replaces the old fake-completion
 // stub that just marked reports ready with a random file size.
@@ -163,21 +151,8 @@ reportsRouter.post('/reports/:id/generate', requireCap('report:create'), async (
     const filename = `${report.id}.${report.format}`
     const fullPath = path.join(dir, filename)
 
-    if (report.format === 'xlsx') {
-      const workbook = new ExcelJS.Workbook()
-      const sheet = workbook.addWorksheet(report.kind)
-      sheet.columns = data.columns
-      sheet.getRow(1).font = { bold: true }
-      for (const r of data.rows) sheet.addRow(r)
-      await workbook.xlsx.writeFile(fullPath)
-    } else {
-      const { writeFile } = await import('node:fs/promises')
-      const lines = [data.columns.map((col) => csvEscape(col.header)).join(',')]
-      for (const r of data.rows) {
-        lines.push(data.columns.map((col) => csvEscape(toCell(r[col.key]))).join(','))
-      }
-      await writeFile(fullPath, lines.join('\n'), 'utf8')
-    }
+    // Same renderers as /exports, so a stored report and a download agree.
+    await writeFile(fullPath, report.format === 'xlsx' ? await renderXlsx(data, report.kind) : renderCsv(data))
 
     const { size } = await stat(fullPath)
     await c.query(

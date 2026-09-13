@@ -6,10 +6,11 @@ import StatusBadge from '../components/StatusBadge.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { getDashboardStats, getRecentWorkOrders, getDashboardAlerts } from '../lib/db/dashboard.js'
-import { getComplianceLicenceCounts, getPmCompliance } from '../lib/db/complianceLicences.js'
+import { getPmCompliance } from '../lib/db/complianceLicences.js'
 import { listPMTasks } from '../lib/db/pmTasks.js'
 import { WO_STATUS_LABEL, WO_PRIORITY_LABEL, woStatusStyle, WO_PRIORITY_STYLE } from '../lib/db/workOrders.js'
 import { errorText } from '../lib/errors'
+import { useMoney } from '../lib/money'
 
 const ALERT_SEVERITY_STYLE = {
   critical: { c: 'var(--srt)', bg: 'var(--srb)' },
@@ -58,15 +59,72 @@ function initialsOf(name) {
   return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase()
 }
 
+// Time of day from the viewer's own clock — a greeting is about where they are.
+function greetingFor(date) {
+  const h = date.getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+// fullName falls back to the email when a profile has no name; greet by the
+// part before the @ rather than the whole address.
+function firstNameOf(fullName) {
+  if (!fullName) return ''
+  const base = fullName.includes('@') ? fullName.split('@')[0] : fullName
+  return base.trim().split(/\s+/)[0]
+}
+
+const cardIcons = {
+  box: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2.5l6.5 3.6v7.8L10 17.5l-6.5-3.6V6.1L10 2.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M3.5 6.1L10 9.7l6.5-3.6M10 9.7v7.8" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>,
+  wrench: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12.6 3.2a4 4 0 00-4.9 5.3l-5 5a1.6 1.6 0 002.3 2.3l5-5a4 4 0 005.3-4.9l-2.4 2.4-2.1-.4-.4-2.1 2.2-2.6Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>,
+  shield: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2.5l6 2.4v4.6c0 3.7-2.6 6.4-6 7.6-3.4-1.2-6-3.9-6-7.6V4.9l6-2.4Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M7.3 10l1.9 1.9 3.6-3.7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  trendDown: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2.5 6l5.5 5.5 3-3 6.5 6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 15h4.5v-4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  docCheck: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M11.5 2.5H6A1.5 1.5 0 004.5 4v12A1.5 1.5 0 006 17.5h8a1.5 1.5 0 001.5-1.5V6.5l-4-4Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M11.5 2.5v4h4M7.5 11.5l1.8 1.8 3.2-3.3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  pin: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 17.5s5.5-5 5.5-9a5.5 5.5 0 00-11 0c0 4 5.5 9 5.5 9Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><circle cx="10" cy="8.4" r="2" stroke="currentColor" strokeWidth="1.5"/></svg>,
+  xCircle: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/><path d="M7.5 7.5l5 5M12.5 7.5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  warn: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3l7.5 13.5h-15L10 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M10 8.2v3.6M10 14v.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>,
+  calendarClock: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M9 16.5H4.5A1.5 1.5 0 013 15V5.5A1.5 1.5 0 014.5 4h10A1.5 1.5 0 0116 5.5V9M3 8h13M6.5 2.5v3M12.5 2.5v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="14" cy="14" r="3.5" stroke="currentColor" strokeWidth="1.5"/><path d="M14 12.4V14l1 .9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+}
+
+// Accents are per card, not per meaning: nine cards need nine hues to be told
+// apart at a glance, and status colour is still carried by the figures inside.
+const ACCENT = {
+  blue: 'oklch(60% .15 255)', purple: 'oklch(58% .17 300)', amber: 'oklch(72% .16 72)',
+  green: 'oklch(62% .16 150)', cyan: 'oklch(64% .11 210)', pink: 'oklch(62% .19 350)',
+  red: 'oklch(58% .2 27)', orange: 'oklch(68% .17 50)', violet: 'oklch(60% .14 285)',
+}
+
+function StatCard({ label, value, sub, pill, accent, icon, href, nav }) {
+  const clickable = Boolean(href)
+  const go = () => clickable && nav(href)
+  return (
+    <div className={`stat-card${clickable ? ' kpi-link' : ''}`} style={{ '--accent': accent }}
+      role={clickable ? 'button' : undefined} tabIndex={clickable ? 0 : undefined}
+      onClick={go} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') go() }}>
+      <div className="stat-card-label">{label}</div>
+      <div className="stat-card-main">
+        <div className="stat-card-value">{value}</div>
+        <div className="stat-card-icon" aria-hidden="true">{icon}</div>
+      </div>
+      <div className="stat-card-sub">
+        <span>{sub}</span>
+        {pill && <span className="stat-card-pill">{pill}</span>}
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard({ dark, toggleDark }) {
-  const { org } = useAuth()
+  const { org, fullName } = useAuth()
+  const { money } = useMoney()
+  const now = new Date()
   const nav = useNavigate()
   const { locationId: globalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
   const [stats, setStats] = useState(null)
   const [recentWOs, setRecentWOs] = useState([])
   const [statsErr, setStatsErr] = useState(null)
-  const [complianceCounts, setComplianceCounts] = useState(null)
   const [alerts, setAlerts] = useState(null)
   const [upcomingPM, setUpcomingPM] = useState(null)
   const [pmCompliance, setPmCompliance] = useState(null)
@@ -75,7 +133,6 @@ export default function Dashboard({ dark, toggleDark }) {
     Promise.all([getDashboardStats({ locationId: globalLocationId }), getRecentWorkOrders({ locationId: globalLocationId })])
       .then(([s, wos]) => { setStats(s); setRecentWOs(wos) })
       .catch(e => setStatsErr(errorText(e, 'Could not load the dashboard figures.')))
-    getComplianceLicenceCounts().then(setComplianceCounts).catch(() => {})
     getPmCompliance().then(setPmCompliance).catch(() => {})
     getDashboardAlerts({ locationId: globalLocationId }).then(setAlerts).catch(() => setAlerts([]))
     const today = new Date().toISOString().slice(0, 10)
@@ -109,20 +166,27 @@ export default function Dashboard({ dark, toggleDark }) {
           {/* Page header */}
           <div className="page-header" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:20}}>
             <div>
-              <h1 style={{fontFamily:'var(--ff-d)',fontSize:26,fontWeight:700,letterSpacing:'-.4px',color:'var(--n950)',lineHeight:1.15}}>Operations Dashboard</h1>
-              <p style={{fontSize:13,color:'var(--n500)',marginTop:4}}>
-                Network health overview · {org?.name || 'Loading…'}{globalLocation ? ` · ${globalLocation.name}` : ''}
+              <h1 style={{fontFamily:'var(--ff-d)',fontSize:26,fontWeight:700,letterSpacing:'-.4px',color:'var(--n950)',lineHeight:1.15}}>
+                {greetingFor(now)}{firstNameOf(fullName) ? `, ${firstNameOf(fullName)}` : ''}
+              </h1>
+              <p style={{fontSize:13,color:'var(--n600)',marginTop:4,fontWeight:500}}>
+                {now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+              <p style={{fontSize:12.5,color:'var(--n500)',marginTop:2}}>
+                {org?.name || 'Loading…'}{globalLocation ? ` · ${globalLocation.name}` : ''}
+                {stats && stats.myWork > 0 && (
+                  <> · <button onClick={() => nav('/work-orders?assignee=me')} style={{border:'none',background:'none',padding:0,font:'inherit',color:'var(--b600)',cursor:'pointer'}}>
+                    {stats.myWork} open item{stats.myWork === 1 ? '' : 's'} assigned to you
+                  </button></>
+                )}
               </p>
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <select className="select" style={{height:32,border:'1px solid var(--n200)',borderRadius:4,padding:'0 28px 0 10px',fontFamily:'var(--ff-u)',fontSize:13,color:'var(--n700)',background:'var(--n0)',appearance:'none'}}>
-                <option>Last 30 days</option><option>Last 7 days</option><option>This quarter</option>
-              </select>
-              <button className="btn btn-primary" style={{height:32,padding:'0 14px',fontSize:13}}>
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 9v3h3M12 9v3H9M2 5V2h3M12 5V2H9" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Generate Report
-              </button>
-            </div>
+            {/* The old "Generate Report" button did nothing and its date range
+                select filtered nothing; Export is the working version of both. */}
+            <button className="btn btn-primary" style={{height:32,padding:'0 14px',fontSize:13}} onClick={() => nav('/export')}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3M2.5 11.5h9" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Export
+            </button>
           </div>
 
           {statsErr && (
@@ -131,63 +195,58 @@ export default function Dashboard({ dark, toggleDark }) {
             </div>
           )}
 
-          {/* KPI cards */}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:20}}>
-            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/assets')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/assets') }}>
-              <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Total Assets</div>
-              <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:'var(--n950)',lineHeight:1,marginBottom:8}}>
-                {stats ? a.total.toLocaleString() : '—'}
-              </div>
-              <div style={{fontSize:12,color:'var(--sgt)'}}>
-                {stats && a.total > 0 ? `${pct(a.operational, a.total)} operational` : stats ? 'No assets yet' : ''}
-              </div>
-            </div>
-            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/assets?status=operational')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/assets?status=operational') }}>
-              <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Operational</div>
-              <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:'var(--n950)',lineHeight:1,marginBottom:8}}>
-                {stats ? pct(a.operational, a.total) : '—'}
-              </div>
-              <div style={{fontSize:12,color:'var(--n500)'}}>
-                {stats ? `${a.operational.toLocaleString()} of ${a.total.toLocaleString()} assets` : ''}
-              </div>
-            </div>
-            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/work-orders?status=open')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/work-orders?status=open') }}>
-              <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Open Work Orders</div>
-              <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:'var(--n950)',lineHeight:1,marginBottom:8}}>
-                {stats ? w.open : '—'}
-              </div>
-              <div style={{fontSize:12,color:'var(--srt)'}}>
-                {stats ? `${w.overdue} overdue · ${w.critical} critical` : ''}
-              </div>
-            </div>
-            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/maintenance?filter=overdue')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/maintenance?filter=overdue') }}>
-              <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Overdue PM</div>
-              <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:stats?.overduePM>0?'var(--sat)':'var(--n950)',lineHeight:1,marginBottom:8}}>
-                {stats ? stats.overduePM : '—'}
-              </div>
-              <div style={{fontSize:12,color:stats?.overduePM>0?'var(--sat)':'var(--n500)'}}>
-                {stats ? (stats.overduePM === 0 ? 'All tasks on schedule' : `task${stats.overduePM!==1?'s':''} past due date`) : ''}
-              </div>
-            </div>
-            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/compliance?filter=alerts')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/compliance?filter=alerts') }}>
-              <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>Compliance Alerts</div>
-              <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:complianceCounts&&(complianceCounts.expiring+complianceCounts.expired)>0?'var(--srt)':'var(--n950)',lineHeight:1,marginBottom:8}}>
-                {complianceCounts ? complianceCounts.expiring + complianceCounts.expired : '—'}
-              </div>
-              <div style={{fontSize:12,color:complianceCounts&&complianceCounts.expired>0?'var(--srt)':'var(--n500)'}}>
-                {complianceCounts ? `${complianceCounts.expired} expired · ${complianceCounts.expiring} expiring` : ''}
-              </div>
-            </div>
-            <div className="kpi kpi-link" role="button" tabIndex={0} onClick={() => nav('/work-orders?assignee=me')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav('/work-orders?assignee=me') }}>
-              <div style={{fontSize:12,fontWeight:500,color:'var(--n500)',marginBottom:12}}>My Open Work</div>
-              <div style={{fontFamily:'var(--ff-m)',fontSize:30,fontWeight:500,color:'var(--n950)',lineHeight:1,marginBottom:8}}>
-                {stats ? stats.myWork : '—'}
-              </div>
-              <div style={{fontSize:12,color:'var(--n500)'}}>
-                {stats ? 'assigned to you' : ''}
-              </div>
-            </div>
-          </div>
+          {/* Stat cards. A card whose module the viewer cannot read comes
+              back null from the API and is left out, rather than showing a
+              figure that links to a page they would be turned away from. */}
+          {(() => {
+            const d = stats?.defects
+            const r = stats?.risks
+            const lic = stats?.licences
+            const p = stats?.portfolio
+            const dash = '—'
+            const row1 = [
+              { key: 'assets', label: 'Total Assets', accent: ACCENT.blue, icon: cardIcons.box, href: '/assets',
+                value: stats ? a.total.toLocaleString() : dash,
+                sub: stats ? `${a.active.toLocaleString()} active${a.inactive ? ` · ${a.inactive} inactive` : ''}` : '' },
+              { key: 'wos', label: 'Work Orders', accent: ACCENT.purple, icon: cardIcons.wrench, href: '/work-orders?status=open',
+                value: stats ? w.open : dash,
+                sub: stats ? `${w.critical} critical` : '',
+                pill: stats && w.overdue > 0 ? `${w.overdue} overdue` : null },
+              d !== null && { key: 'defects', label: 'Open Defects', accent: ACCENT.amber, icon: cardIcons.shield, href: '/defects',
+                value: d ? d.open : dash, sub: d ? `${d.critical} critical` : '' },
+              { key: 'value', label: 'Portfolio Value', accent: ACCENT.green, icon: cardIcons.trendDown,
+                href: p?.nbvCents != null ? '/depreciation' : null,
+                value: p ? money(p.valueCents) : dash,
+                sub: p ? (p.nbvCents != null ? `${money(p.nbvCents)} book value` : 'Purchase value') : '' },
+            ].filter(Boolean)
+            const row2 = [
+              lic !== null && { key: 'licences', label: 'Active Licences', accent: ACCENT.cyan, icon: cardIcons.docCheck,
+                href: lic?.alerts > 0 ? '/compliance?filter=alerts' : '/compliance',
+                value: lic ? lic.active : dash,
+                sub: lic ? (lic.alerts > 0 ? `${lic.alerts} expiring or expired` : 'No alerts') : '' },
+              { key: 'geo', label: 'Geotagged', accent: ACCENT.pink, icon: cardIcons.pin, href: '/asset-map',
+                value: stats ? a.geotagged : dash, sub: stats ? 'Assets on map' : '' },
+              { key: 'overdue', label: 'Overdue WOs', accent: ACCENT.red, icon: cardIcons.xCircle, href: '/work-orders?status=open',
+                value: stats ? w.overdue : dash,
+                sub: stats ? (w.overdue > 0 ? 'Need immediate action' : 'Nothing past its SLA') : '' },
+              r !== null && { key: 'risk', label: 'High Risk Assets', accent: ACCENT.orange, icon: cardIcons.warn, href: '/integrity',
+                value: r ? r.highAssets : dash,
+                sub: r ? `${r.highRisks} high or extreme risk${r.highRisks === 1 ? '' : 's'} open` : '' },
+              { key: 'eol', label: 'Nearing End of Life', accent: ACCENT.violet, icon: cardIcons.calendarClock, href: '/depreciation',
+                value: stats ? a.nearingEol : dash,
+                sub: stats ? `Within 2 years of end of life${a.pastEol ? ` · ${a.pastEol} past it` : ''}` : '' },
+            ].filter(Boolean)
+            return (
+              <>
+                <div className={`stat-row stat-row-${Math.max(row1.length, 2)}`}>
+                  {row1.map(({ key, ...c }) => <StatCard key={key} {...c} nav={nav} />)}
+                </div>
+                <div className={`stat-row stat-row-${Math.min(Math.max(row2.length, 2), 5)}`} style={{ marginBottom: 20 }}>
+                  {row2.map(({ key, ...c }) => <StatCard key={key} {...c} nav={nav} />)}
+                </div>
+              </>
+            )
+          })()}
 
           {/* Main grid */}
           <div className="dash-main-grid" style={{display:'grid',gap:16,marginBottom:16}}>
@@ -228,7 +287,7 @@ export default function Dashboard({ dark, toggleDark }) {
                   {c:'var(--sg)',cc:'var(--sgt)',l:'Healthy',        n: hb?.good,       href:'/assets?health=good'},
                   {c:'var(--sa)',cc:'var(--sat)',l:'Attention Req.', n: hb?.attention,  href:'/assets?health=attention'},
                   {c:'var(--sr)',cc:'var(--srt)',l:'Critical',       n: hb?.critical,   href:'/assets?health=critical'},
-                  {c:'var(--n300)',cc:'var(--n500)',l:'Offline',     n: hb?.offline,    href:'/assets?status=offline'},
+                  {c:'var(--n300)',cc:'var(--n500)',l:'Offline / inactive', n: hb?.offline,    href:'/assets?status=offline'},
                 ].map(row => (
                   <div key={row.l} role="button" tabIndex={0} onClick={() => nav(row.href)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') nav(row.href) }}
                     style={{display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:12,padding:'4px 6px',margin:'0 -6px',borderRadius:4,cursor:'pointer'}}

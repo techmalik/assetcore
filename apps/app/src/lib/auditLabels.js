@@ -26,6 +26,7 @@ export const ACTION_LABEL = {
   'asset.update': 'Updated asset',
   'asset.archive': 'Archived asset',
   'asset.restore': 'Restored asset',
+  'asset.transfer': 'Transferred asset',
   'asset.attachment.add': 'Attached a file to asset',
   'asset.attachment.remove': 'Removed a file from asset',
   'maintenance.complete': 'Completed maintenance on',
@@ -57,8 +58,11 @@ export const ACTION_LABEL = {
   'compliance_audit.attachment.add': 'Attached a document to compliance audit',
 
   // Structure
+  'export.download': 'Downloaded an export',
   'site.create': 'Created site',
   'site.update': 'Updated site',
+  'site.shutdown': 'Shut down site',
+  'site.reopen': 'Reopened site',
   'site.delete': 'Deleted site',
   'location.create': 'Created location',
   'location.update': 'Updated location',

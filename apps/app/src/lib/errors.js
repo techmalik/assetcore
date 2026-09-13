@@ -42,6 +42,7 @@ export const ERROR_MESSAGES = {
   cannot_demote_last_owner: 'An organisation has to keep at least one System Admin.',
   cannot_disable_last_owner: 'An organisation has to keep at least one active System Admin.',
   cannot_disable_self: 'You cannot disable your own account.',
+  owner_only: 'Only a System Admin can grant the System Admin role or change a System Admin’s account.',
 
   // --- Approvals ---
   invalid_band: 'The ceiling has to be above the floor.',
@@ -51,6 +52,11 @@ export const ERROR_MESSAGES = {
   wrong_approver: 'This request is waiting on a different role.',
   not_pending: 'This request has already been decided.',
   not_requester: 'Only the person who raised a request can recall it.',
+
+  // --- Sites ---
+  site_shutdown: 'That site is shut down, so no new work can be raised there. Reopen the site or move the asset first.',
+  already_shutdown: 'That site is already shut down.',
+  not_shutdown: 'That site is not shut down.',
 
   // --- Work orders, defects, inspections ---
   invalid_transition: 'That is not a status this job can move to from where it is.',
@@ -88,6 +94,8 @@ export const ERROR_MESSAGES = {
   not_found: 'That record could not be found.',
   template_not_found: 'That template could not be found.',
   unsupported_kind: 'That report type is not supported.',
+  unknown_dataset: 'That export is not available.',
+  invalid_format: 'Exports come as CSV or Excel.',
   too_many_rows: 'That is more rows than can be handled at once. Split the file and try again.',
   exactly_one_parent_required: 'This has to be attached to exactly one parent record.',
   internal_error: 'Something went wrong at our end. Try again, and tell an administrator if it keeps happening.',

@@ -4,6 +4,7 @@ import { claimsFromReq } from '../claims.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
+import { hasCap } from '../middleware/rbac.js'
 
 export const dashboardRouter = Router()
 dashboardRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -18,8 +19,36 @@ dashboardRouter.get('/dashboard/stats', async (req, res) => {
     // location instead of some cards silently ignoring it.
     const locClause = locationId ? 'and site_id in (select id from public.sites where location_id = $1)' : ''
     const locParams = locationId ? [locationId] : []
-    const [{ rows: assets }, { rows: wos }, { rows: pm }, { rows: mine }] = await Promise.all([
-      c.query(`select status, health_score from public.assets where deleted_at is null ${locClause}`, locParams),
+    // Each module's card is withheld (null) when the caller cannot read that
+    // module, so the dashboard never shows a count the linked page would 403.
+    const canDefects = hasCap(req, 'defect:read')
+    const canRisks = hasCap(req, 'risk:read')
+    const canCompliance = hasCap(req, 'compliance:read')
+    const canBookValue = hasCap(req, 'depreciation:read')
+    const skip = Promise.resolve({ rows: [] as Record<string, unknown>[] })
+
+    const [{ rows: assets }, { rows: wos }, { rows: pm }, { rows: mine }, { rows: defects }, { rows: risks }, { rows: licences }] = await Promise.all([
+      // Geotagged follows the map's rule (analytics.ts position_source): an
+      // asset with no fix of its own is still placed at its site's.
+      // End of life is start date + useful life, resolved asset → category →
+      // org policy → 10 years, the same fallback chain the depreciation
+      // engine uses (0022), so the two pages agree on how long an asset lasts.
+      c.query(
+        `select a.status, a.health_score, a.purchase_value_cents, a.nbv_cents,
+           (coalesce(a.lat, s.lat) is not null and coalesce(a.lng, s.lng) is not null) as geotagged,
+           case when coalesce(a.install_date, a.purchase_date) is null then null
+             else (coalesce(a.install_date, a.purchase_date)
+                   + make_interval(months => round(12 * coalesce(a.useful_life_years, cat.useful_life_years,
+                       nullif(o.settings->'depreciation'->>'usefulLifeYears', '')::numeric, 10))::int))::date
+           end as end_of_life,
+           a.lifecycle_status
+         from public.assets a
+         join public.organizations o on o.id = a.org_id
+         left join public.sites s on s.id = a.site_id
+         left join public.asset_categories cat on cat.id = a.category_id
+         where a.deleted_at is null ${locationId ? 'and a.site_id in (select id from public.sites where location_id = $1)' : ''}`,
+        locParams
+      ),
       c.query(`select status, priority, sla_due from public.work_orders where deleted_at is null and status <> 'closed' ${locClause}`, locParams),
       c.query(`select count(*)::int as count from public.pm_tasks where status = 'overdue' ${locClause}`, locParams),
       // "My Open Work" — everything currently assigned to the caller across
@@ -34,9 +63,42 @@ dashboardRouter.get('/dashboard/stats', async (req, res) => {
           (select count(*)::int from public.inspections
            where inspector_id = current_user_id() and status in ('scheduled','due','in_progress')) as inspections
       `),
+      canDefects
+        ? c.query(
+            `select count(*)::int as open, count(*) filter (where severity = 'critical')::int as critical
+             from public.defects
+             where deleted_at is null and status in ('open','acknowledged','in_progress','deferred') ${locClause}`,
+            locParams
+          )
+        : skip,
+      // "High risk" is the current band — residual when controls have been
+      // rated, inherent otherwise — matching the Risk page's own stats.
+      canRisks
+        ? c.query(
+            `select count(distinct asset_id)::int as assets, count(*)::int as risks
+             from public.risk_assessments
+             where deleted_at is null and status in ('open','mitigating')
+               and coalesce(residual_score, inherent_score) >= 11 ${locClause}`,
+            locParams
+          )
+        : skip,
+      // Same buckets as /compliance-licences/counts: anything not yet expired
+      // is in force; expiring inside 30 days is an alert.
+      canCompliance
+        ? c.query(
+            `select count(*) filter (where expiry_date >= current_date)::int as active,
+               count(*) filter (where expiry_date < current_date + 30)::int as alerts
+             from public.compliance_licences
+             where deleted_at is null ${locationId ? 'and (site_id is null or site_id in (select id from public.sites where location_id = $1))' : ''}`,
+            locParams
+          )
+        : skip,
     ])
 
-    const byStatus: Record<string, number> = { operational: 0, attention: 0, critical: 0, offline: 0 }
+    const byStatus: Record<string, number> = { operational: 0, attention: 0, critical: 0, offline: 0, inactive: 0 }
+    const today = new Date(new Date().toISOString().slice(0, 10))
+    const eolHorizon = new Date(today); eolHorizon.setFullYear(today.getFullYear() + 2)
+    let geotagged = 0, valueCents = 0, nbvCents = 0, nbvKnown = 0, nearingEol = 0, pastEol = 0
     // Health-band counts for the dashboard's health donut/legend, per the
     // >50 good / 31-50 attention / <=30 critical spec (apps/app/src/lib/health.js
     // is the canonical source of these thresholds - kept in lockstep here).
@@ -50,7 +112,19 @@ dashboardRouter.get('/dashboard/stats', async (req, res) => {
     for (const a of assets) {
       if (a.status in byStatus) byStatus[a.status]++
       if (a.health_score != null) healthSum += a.health_score
-      if (a.status === 'offline') {
+      if (a.geotagged) geotagged++
+      if (a.purchase_value_cents != null) valueCents += Number(a.purchase_value_cents)
+      if (a.nbv_cents != null) { nbvCents += Number(a.nbv_cents); nbvKnown++ }
+      // A disposed asset has already reached the end of its life by other
+      // means; counting it as "nearing" would never clear.
+      if (a.end_of_life && a.lifecycle_status !== 'disposed') {
+        const eol = new Date(a.end_of_life)
+        if (eol < today) pastEol++
+        else if (eol <= eolHorizon) nearingEol++
+      }
+      // An asset at a shut-down site is inactive, not unhealthy — it sits with
+      // offline outside the health bands rather than dragging "critical" up.
+      if (a.status === 'offline' || a.status === 'inactive') {
         healthBands.offline++
       } else {
         const h = a.health_score ?? 0
@@ -64,9 +138,22 @@ dashboardRouter.get('/dashboard/stats', async (req, res) => {
       assets: {
         total: assets.length,
         ...byStatus,
+        active: assets.length - byStatus.offline - byStatus.inactive,
+        geotagged,
         healthBands,
         avgHealth: assets.length ? Math.round(healthSum / assets.length) : 0,
+        nearingEol,
+        pastEol,
       },
+      portfolio: {
+        valueCents,
+        // Null, not zero, when book value is not the caller's to see or no
+        // asset has one — "₦0 book value" would be a confident, wrong claim.
+        nbvCents: canBookValue && nbvKnown > 0 ? nbvCents : null,
+      },
+      defects: canDefects ? defects[0] : null,
+      risks: canRisks ? { highAssets: risks[0]?.assets ?? 0, highRisks: risks[0]?.risks ?? 0 } : null,
+      licences: canCompliance ? licences[0] : null,
       wos: {
         open: wos.length,
         overdue: wos.filter((w) => w.sla_due && w.sla_due < now).length,

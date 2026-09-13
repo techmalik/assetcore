@@ -187,7 +187,12 @@ export async function recomputeAssetHealth(
  */
 export async function recomputeAllHealthScores(c: Queryable, orgId?: string): Promise<number> {
   const values: unknown[] = []
-  let where = 'where a.deleted_at is null'
+  // A shut-down site's assets are not rescored: apply_asset_health() would
+  // refuse the score anyway (0027), and skipping them here keeps the stored
+  // breakdown from describing a number that was never applied.
+  let where = `where a.deleted_at is null
+    and a.status <> 'inactive'
+    and not exists (select 1 from public.sites ss where ss.id = a.site_id and ss.status = 'shutdown')`
   if (orgId) {
     values.push(orgId)
     where += ` and a.org_id = $${values.length}`

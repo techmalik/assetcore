@@ -41,6 +41,17 @@ async function countActiveOwners(orgId: string): Promise<number> {
   return rows[0].n
 }
 
+// user:manage is held by `admin` as well as `owner` (System Admin). Without
+// this line an admin could promote themselves to owner, or demote/disable an
+// owner, or mint a reset link for an owner's account and sign in as them —
+// each a way past the integration/depreciation rights kept owner-only in
+// @assetcore/rbac. So: only an owner may grant the owner role, or touch a
+// membership that is currently an owner's. The last-owner checks below still
+// apply on top, to owners acting on each other.
+function callerIsOwner(req: import('express').Request): boolean {
+  return (req.membership?.roleKey ?? req.claims?.role_key) === 'owner'
+}
+
 async function getOrgMembership(orgId: string, membershipId: string) {
   const { rows } = await ownerPool.query(
     `select m.*, u.email, u.full_name from public.memberships m
@@ -55,9 +66,11 @@ orgMembersRouter.get('/org/members', async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(
       `select m.id, m.user_id, m.role_key, m.status, m.created_at, m.site_scope, m.location_scope, m.extra_caps,
-              u.full_name, u.email, u.phone
+              u.full_name, u.email, u.phone,
+              m.manager_id, mu.full_name as manager_name
        from public.memberships m
        join public.users u on u.id = m.user_id
+       left join public.users mu on mu.id = m.manager_id
        where m.org_id = current_org_id()
        order by m.created_at asc`
     ).then((r) => r.rows)
@@ -79,6 +92,7 @@ orgMembersRouter.post('/org/members/invite', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { email, full_name, role_key, site_scope, location_scope, extra_caps } = parsed.data
   const orgId = req.claims!.org_id!
+  if (role_key === 'owner' && !callerIsOwner(req)) return res.status(403).json({ error: 'owner_only' })
 
   const client = await ownerPool.connect()
   try {
@@ -160,6 +174,10 @@ orgMembersRouter.patch('/org/members/:id/role', async (req, res) => {
     const before = await getOrgMembership(orgId, req.params.id)
     if (!before) { await client.query('rollback'); return res.status(404).json({ error: 'not_found' }) }
 
+    if ((before.role_key === 'owner' || parsed.data.role_key === 'owner') && !callerIsOwner(req)) {
+      await client.query('rollback'); return res.status(403).json({ error: 'owner_only' })
+    }
+
     if (before.role_key === 'owner' && parsed.data.role_key !== 'owner') {
       const owners = await countActiveOwners(orgId)
       if (owners <= 1) { await client.query('rollback'); return res.status(400).json({ error: 'cannot_demote_last_owner' }) }
@@ -185,8 +203,15 @@ orgMembersRouter.patch('/org/members/:id/role', async (req, res) => {
 
 // Update a member's location/site scope and per-user capability grants. Sending
 // a field replaces it; omit a field to leave it unchanged. null scope = all.
+// The member edit modal also sets a line manager (0028), so this patch carries
+// it. A manager only preselects a name when someone sends work for approval.
+// It grants nothing, so it rides on the same user:manage gate as scope.
+const accessSchema = scopeSchema.extend({
+  manager_id: z.string().uuid().nullable().optional(),
+})
+
 orgMembersRouter.patch('/org/members/:id/access', async (req, res) => {
-  const parsed = scopeSchema.safeParse(req.body)
+  const parsed = accessSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const orgId = req.claims!.org_id!
 
@@ -195,6 +220,7 @@ orgMembersRouter.patch('/org/members/:id/access', async (req, res) => {
   if ('site_scope' in parsed.data) { values.push(parsed.data.site_scope ?? null); sets.push(`site_scope = $${values.length}`) }
   if ('location_scope' in parsed.data) { values.push(parsed.data.location_scope ?? null); sets.push(`location_scope = $${values.length}`) }
   if ('extra_caps' in parsed.data) { values.push(parsed.data.extra_caps ?? []); sets.push(`extra_caps = $${values.length}`) }
+  if ('manager_id' in parsed.data) { values.push(parsed.data.manager_id ?? null); sets.push(`manager_id = $${values.length}`) }
   if (!sets.length) return res.status(400).json({ error: 'empty_patch' })
 
   const client = await ownerPool.connect()
@@ -202,6 +228,22 @@ orgMembersRouter.patch('/org/members/:id/access', async (req, res) => {
     await client.query('begin')
     const before = await getOrgMembership(orgId, req.params.id)
     if (!before) { await client.query('rollback'); return res.status(404).json({ error: 'not_found' }) }
+    if (before.role_key === 'owner' && !callerIsOwner(req)) { await client.query('rollback'); return res.status(403).json({ error: 'owner_only' }) }
+    const managerId = parsed.data.manager_id
+    if (managerId) {
+      // Managed by someone who is actually here: an active member of this org,
+      // not the member themselves.
+      if (managerId === before.user_id) { await client.query('rollback'); return res.status(422).json({ error: 'invalid_manager' }) }
+      const { rows: mgr } = await client.query(
+        "select manager_id from public.memberships where org_id = $1 and user_id = $2 and status = 'active'",
+        [orgId, managerId]
+      )
+      if (!mgr[0]) { await client.query('rollback'); return res.status(422).json({ error: 'invalid_manager' }) }
+      // Two people each other's manager is always a data-entry slip, and it
+      // would bounce a "send to my manager" request straight back. Longer
+      // loops are left alone because the field only preselects a picker.
+      if (mgr[0].manager_id === before.user_id) { await client.query('rollback'); return res.status(422).json({ error: 'manager_cycle' }) }
+    }
     const { rows } = await client.query(
       `update public.memberships set ${sets.join(', ')} where id = $1 and org_id = $2 returning *`,
       values
@@ -230,6 +272,7 @@ function setStatus(status: 'disabled' | 'active', action: string) {
       await client.query('begin')
       const before = await getOrgMembership(orgId, membershipId)
       if (!before) { await client.query('rollback'); return res.status(404).json({ error: 'not_found' }) }
+      if (before.role_key === 'owner' && !callerIsOwner(req)) { await client.query('rollback'); return res.status(403).json({ error: 'owner_only' }) }
 
       if (status === 'disabled') {
         if (before.user_id === req.claims!.sub) { await client.query('rollback'); return res.status(400).json({ error: 'cannot_disable_self' }) }
@@ -263,6 +306,9 @@ orgMembersRouter.post('/org/members/:id/reset-password', async (req, res) => {
   try {
     const membership = await getOrgMembership(orgId, req.params.id)
     if (!membership) return res.status(404).json({ error: 'not_found' })
+    // The link comes back in the response, so resetting an owner is a way to
+    // sign in as one.
+    if (membership.role_key === 'owner' && !callerIsOwner(req)) return res.status(403).json({ error: 'owner_only' })
 
     const token = await issueToken(client, membership.user_id, 'reset')
     const link = `${config.APP_ORIGIN}/reset-password?token=${token}`

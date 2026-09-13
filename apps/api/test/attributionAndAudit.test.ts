@@ -126,7 +126,7 @@ describe('assignment attribution: PM tasks and inspections', () => {
     })
     expect(created.status).toBe(201)
 
-    // owner, not ops_manager: ops_manager holds inspection:read but not
+    // owner, not manager: manager holds inspection:read but not
     // inspection:update, so the PATCH would 403.
     const res = await owner.patch(`/api/inspections/${created.body.id}`)
       .send({ inspector_id: USERS.fieldTechA1.id })

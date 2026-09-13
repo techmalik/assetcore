@@ -78,3 +78,19 @@ export async function getAssetByAin(ain) {
 export async function getAssetHealth(id) {
   return api.get(`/assets/${id}/health`)
 }
+
+// Moves one or many assets to another site in one go. Answers
+// { transferred, skipped: [{ asset_id, reason }] } — an asset already at the
+// destination is skipped rather than failing the batch.
+export async function transferAssets({ assetIds, toSiteId, reason, transferredAt }) {
+  return api.post('/assets/transfer', {
+    asset_ids: assetIds,
+    to_site_id: toSiteId,
+    reason: reason || undefined,
+    transferred_at: transferredAt || undefined,
+  })
+}
+
+export async function listAssetTransfers(id) {
+  return api.get(`/assets/${id}/transfers`)
+}

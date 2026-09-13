@@ -20,6 +20,7 @@ import { useToast } from '../lib/ToastContext'
 import { useMoney } from '../lib/money'
 import { listSpareParts } from '../lib/db/spareParts'
 import { listApprovals, submitApproval, APPROVAL_STATUS_META } from '../lib/db/approvals'
+import SendForApproval, { useApprovers, ApproverSelect } from '../components/SendForApproval.jsx'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
 
@@ -54,11 +55,21 @@ function SlaDue({ date }) {
 // ── New WO Modal ──────────────────────────────────────────────────────────────
 function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
   const toast = useToast()
+  const { roleKey, extraCaps } = useAuth()
+  // Sending the job for approval raises an approval request as well, so it
+  // needs the capability that request needs.
+  const canSendForApproval = can(roleKey, 'approval:create', extraCaps)
+  const { approvers, loaded: approversLoaded, lineManagerId } = useApprovers(canSendForApproval)
   const [form, setForm] = useState({ title: '', description: '', type: 'corrective', priority: 'medium', site_id: '', asset_id: '', assignee_id: '', sla_due: '', cost: '' })
+  // null = not chosen yet, so it follows the line manager once the list loads;
+  // '' = "Don't send, create directly"; otherwise a user id.
+  const [approverChoice, setApproverChoice] = useState(null)
+  const [approvalNotes, setApprovalNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const siteAssets = assets.filter(a => !form.site_id || a.site_id === form.site_id)
+  const approverId = canSendForApproval ? (approverChoice ?? lineManagerId ?? '') : ''
 
   async function submit(e) {
     e.preventDefault(); setErr(''); setSaving(true)
@@ -70,11 +81,21 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
         ...rest, site_id: form.site_id || null, asset_id: form.asset_id || null, sla_due: form.sla_due || null,
         assignee_id: canAssign ? (assignee_id || null) : null,
         cost_cents: cost === '' ? null : Math.round(Number(cost) * 100),
-        status: canAssign && assignee_id ? 'assigned' : 'new',
+        // A job sent for approval is a draft until it is accepted; the API
+        // enforces this regardless of what status is sent.
+        status: approverId ? 'draft' : canAssign && assignee_id ? 'assigned' : 'new',
+        ...(approverId ? { approver_id: approverId, approval_notes: approvalNotes.trim() || null } : {}),
       })
-      toast.success(`Work order ${wo.ref} created.`)
+      toast.success(approverId
+        ? `Work order ${wo.ref} created as a draft and sent to ${wo.approval?.assignee?.full_name || 'your approver'} for approval.`
+        : `Work order ${wo.ref} created.`)
       onSave()
-    } catch (ex) { setErr(errorText(ex, 'Create failed.')); setSaving(false) }
+    } catch (ex) {
+      setErr(ex.code === 'invalid_assignee'
+        ? 'That person cannot receive approvals. Choose someone who can decide requests.'
+        : errorText(ex, 'Create failed.'))
+      setSaving(false)
+    }
   }
 
   return (
@@ -114,7 +135,8 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Site</label>
             <select className="input" value={form.site_id} onChange={e => { set('site_id', e.target.value); set('asset_id', '') }} style={{ width: '100%' }}>
               <option value="">Any site</option>
-              {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {/* Shut-down sites stay listed but can't be picked — the API refuses work there. */}
+              {sites.map(s => <option key={s.id} value={s.id} disabled={s.status === 'shutdown'}>{s.name}{s.status === 'shutdown' ? ' (shut down)' : ''}</option>)}
             </select>
           </div>
           <div>
@@ -135,6 +157,29 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
             <input className="input" type="number" min="0" step="1" value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="e.g. 45000" style={{ width: '100%' }} />
           </div>
         </div>
+        {canSendForApproval && (
+          <div style={{ marginBottom: 12, padding: '10px 12px', border: 'var(--bdr)', borderRadius: 6, background: 'var(--n50)' }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Send for approval to</label>
+            {approversLoaded && approvers.length === 0 ? (
+              <p style={{ fontSize: 12, color: 'var(--n500)', lineHeight: 1.5 }}>
+                Nobody else in the organisation can decide approvals yet, so this job will be created directly.
+              </p>
+            ) : (
+              <ApproverSelect approvers={approvers} value={approverId} onChange={setApproverChoice}
+                noneLabel="Don't send — create directly" />
+            )}
+            {approverId && (
+              <textarea className="input" rows={2} value={approvalNotes} onChange={e => setApprovalNotes(e.target.value)}
+                placeholder="Note for the approver (optional)"
+                style={{ width: '100%', height: 'auto', padding: '8px 10px', marginTop: 8, resize: 'vertical' }} />
+            )}
+            <p style={{ fontSize: 11.5, color: 'var(--n500)', marginTop: 6, lineHeight: 1.5 }}>
+              {approverId
+                ? 'The work order stays a Draft until they accept it. They can also forward it to someone above them, return it to you to change, or discard it.'
+                : 'The work order is created straight into New, with no approval step.'}
+            </p>
+          </div>
+        )}
         {canAssign && (
           <div style={{ marginBottom: 20 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Assign to</label>
@@ -638,7 +683,11 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {wo.status === 'draft' && (
           <div style={{ background: 'var(--sab)', border: '1px solid var(--sabr)', borderRadius: 6, padding: '10px 12px', fontSize: 12, color: 'var(--sat)', lineHeight: 1.5 }}>
-            Auto-drafted by the health monitor — review and approve it into <strong>New</strong> below, or close it to dismiss.
+            {/* Drafts now come from two places: the health monitor (no creator)
+                and a person who sent the job for approval when raising it. */}
+            {wo.created_by
+              ? <>A draft waiting for approval. It moves to <strong>New</strong> when the person it was sent to accepts it.</>
+              : <>Auto-drafted by the health monitor. Review it and approve it into <strong>New</strong> below, or close it to dismiss.</>}
           </div>
         )}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -697,6 +746,13 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
 
         <SpendApproval wo={wo} canRead={can(roleKey, 'approval:read', extraCaps)}
           canSubmit={can(roleKey, 'approval:create', extraCaps)} onChanged={reload} />
+
+        {/* Letting a draft go ahead, decided by the person it is sent to.
+            Accepting it moves the job to New on the server. */}
+        {wo.status === 'draft' && (
+          <SendForApproval entityType="work_order" entityId={wo.id} kind="wo_approval"
+            title={`${wo.ref} — ${wo.title}`} heading="Approval to proceed" onChanged={reload} />
+        )}
 
         {wo.defects?.length > 0 && (
           <div>

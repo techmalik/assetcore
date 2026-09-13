@@ -20,13 +20,13 @@ export const ASSET_B1 = 'b0000000-0000-0000-0000-00000000bb01' // in SITE_B1, or
 export const FIXTURE_PASSWORD = 'TestPass123!'
 
 // One user per role in ORG_A (all unscoped, i.e. site_scope null) plus a
-// dedicated field_tech scoped to SITE_A1 only, and one owner in ORG_B for
+// dedicated officer scoped to SITE_A1 only, and one owner in ORG_B for
 // tenant-isolation checks.
 export const USERS = {
   ownerA:        { id: 'a1000000-0000-0000-0000-000000000001', email: 'owner-a@test.assetcore.local', role: 'owner', org: ORG_A, siteScope: null as string[] | null },
-  opsManagerA:   { id: 'a1000000-0000-0000-0000-000000000002', email: 'ops-a@test.assetcore.local', role: 'ops_manager', org: ORG_A, siteScope: null as string[] | null },
+  opsManagerA:   { id: 'a1000000-0000-0000-0000-000000000002', email: 'ops-a@test.assetcore.local', role: 'manager', org: ORG_A, siteScope: null as string[] | null },
   viewerA:       { id: 'a1000000-0000-0000-0000-000000000003', email: 'viewer-a@test.assetcore.local', role: 'viewer', org: ORG_A, siteScope: null as string[] | null },
-  fieldTechA1:   { id: 'a1000000-0000-0000-0000-000000000004', email: 'tech-a1@test.assetcore.local', role: 'field_tech', org: ORG_A, siteScope: [SITE_A1] as string[] | null },
+  fieldTechA1:   { id: 'a1000000-0000-0000-0000-000000000004', email: 'tech-a1@test.assetcore.local', role: 'officer', org: ORG_A, siteScope: [SITE_A1] as string[] | null },
   // Scoped to SITE_A1 (not unscoped) so TASK-1.2's compliance_audits
   // site-scope write test has a user who both holds compliance:create and
   // is actually restricted to one site.

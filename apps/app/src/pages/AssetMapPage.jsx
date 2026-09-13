@@ -100,7 +100,7 @@ export default function AssetMapPage({ dark, toggleDark }) {
               </select>
               <select style={sel} value={filters.status} onChange={(e) => set('status', e.target.value)}>
                 <option value={ALL}>Any condition</option>
-                {['operational', 'attention', 'critical', 'offline'].map((v) => <option key={v} value={v}>{v}</option>)}
+                {['operational', 'attention', 'critical', 'offline', 'inactive'].map((v) => <option key={v} value={v}>{v}</option>)}
               </select>
               <select style={sel} value={filters.criticality} onChange={(e) => set('criticality', e.target.value)}>
                 <option value={ALL}>Any criticality</option>

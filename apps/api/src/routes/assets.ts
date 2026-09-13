@@ -11,6 +11,7 @@ import { writeAuditLog } from '../audit.js'
 import { refreshAssetHealth, previewAssetHealth } from '../healthService.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadTo, guardedSingle, validateUploadOrCleanup, cleanupOrphanedUpload, deleteUploadedFile, IMAGE_MIME_TYPES, DOCUMENT_MIME_TYPES } from '../files.js'
+import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 
 export const assetsRouter = Router()
 assetsRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -20,7 +21,10 @@ assetsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 // valid and editable (0012_asset_status_expansion.sql keeps both sets in
 // the DB check constraint) — new writes aren't steered away from them here,
 // the UI picker does that (Assets.jsx's STATUS_PICKER_KEYS).
-const ASSET_STATUSES = ['operational', 'maintenance', 'standby', 'offline', 'attention', 'critical'] as const
+//
+// 'inactive' (0027) is what an asset at a shut-down site is. It is set by the
+// shutdown and cleared by a reopen or a transfer out; the UI never offers it.
+const ASSET_STATUSES = ['operational', 'maintenance', 'standby', 'offline', 'attention', 'critical', 'inactive'] as const
 
 const photoUpload = uploadTo('assets', { maxSizeBytes: 10 * 1024 * 1024 })
 const documentUpload = uploadTo('asset-documents', { maxSizeBytes: 25 * 1024 * 1024 })
@@ -229,9 +233,50 @@ assetsRouter.get('/assets/:id/activity', async (req, res) => {
        where al.entity_type = 'asset' and al.entity_id = $1`,
       [req.params.id]
     )
-    return [...acts, ...audits].sort(
+    // Transfers read as a sentence ("Moved from A to B"), not as the bare
+    // asset.transfer audit row beside them, so they get their own source.
+    const { rows: moves } = await c.query(
+      `select t.id, 'transfer' as kind,
+         'Moved from ' || coalesce(fs.name, 'no site') || ' to ' || ts.name
+           || coalesce(' — ' || nullif(t.reason, ''), '') as body,
+         '[]'::jsonb as attachments, t.created_at, 'transfer' as source,
+         null as entity_label,
+         case when u.id is null then null else jsonb_build_object('id', u.id, 'full_name', u.full_name) end as actor
+       from public.asset_transfers t
+       left join public.sites fs on fs.id = t.from_site_id
+       left join public.sites ts on ts.id = t.to_site_id
+       left join public.users u on u.id = t.transferred_by
+       where t.asset_id = $1`,
+      [req.params.id]
+    )
+    return [...acts, ...audits, ...moves].sort(
       (x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime()
     )
+  })
+  if (rows === null) return res.status(404).json({ error: 'not_found' })
+  res.json(rows)
+})
+
+// Where an asset has been. Same visibility check as the activity feed:
+// asset_transfers is org-scoped, the asset is site-scoped.
+assetsRouter.get('/assets/:id/transfers', async (req, res) => {
+  const rows = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows: assetRows } = await c.query('select 1 from public.assets where id = $1', [req.params.id])
+    if (!assetRows[0]) return null
+    const { rows } = await c.query(
+      `select t.id, t.asset_id, t.from_site_id, t.to_site_id, t.reason, t.transferred_at, t.created_at,
+         case when fs.id is null then null else jsonb_build_object('id', fs.id, 'name', fs.name) end as from_site,
+         jsonb_build_object('id', ts.id, 'name', ts.name) as to_site,
+         case when u.id is null then null else jsonb_build_object('id', u.id, 'full_name', u.full_name) end as transferred_by_user
+       from public.asset_transfers t
+       left join public.sites fs on fs.id = t.from_site_id
+       left join public.sites ts on ts.id = t.to_site_id
+       left join public.users u on u.id = t.transferred_by
+       where t.asset_id = $1
+       order by t.transferred_at desc, t.created_at desc`,
+      [req.params.id]
+    )
+    return rows
   })
   if (rows === null) return res.status(404).json({ error: 'not_found' })
   res.json(rows)
@@ -265,9 +310,18 @@ assetsRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
   const parsed = assetInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   if (!maintenanceDatesOrdered(parsed.data)) return res.status(400).json({ error: 'invalid_maintenance_dates' })
-  const { columns, placeholders, values } = buildInsert(parsed.data, ALLOWED)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    // Registering an asset at a shut-down site is allowed — equipment left on
+    // a closed site still belongs on the register — but it arrives Inactive,
+    // like everything else there. The status asked for is kept so reopening
+    // the site gives it that, not a default.
+    const data: Record<string, unknown> = { ...parsed.data }
+    if (await isSiteShutdown(c, parsed.data.site_id, null)) {
+      data.status_before_shutdown = parsed.data.status && parsed.data.status !== 'inactive' ? parsed.data.status : 'operational'
+      data.status = 'inactive'
+    }
+    const { columns, placeholders, values } = buildInsert(data, [...ALLOWED, 'status_before_shutdown'])
     const { rows } = await c.query(
       `insert into public.assets (org_id, ${columns})
        values (current_org_id(), ${placeholders})
@@ -374,8 +428,14 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
       await c.query('savepoint import_row')
       try {
         const { rows: ins } = await c.query(
-          `insert into public.assets (org_id, ain, name, category_id, site_id, status, purchase_value_cents, specs, lat, lng, last_maintenance_at, next_maintenance_at, install_date, purchase_date)
-           values (current_org_id(), $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13)
+          // Same rule as the create endpoint: a row landing on a shut-down
+          // site arrives inactive, remembering the status the file gave it.
+          `insert into public.assets (org_id, ain, name, category_id, site_id, status, status_before_shutdown, purchase_value_cents, specs, lat, lng, last_maintenance_at, next_maintenance_at, install_date, purchase_date)
+           select current_org_id(), $1, $2, $3, $4,
+                  case when shut then 'inactive' else $5 end,
+                  case when shut then nullif($5, 'inactive') end,
+                  $6, $7::jsonb, $8, $9, $10, $11, $12, $13
+           from (select exists (select 1 from public.sites where id = $4 and status = 'shutdown') as shut) s
            on conflict (org_id, ain) do nothing
            returning id`,
           [r.ain, r.name, categoryId, siteId, status, value, JSON.stringify(specs), num(r.lat), num(r.lng), r.last_maintenance_date, r.next_maintenance_date, r.install_date || null, r.purchase_date || null]
@@ -419,7 +479,20 @@ assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) =
   const touchesHealth = 'last_maintenance_at' in parsed.data || 'next_maintenance_at' in parsed.data
   const touchesDepreciation = DEPRECIATION_INPUTS.some((k) => k in parsed.data)
 
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+  const result = await withOrgContext(claimsFromReq(req), async (c) => {
+    // An asset at a shut-down site stays inactive until the site reopens or
+    // the asset is transferred out. Checked against the site the asset will be
+    // on after this patch, so moving one onto a closed site with a live status
+    // is refused too. Resubmitting 'inactive' (the edit form does) is fine.
+    if ('status' in parsed.data || 'site_id' in parsed.data) {
+      const { rows: cur } = await c.query('select site_id, status from public.assets where id = $1', [req.params.id])
+      if (!cur[0]) return null
+      const siteAfter = 'site_id' in parsed.data ? parsed.data.site_id : cur[0].site_id
+      const statusAfter = parsed.data.status ?? cur[0].status
+      if (statusAfter !== 'inactive' && (await isSiteShutdown(c, siteAfter, null))) {
+        return { error: 'site_shutdown' as const }
+      }
+    }
     const { rows } = await c.query(`update public.assets set ${setSql} where id = $1 returning id`, [req.params.id, ...values])
     if (!rows[0]) return null
     if (touchesHealth) {
@@ -441,10 +514,132 @@ assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) =
     const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
     await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.update', entityType: 'asset', entityId: asset.id, after: parsed.data })
-    return asset
+    return { data: asset }
   })
-  if (!row) return res.status(404).json({ error: 'not_found' })
-  res.json(row)
+  if (!result) return res.status(404).json({ error: 'not_found' })
+  if ('error' in result) return res.status(422).json(SITE_SHUTDOWN_ERROR)
+  res.json(result.data)
+})
+
+const transferInput = z.object({
+  asset_ids: z.array(z.string().uuid()).min(1).max(500),
+  to_site_id: z.string().uuid(),
+  reason: z.string().trim().max(1000).optional(),
+  transferred_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+})
+
+/**
+ * Move one or many assets to another site.
+ *
+ * One transaction for the batch, but a per-asset outcome: an asset already at
+ * the destination, or one the caller cannot see, is reported as skipped rather
+ * than failing the rest. A bad destination fails the whole request, because
+ * nothing in the batch could succeed.
+ *
+ * What moves with the asset is the work still to be done — open work orders,
+ * PM tasks and inspections, and its live PM schedules — so a job does not stay
+ * pinned to a site the equipment has left (and, if that site is shut down,
+ * become work nobody is allowed to do). Closed and completed records keep the
+ * site they happened at: that is where the work was done.
+ *
+ * Health and book value are not recomputed. Neither reads the site, so a move
+ * cannot change them.
+ */
+assetsRouter.post('/assets/transfer', requireCap('asset:update'), async (req, res) => {
+  const parsed = transferInput.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const { to_site_id: toSiteId, reason, transferred_at: transferredAt } = parsed.data
+  const assetIds = [...new Set(parsed.data.asset_ids)]
+
+  const result = await withOrgContext(claimsFromReq(req), async (c) => {
+    // sites RLS is org-only, but the assets being moved are site-scoped: a
+    // scoped caller moving equipment somewhere they cannot see would fail the
+    // assets policy's WITH CHECK mid-batch. Refuse it up front instead.
+    const { rows: dest } = await c.query(
+      `select id, name, status, (current_site_ids() is null or id = any(current_site_ids())) as in_scope
+       from public.sites where id = $1 and deleted_at is null`,
+      [toSiteId]
+    )
+    if (!dest[0]) return { error: 'not_found' as const }
+    if (dest[0].status === 'shutdown') return { error: 'site_shutdown' as const }
+    if (!dest[0].in_scope) return { error: 'forbidden' as const }
+
+    const { rows: found } = await c.query(
+      `select a.id, a.org_id, a.site_id, a.status, a.status_before_shutdown,
+              s.name as from_site_name, s.status as from_site_status
+       from public.assets a
+       left join public.sites s on s.id = a.site_id
+       where a.id = any($1::uuid[]) and a.deleted_at is null
+       for update of a`,
+      [assetIds]
+    )
+    const byId = new Map(found.map((r) => [r.id as string, r]))
+
+    const skipped: Array<{ asset_id: string; reason: 'same_site' | 'not_found' }> = []
+    let transferred = 0
+    for (const id of assetIds) {
+      const a = byId.get(id)
+      if (!a) { skipped.push({ asset_id: id, reason: 'not_found' }); continue }
+      if (a.site_id === toSiteId) { skipped.push({ asset_id: id, reason: 'same_site' }); continue }
+
+      // Inactive only because of where it was: leaving the shut-down site
+      // gives it back the status it had. An asset someone set inactive for
+      // another reason, with nothing remembered, stays as it is.
+      const revive = a.status === 'inactive' && (a.status_before_shutdown != null || a.from_site_status === 'shutdown')
+      const { rows: upd } = await c.query(
+        `update public.assets
+         set site_id = $2,
+             status = case when $3 then coalesce(status_before_shutdown, 'operational') else status end,
+             status_before_shutdown = case when $3 then null else status_before_shutdown end
+         where id = $1
+         returning status`,
+        [id, toSiteId, revive]
+      )
+
+      await c.query(
+        `update public.work_orders set site_id = $2, updated_at = now()
+         where asset_id = $1 and deleted_at is null and status <> 'closed'`,
+        [id, toSiteId]
+      )
+      await c.query(
+        `update public.pm_tasks set site_id = $2
+         where asset_id = $1 and status not in ('completed', 'skipped')`,
+        [id, toSiteId]
+      )
+      await c.query(
+        `update public.inspections set site_id = $2
+         where asset_id = $1 and status <> 'completed'`,
+        [id, toSiteId]
+      )
+      // Schedules too, or the next generated task would be stamped with the
+      // old site again.
+      await c.query(
+        `update public.pm_schedules set site_id = $2
+         where asset_id = $1 and deleted_at is null`,
+        [id, toSiteId]
+      )
+
+      await c.query(
+        `insert into public.asset_transfers (org_id, asset_id, from_site_id, to_site_id, reason, transferred_at, transferred_by)
+         values (current_org_id(), $1, $2, $3, $4, coalesce($5::date, current_date), current_user_id())`,
+        [id, a.site_id, toSiteId, reason || null, transferredAt ?? null]
+      )
+      await writeAuditLog(c, {
+        orgId: a.org_id, actorId: req.claims!.sub, action: 'asset.transfer', entityType: 'asset', entityId: id,
+        before: { site_id: a.site_id, site_name: a.from_site_name, status: a.status },
+        after: { site_id: toSiteId, site_name: dest[0].name, status: upd[0].status, reason: reason || null, transferred_at: transferredAt ?? null },
+      })
+      transferred++
+    }
+    return { data: { transferred, skipped } }
+  })
+
+  if ('error' in result) {
+    if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' })
+    if (result.error === 'site_shutdown') return res.status(422).json(SITE_SHUTDOWN_ERROR)
+    return res.status(403).json({ error: 'forbidden' })
+  }
+  res.json(result.data)
 })
 
 assetsRouter.post('/assets/:id/photos', requireCap('asset:update'), guardedSingle(photoUpload.single('photo')), async (req, res) => {

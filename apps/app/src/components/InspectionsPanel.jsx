@@ -14,6 +14,7 @@
 // told to navigate elsewhere, which is the confusion this replaces.
 import { useState, useEffect, useCallback, useRef } from 'react'
 import StatusBadge from './StatusBadge.jsx'
+import SendForApproval from './SendForApproval.jsx'
 import AssignModal, { assignmentSummary } from './AssignModal.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
@@ -166,7 +167,8 @@ function InspectionModal({ onClose, onSaved, sites, assets, users, templates }) 
             <label style={lbl}>Site
               <select value={form.site_id} onChange={e=>set('site_id',e.target.value)} style={{...inp,appearance:'none'}}>
                 <option value="">— Not site-specific —</option>
-                {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {/* Shut-down sites stay listed but can't be picked — the API refuses work there. */}
+                {sites.map(s => <option key={s.id} value={s.id} disabled={s.status === 'shutdown'}>{s.name}{s.status === 'shutdown' ? ' (shut down)' : ''}</option>)}
               </select>
             </label>
             <label style={lbl}>Inspector
@@ -249,7 +251,7 @@ function FindingsModal({ inspection, onClose, onSaved, readOnly = false }) {
 
   return (
     <div style={{position:'fixed',inset:0,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,.35)'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:'24px',width:480,maxWidth:'92vw'}}>
+      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,padding:'24px',width:480,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto'}}>
         <div style={{display:'flex',alignItems:'center',marginBottom:18}}>
           <h2 style={{fontFamily:'var(--ff-d)',fontSize:17,fontWeight:700,color:'var(--n950)',flex:1}}>{readOnly ? 'Inspection record' : 'Complete Inspection'}</h2>
           <button onClick={onClose} style={{width:28,height:28,border:'none',background:'none',cursor:'pointer',color:'var(--n500)',fontSize:20,lineHeight:1}}>×</button>
@@ -341,6 +343,15 @@ function FindingsModal({ inspection, onClose, onSaved, readOnly = false }) {
             {readOnly && !reportUrl && <span style={{fontSize:12,color:'var(--n400)'}}>None uploaded.</span>}
             {reportUrl && <button type="button" onClick={viewReport} style={{alignSelf:'flex-start',background:'none',border:'none',color:'var(--b600)',cursor:'pointer',fontSize:12,padding:0}}>View uploaded report</button>}
           </label>
+          {/* A completed inspection is a report someone above the inspector
+              may need to accept, forward, return or discard. It is sent from
+              the record itself, so the reviewer and the evidence stay together. */}
+          {readOnly && (
+            <div style={{borderTop:'var(--bdr)',paddingTop:12}}>
+              <SendForApproval entityType="inspection" entityId={inspection.id} kind="inspection_report"
+                title={`Inspection report: ${inspection.title}`} heading="Report approval" />
+            </div>
+          )}
         </div>
         {err && <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'8px 12px',fontSize:12,color:'var(--srt)',marginTop:12}}>{err}</div>}
         <div style={{display:'flex',gap:8,marginTop:20,justifyContent:'flex-end'}}>

@@ -11,6 +11,7 @@ import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadTo, cleanupOrphanedUpload } from '../files.js'
 import { notifyUsers, notifyRoleHolders } from '../notify.js'
 import { refreshAssetHealth } from '../healthService.js'
+import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 
 export const inspectionsRouter = Router()
 inspectionsRouter.use(requireAuth, requireOrg, requireActiveMembership)
@@ -89,6 +90,10 @@ inspectionsRouter.get('/inspections', async (req, res) => {
 inspectionsRouter.post('/inspections', requireCap('inspection:create'), async (req, res) => {
   const parsed = inspectionInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  // Nobody is sent to inspect at a shut-down site (0027).
+  if (await withOrgContext(claimsFromReq(req), (c) => isSiteShutdown(c, parsed.data.site_id, parsed.data.asset_id))) {
+    return res.status(422).json(SITE_SHUTDOWN_ERROR)
+  }
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const data: Record<string, unknown> = { ...parsed.data }
@@ -203,10 +208,10 @@ inspectionsRouter.patch('/inspections/:id', requireCap('inspection:update'), asy
     }
     if (justCompleted) {
       // hse_officer is the compliance-owning role for inspections (per the
-      // app's own role matrix) so it's included here alongside owner/ops_manager,
-      // unlike PM-task completion which stays owner/ops_manager only.
+      // app's own role matrix) so it's included here alongside owner/admin/manager,
+      // unlike PM-task completion which stays owner/admin/manager only.
       await notifyRoleHolders(c, {
-        orgId: inspection.org_id, siteId: inspection.site_id, roles: ['owner', 'ops_manager', 'hse_officer'],
+        orgId: inspection.org_id, siteId: inspection.site_id, roles: ['owner', 'admin', 'manager', 'hse_officer'],
         actorId: req.claims!.sub, kind: 'work_completed',
         title: `Inspection completed: ${inspection.title}`,
         body: inspection.findings ? String(inspection.findings).slice(0, 120) : 'Completed.',
@@ -250,7 +255,7 @@ inspectionsRouter.post('/inspections/:id/report', requireCap('inspection:update'
       const inspection = full[0]
       await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'inspection.attachment.add', entityType: 'inspection', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
       await notifyRoleHolders(c, {
-        orgId: inspection.org_id, siteId: inspection.site_id, roles: ['owner', 'ops_manager', 'hse_officer'],
+        orgId: inspection.org_id, siteId: inspection.site_id, roles: ['owner', 'admin', 'manager', 'hse_officer'],
         actorId: req.claims!.sub, kind: 'report_uploaded',
         title: `Inspection report uploaded: ${inspection.title}`,
         body: req.file!.originalname, entityType: 'inspection', entityId: inspection.id,
