@@ -79,17 +79,17 @@ function StatCard({ label, value, sub, pill, tone, href, nav }) {
   const clickable = Boolean(href)
   const go = () => clickable && nav(href)
   return (
-    <div className={`kpi dashboard-kpi${clickable ? ' kpi-link' : ''}`}
+    <div className={`kpi summary-kpi${clickable ? ' kpi-link' : ''}`}
       role={clickable ? 'button' : undefined} tabIndex={clickable ? 0 : undefined}
       onClick={go} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') go() }}>
-      <div className="dashboard-kpi-label">
+      <div className="summary-kpi-label">
         <span>{label}</span>
-        {clickable && <span className="dashboard-kpi-arrow" aria-hidden="true">→</span>}
+        {clickable && <span className="summary-kpi-arrow" aria-hidden="true">→</span>}
       </div>
-      <div className="dashboard-kpi-value">{value}</div>
-      <div className={`dashboard-kpi-sub${tone ? ` ${tone}` : ''}`}>
+      <div className="summary-kpi-value">{value}</div>
+      <div className={`summary-kpi-sub${tone ? ` ${tone}` : ''}`}>
         <span>{sub}</span>
-        {pill && <span className="dashboard-kpi-pill">{pill}</span>}
+        {pill && <span className="summary-kpi-pill">{pill}</span>}
       </div>
     </div>
   )

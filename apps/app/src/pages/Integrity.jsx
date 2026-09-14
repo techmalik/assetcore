@@ -18,7 +18,7 @@ function fmtDate(d) {
 
 function Pill({ meta, children }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, border: `1px solid ${meta.br}`, background: meta.bg, color: meta.c, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 7px', borderRadius: 2, border: `1px solid ${meta.br}`, background: meta.bg, color: meta.c, fontSize: 10.5, fontWeight: 600, whiteSpace: 'nowrap' }}>
       {children}
     </span>
   )
@@ -92,9 +92,6 @@ export default function Integrity({ dark, toggleDark }) {
                 The condition of every asset, from what inspections found and what the risk register says{location ? ` · ${location.name}` : ''}
               </p>
             </div>
-            <div style={{ flex: 1 }} />
-            {canInspections && <button className="btn btn-secondary" style={{ height: 32, padding: '0 12px', fontSize: 13 }} onClick={() => nav('/inspections')}>Inspections</button>}
-            {canRisks && <button className="btn btn-secondary" style={{ height: 32, padding: '0 12px', fontSize: 13 }} onClick={() => nav('/risks')}>Risk register</button>}
           </div>
 
           {err && <div style={{ background: 'var(--srb)', border: '1px solid var(--srbr)', borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: 'var(--srt)' }}>{err}</div>}
@@ -106,11 +103,13 @@ export default function Integrity({ dark, toggleDark }) {
               const n = data?.counts[s] ?? null
               const on = statusFilter === s
               return (
-                <button key={s} className="stat-card" onClick={() => setStatusFilter(on ? '' : s)} aria-pressed={on} title={m.desc}
-                  style={{ '--accent': m.solid, cursor: 'pointer', outline: on ? `2px solid ${m.solid}` : 'none', outlineOffset: -1 }}>
-                  <div className="stat-card-label">{m.label}</div>
-                  <div className="stat-card-value">{n ?? '—'}</div>
-                  <div className="stat-card-sub">{n != null && total ? `${Math.round((n / total) * 100)}% of assets` : m.desc}</div>
+                <button key={s} className={`kpi summary-kpi integrity-kpi kpi-link${on ? ' selected' : ''}`}
+                  onClick={() => setStatusFilter(on ? '' : s)} aria-pressed={on} title={m.desc}>
+                  <div className="summary-kpi-label">
+                    <Pill meta={m}>{m.label}</Pill>
+                  </div>
+                  <div className="summary-kpi-value">{n ?? '—'}</div>
+                  <div className="summary-kpi-sub">{n != null && total ? `${Math.round((n / total) * 100)}% of assets` : m.desc}</div>
                 </button>
               )
             })}
