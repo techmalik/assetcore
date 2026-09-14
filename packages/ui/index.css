@@ -279,6 +279,14 @@ a { text-decoration: none; color: inherit; }
   border-bottom-color: var(--b500);
 }
 
+/* Integrity is one global destination; its registers are local page tabs. */
+.integrity-section-tabs {
+  flex-shrink: 0;
+  padding: 0 24px;
+  background: var(--n0);
+  border-bottom: var(--bdr);
+}
+
 /* Row hover */
 .row-hover:hover { background: var(--n50); }
 
@@ -538,9 +546,7 @@ a { text-decoration: none; color: inherit; }
   .dash-bottom-grid { grid-template-columns: 1fr; }
 }
 
-/* Dashboard stat cards — an accent rule across the top and a tinted icon
-   tile. The accent is one custom property per card; the tile tint is mixed
-   from it against the surface, so the same card reads in light and dark. */
+/* Responsive rows shared by the dashboard and Integrity summary tiles. */
 .stat-row { display: grid; gap: 14px; margin-bottom: 14px; }
 .stat-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .stat-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -553,6 +559,69 @@ a { text-decoration: none; color: inherit; }
 }
 @media (max-width: 600px) {
   .stat-row-3, .stat-row-4, .stat-row-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+
+/* Dashboard KPIs use the app's neutral card system. Colour communicates an
+   actual warning state instead of giving every metric a decorative hue. */
+.dashboard-kpi {
+  min-width: 0;
+  min-height: 126px;
+  padding: 16px 18px;
+  text-align: left;
+  font-family: var(--ff-u);
+}
+.dashboard-kpi-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--n500);
+  font-size: 12px;
+  font-weight: 500;
+}
+.dashboard-kpi-arrow {
+  color: var(--n400);
+  font-size: 14px;
+  line-height: 1;
+  transition: color .12s ease, transform .12s ease;
+}
+.dashboard-kpi.kpi-link:hover .dashboard-kpi-arrow {
+  color: var(--b600);
+  transform: translateX(2px);
+}
+.dashboard-kpi-value {
+  overflow: hidden;
+  color: var(--n950);
+  font-family: var(--ff-m);
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -.5px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dashboard-kpi-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 10px;
+  color: var(--n500);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.dashboard-kpi-sub.danger { color: var(--srt); }
+.dashboard-kpi-sub.warning { color: var(--sat); }
+.dashboard-kpi-pill {
+  display: inline-flex;
+  padding: 1px 7px;
+  border: 1px solid var(--srbr);
+  border-radius: 2px;
+  background: var(--srb);
+  color: var(--srt);
+  font-size: 10.5px;
+  font-weight: 600;
 }
 .stat-card {
   position: relative; background: var(--n0); border: var(--bdr); border-radius: 10px;

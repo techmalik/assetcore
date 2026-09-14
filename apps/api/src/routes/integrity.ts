@@ -80,7 +80,7 @@ integrityRouter.get('/integrity/overview', async (req, res) => {
   const canInspections = hasCap(req, 'inspection:read')
   const canRisks = hasCap(req, 'risk:read')
   const canDefects = hasCap(req, 'defect:read')
-  if (!canInspections && !canRisks) {
+  if (!canInspections && !canRisks && !canDefects) {
     return res.status(403).json({ error: 'forbidden', capability: 'inspection:read' })
   }
 

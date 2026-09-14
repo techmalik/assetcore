@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import InspectionsPanel from '../components/InspectionsPanel.jsx'
+import IntegrityTabs from '../components/IntegrityTabs.jsx'
 
 export default function Inspections({ dark, toggleDark }) {
   // ?id=<uuid> is how a notification deep-links to a specific inspection.
@@ -13,9 +14,10 @@ export default function Inspections({ dark, toggleDark }) {
 
   return (
     <div className="app-shell">
-      <Sidebar active="inspections"/>
+      <Sidebar active="integrity"/>
       <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <Topbar breadcrumb="Inspections" dark={dark} toggleDark={toggleDark}/>
+        <Topbar breadcrumb="Integrity / Inspections" dark={dark} toggleDark={toggleDark}/>
+        <IntegrityTabs active="inspections" />
         <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
           <InspectionsPanel selectedId={selectedId} />
         </div>

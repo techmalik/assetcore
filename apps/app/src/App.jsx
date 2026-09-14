@@ -150,7 +150,7 @@ function Routed() {
       <Route path="/calendar" element={gate(<Calendar {...props} />)} />
       <Route path="/spare-parts" element={gate(<ComingSoon {...props} active="spare-parts" title="Warehouse Inventory"
         description="Stock levels, bin locations and issues to work orders across your warehouses. This module is being prepared and will open here." />)} />
-      <Route path="/integrity" element={gate(['inspection:read', 'risk:read'].some((c) => can(roleKey, c, extraCaps)) ? <Integrity {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/integrity" element={gate(['inspection:read', 'defect:read', 'risk:read'].some((c) => can(roleKey, c, extraCaps)) ? <Integrity {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/defects" element={gate(can(roleKey, 'defect:read', extraCaps) ? <Defects {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/risks" element={gate(can(roleKey, 'risk:read', extraCaps) ? <Risks {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/approvals" element={gate(can(roleKey, 'approval:read', extraCaps) ? <Approvals {...props} /> : <Navigate to="/dashboard" replace />)} />

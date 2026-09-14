@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
+import IntegrityTabs from '../components/IntegrityTabs.jsx'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { useLocationFilter } from '../lib/LocationFilterContext'
@@ -82,6 +83,7 @@ export default function Integrity({ dark, toggleDark }) {
       <Sidebar active="integrity" />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Topbar breadcrumb="Integrity" dark={dark} toggleDark={toggleDark} />
+        <IntegrityTabs active="overview" />
         <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           <div className="page-header" style={{ marginBottom: 18, flexWrap: 'wrap' }}>
             <div>

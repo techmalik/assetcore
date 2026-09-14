@@ -75,41 +75,21 @@ function firstNameOf(fullName) {
   return base.trim().split(/\s+/)[0]
 }
 
-const cardIcons = {
-  box: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2.5l6.5 3.6v7.8L10 17.5l-6.5-3.6V6.1L10 2.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M3.5 6.1L10 9.7l6.5-3.6M10 9.7v7.8" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>,
-  wrench: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12.6 3.2a4 4 0 00-4.9 5.3l-5 5a1.6 1.6 0 002.3 2.3l5-5a4 4 0 005.3-4.9l-2.4 2.4-2.1-.4-.4-2.1 2.2-2.6Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>,
-  shield: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2.5l6 2.4v4.6c0 3.7-2.6 6.4-6 7.6-3.4-1.2-6-3.9-6-7.6V4.9l6-2.4Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M7.3 10l1.9 1.9 3.6-3.7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  trendDown: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2.5 6l5.5 5.5 3-3 6.5 6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 15h4.5v-4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  docCheck: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M11.5 2.5H6A1.5 1.5 0 004.5 4v12A1.5 1.5 0 006 17.5h8a1.5 1.5 0 001.5-1.5V6.5l-4-4Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M11.5 2.5v4h4M7.5 11.5l1.8 1.8 3.2-3.3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  pin: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 17.5s5.5-5 5.5-9a5.5 5.5 0 00-11 0c0 4 5.5 9 5.5 9Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><circle cx="10" cy="8.4" r="2" stroke="currentColor" strokeWidth="1.5"/></svg>,
-  xCircle: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/><path d="M7.5 7.5l5 5M12.5 7.5l-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
-  warn: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3l7.5 13.5h-15L10 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M10 8.2v3.6M10 14v.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>,
-  calendarClock: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M9 16.5H4.5A1.5 1.5 0 013 15V5.5A1.5 1.5 0 014.5 4h10A1.5 1.5 0 0116 5.5V9M3 8h13M6.5 2.5v3M12.5 2.5v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="14" cy="14" r="3.5" stroke="currentColor" strokeWidth="1.5"/><path d="M14 12.4V14l1 .9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
-}
-
-// Accents are per card, not per meaning: nine cards need nine hues to be told
-// apart at a glance, and status colour is still carried by the figures inside.
-const ACCENT = {
-  blue: 'oklch(60% .15 255)', purple: 'oklch(58% .17 300)', amber: 'oklch(72% .16 72)',
-  green: 'oklch(62% .16 150)', cyan: 'oklch(64% .11 210)', pink: 'oklch(62% .19 350)',
-  red: 'oklch(58% .2 27)', orange: 'oklch(68% .17 50)', violet: 'oklch(60% .14 285)',
-}
-
-function StatCard({ label, value, sub, pill, accent, icon, href, nav }) {
+function StatCard({ label, value, sub, pill, tone, href, nav }) {
   const clickable = Boolean(href)
   const go = () => clickable && nav(href)
   return (
-    <div className={`stat-card${clickable ? ' kpi-link' : ''}`} style={{ '--accent': accent }}
+    <div className={`kpi dashboard-kpi${clickable ? ' kpi-link' : ''}`}
       role={clickable ? 'button' : undefined} tabIndex={clickable ? 0 : undefined}
       onClick={go} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') go() }}>
-      <div className="stat-card-label">{label}</div>
-      <div className="stat-card-main">
-        <div className="stat-card-value">{value}</div>
-        <div className="stat-card-icon" aria-hidden="true">{icon}</div>
+      <div className="dashboard-kpi-label">
+        <span>{label}</span>
+        {clickable && <span className="dashboard-kpi-arrow" aria-hidden="true">→</span>}
       </div>
-      <div className="stat-card-sub">
+      <div className="dashboard-kpi-value">{value}</div>
+      <div className={`dashboard-kpi-sub${tone ? ` ${tone}` : ''}`}>
         <span>{sub}</span>
-        {pill && <span className="stat-card-pill">{pill}</span>}
+        {pill && <span className="dashboard-kpi-pill">{pill}</span>}
       </div>
     </div>
   )
@@ -205,36 +185,37 @@ export default function Dashboard({ dark, toggleDark }) {
             const p = stats?.portfolio
             const dash = '—'
             const row1 = [
-              { key: 'assets', label: 'Total Assets', accent: ACCENT.blue, icon: cardIcons.box, href: '/assets',
+              { key: 'assets', label: 'Total Assets', href: '/assets',
                 value: stats ? a.total.toLocaleString() : dash,
                 sub: stats ? `${a.active.toLocaleString()} active${a.inactive ? ` · ${a.inactive} inactive` : ''}` : '' },
-              { key: 'wos', label: 'Work Orders', accent: ACCENT.purple, icon: cardIcons.wrench, href: '/work-orders?status=open',
+              { key: 'wos', label: 'Work Orders', href: '/work-orders?status=open',
                 value: stats ? w.open : dash,
                 sub: stats ? `${w.critical} critical` : '',
+                tone: stats && (w.critical > 0 || w.overdue > 0) ? 'danger' : '',
                 pill: stats && w.overdue > 0 ? `${w.overdue} overdue` : null },
-              d !== null && { key: 'defects', label: 'Open Defects', accent: ACCENT.amber, icon: cardIcons.shield, href: '/defects',
-                value: d ? d.open : dash, sub: d ? `${d.critical} critical` : '' },
-              { key: 'value', label: 'Portfolio Value', accent: ACCENT.green, icon: cardIcons.trendDown,
+              d !== null && { key: 'defects', label: 'Open Defects', href: '/defects',
+                value: d ? d.open : dash, sub: d ? `${d.critical} critical` : '', tone: d?.critical > 0 ? 'danger' : '' },
+              { key: 'value', label: 'Portfolio Value',
                 href: p?.nbvCents != null ? '/depreciation' : null,
                 value: p ? money(p.valueCents) : dash,
                 sub: p ? (p.nbvCents != null ? `${money(p.nbvCents)} book value` : 'Purchase value') : '' },
             ].filter(Boolean)
             const row2 = [
-              lic !== null && { key: 'licences', label: 'Active Licences', accent: ACCENT.cyan, icon: cardIcons.docCheck,
+              lic !== null && { key: 'licences', label: 'Active Licences',
                 href: lic?.alerts > 0 ? '/compliance?filter=alerts' : '/compliance',
                 value: lic ? lic.active : dash,
-                sub: lic ? (lic.alerts > 0 ? `${lic.alerts} expiring or expired` : 'No alerts') : '' },
-              { key: 'geo', label: 'Geotagged', accent: ACCENT.pink, icon: cardIcons.pin, href: '/asset-map',
+                sub: lic ? (lic.alerts > 0 ? `${lic.alerts} expiring or expired` : 'No alerts') : '', tone: lic?.alerts > 0 ? 'danger' : '' },
+              { key: 'geo', label: 'Geotagged', href: '/asset-map',
                 value: stats ? a.geotagged : dash, sub: stats ? 'Assets on map' : '' },
-              { key: 'overdue', label: 'Overdue WOs', accent: ACCENT.red, icon: cardIcons.xCircle, href: '/work-orders?status=open',
+              { key: 'overdue', label: 'Overdue WOs', href: '/work-orders?status=open',
                 value: stats ? w.overdue : dash,
-                sub: stats ? (w.overdue > 0 ? 'Need immediate action' : 'Nothing past its SLA') : '' },
-              r !== null && { key: 'risk', label: 'High Risk Assets', accent: ACCENT.orange, icon: cardIcons.warn, href: '/integrity',
+                sub: stats ? (w.overdue > 0 ? 'Need immediate action' : 'Nothing past its SLA') : '', tone: stats && w.overdue > 0 ? 'danger' : '' },
+              r !== null && { key: 'risk', label: 'High Risk Assets', href: '/risks',
                 value: r ? r.highAssets : dash,
-                sub: r ? `${r.highRisks} high or extreme risk${r.highRisks === 1 ? '' : 's'} open` : '' },
-              { key: 'eol', label: 'Nearing End of Life', accent: ACCENT.violet, icon: cardIcons.calendarClock, href: '/depreciation',
+                sub: r ? `${r.highRisks} high or extreme risk${r.highRisks === 1 ? '' : 's'} open` : '', tone: r?.highAssets > 0 ? 'warning' : '' },
+              { key: 'eol', label: 'Nearing End of Life', href: '/depreciation',
                 value: stats ? a.nearingEol : dash,
-                sub: stats ? `Within 2 years of end of life${a.pastEol ? ` · ${a.pastEol} past it` : ''}` : '' },
+                sub: stats ? `Within 2 years of end of life${a.pastEol ? ` · ${a.pastEol} past it` : ''}` : '', tone: stats && a.pastEol > 0 ? 'warning' : '' },
             ].filter(Boolean)
             return (
               <>

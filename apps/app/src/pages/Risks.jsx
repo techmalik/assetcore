@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
+import IntegrityTabs from '../components/IntegrityTabs.jsx'
 import {
   listRisks, getRisk, getRiskMatrix, getRiskStats, createRisk, updateRisk, archiveRisk,
   RISK_CATEGORIES, RISK_STATUSES, CATEGORY_LABEL, STATUS_LABEL,
@@ -397,9 +398,10 @@ export default function Risks({ dark, toggleDark }) {
 
   return (
     <div className="app-shell">
-      <Sidebar active="risks" />
+      <Sidebar active="integrity" />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Risk" dark={dark} toggleDark={toggleDark} />
+        <Topbar breadcrumb="Integrity / Risk" dark={dark} toggleDark={toggleDark} />
+        <IntegrityTabs active="risks" />
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px 0', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>

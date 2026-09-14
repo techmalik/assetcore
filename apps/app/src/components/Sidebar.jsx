@@ -45,25 +45,19 @@ const OPERATIONS = [
   { key: 'work-orders', label: 'Work Orders', path: '/work-orders', icon: icons.workorders },
   { key: 'maintenance', label: 'Maintenance', path: '/maintenance', icon: icons.maintenance },
   { key: 'calendar', label: 'Calendar', path: '/calendar', icon: icons.calendar },
-  { key: 'defects', label: 'Defects', path: '/defects', icon: icons.defects, cap: 'defect:read' },
+  { key: 'integrity', label: 'Integrity', path: '/integrity', icon: icons.integrity, anyCap: ['inspection:read', 'defect:read', 'risk:read'] },
   { key: 'approvals', label: 'Approvals', path: '/approvals', icon: icons.approvals, cap: 'approval:read' },
-  { key: 'compliance', label: 'Compliance', path: '/compliance', icon: icons.compliance },
-  { key: 'depreciation', label: 'Depreciation', path: '/depreciation', icon: icons.depreciation, cap: 'depreciation:read' },
-  { key: 'analytics', label: 'Analytics', path: '/analytics', icon: icons.analytics, cap: 'report:read' },
-  { key: 'export', label: 'Export', path: '/export', icon: icons.reports, cap: 'report:read' },
   { key: 'devices', label: 'Devices', path: '/devices', icon: icons.devices },
   // Spare parts is being reworked into warehouse inventory. Listed so people
   // know it is coming; `soon` makes the entry inert.
   { key: 'spare-parts', label: 'Warehouse Inventory', path: '/spare-parts', icon: icons.spareParts, soon: true },
 ]
 
-// Integrity asks whether an asset is sound: what inspections found and what
-// the risk register says would happen if it failed. Both used to sit loose
-// among the operational pages, which hid that they answer one question.
-const INTEGRITY = [
-  { key: 'integrity', label: 'Integrity Overview', path: '/integrity', icon: icons.integrity, anyCap: ['inspection:read', 'risk:read'] },
-  { key: 'inspections', label: 'Inspections', path: '/inspections', icon: icons.inspections, cap: 'inspection:read' },
-  { key: 'risks', label: 'Risk', path: '/risks', icon: icons.risks, cap: 'risk:read' },
+const REPORT = [
+  { key: 'compliance', label: 'Compliance', path: '/compliance', icon: icons.compliance },
+  { key: 'depreciation', label: 'Depreciation', path: '/depreciation', icon: icons.depreciation, cap: 'depreciation:read' },
+  { key: 'analytics', label: 'Analytics', path: '/analytics', icon: icons.analytics, cap: 'report:read' },
+  { key: 'export', label: 'Export', path: '/export', icon: icons.reports, cap: 'report:read' },
 ]
 
 export default function Sidebar({ active }) {
@@ -101,7 +95,7 @@ export default function Sidebar({ active }) {
   const visible = (item) =>
     (!item.cap || can(roleKey, item.cap, extraCaps)) &&
     (!item.anyCap || item.anyCap.some((c) => can(roleKey, c, extraCaps)))
-  const integrityItems = INTEGRITY.filter(visible)
+  const reportItems = REPORT.filter(visible)
   const sectionStyle = {padding:'12px 16px 4px',fontSize:10,fontWeight:600,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--n400)',fontFamily:'var(--ff-m)'}
 
   const NavItem = ({ item, count, countColor }) => item.soon ? (
@@ -172,10 +166,10 @@ export default function Sidebar({ active }) {
           <NavItem key={item.key} item={item} count={item.key === 'work-orders' ? openWOCount : undefined} countColor="amber" />
         ))}
 
-        {integrityItems.length > 0 && (
+        {reportItems.length > 0 && (
           <>
-            <div className="sidebar-section" style={sectionStyle}>Integrity</div>
-            {integrityItems.map((item) => <NavItem key={item.key} item={item} />)}
+            <div className="sidebar-section" style={sectionStyle}>Report</div>
+            {reportItems.map((item) => <NavItem key={item.key} item={item} />)}
           </>
         )}
 
