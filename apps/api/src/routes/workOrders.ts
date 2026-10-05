@@ -10,6 +10,7 @@ import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyUsers, notifyWorkOrderClosed } from '../notify.js'
 import { eligibleAssignee, insertDirectApproval, loadApproval } from '../approvalRouting.js'
+import { nextWoRef } from '../refs.js'
 
 export const workOrdersRouter = Router()
 
@@ -174,18 +175,6 @@ workOrdersRouter.get('/work-orders/:id', requireCap('wo:read'), async (req, res)
   res.json(row)
 })
 
-// WO-{year}-{4-digit sequence within the org for that year}. Delegates to
-// next_wo_ref() (0011_wo_ref_counter.sql) — a real per-org/year counter
-// table, upserted under its own row lock — instead of counting existing
-// rows itself. apply_asset_health()'s auto-draft path uses the same
-// function, so there is exactly one sequence per org/year, not two
-// independent counts that could compute the same next number and collide.
-// Exported so a job raised from a defect draws from that same counter.
-export async function generateWoRef(c: import('pg').PoolClient): Promise<string> {
-  const { rows } = await c.query(`select public.next_wo_ref(current_org_id()) as ref`)
-  return rows[0].ref
-}
-
 // Inserts a work_order_activity row of kind 'assignment' — trg_notify_wo_activity
 // (0014_activity_assignment_notifications.sql) reacts to it and fires wo_assigned
 // to the new assignee (self-assignment and null-assignee already no-op there).
@@ -281,7 +270,7 @@ async function createForApproval(
     const approver = await eligibleAssignee(c, approverId, req.claims!.sub)
     if (!approver) return { error: 'invalid_assignee' as const }
 
-    const ref = providedRef || (await generateWoRef(c))
+    const ref = providedRef || (await nextWoRef(c))
     const { rows } = await c.query(
       `insert into public.work_orders (org_id, created_by, ref, ${columns})
        values (current_org_id(), current_user_id(), $1, ${placeholders})
@@ -352,7 +341,7 @@ workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) 
   const { columns, placeholders, values } = buildInsert(rest, ALLOWED.filter((c) => c !== 'ref'), 1)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const ref = providedRef || (await generateWoRef(c))
+    const ref = providedRef || (await nextWoRef(c))
     const { rows } = await c.query(
       `insert into public.work_orders (org_id, created_by, ref, ${columns})
        values (current_org_id(), current_user_id(), $1, ${placeholders})

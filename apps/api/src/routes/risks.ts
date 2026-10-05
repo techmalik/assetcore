@@ -6,6 +6,7 @@ import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { refreshAssetHealth } from '../healthService.js'
+import { nextRef } from '../refs.js'
 
 export const risksRouter = Router()
 
@@ -60,13 +61,6 @@ const riskInput = z.object({
   review_date: dateField,
   status: z.enum(RISK_STATUSES).optional(),
 })
-
-/** RSK-{year}-{4 digits}, matching the work order and defect ref formats. */
-async function generateRiskRef(c: import('pg').PoolClient): Promise<string> {
-  const year = new Date().getFullYear()
-  const { rows } = await c.query('select count(*)::int as n from public.risk_assessments where ref like $1', [`RSK-${year}-%`])
-  return `RSK-${year}-${String(rows[0].n + 1).padStart(4, '0')}`
-}
 
 /** A residual rating is only meaningful as a pair; half of one describes
  * nothing, and the generated column would be null anyway. */
@@ -197,7 +191,7 @@ risksRouter.post('/risks', requireCap('risk:create'), async (req, res) => {
   const { columns, placeholders, values } = buildInsert(parsed.data, ALLOWED, 1)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const ref = await generateRiskRef(c)
+    const ref = await nextRef(c, 'RSK')
     const { rows } = await c.query(
       `insert into public.risk_assessments (org_id, created_by, ref, ${columns})
        values (current_org_id(), current_user_id(), $1, ${placeholders})

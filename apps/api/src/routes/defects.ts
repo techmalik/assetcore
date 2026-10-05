@@ -6,7 +6,7 @@ import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { refreshAssetHealth } from '../healthService.js'
-import { generateWoRef } from './workOrders.js'
+import { nextRef, nextWoRef } from '../refs.js'
 
 export const defectsRouter = Router()
 
@@ -66,14 +66,6 @@ const defectInput = z.object({
   due_date: dateField,
   resolution_notes: z.string().nullable().optional(),
 })
-
-/** DEF-{year}-{4-digit sequence within the org}, mirroring the work order ref
- * format so the two read alike on a page that shows both. */
-async function generateDefectRef(c: import('pg').PoolClient): Promise<string> {
-  const year = new Date().getFullYear()
-  const { rows } = await c.query(`select count(*)::int as n from public.defects where ref like $1`, [`DEF-${year}-%`])
-  return `DEF-${year}-${String(rows[0].n + 1).padStart(4, '0')}`
-}
 
 const qp = (req: { query: Record<string, unknown> }, key: string): string | null => {
   const v = req.query[key]
@@ -143,7 +135,7 @@ defectsRouter.post('/defects', requireCap('defect:create'), async (req, res) => 
   const { columns, placeholders, values } = buildInsert(parsed.data, ALLOWED, 1)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const ref = await generateDefectRef(c)
+    const ref = await nextRef(c, 'DEF')
     const { rows } = await c.query(
       `insert into public.defects (org_id, reported_by, ref${columns ? `, ${columns}` : ''})
        values (current_org_id(), current_user_id(), $1${placeholders ? `, ${placeholders}` : ''})
@@ -232,7 +224,7 @@ defectsRouter.post('/defects/:id/work-order', requireCap('wo:create'), async (re
     // One defect, one job. Raising a second would split its history in two.
     if (defect.work_order_id) return { error: 'already_raised' as const, work_order_id: defect.work_order_id }
 
-    const ref = await generateWoRef(c)
+    const ref = await nextWoRef(c)
     const { rows: woRows } = await c.query(
       `insert into public.work_orders
          (org_id, created_by, ref, title, description, type, priority, asset_id, site_id, assignee_id, sla_due)

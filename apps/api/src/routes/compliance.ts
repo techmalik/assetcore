@@ -6,6 +6,7 @@ import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadRoute, deleteUploadedFile, DOCUMENT_MIME_TYPES } from '../files.js'
+import { nextRef } from '../refs.js'
 
 export const complianceRouter = Router()
 
@@ -291,13 +292,6 @@ const auditInput = z.object({
   next_due_date: auditDate,
 })
 
-/** AUD-{year}-{4 digits}, matching the other registers' ref format. */
-async function generateAuditRef(c: import('pg').PoolClient): Promise<string> {
-  const year = new Date().getFullYear()
-  const { rows } = await c.query('select count(*)::int as n from public.compliance_audits where ref like $1', [`AUD-${year}-%`])
-  return `AUD-${year}-${String(rows[0].n + 1).padStart(4, '0')}`
-}
-
 complianceRouter.get('/compliance-audits', requireCap('compliance:read'), async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [AUDIT_SELECT, 'where ca.deleted_at is null']
@@ -349,7 +343,7 @@ complianceRouter.post('/compliance-audits', requireCap('compliance:create'), asy
   const { columns, placeholders, values } = buildInsert(data, AUDIT_ALLOWED, 1)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const ref = await generateAuditRef(c)
+    const ref = await nextRef(c, 'AUD')
     const { rows } = await c.query(
       `insert into public.compliance_audits (org_id, created_by, ref, ${columns})
        values (current_org_id(), current_user_id(), $1, ${placeholders})
@@ -515,9 +509,7 @@ complianceRouter.post('/compliance-audits/:id/findings/:findingId/defect', requi
     if (!finding) return { error: 'not_found' as const }
     if (finding.defect_id) return { error: 'already_raised' as const, defect_id: finding.defect_id }
 
-    const year = new Date().getFullYear()
-    const { rows: seq } = await c.query('select count(*)::int as n from public.defects where ref like $1', [`DEF-${year}-%`])
-    const ref = `DEF-${year}-${String(seq[0].n + 1).padStart(4, '0')}`
+    const ref = await nextRef(c, 'DEF')
 
     const { rows: created } = await c.query(
       `insert into public.defects
