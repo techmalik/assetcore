@@ -290,7 +290,7 @@ function AuditFindingsModal({ audit, onClose, onChanged }) {
       toast.success(`Raised ${d.ref} on the defect register.`)
       await load(); onChanged()
     } catch (e) {
-      toast.error(e.message === 'already_raised' ? 'A defect has already been raised for this finding.' : errorText(e))
+      toast.error(errorText(e, undefined, { already_raised: 'A defect has already been raised for this finding.' }))
     }
   }
 
@@ -444,7 +444,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
       toast.success(editing ? 'Audit updated.' : 'Audit recorded.')
       onSaved()
     } catch (e) {
-      setErr(e.message === 'outcome_required' ? 'An outcome is required to complete an audit.' : errorText(e))
+      setErr(errorText(e))
       setSaving(false)
     }
   }

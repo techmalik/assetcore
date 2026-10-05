@@ -173,19 +173,20 @@ function Routed() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <NotificationsProvider>
-          <SidebarProvider>
-            <ToastProvider>
+      {/* Outermost, so every provider below can report a failure as a toast. */}
+      <ToastProvider>
+        <AuthProvider>
+          <NotificationsProvider>
+            <SidebarProvider>
               <LocationFilterProvider>
                 <Routed />
                 <OfflineBanner />
                 <LicenceBanner />
               </LocationFilterProvider>
-            </ToastProvider>
-          </SidebarProvider>
-        </NotificationsProvider>
-      </AuthProvider>
+            </SidebarProvider>
+          </NotificationsProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ErrorBoundary>
   )
 }

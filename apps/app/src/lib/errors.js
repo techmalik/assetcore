@@ -103,6 +103,7 @@ export const ERROR_MESSAGES = {
   too_many_rows: 'That is more rows than can be handled at once. Split the file and try again.',
   exactly_one_parent_required: 'This has to be attached to exactly one parent record.',
   internal_error: 'Something went wrong at our end. Try again, and tell an administrator if it keeps happening.',
+  unavailable: 'The server could not be reached. Check your connection and try again.',
 }
 
 /**
@@ -112,10 +113,15 @@ export const ERROR_MESSAGES = {
  * Falls back rather than echoing an unknown code: a code we forgot to add is
  * still a code, and showing it is the bug this module exists to remove. Pass a
  * fallback that fits the screen ("Save failed.", "Could not load the register.").
+ *
+ * `overrides` is for the screens where a code deserves wording of its own
+ * ({ forbidden: 'Your role cannot see the parts store.' }). Use it rather than
+ * testing err.code at the call site, so every special case reads the same way.
  */
-export function errorText(err, fallback = 'Something went wrong. Try again.') {
+export function errorText(err, fallback = 'Something went wrong. Try again.', overrides = {}) {
   const code = typeof err === 'string' ? err : err?.code || err?.message
   if (!code) return fallback
+  if (overrides[code]) return overrides[code]
   if (ERROR_MESSAGES[code]) return ERROR_MESSAGES[code]
   // Anything that is not a bare snake_case code is already prose — a network
   // failure from fetch, or a message a caller wrote by hand — so show it.

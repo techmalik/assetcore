@@ -201,9 +201,7 @@ function RiskModal({ risk, onClose, onSave, assets, sites, members }) {
       else await createRisk(payload)
       onSave()
     } catch (ex) {
-      setErr(ex.message === 'residual_incomplete'
-        ? 'A residual rating needs both a likelihood and a consequence.'
-        : errorText(ex, 'Save failed.'))
+      setErr(errorText(ex, 'Save failed.', { residual_incomplete: 'A residual rating needs both a likelihood and a consequence.' }))
       setSaving(false)
     }
   }

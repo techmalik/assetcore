@@ -62,15 +62,11 @@ function NewScheduleModal({ assets, onClose, onCreated }) {
       .catch((e) => {
         if (cancelled) return
         setPreview(null)
-        setProblem(
-          e.message === 'incomplete_basis'
-            ? 'This asset is missing part of its basis. Fill it in below, or add it on the asset record.'
-            : e.message === 'unsupported_method'
-              ? 'Units of production needs meter readings AssetCore does not collect yet. Pick another method.'
-              : e.message === 'nothing_to_depreciate'
-                ? 'Salvage value is at or above cost, so there is nothing to depreciate.'
-                : errorText(e, 'Could not work out a schedule.')
-        )
+        setProblem(errorText(e, 'Could not work out a schedule.', {
+          incomplete_basis: 'This asset is missing part of its basis. Fill it in below, or add it on the asset record.',
+          unsupported_method: 'Units of production needs meter readings AssetCore does not collect yet. Pick another method.',
+          nothing_to_depreciate: 'Salvage value is at or above cost, so there is nothing to depreciate.',
+        }))
       })
     return () => { cancelled = true }
   }, [assetId, body])
@@ -370,7 +366,7 @@ export default function Depreciation({ dark, toggleDark }) {
       const [s, st, f] = await Promise.all([listSchedules(), getDepreciationStats(), getForecast()])
       setSchedules(s); setStats(st); setForecast(f)
     } catch (e) {
-      setError(e.message === 'forbidden' ? 'Your role cannot see the depreciation register.' : errorText(e, 'Failed to load.'))
+      setError(errorText(e, 'Failed to load.', { forbidden: 'Your role cannot see the depreciation register.' }))
     } finally {
       setLoading(false)
     }

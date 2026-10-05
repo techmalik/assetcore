@@ -15,7 +15,7 @@ import {
 import { errorText } from '../lib/errors'
 
 function approvalErrorText(ex, fallback) {
-  return DIRECT_ERROR_TEXT[ex?.code] || errorText(ex, fallback)
+  return errorText(ex, fallback, DIRECT_ERROR_TEXT)
 }
 
 /** The people a request can be sent to, and which of them is the caller's

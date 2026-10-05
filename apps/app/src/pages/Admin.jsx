@@ -1386,9 +1386,7 @@ function RuleModal({ rule, onClose, onSaved }) {
       toast.success(rule ? 'Rule updated.' : 'Rule created.')
       onSaved()
     } catch (ex) {
-      setErr(ex.message === 'invalid_trigger_for_entity'
-        ? 'That trigger does not apply to this kind of record.'
-        : errorText(ex, 'Could not save the rule.'))
+      setErr(errorText(ex, 'Could not save the rule.', { invalid_trigger_for_entity: 'That trigger does not apply to this kind of record.' }))
       setSaving(false)
     }
   }

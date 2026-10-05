@@ -3,6 +3,8 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useCan } from '../lib/AuthContext'
 import { listIntegrations, upsertIntegration } from '../lib/db/integrations'
+import { useToast } from '../lib/ToastContext'
+import { errorText } from '../lib/errors'
 
 // ── Integration card configs ──────────────────────────────────────────────────
 const INTEGRATION_DEFS = [
@@ -93,6 +95,7 @@ function ConnectionStatus({ row }) {
 
 // ── Single integration card ────────────────────────────────────────────────────
 function IntegrationCard({ def, row, canEdit, onSaved }) {
+  const toast = useToast()
   const [expanded, setExpanded] = useState(false)
   const [form, setForm]         = useState(() => {
     const cfg = row?.config || {}
@@ -112,7 +115,7 @@ function IntegrationCard({ def, row, canEdit, onSaved }) {
       await upsertIntegration(def.kind, { label: def.name, config, enabled: form.enabled })
       setSaved(true); setTimeout(() => setSaved(false), 2000)
       onSaved()
-    } catch { /* non-fatal */ }
+    } catch (e) { toast.error(errorText(e, 'Could not save the integration settings.')) }
     finally { setSaving(false) }
   }
 
@@ -203,15 +206,18 @@ function IntegrationCard({ def, row, canEdit, onSaved }) {
 export default function Integrations({ dark, toggleDark }) {
   const can = useCan()
   const canEdit = can('integration:manage')
+  const toast = useToast()
   const [rows, setRows]       = useState([])
   const [loading, setLoading] = useState(true)
 
+  // A failed load has to say so: with no rows every connector would read
+  // "Not configured", which looks like an answer.
   const load = useCallback(async () => {
     setLoading(true)
     try { setRows(await listIntegrations()) }
-    catch { /* non-fatal — table may not exist yet */ }
+    catch (e) { toast.error(errorText(e, 'Could not load the integration settings.')) }
     finally { setLoading(false) }
-  }, [])
+  }, [toast])
 
   useEffect(() => { load() }, [load])
 

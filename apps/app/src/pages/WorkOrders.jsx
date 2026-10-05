@@ -90,9 +90,9 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
         : `Work order ${wo.ref} created.`)
       onSave()
     } catch (ex) {
-      setErr(ex.code === 'invalid_assignee'
-        ? 'That person cannot receive approvals. Choose someone who can decide requests.'
-        : errorText(ex, 'Create failed.'))
+      setErr(errorText(ex, 'Create failed.', {
+        invalid_assignee: 'That person cannot receive approvals. Choose someone who can decide requests.',
+      }))
       setSaving(false)
     }
   }
@@ -424,10 +424,10 @@ function SpendApproval({ wo, canRead, canSubmit, onChanged }) {
       })
       setAsking(false); setNotes(''); await load(); if (onChanged) await onChanged()
     } catch (ex) {
-      setErr(ex.code === 'no_matching_rule'
-        ? 'No approval rule covers job spend at this amount yet. An owner adds one on Approvals → Matrix.'
-        : ex.code === 'already_pending' ? 'A spend request is already waiting on this job.'
-        : errorText(ex, 'Could not send the request.'))
+      setErr(errorText(ex, 'Could not send the request.', {
+        no_matching_rule: 'No approval rule covers job spend at this amount yet. An owner adds one on Approvals → Matrix.',
+        already_pending: 'A spend request is already waiting on this job.',
+      }))
     } finally { setBusy(false) }
   }
 
@@ -517,7 +517,7 @@ function PartsSection({ wo, canEdit, onChanged }) {
   async function remove(line) {
     setBusy(true)
     try { await deleteWorkOrderPart(wo.id, line.id) ; await onChanged() }
-    catch (e) { alert(e.message === 'already_consumed' ? 'That part has already left the store. Reverse it with a stock adjustment instead.' : errorText(e)) }
+    catch (e) { alert(errorText(e)) }
     finally { setBusy(false) }
   }
 

@@ -108,14 +108,12 @@ function DecisionModal({ approval, action, onClose, onDone }) {
       else await recallRequest(approval.id, notes)
       onDone()
     } catch (ex) {
-      const map = {
+      setErr(errorText(ex, 'That did not go through.', {
         self_approval: 'You submitted this request, so you cannot sign it off. It needs someone else.',
         wrong_approver: 'This request is not waiting on your role.',
-        not_pending: 'This request has already been decided.',
         not_requester: 'Only the person who submitted a request can do that.',
         ...DIRECT_ERROR_TEXT,
-      }
-      setErr(map[ex.code] || errorText(ex, 'That did not go through.'))
+      }))
       setBusy(false)
     }
   }
@@ -224,7 +222,7 @@ function RuleModal({ rule, onClose, onSave }) {
       else await createApprovalRule(payload)
       onSave()
     } catch (ex) {
-      setErr(ex.message === 'invalid_band' ? 'The ceiling has to be above the floor.' : errorText(ex, 'Save failed.'))
+      setErr(errorText(ex, 'Save failed.'))
       setSaving(false)
     }
   }

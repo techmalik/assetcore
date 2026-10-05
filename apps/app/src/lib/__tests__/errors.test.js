@@ -28,3 +28,14 @@ describe('errorText', () => {
     expect(errorText({}, 'Could not load.')).toBe('Could not load.')
   })
 })
+
+describe('errorText overrides', () => {
+  it('a screen-specific sentence wins over the shared one', () => {
+    const err = Object.assign(new Error('forbidden'), { code: 'forbidden' })
+    expect(errorText(err, 'Failed.', { forbidden: 'Your role cannot see the parts store.' })).toBe('Your role cannot see the parts store.')
+  })
+
+  it('codes without an override still get the shared sentence', () => {
+    expect(errorText('site_shutdown', 'Failed.', { forbidden: 'x' })).toBe(ERROR_MESSAGES.site_shutdown)
+  })
+})

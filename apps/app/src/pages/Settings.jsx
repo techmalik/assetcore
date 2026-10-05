@@ -38,13 +38,17 @@ function ProfileTab() {
   const [pwOk, setPwOk] = useState(null)
   const [pwErr, setPwErr] = useState(null)
 
+  // Save stays off until the profile has loaded: saving a form that never
+  // filled would have written a blank name over the real one.
+  const [loaded, setLoaded] = useState(false)
   useEffect(() => {
     api.get('/profile')
-      .then(data => { if (data) setForm({ full_name: data.full_name || '', phone: data.phone || '' }) })
-      .catch(() => {})
+      .then(data => { if (data) setForm({ full_name: data.full_name || '', phone: data.phone || '' }); setLoaded(true) })
+      .catch((e) => setErr(errorText(e, 'Could not load your profile. Reload the page to try again.')))
   }, [])
 
   const saveProfile = async () => {
+    if (!form.full_name.trim()) return setErr('Your name cannot be empty.')
     setSaving(true); setErr(null); setOk(null)
     try {
       await api.patch('/profile', { full_name: form.full_name, phone: form.phone || null })
@@ -95,7 +99,7 @@ function ProfileTab() {
             <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={inp} placeholder="+234 803 xxx xxxx" />
           </label>
         </div>
-        <button onClick={saveProfile} disabled={saving} className="btn btn-primary" style={{ marginTop: 16, height: 36, padding: '0 20px', fontSize: 13 }}>
+        <button onClick={saveProfile} disabled={saving || !loaded} className="btn btn-primary" style={{ marginTop: 16, height: 36, padding: '0 20px', fontSize: 13 }}>
           {saving ? 'Saving…' : 'Save profile'}
         </button>
       </div>
@@ -247,7 +251,7 @@ function CurrencyCard() {
       })
       await refreshOrg?.()
       setOk('Currency saved.')
-    } catch (e) { setErr(e.message === 'forbidden' ? 'Only the Org Owner can change currency.' : errorText(e)) }
+    } catch (e) { setErr(errorText(e, undefined, { forbidden: 'Only the Org Owner can change currency.' })) }
     finally { setSaving(false) }
   }
 

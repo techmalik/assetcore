@@ -230,9 +230,7 @@ function FindingsModal({ inspection, onClose, onSaved, readOnly = false }) {
       }
       onSaved()
     } catch (e) {
-      setErr(e.message === 'condition_rating_required'
-        ? 'An overall condition rating is required.'
-        : errorText(e, 'Failed to save.'))
+      setErr(errorText(e, 'Failed to save.', { condition_rating_required: 'An overall condition rating is required.' }))
       setSaving(false)
     }
   }

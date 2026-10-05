@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useAuth } from './AuthContext'
+import { useToast } from './ToastContext'
+import { errorText } from './errors'
 import { countUnread, listNotifications, markRead as doMarkRead, markUnread as doMarkUnread, markAllRead as doMarkAllRead } from './db/notifications'
 
 const NotifCtx = createContext(null)
@@ -7,6 +9,7 @@ const POLL_MS = 30_000
 
 export function NotificationsProvider({ children }) {
   const { authed, user } = useAuth()
+  const toast = useToast()
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState([])
 
@@ -42,24 +45,24 @@ export function NotificationsProvider({ children }) {
       await doMarkRead(id)
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
       setUnreadCount(prev => Math.max(0, prev - 1))
-    } catch { /* ignore */ }
-  }, [])
+    } catch (e) { toast.error(errorText(e, 'Could not mark that as read.')) }
+  }, [toast])
 
   const markUnread = useCallback(async (id) => {
     try {
       await doMarkUnread(id)
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: false } : n))
       setUnreadCount(prev => prev + 1)
-    } catch { /* ignore */ }
-  }, [])
+    } catch (e) { toast.error(errorText(e, 'Could not mark that as unread.')) }
+  }, [toast])
 
   const markAllRead = useCallback(async () => {
     try {
       await doMarkAllRead()
       setNotifications(prev => prev.map(n => ({ ...n, read: true })))
       setUnreadCount(0)
-    } catch { /* ignore */ }
-  }, [])
+    } catch (e) { toast.error(errorText(e, 'Could not mark everything as read.')) }
+  }, [toast])
 
   return (
     <NotifCtx.Provider value={{ unreadCount, notifications, markRead, markUnread, markAllRead }}>

@@ -76,7 +76,7 @@ async function request(method, path, body, { retry = true } = {}) {
     err.status = res.status
     // The machine code, kept separate from the message so screens can look
     // up a sentence for it (lib/errors.js) instead of printing the code.
-    err.code = payload?.error ?? null
+    err.code = payload?.error ?? fallbackCode(res.status)
     if (payload?.missing) err.missing = payload.missing
     // Some refusals carry detail worth showing — which parts fell short, and
     // by how much. Kept on the error so a screen can name them instead of
@@ -85,6 +85,15 @@ async function request(method, path, body, { retry = true } = {}) {
     throw err
   }
   return payload
+}
+
+// A failure with no error body (a proxy with no server behind it, a crash
+// before the handler answered) still gets a code, so lib/errors.js can say
+// something better than "Request failed (500)".
+function fallbackCode(status) {
+  if (status === 502 || status === 503 || status === 504) return 'unavailable'
+  if (status >= 500) return 'internal_error'
+  return null
 }
 
 async function upload(path, formData, { retry = true } = {}) {
@@ -107,7 +116,7 @@ async function upload(path, formData, { retry = true } = {}) {
     err.status = res.status
     // The machine code, kept separate from the message so screens can look
     // up a sentence for it (lib/errors.js) instead of printing the code.
-    err.code = payload?.error ?? null
+    err.code = payload?.error ?? fallbackCode(res.status)
     if (payload?.missing) err.missing = payload.missing
     throw err
   }

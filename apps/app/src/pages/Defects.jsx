@@ -189,7 +189,7 @@ function RaiseModal({ defect, onClose, onRaised }) {
       })
       onRaised()
     } catch (ex) {
-      setErr(ex.message === 'already_raised' ? 'A work order has already been raised for this defect.' : errorText(ex, 'Could not raise the job.'))
+      setErr(errorText(ex, 'Could not raise the job.', { already_raised: 'A work order has already been raised for this defect.' }))
       setBusy(false)
     }
   }
@@ -252,10 +252,10 @@ function DeferralSection({ defect, canSubmit, canRead }) {
       setNotes('')
       load()
     } catch (ex) {
-      setErr(ex.message === 'no_matching_rule'
-        ? 'No approval rule covers defect deferrals yet. An owner adds one on Approvals → Matrix.'
-        : ex.message === 'already_pending' ? 'A deferral request is already waiting on this defect.'
-        : errorText(ex, 'Could not send the request.'))
+      setErr(errorText(ex, 'Could not send the request.', {
+        no_matching_rule: 'No approval rule covers defect deferrals yet. An owner adds one on Approvals → Matrix.',
+        already_pending: 'A deferral request is already waiting on this defect.',
+      }))
     } finally {
       setBusy(false)
     }

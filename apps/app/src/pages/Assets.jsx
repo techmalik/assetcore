@@ -379,8 +379,16 @@ function AssetModal({ asset, sites, locations, categories, operators, allAssets 
         await updateAsset(asset.id, payload)
       } else {
         const created = await createAsset(payload)
-        for (const f of pendingPhotos) { try { await uploadAssetPhoto(created.id, f) } catch { /* keep going */ } }
-        for (const f of pendingDocs) { try { await uploadAssetDocument(created.id, f) } catch { /* keep going */ } }
+        // The asset exists now, so a failed file does not undo it; it is
+        // counted and reported instead of dropped without a word.
+        let failed = 0
+        for (const f of pendingPhotos) { try { await uploadAssetPhoto(created.id, f) } catch { failed++ } }
+        for (const f of pendingDocs) { try { await uploadAssetDocument(created.id, f) } catch { failed++ } }
+        if (failed) {
+          toast.error(`Asset created. ${failed} file${failed === 1 ? '' : 's'} could not be attached; open the asset to try again.`)
+          onSave()
+          return
+        }
       }
       toast.success(editing ? 'Asset updated.' : 'Asset created.')
       onSave()

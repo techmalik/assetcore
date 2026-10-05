@@ -90,7 +90,7 @@ function PartModal({ part, onClose, onSave }) {
       else await createSparePart(payload)
       onSave()
     } catch (ex) {
-      setErr(ex.message === 'duplicate_part_number' ? 'A part with that number already exists.' : errorText(ex, 'Save failed.'))
+      setErr(errorText(ex, 'Save failed.'))
       setSaving(false)
     }
   }
@@ -166,7 +166,7 @@ function AdjustModal({ part, onClose, onSaved }) {
       })
       onSaved()
     } catch (ex) {
-      setErr(ex.message === 'insufficient_stock' ? 'There is not enough on hand for that issue.' : errorText(ex, 'Adjustment failed.'))
+      setErr(errorText(ex, 'Adjustment failed.'))
       setBusy(false)
     }
   }
@@ -258,7 +258,7 @@ export default function SpareParts({ dark, toggleDark }) {
       const [p, s, c] = await Promise.all([listSpareParts(filters), getPartStats(), listPartCategories()])
       setParts(p); setStats(s); setCategories(c)
     } catch (e) {
-      setError(e.message === 'forbidden' ? 'Your role cannot see the parts store.' : errorText(e, 'Failed to load parts.'))
+      setError(errorText(e, 'Failed to load parts.', { forbidden: 'Your role cannot see the parts store.' }))
     } finally {
       setLoading(false)
     }

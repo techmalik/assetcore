@@ -5,6 +5,8 @@ import Topbar from '../components/Topbar.jsx'
 import { useNotifications } from '../lib/NotificationsContext'
 import { getPreferences, upsertPreference } from '../lib/db/notifications'
 import { notificationHref, notificationLinkLabel } from '../lib/notificationLink'
+import { useToast } from '../lib/ToastContext'
+import { errorText } from '../lib/errors'
 
 const KIND_META = {
   wo_transition: { label:'Work Order', dot:'var(--sl)', bg:'var(--slb)', c:'var(--slt)' },
@@ -74,6 +76,7 @@ const PREF_KINDS = [
 
 export default function Notifications({ dark, toggleDark }) {
   const nav = useNavigate()
+  const toast = useToast()
   const { notifications, unreadCount, markRead, markUnread, markAllRead } = useNotifications()
   const [selected, setSelected] = useState(null)
   const [panel, setPanel] = useState('detail')
@@ -117,10 +120,16 @@ export default function Notifications({ dark, toggleDark }) {
   }
 
   const togglePref = async (key, field) => {
+    const before = prefs
     const updated = prefs.map(p => p.key === key ? { ...p, [field]: !p[field] } : p)
     setPrefs(updated)
     const p = updated.find(x => x.key === key)
-    try { await upsertPreference({ kind: key, in_app: p.in_app, email: p.email }) } catch { /* ignore */ }
+    try { await upsertPreference({ kind: key, in_app: p.in_app, email: p.email }) }
+    catch (e) {
+      // Flip it back: the switch must show what the server kept.
+      setPrefs(before)
+      toast.error(errorText(e, 'Could not save that preference.'))
+    }
   }
 
   const meta = selected ? kindMeta(selected.kind) : DEFAULT_META
