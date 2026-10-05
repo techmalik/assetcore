@@ -5,7 +5,6 @@ import { claimsFromReq } from '../claims.js'
 import { hasCap } from '../middleware/rbac.js'
 import type { Capability } from '@assetcore/rbac'
 import { writeAuditLog } from '../audit.js'
-import { config } from '../config.js'
 import { localDateStamp, renderCsv, renderXlsx, type ColumnType, type ReportColumn, type ReportData } from '../reportBuilders.js'
 import { buildWhere as buildAuditWhere, filters as auditFilters } from './audit.js'
 
@@ -77,8 +76,8 @@ type FilterCols = { site?: string; location?: string; date?: string; status?: st
 function applyFilters(w: Where, f: CommonFilters, cols: FilterCols) {
   if (f.location_id && cols.location) w.add(`${cols.location} = $?`, f.location_id)
   if (f.site_id && cols.site) w.add(`${cols.site} = $?`, f.site_id)
-  // Compared as calendar days — the request sets the session TimeZone to the
-  // org's, so `::date` on a timestamptz is the local day, and `to` includes
+  // Compared as calendar days — every connection runs in the instance's
+  // TimeZone (db.ts), so `::date` on a timestamptz is the local day, and `to` includes
   // the whole of that day for date and timestamptz columns alike.
   if (f.from && cols.date) w.add(`(${cols.date})::date >= $?::date`, f.from)
   if (f.to && cols.date) w.add(`(${cols.date})::date <= $?::date`, f.to)
@@ -619,9 +618,6 @@ exportsRouter.get('/exports/:dataset', async (req, res) => {
   const format: 'csv' | 'xlsx' = rawFormat
 
   const out = await withOrgContext(claimsFromReq(req), async (c) => {
-    // Dates in the file, `current_date` and the from/to day boundaries all
-    // follow the org's clock rather than the database server's UTC.
-    await c.query(`select set_config('TimeZone', $1, true)`, [config.TZ])
     const schema = await schemaFlags(c)
     if (ds.available && !ds.available(schema)) return null
 

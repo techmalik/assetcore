@@ -9,15 +9,24 @@ const { Pool } = pg
 // input can drift by a day. Keep them as the raw 'YYYY-MM-DD' string instead.
 pg.types.setTypeParser(1082, (val) => val)
 
+// Every connection works in the instance's timezone, so `current_date`,
+// `now()::date` and `::date` on a timestamptz mean the local day in every
+// query, job and export. Before, only the export route set it, and the rest
+// ran on the database server's clock (UTC in deploy/docker-compose.yml): for
+// an hour after Lagos midnight the dashboard's "overdue" and the exported
+// "overdue" disagreed. No column stores a timestamp without a zone, so
+// stored values are unaffected.
+const connectionOptions = `-c TimeZone=${config.TZ}`
+
 /** RLS-enforced pool. Connects as `assetcore_app` (non-owner, non-superuser) — every
  * query on this pool is subject to row-level security. Used for all normal
  * tenant-scoped request handling via `withOrgContext`. */
-export const pool = new Pool({ connectionString: config.DATABASE_URL })
+export const pool = new Pool({ connectionString: config.DATABASE_URL, options: connectionOptions })
 
 /** Owner-role pool. Bypasses RLS. Reserved for a narrow set of privileged
  * surfaces: auth (pre-session user/token lookups), /api/admin + /api/org
  * privileged writes, and node-cron jobs. */
-export const ownerPool = new Pool({ connectionString: config.DATABASE_URL_OWNER })
+export const ownerPool = new Pool({ connectionString: config.DATABASE_URL_OWNER, options: connectionOptions })
 
 export type Claims = {
   userId: string | null
