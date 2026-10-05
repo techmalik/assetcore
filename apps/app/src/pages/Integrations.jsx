@@ -69,7 +69,7 @@ const INTEGRATION_DEFS = [
   },
 ]
 
-function StatusBadge({ row }) {
+function ConnectionStatus({ row }) {
   if (!row) return <span style={{ fontSize: 11, color: 'var(--n400)' }}>Not configured</span>
   if (!row.enabled) return <span style={{ fontSize: 11, color: 'var(--n500)' }}>Disabled</span>
   if (row.last_sync_status === 'error') return (
@@ -131,7 +131,7 @@ function IntegrationCard({ def, row, canEdit, onSaved }) {
             {def.comingSoon && <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--b600)', background: 'var(--b50)', border: '1px solid var(--b100)', borderRadius: 2, padding: '1px 6px' }}>Coming soon</span>}
           </div>
           <p style={{ fontSize: 12, color: 'var(--n600)', lineHeight: 1.6, marginBottom: 8 }}>{def.desc}</p>
-          <StatusBadge row={row} />
+          <ConnectionStatus row={row} />
         </div>
         {!def.comingSoon && canEdit && (
           <button onClick={() => setExpanded(e => !e)} style={{ height: 30, padding: '0 12px', border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', fontSize: 12, color: 'var(--n700)', cursor: 'pointer', flexShrink: 0 }}>

@@ -380,7 +380,7 @@ function YesNo({ value, onChange }) {
 
 const AUDIT_STATUSES = [
   ['scheduled', 'Scheduled'],
-  ['in_progress', 'In progress'],
+  ['in_progress', 'In Progress'],
   ['completed', 'Completed'],
   ['cancelled', 'Cancelled'],
 ]

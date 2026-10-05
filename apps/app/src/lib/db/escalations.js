@@ -9,17 +9,10 @@ export const ESCALATION_ENTITY_TYPES = [
   ['compliance_licence', 'Licence'],
 ]
 
-// Mirrors VALID_TRIGGERS in apps/api/src/routes/escalations.ts. Only the pairs
-// the evaluator has a query for are offered; anything else would be accepted
-// by the form and then skipped every night without a word.
-export const VALID_TRIGGERS = {
-  work_order: ['overdue', 'unassigned', 'stale'],
-  pm_task: ['overdue', 'unassigned'],
-  defect: ['overdue', 'unacknowledged', 'stale'],
-  inspection: ['overdue', 'unassigned'],
-  approval: ['overdue', 'unacknowledged'],
-  compliance_licence: ['overdue'],
-}
+// Only the entity/trigger pairs the nightly evaluator has a query for. The
+// same table gates the API (@assetcore/domain), so the form cannot offer a
+// pair that would be accepted and then skipped every night.
+export { VALID_TRIGGERS } from '@assetcore/domain'
 
 export const TRIGGER_LABEL = {
   overdue: 'Past its due date',

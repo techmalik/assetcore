@@ -53,3 +53,4 @@ export declare const ROLE_KEYS: readonly [string, ...string[]]
 export declare const ROLE_RANK: Record<string, number>
 export declare const ADMIN_ENTRY_CAPS: string[]
 export declare const ROLE_LABELS: Record<string, string>
+export declare const ROLE_DESCRIPTIONS: Record<string, { summary: string; covers: string[] }>

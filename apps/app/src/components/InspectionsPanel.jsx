@@ -30,14 +30,9 @@ import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
+import { INSPECTION_STATUS, badgeMap } from '../lib/domain'
 
-const STATUS_META = {
-  scheduled:   { label:'Scheduled',   bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)' },
-  due:         { label:'Due',          bg:'var(--sab)', c:'var(--sat)', br:'var(--sabr)' },
-  in_progress: { label:'In Progress',  bg:'var(--sab)', c:'var(--sat)', br:'var(--sabr)' },
-  completed:   { label:'Completed',    bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
-  overdue:     { label:'Overdue',      bg:'var(--srb)', c:'var(--srt)', br:'var(--srbr)' },
-}
+const STATUS_META = badgeMap(INSPECTION_STATUS)
 const KIND_META = {
   safety:        { label:'Safety',        c:'var(--srt)' },
   condition:     { label:'Condition',     c:'var(--sat)' },

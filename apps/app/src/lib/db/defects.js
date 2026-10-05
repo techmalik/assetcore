@@ -15,7 +15,7 @@ export const SEVERITY_LABEL = Object.fromEntries(DEFECT_SEVERITIES.map(([k, l]) 
 export const DEFECT_STATUSES = [
   ['open', 'Open'],
   ['acknowledged', 'Acknowledged'],
-  ['in_progress', 'In progress'],
+  ['in_progress', 'In Progress'],
   ['resolved', 'Resolved'],
   ['closed', 'Closed'],
   ['deferred', 'Deferred'],

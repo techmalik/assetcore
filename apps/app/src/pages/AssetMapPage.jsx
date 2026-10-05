@@ -5,6 +5,7 @@ import Topbar from '../components/Topbar.jsx'
 import AssetMap, { MAP_COLOUR_MODES } from '../components/AssetMap.jsx'
 import { getAssetMap } from '../lib/db/analytics'
 import { errorText } from '../lib/errors'
+import { ASSET_STATUSES, ASSET_STATUS, CRITICALITIES, CRITICALITY, labelOf } from '../lib/domain'
 
 const ALL = 'all'
 
@@ -100,11 +101,11 @@ export default function AssetMapPage({ dark, toggleDark }) {
               </select>
               <select style={sel} value={filters.status} onChange={(e) => set('status', e.target.value)}>
                 <option value={ALL}>Any condition</option>
-                {['operational', 'attention', 'critical', 'offline', 'inactive'].map((v) => <option key={v} value={v}>{v}</option>)}
+                {ASSET_STATUSES.map((v) => <option key={v} value={v}>{labelOf(ASSET_STATUS, v)}</option>)}
               </select>
               <select style={sel} value={filters.criticality} onChange={(e) => set('criticality', e.target.value)}>
                 <option value={ALL}>Any criticality</option>
-                {['critical', 'high', 'medium', 'low'].map((v) => <option key={v} value={v}>{v}</option>)}
+                {[...CRITICALITIES].reverse().map((v) => <option key={v} value={v}>{labelOf(CRITICALITY, v)}</option>)}
               </select>
               <select style={sel} value={filters.work} onChange={(e) => set('work', e.target.value)}>
                 <option value={ALL}>Any workload</option>

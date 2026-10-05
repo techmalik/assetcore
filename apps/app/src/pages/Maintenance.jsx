@@ -16,14 +16,9 @@ import { can } from '../lib/rbac'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
+import { PM_TASK_STATUS, badgeMap } from '../lib/domain'
 
-const TASK_STATUS = {
-  pending:     { bg:'var(--slb)', c:'var(--slt)', br:'var(--slbr)', label:'Pending' },
-  in_progress: { bg:'var(--sab)', c:'var(--sat)', br:'var(--sabr)', label:'In Progress' },
-  completed:   { bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)', label:'Complete' },
-  overdue:     { bg:'var(--srb)', c:'var(--srt)', br:'var(--srbr)', label:'Overdue' },
-  skipped:     { bg:'var(--n100)', c:'var(--n500)', br:'var(--n200)', label:'Skipped' },
-}
+const TASK_STATUS = badgeMap(PM_TASK_STATUS)
 const FREQ_LABEL = { daily:'Daily', weekly:'Weekly', monthly:'Monthly', quarterly:'Quarterly', semi_annual:'Semi-annual', annual:'Annual' }
 
 function fmtDate(d) {

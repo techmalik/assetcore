@@ -27,28 +27,19 @@ import { completeMaintenance } from '../lib/db/maintenanceEvents'
 import { useAuth } from '../lib/AuthContext.jsx'
 import { can } from '../lib/rbac'
 import { healthColor, healthLabel, healthBand } from '../lib/health'
+import {
+  ASSET_STATUS, ASSET_DEPRECIATION_METHOD, PM_TASK_STATUS, PM_TASK_STATUSES, INSPECTION_STATUS, INSPECTION_STATUSES,
+  PRIORITY, toneOf, labelOf,
+} from '../lib/domain'
 import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
 
-// operational/maintenance/standby/offline describe WHAT the asset is doing
-// right now (the new, David-demo-adopted model — TASK-4.2); attention/critical
-// are the legacy severity-as-status values kept here ONLY so existing rows
-// still render a real badge instead of falling through to the offline
-// default. New/edited assets are steered toward the 4-value model by
-// STATUS_PICKER_OPTIONS below, not this map.
-const STATUS_STYLE = {
-  operational: { bg: 'var(--sgb)', c: 'var(--sgt)', br: 'var(--sgbr)', label: 'Operational' },
-  maintenance: { bg: 'var(--sab)', c: 'var(--sat)', br: 'var(--sabr)', label: 'Maintenance' },
-  standby:     { bg: 'var(--slb)', c: 'var(--slt)', br: 'var(--slbr)', label: 'Standby' },
-  offline:     { bg: 'var(--n100)', c: 'var(--n500)', br: 'var(--n300)', label: 'Offline' },
-  // At a shut-down site (0027). Set by the shutdown, never picked on a form.
-  inactive:    { bg: 'var(--n50)', c: 'var(--n500)', br: 'var(--n200)', label: 'Inactive' },
-  // Legacy values (pre-TASK-4.2) — still valid on existing rows.
-  critical:    { bg: 'var(--srb)', c: 'var(--srt)', br: 'var(--srbr)', label: 'Critical' },
-  attention:   { bg: 'var(--sab)', c: 'var(--sat)', br: 'var(--sabr)', label: 'Attention' },
-}
+// Asset status labels and colours live in lib/domain.js (ASSET_STATUS).
+// operational/maintenance/standby/offline say what the asset is doing now;
+// attention/critical are legacy values some older rows still carry, so they
+// still render, but the Add/Edit picker below no longer offers them.
 
 // The set offered on the Add/Edit picker going forward. An asset already
 // carrying a legacy status (attention/critical) still shows that as its
@@ -66,16 +57,14 @@ const STATUS_PICKER_KEYS = ['operational', 'standby', 'offline']
 // written by anything — they described health, which now has its own filter.
 const LEGACY_STATUS_KEYS = ['attention', 'critical']
 const STATE_FILTERS = [
-  ['all', 'All'], ['operational', 'Operational'], ['maintenance', 'Maintenance'],
-  ['standby', 'Standby'], ['offline', 'Offline'], ['inactive', 'Inactive'],
-  ['attention', 'Attention'], ['critical', 'Critical'],
+  ['all', 'All'],
+  ...['operational', 'maintenance', 'standby', 'offline', 'inactive', 'attention', 'critical'].map((k) => [k, labelOf(ASSET_STATUS, k)]),
 ]
 
 const MAX_PHOTOS = 5
 
 function AssetStatusBadge({ status }) {
-  const s = STATUS_STYLE[status] || STATUS_STYLE.offline
-  return <StatusBadge tone={s} size="md" />
+  return <StatusBadge tone={toneOf(ASSET_STATUS, status, 'muted')} label={labelOf(ASSET_STATUS, status)} size="md" />
 }
 
 /**
@@ -273,11 +262,8 @@ function parseCSV(text) {
 }
 
 // ── Add / Edit Asset Modal ────────────────────────────────────────────────────
-const DEPRECIATION_LABEL = {
-  straight_line: 'Straight-line',
-  declining_balance: 'Declining balance',
-  none: 'Not depreciated',
-}
+// Picker order: the methods, then opting out.
+const DEPRECIATION_PICKER = ['straight_line', 'declining_balance', 'sum_of_years_digits', 'none']
 
 function AssetModal({ asset, sites, locations, categories, operators, allAssets = [], orgDepreciation = null, onClose, onSave }) {
   const toast = useToast()
@@ -480,7 +466,7 @@ function AssetModal({ asset, sites, locations, categories, operators, allAssets 
           <Field label="Status">
             <select {...inputProps} value={form.status} onChange={(e) => set('status', e.target.value)}>
               {[...new Set([...STATUS_PICKER_KEYS, form.status])].map((k) => (
-                <option key={k} value={k}>{STATUS_STYLE[k]?.label || k}</option>
+                <option key={k} value={k}>{labelOf(ASSET_STATUS, k)}</option>
               ))}
             </select>
           </Field>
@@ -519,8 +505,8 @@ function AssetModal({ asset, sites, locations, categories, operators, allAssets 
           </Field>
           <Field label="Depreciation method" full>
             <select {...inputProps} value={form.depreciation_method} onChange={(e) => set('depreciation_method', e.target.value)}>
-              <option value="">Organisation default{orgDepreciation ? ` (${DEPRECIATION_LABEL[orgDepreciation.method] || 'Straight-line'})` : ''}</option>
-              {Object.entries(DEPRECIATION_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              <option value="">Organisation default{orgDepreciation ? ` (${labelOf(ASSET_DEPRECIATION_METHOD, orgDepreciation.method)})` : ''}</option>
+              {DEPRECIATION_PICKER.map((k) => <option key={k} value={k}>{labelOf(ASSET_DEPRECIATION_METHOD, k)}</option>)}
             </select>
           </Field>
           <Field label="Useful life (years)">
@@ -896,9 +882,6 @@ function ImportModal({ onClose, onDone }) {
 }
 
 // ── Asset detail panel ─────────────────────────────────────────────────────────
-const PM_STATUS_C = { pending: 'var(--slt)', in_progress: 'var(--sat)', completed: 'var(--sgt)', overdue: 'var(--srt)', skipped: 'var(--n500)' }
-const INSP_STATUS_C = { scheduled: 'var(--slt)', due: 'var(--sat)', in_progress: 'var(--sat)', completed: 'var(--sgt)', overdue: 'var(--srt)' }
-const PRIORITY_C = { low: 'var(--sgt)', medium: 'var(--n600)', high: 'var(--sat)', critical: 'var(--srt)' }
 // Activity-feed dot color by asset_activity.kind — lets a maintenance
 // completion or health alert read at a glance without opening every entry.
 const ACTIVITY_DOT_C = { maintenance: 'var(--sgt)', alert: 'var(--srt)', inspection: 'var(--sat)', comment: 'var(--b400)', status_change: 'var(--b400)', attachment: 'var(--b400)' }
@@ -1012,7 +995,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
               ['Purchase value', <Money key="pv" cents={asset.purchase_value_cents} full />],
               ['Book value (NBV)', <Money key="nbv" cents={asset.nbv_cents} full />],
               ['Accumulated depreciation', <Money key="acc" cents={asset.accumulated_depreciation_cents} full />],
-              ['Method', DEPRECIATION_LABEL[asset.depreciation_method] || `${DEPRECIATION_LABEL[orgDepreciation?.method] || 'Straight-line'} (org default)`],
+              ['Method', asset.depreciation_method ? labelOf(ASSET_DEPRECIATION_METHOD, asset.depreciation_method) : `${labelOf(ASSET_DEPRECIATION_METHOD, orgDepreciation?.method || 'straight_line')} (org default)`],
               ['In service', asset.install_date || asset.purchase_date ? fmtDate(asset.install_date || asset.purchase_date) : '—'],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 14px', borderBottom: 'var(--bdr)', fontSize: 12 }}>
@@ -1099,11 +1082,11 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
               <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                 {t.report_url && <button onClick={() => viewDoc({ url: t.report_url, name: t.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
                 {canUpdatePM && t.status !== 'completed' ? (
-                  <select value={t.status} onChange={(e) => changePMStatus(t, e.target.value)} className="select" style={{ fontSize: 11, fontWeight: 500, color: PM_STATUS_C[t.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
-                    {Object.keys(PM_STATUS_C).map((k) => <option key={k} value={k}>{k}</option>)}
+                  <select value={t.status} onChange={(e) => changePMStatus(t, e.target.value)} className="select" style={{ fontSize: 11, fontWeight: 500, color: toneOf(PM_TASK_STATUS, t.status).c, background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
+                    {PM_TASK_STATUSES.map((k) => <option key={k} value={k}>{labelOf(PM_TASK_STATUS, k)}</option>)}
                   </select>
                 ) : (
-                  <span style={{ color: PM_STATUS_C[t.status] || 'var(--n500)', fontWeight: 500 }}>{t.status}</span>
+                  <span style={{ color: toneOf(PM_TASK_STATUS, t.status).c, fontWeight: 500 }}>{labelOf(PM_TASK_STATUS, t.status)}</span>
                 )}
               </span>
             </div>
@@ -1122,11 +1105,11 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
                 <span style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                   {i.report_url && <button onClick={() => viewDoc({ url: i.report_url, name: i.report_url.split('/').pop() })} style={{ background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 11, padding: 0 }}>report</button>}
                   {canUpdateInspection ? (
-                    <select value={i.status} onChange={(e) => changeInspectionStatus(i, e.target.value)} className="select" style={{ fontSize: 11, fontWeight: 500, color: INSP_STATUS_C[i.status] || 'var(--n500)', background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
-                      {Object.keys(INSP_STATUS_C).map((k) => <option key={k} value={k}>{k}</option>)}
+                    <select value={i.status} onChange={(e) => changeInspectionStatus(i, e.target.value)} className="select" style={{ fontSize: 11, fontWeight: 500, color: toneOf(INSPECTION_STATUS, i.status).c, background: 'var(--n0)', border: '1px solid var(--n200)', borderRadius: 3, padding: '1px 4px' }}>
+                      {INSPECTION_STATUSES.map((k) => <option key={k} value={k}>{labelOf(INSPECTION_STATUS, k)}</option>)}
                     </select>
                   ) : (
-                    <span style={{ color: INSP_STATUS_C[i.status] || 'var(--n500)', fontWeight: 500 }}>{i.status}</span>
+                    <span style={{ color: toneOf(INSPECTION_STATUS, i.status).c, fontWeight: 500 }}>{labelOf(INSPECTION_STATUS, i.status)}</span>
                   )}
                 </span>
               </div>
@@ -1149,7 +1132,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
                 style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 0', fontSize: 12, borderBottom: 'var(--bdr)', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                   <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b700)' }}>{w.ref}</span>
-                  <span style={{ color: PRIORITY_C[w.priority] || 'var(--n500)', fontWeight: 500, fontSize: 11 }}>{WO_PRIORITY_LABEL[w.priority] || w.priority}</span>
+                  <span style={{ color: toneOf(PRIORITY, w.priority).c, fontWeight: 500, fontSize: 11 }}>{WO_PRIORITY_LABEL[w.priority] || w.priority}</span>
                 </div>
                 <div style={{ color: 'var(--n700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</div>
                 {/* Who's on it and when it was raised — the API has returned

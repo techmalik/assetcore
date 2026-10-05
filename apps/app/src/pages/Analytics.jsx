@@ -9,17 +9,11 @@ import {
 } from '../lib/db/analytics'
 import { useMoney } from '../lib/money'
 import { errorText } from '../lib/errors'
+import { WO_STATUS, PRIORITY, WO_TYPE, toneOf, labelOf } from '../lib/domain'
 
 const MONTH_LABEL = (iso) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })
 
-const STATUS_LABEL = {
-  new: 'New', assigned: 'Assigned', in_progress: 'In progress',
-  awaiting_parts: 'Awaiting parts', inspection: 'Inspection',
-}
-const PRIORITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' }
-const PRIORITY_COLOR = { critical: 'var(--sr)', high: 'var(--sa)', medium: 'var(--b500)', low: 'var(--n300)' }
-const TYPE_LABEL = { corrective: 'Corrective', preventive: 'Preventive', inspection: 'Inspection', emergency: 'Emergency' }
 
 const BACKLOG_COLOR = ['var(--sg)', 'var(--b500)', 'var(--sa)', 'var(--sr)']
 
@@ -228,7 +222,7 @@ export default function Analytics({ dark, toggleDark }) {
                   <Panel title="Open work by status">
                     <Donut
                       centreLabel="open jobs"
-                      segments={(mix?.by_status || []).map((s) => ({ label: STATUS_LABEL[s.key] || s.key, value: s.n }))}
+                      segments={(mix?.by_status || []).map((s) => ({ label: labelOf(WO_STATUS, s.key), value: s.n }))}
                       emptyMessage="No open work orders"
                     />
                   </Panel>
@@ -237,10 +231,10 @@ export default function Analytics({ dark, toggleDark }) {
                     <BarChart
                       height={170}
                       data={(mix?.by_priority || []).map((p) => ({
-                        label: PRIORITY_LABEL[p.key] || p.key,
+                        label: labelOf(PRIORITY, p.key),
                         value: p.n,
-                        color: PRIORITY_COLOR[p.key],
-                        sublabel: `${PRIORITY_LABEL[p.key] || p.key} priority`,
+                        color: toneOf(PRIORITY, p.key).solid,
+                        sublabel: `${labelOf(PRIORITY, p.key)} priority`,
                       }))}
                       emptyMessage="No open work orders"
                     />
@@ -249,7 +243,7 @@ export default function Analytics({ dark, toggleDark }) {
                   <Panel title="Work raised by type" subtitle="Last 12 months. A corrective share that climbs is maintenance losing ground.">
                     <Donut
                       centreLabel="jobs raised"
-                      segments={(mix?.by_type || []).map((t) => ({ label: TYPE_LABEL[t.key] || t.key, value: t.n }))}
+                      segments={(mix?.by_type || []).map((t) => ({ label: labelOf(WO_TYPE, t.key), value: t.n }))}
                       emptyMessage="No work orders in the last year"
                     />
                   </Panel>

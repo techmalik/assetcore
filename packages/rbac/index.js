@@ -197,6 +197,52 @@ export const ROLE_RANK = {
 // audit:read and lands on the Audit Log tab alone).
 export const ADMIN_ENTRY_CAPS = ['org:manage', 'user:manage', 'audit:read']
 
+// What each role is for, in the words the Admin > Users page shows beside it.
+// Written by hand: keep `covers` in step with ROLE_CAPABILITIES above when a
+// role's capabilities change.
+export const ROLE_DESCRIPTIONS = {
+  owner: {
+    summary: 'Full access, including integrations and depreciation posting. Only a System Admin can grant or change this role.',
+    covers: ['All modules', 'Admin & Team', 'Integrations', 'Depreciation posting'],
+  },
+  admin: {
+    summary: 'Runs the organisation day to day: team, locations, approval matrix and escalations.',
+    covers: ['Assets, Work Orders, Maintenance (full)', 'Inspections & Compliance (full)', 'Parts (full)', 'Team, approval matrix & escalations', 'Audit log'],
+  },
+  managing_director: {
+    summary: 'Executive oversight: sees everything and signs off on approvals.',
+    covers: ['All modules (read)', 'Approvals (decide)', 'Export (all it can read)', 'Audit log'],
+  },
+  executive_director: {
+    summary: 'Executive oversight: sees everything and signs off on approvals.',
+    covers: ['All modules (read)', 'Approvals (decide)', 'Export (all it can read)', 'Audit log'],
+  },
+  manager: {
+    summary: 'Runs operations: assets, work orders, maintenance and the location hierarchy.',
+    covers: ['Assets, Work Orders, Maintenance (full)', 'Parts (full)', 'Defects & Risks (full)', 'Approvals (decide)', 'Locations & categories', 'Audit log'],
+  },
+  supervisor: {
+    summary: 'Raises and assigns work orders, runs inspections, completes maintenance.',
+    covers: ['Assets (view/edit)', 'Work Orders (create/assign/update)', 'Maintenance (complete)', 'Inspections (create/update)', 'Approvals (decide)'],
+  },
+  officer: {
+    summary: 'Works assigned jobs on site and logs inspections and defects.',
+    covers: ['Assets (view)', 'Work Orders (update)', 'Inspections (create)', 'Defects (report)'],
+  },
+  hse_officer: {
+    summary: 'Full access to compliance and inspections.',
+    covers: ['Assets (view)', 'Compliance (full)', 'Inspections (full)', 'Defects & Risks (full)', 'Approvals (decide)', 'Export (all it can read)'],
+  },
+  auditor: {
+    summary: 'Read-only across all modules, plus full audit-log visibility.',
+    covers: ['All modules (read)', 'Audit log'],
+  },
+  viewer: {
+    summary: 'Read-only access to business data.',
+    covers: ['All modules (read)'],
+  },
+}
+
 export const ROLE_LABELS = {
   owner: 'System Admin',
   admin: 'Admin',

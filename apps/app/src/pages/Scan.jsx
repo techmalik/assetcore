@@ -7,9 +7,9 @@ import { getAssetByAin } from '../lib/db/assets'
 import { errorText } from '../lib/errors'
 import { useToast } from '../lib/ToastContext'
 import AssetMap from '../components/AssetMap.jsx'
+import StatusBadge from '../components/StatusBadge.jsx'
+import { ASSET_STATUS, CRITICALITY, toneOf, labelOf } from '../lib/domain'
 
-const CRITICALITY_CLASS = { critical: 'badge-r', high: 'badge-a', medium: 'badge-b', low: 'badge-n' }
-const STATUS_CLASS = { critical: 'badge-r', attention: 'badge-a', operational: 'badge-g', offline: 'badge-n', inactive: 'badge-n' }
 
 // A label encodes {origin}/scan?ain=XXX, but a generic barcode scanner may emit
 // the bare tag instead — accept either.
@@ -168,8 +168,8 @@ export default function Scan({ dark, toggleDark }) {
                   <div style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--b600)', marginBottom: 2 }}>{asset.ain}</div>
                   <div style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)', letterSpacing: '-.2px' }}>{asset.name}</div>
                   <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                    <span className={`badge ${STATUS_CLASS[asset.status] || 'badge-n'}`}>{asset.status}</span>
-                    <span className={`badge ${CRITICALITY_CLASS[asset.criticality] || 'badge-n'}`}>{asset.criticality} criticality</span>
+                    <StatusBadge tone={toneOf(ASSET_STATUS, asset.status)} label={labelOf(ASSET_STATUS, asset.status)} size="md" />
+                    <StatusBadge tone={toneOf(CRITICALITY, asset.criticality, 'neutral')} label={`${labelOf(CRITICALITY, asset.criticality)} criticality`} size="md" />
                     {asset.site && <span className="badge badge-n">{asset.site.name}</span>}
                   </div>
                 </div>

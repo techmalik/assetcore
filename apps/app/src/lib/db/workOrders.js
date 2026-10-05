@@ -1,50 +1,19 @@
 import { api } from '../apiClient'
+import {
+  WO_TRANSITIONS, WO_STATUSES, PRIORITIES, WO_TYPES, WO_STATUS, PRIORITY, WO_TYPE, toneOf, labelOf,
+} from '../domain'
 
-// Status transitions allowed per current status. `draft` is where
-// auto-generated WOs land (health-crossing automation) — approving one moves
-// it to `new`; human-created WOs never start as draft.
-export const WO_TRANSITIONS = {
-  draft:          ['new', 'closed'],
-  new:            ['assigned', 'in_progress', 'closed'],
-  assigned:       ['in_progress', 'awaiting_parts', 'closed'],
-  in_progress:    ['awaiting_parts', 'inspection', 'closed'],
-  awaiting_parts: ['in_progress', 'closed'],
-  inspection:     ['closed', 'in_progress'],
-  closed:         [],
-}
+// Transitions, labels and tones come from the shared lists (lib/domain.js);
+// these names stay so the pages that import them need not change.
+export { WO_TRANSITIONS }
 
-export const WO_STATUS_LABEL = {
-  draft:          'Draft',
-  new:            'New',
-  assigned:       'Assigned',
-  in_progress:    'In Progress',
-  awaiting_parts: 'Awaiting Parts',
-  inspection:     'Inspection',
-  closed:         'Closed',
-}
-
-export const WO_PRIORITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' }
-export const WO_TYPE_LABEL = { corrective: 'Corrective', preventive: 'Preventive', inspection: 'Inspection', emergency: 'Emergency' }
-
-// Shared priority tone map — used by both the Work Orders page and the
-// Dashboard's recent-WO widget so the same priority renders identically
-// in both places.
-export const WO_PRIORITY_STYLE = {
-  critical: { bg: 'var(--srb)', c: 'var(--srt)', br: 'var(--srbr)' },
-  high:     { bg: 'var(--sab)', c: 'var(--sat)', br: 'var(--sabr)' },
-  medium:   { bg: 'var(--b50)',  c: 'var(--b700)', br: 'var(--b200)' },
-  low:      { bg: 'var(--n100)', c: 'var(--n600)', br: 'var(--n300)' },
-}
-
-// WO status badges are intentionally neutral-blue everywhere (not
-// tone-per-status) - status progression is shown by position/label, not color.
-// Draft is the one exception: a system-proposed WO awaiting approval renders
-// muted/neutral so it reads as "not yet real work".
-const WO_STATUS_STYLE = { bg: 'var(--b50)', c: 'var(--b700)', br: 'var(--b200)' }
-const WO_DRAFT_STYLE = { bg: 'var(--n100)', c: 'var(--n600)', br: 'var(--n300)' }
+export const WO_STATUS_LABEL = Object.fromEntries(WO_STATUSES.map((k) => [k, labelOf(WO_STATUS, k)]))
+export const WO_PRIORITY_LABEL = Object.fromEntries(PRIORITIES.map((k) => [k, labelOf(PRIORITY, k)]))
+export const WO_TYPE_LABEL = Object.fromEntries(WO_TYPES.map((k) => [k, labelOf(WO_TYPE, k)]))
+export const WO_PRIORITY_STYLE = Object.fromEntries(PRIORITIES.map((k) => [k, toneOf(PRIORITY, k)]))
 
 export function woStatusStyle(status) {
-  return status === 'draft' ? WO_DRAFT_STYLE : WO_STATUS_STYLE
+  return toneOf(WO_STATUS, status, 'blue')
 }
 
 export async function listWorkOrders({ status, priority, asset_id, locationId } = {}) {

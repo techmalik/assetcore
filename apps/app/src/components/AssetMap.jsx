@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { ASSET_STATUS, CRITICALITY, TONES, toneOf } from '../lib/domain'
 
 /**
  * Where the assets are.
@@ -26,28 +27,14 @@ const TILE_SIZE = 256
 const MIN_ZOOM = 2
 const MAX_ZOOM = 18
 
-const STATUS_COLOR = {
-  operational: 'var(--sg)',
-  attention: 'var(--sa)',
-  critical: 'var(--sr)',
-  offline: 'var(--n400)',
-  // At a shut-down site. Lighter than offline so the two stay distinguishable.
-  inactive: 'var(--n300)',
-}
-
-const CRITICALITY_COLOR = {
-  critical: 'var(--sr)',
-  high: 'var(--sa)',
-  medium: 'var(--sl)',
-  low: 'var(--sg)',
-}
-
 /** Colour scales, also used to draw the legend so the two cannot drift apart. */
 export const MAP_COLOUR_MODES = {
   status: {
     label: 'Condition',
-    legend: [['Operational', 'var(--sg)'], ['Needs attention', 'var(--sa)'], ['Critical', 'var(--sr)'], ['Offline', 'var(--n400)'], ['Inactive', 'var(--n300)']],
-    of: (a) => STATUS_COLOR[a.status] || 'var(--n400)',
+    // Every status the asset can carry, so maintenance and standby assets are
+    // no longer drawn (and keyed) as if they were offline.
+    legend: Object.values(ASSET_STATUS).map((m) => [m.label, TONES[m.tone].solid]),
+    of: (a) => toneOf(ASSET_STATUS, a.status).solid,
   },
   health: {
     label: 'Health score',
@@ -56,8 +43,8 @@ export const MAP_COLOUR_MODES = {
   },
   criticality: {
     label: 'Criticality',
-    legend: [['Critical', 'var(--sr)'], ['High', 'var(--sa)'], ['Medium', 'var(--sl)'], ['Low', 'var(--sg)']],
-    of: (a) => CRITICALITY_COLOR[a.criticality] || 'var(--n400)',
+    legend: Object.values(CRITICALITY).reverse().map((m) => [m.label, TONES[m.tone].solid]),
+    of: (a) => toneOf(CRITICALITY, a.criticality).solid,
   },
   work: {
     label: 'Open work',

@@ -10,4 +10,5 @@ export {
   ROLE_KEYS,
   ADMIN_ENTRY_CAPS,
   ROLE_LABELS,
+  ROLE_DESCRIPTIONS,
 } from '@assetcore/rbac'

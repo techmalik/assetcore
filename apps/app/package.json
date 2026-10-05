@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@assetcore/domain": "*",
     "@assetcore/rbac": "*",
     "@assetcore/ui": "*",
     "@fontsource-variable/bricolage-grotesque": "^5.2.10",

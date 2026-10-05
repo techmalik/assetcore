@@ -12,8 +12,8 @@ import {
   listEscalationRules, listEscalationEvents, createEscalationRule, updateEscalationRule,
   retireEscalationRule, runEscalationsNow, ESCALATION_ENTITY_TYPES, VALID_TRIGGERS, TRIGGER_LABEL,
 } from '../lib/db/escalations.js'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can, ROLE_CAPABILITIES, ROLE_KEYS, ROLE_LABELS, ADMIN_ENTRY_CAPS, GRANTABLE_CAPS as GRANTABLE_CAP_KEYS } from '../lib/rbac.js'
+import { useAuth, initialsOf } from '../lib/AuthContext.jsx'
+import { can, ROLE_CAPABILITIES, ROLE_KEYS, ROLE_LABELS, ROLE_DESCRIPTIONS, ADMIN_ENTRY_CAPS, GRANTABLE_CAPS as GRANTABLE_CAP_KEYS } from '../lib/rbac.js'
 import { useToast } from '../lib/ToastContext'
 import { errorText } from '../lib/errors'
 
@@ -603,18 +603,9 @@ function CategoriesTab() {
 
 // ── Users Tab ──────────────────────────────────────────────────────────────
 
-const ROLES_LIST = [
-  {key:'owner',label:'System Admin',desc:'Full access, including integrations and depreciation posting. Only a System Admin can grant or change this role.',perms:['All modules','Admin & Team','Integrations','Depreciation posting']},
-  {key:'admin',label:'Admin',desc:'Runs the organisation day to day: team, locations, approval matrix and escalations.',perms:['Assets, Work Orders, Maintenance (full)','Inspections & Compliance (full)','Parts (full)','Team, approval matrix & escalations','Audit log']},
-  {key:'managing_director',label:'Managing Director',desc:'Executive oversight: sees everything and signs off on approvals.',perms:['All modules (read)','Approvals (decide)','Export (all it can read)','Audit log']},
-  {key:'executive_director',label:'Executive Director',desc:'Executive oversight: sees everything and signs off on approvals.',perms:['All modules (read)','Approvals (decide)','Export (all it can read)','Audit log']},
-  {key:'manager',label:'Manager',desc:'Runs operations: assets, work orders, maintenance and the location hierarchy.',perms:['Assets, Work Orders, Maintenance (full)','Parts (full)','Defects & Risks (full)','Approvals (decide)','Locations & categories','Audit log']},
-  {key:'supervisor',label:'Supervisor',desc:'Raises and assigns work orders, runs inspections, completes maintenance.',perms:['Assets (view/edit)','Work Orders (create/assign/update)','Maintenance (complete)','Inspections (create/update)','Approvals (decide)']},
-  {key:'officer',label:'Officer',desc:'Works assigned jobs on site and logs inspections and defects.',perms:['Assets (view)','Work Orders (update)','Inspections (create)','Defects (report)']},
-  {key:'hse_officer',label:'HSE / Compliance Officer',desc:'Full access to compliance and inspections.',perms:['Assets (view)','Compliance (full)','Inspections (full)','Defects & Risks (full)','Approvals (decide)','Export (all it can read)']},
-  {key:'auditor',label:'Auditor',desc:'Read-only across all modules, plus full audit-log visibility.',perms:['All modules (read)','Audit log']},
-  {key:'viewer',label:'Viewer / Guest',desc:'Read-only access to business data.',perms:['All modules (read)']},
-]
+const ROLES_LIST = ROLE_KEYS.map((key) => ({
+  key, label: ROLE_LABELS[key], desc: ROLE_DESCRIPTIONS[key]?.summary ?? '', perms: ROLE_DESCRIPTIONS[key]?.covers ?? [],
+}))
 
 // Capability groups for the read-only permissions matrix below — each ✓/–
 // cell is derived live from ROLE_CAPABILITIES via can(), not hardcoded, so
@@ -678,15 +669,6 @@ function PermissionsMatrix() {
       )}
     </div>
   )
-}
-
-function initials(name) {
-  if (!name) return '?'
-  const parts = name.trim().split(/\s+/)
-    .map((p) => p.replace(/[^\p{L}\p{N}]/gu, ''))
-    .filter(Boolean)
-  if (!parts.length) return name.trim()[0]?.toUpperCase() || '?'
-  return ((parts[0][0] || '') + (parts[1]?.[0] || '')).toUpperCase()
 }
 
 function InviteModal({ locations, sites, onClose, onInvited }) {
@@ -911,7 +893,7 @@ function UsersTab() {
                       <tr key={m.id} style={{borderBottom:'var(--bdr)'}}>
                         <td style={{padding:'11px 14px'}}>
                           <div style={{display:'flex',alignItems:'center',gap:10}}>
-                            <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b-solid)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:600,color:'#fff',flexShrink:0}}>{initials(m.full_name)}</div>
+                            <div style={{width:28,height:28,borderRadius:'50%',background:'var(--b-solid)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:600,color:'#fff',flexShrink:0}}>{initialsOf(m.full_name)}</div>
                             <span style={{fontSize:13,fontWeight:500,color:'var(--n900)'}}>{m.full_name || '—'}{isSelf && <span style={{color:'var(--n400)',fontWeight:400}}> (you)</span>}</span>
                           </div>
                         </td>
