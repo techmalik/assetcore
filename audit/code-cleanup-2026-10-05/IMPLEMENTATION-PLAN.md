@@ -59,11 +59,11 @@ Baseline: 14 files, 236 tests, all pass (2026-10-05). The app is checked with `n
 
 | Task | Title | Wave | Effort | Status |
 |---|---|---|---|---|
-| 0.1 | Make the deploy wait for lint, typecheck, build and tests | 0 | M | Open |
-| 0.2 | Add ESLint to the app | 0 | S | Open |
-| 0.3 | Typecheck the API's test files | 0 | S | Open |
+| 0.1 | Make the deploy wait for lint, typecheck, build and tests | 0 | M | Done `d9e0f04` (awaiting first green run in Actions) |
+| 0.2 | Add ESLint to the app | 0 | S | Done `ed55a7b` (cap 28 warnings, not 20: the 16 alert() calls count) |
+| 0.3 | Typecheck the API's test files | 0 | S | Done `baae166` (tests already clean) |
 | 0.4 | Commit the dead-code check so new dead code shows up | 0 | S | Open |
-| 0.5 | Add a unit-test runner to the app and cover the pure helpers | 0 | S | Open |
+| 0.5 | Add a unit-test runner to the app and cover the pure helpers | 0 | S | Done `4701f73` (vitest 2: vitest 5 needs Vite 6; 29 tests) |
 | 1.1 | Remove the app's dead code | 1 | M | Open |
 | 1.2 | Remove the API's dead code and the shadowed audit DELETE | 1 | M | Open |
 | 1.3 | Retire the old linear-decay health SQL | 1 | M | Open |
