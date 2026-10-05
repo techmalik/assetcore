@@ -5,11 +5,10 @@ import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
-import { uploadTo, cleanupOrphanedUpload, deleteUploadedFile } from '../files.js'
+import { uploadRoute, deleteUploadedFile, DOCUMENT_MIME_TYPES } from '../files.js'
 
 export const complianceRouter = Router()
 
-const documentUpload = uploadTo('compliance-documents')
 
 const ALLOWED = ['site_id', 'asset_id', 'authority_id', 'name', 'kind', 'licence_number', 'issued_date', 'expiry_date', 'notes', 'document_url', 'documents']
 
@@ -102,34 +101,23 @@ complianceRouter.patch('/compliance-licences/:id', requireCap('compliance:update
   res.json(row)
 })
 
-complianceRouter.post('/compliance-licences/:id/document', requireCap('compliance:update'), documentUpload.single('document'), async (req, res) => {
-  const file = req.file
-  if (!file) return res.status(400).json({ error: 'missing_file' })
-  const url = `compliance-documents/${file.filename}`
-  const doc = { url, name: file.originalname, size: file.size }
+complianceRouter.post('/compliance-licences/:id/document', requireCap('compliance:update'), ...uploadRoute({ subdir: 'compliance-documents', field: 'document', mime: DOCUMENT_MIME_TYPES }, async (req, res, file) => {
+  const url = file.url
+  const doc = { url, name: file.name, size: file.size }
 
-  let row
-  try {
-    row = await withOrgContext(claimsFromReq(req), async (c) => {
-      const { rows } = await c.query(
-        `update public.compliance_licences set documents = documents || $2::jsonb, document_url = $3 where id = $1 returning id, org_id`,
-        [req.params.id, JSON.stringify([doc]), url]
-      )
-      if (!rows[0]) return null
-      const { rows: full } = await c.query(`${SELECT} where cl.id = $1`, [req.params.id])
-      await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_licence.attachment.add', entityType: 'compliance_licence', entityId: rows[0].id, after: doc })
-      return full[0]
-    })
-  } catch (err) {
-    await cleanupOrphanedUpload(file.path)
-    throw err
-  }
-  if (!row) {
-    await cleanupOrphanedUpload(file.path)
-    return res.status(404).json({ error: 'not_found' })
-  }
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query(
+      `update public.compliance_licences set documents = documents || $2::jsonb, document_url = $3 where id = $1 returning id, org_id`,
+      [req.params.id, JSON.stringify([doc]), url]
+    )
+    if (!rows[0]) return null
+    const { rows: full } = await c.query(`${SELECT} where cl.id = $1`, [req.params.id])
+    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_licence.attachment.add', entityType: 'compliance_licence', entityId: rows[0].id, after: doc })
+    return full[0]
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
   res.status(201).json(row)
-})
+}))
 
 complianceRouter.delete('/compliance-licences/:id/documents', requireCap('compliance:update'), async (req, res) => {
   const url = typeof req.query.url === 'string' ? req.query.url : null
@@ -157,30 +145,18 @@ complianceRouter.delete('/compliance-licences/:id/documents', requireCap('compli
 // lifecycle that ends in an outcome and carries findings. One table, one set
 // of handlers, both sets of fields. Only the document upload stayed here,
 // because it is about the file rather than the audit.
-const auditDocumentUpload = uploadTo('compliance-audits')
-
-complianceRouter.post('/compliance-audits/:id/document', requireCap('compliance:update'), auditDocumentUpload.single('document'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'missing_file' })
-  const url = `compliance-audits/${req.file.filename}`
-  let row
-  try {
-    row = await withOrgContext(claimsFromReq(req), async (c) => {
-      const { rows } = await c.query('update public.compliance_audits set document_url = $2 where id = $1 returning id, org_id', [req.params.id, url])
-      if (!rows[0]) return null
-      const { rows: full } = await c.query(`${AUDIT_SELECT} where ca.id = $1`, [req.params.id])
-      await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_audit.attachment.add', entityType: 'compliance_audit', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
-      return full[0]
-    })
-  } catch (err) {
-    await cleanupOrphanedUpload(req.file.path)
-    throw err
-  }
-  if (!row) {
-    await cleanupOrphanedUpload(req.file.path)
-    return res.status(404).json({ error: 'not_found' })
-  }
+complianceRouter.post('/compliance-audits/:id/document', requireCap('compliance:update'), ...uploadRoute({ subdir: 'compliance-audits', field: 'document', mime: DOCUMENT_MIME_TYPES }, async (req, res, file) => {
+  const url = file.url
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query('update public.compliance_audits set document_url = $2 where id = $1 returning id, org_id', [req.params.id, url])
+    if (!rows[0]) return null
+    const { rows: full } = await c.query(`${AUDIT_SELECT} where ca.id = $1`, [req.params.id])
+    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_audit.attachment.add', entityType: 'compliance_audit', entityId: rows[0].id, after: { url, name: file.name } })
+    return full[0]
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
   res.status(201).json(row)
-})
+}))
 
 complianceRouter.delete('/compliance-licences/:id', requireCap('compliance:update'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {

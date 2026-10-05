@@ -7,13 +7,12 @@ import { writeAuditLog } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
-import { uploadTo, cleanupOrphanedUpload } from '../files.js'
+import { uploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyUsers, notifyWorkOrderClosed } from '../notify.js'
 import { eligibleAssignee, insertDirectApproval, loadApproval } from '../approvalRouting.js'
 
 export const workOrdersRouter = Router()
 
-const attachmentUpload = uploadTo('attachments')
 
 // assigned_by/assigned_at are deliberately absent: they are stamped from the
 // authenticated caller whenever assignee_id moves, never accepted from a body.
@@ -578,52 +577,44 @@ workOrdersRouter.post('/work-orders/:id/transition', requireCap('wo:transition')
   res.json(result.data)
 })
 
-workOrdersRouter.post('/work-orders/:id/attachments', requireCap('wo:update'), attachmentUpload.single('file'), async (req, res) => {
-  const file = req.file
-  if (!file) return res.status(400).json({ error: 'missing_file' })
-  const url = `attachments/${file.filename}`
+workOrdersRouter.post('/work-orders/:id/attachments', requireCap('wo:update'), ...uploadRoute({ subdir: 'attachments', field: 'file', mime: DOCUMENT_MIME_TYPES }, async (req, res, file) => {
+  const url = file.url
 
-  let row
-  try {
-    row = await withOrgContext(claimsFromReq(req), async (c) => {
-      const { rows } = await c.query(
-        `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body, attachments)
-         values (current_org_id(), $1, current_user_id(), 'attachment', $2, $3::jsonb)
-         returning *`,
-        [req.params.id, file.originalname, JSON.stringify([{ url, name: file.originalname, size: file.size }])]
-      )
-      const activity = rows[0]
-      await writeAuditLog(c, { orgId: activity.org_id, actorId: req.claims!.sub, action: 'work_order.attachment.add', entityType: 'work_order', entityId: activity.work_order_id, after: { url, name: file.originalname, size: file.size } })
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query(
+      `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body, attachments)
+       values (current_org_id(), $1, current_user_id(), 'attachment', $2, $3::jsonb)
+       returning *`,
+      [req.params.id, file.name, JSON.stringify([{ url, name: file.name, size: file.size }])]
+    )
+    const activity = rows[0]
+    await writeAuditLog(c, { orgId: activity.org_id, actorId: req.claims!.sub, action: 'work_order.attachment.add', entityType: 'work_order', entityId: activity.work_order_id, after: { url, name: file.name, size: file.size } })
 
-      // PM tasks, inspections and maintenance completions all announce a
-      // report upload; work orders were the one attachment path that silently
-      // did nothing. Goes to the assignee and the raiser — whoever isn't the
-      // uploader is the one waiting to see it.
-      const { rows: woRows } = await c.query(
-        'select id, org_id, ref, assignee_id, created_by from public.work_orders where id = $1',
-        [req.params.id]
-      )
-      const wo = woRows[0]
-      if (wo) {
-        await notifyUsers(c, {
-          orgId: wo.org_id,
-          userIds: [wo.assignee_id, wo.created_by],
-          actorId: req.claims!.sub,
-          kind: 'report_uploaded',
-          title: `File attached to ${wo.ref}`,
-          body: file.originalname,
-          entityType: 'work_order',
-          entityId: wo.id,
-        })
-      }
-      return activity
-    })
-  } catch (err) {
-    await cleanupOrphanedUpload(file.path)
-    throw err
-  }
+    // PM tasks, inspections and maintenance completions all announce a
+    // report upload; work orders were the one attachment path that silently
+    // did nothing. Goes to the assignee and the raiser — whoever isn't the
+    // uploader is the one waiting to see it.
+    const { rows: woRows } = await c.query(
+      'select id, org_id, ref, assignee_id, created_by from public.work_orders where id = $1',
+      [req.params.id]
+    )
+    const wo = woRows[0]
+    if (wo) {
+      await notifyUsers(c, {
+        orgId: wo.org_id,
+        userIds: [wo.assignee_id, wo.created_by],
+        actorId: req.claims!.sub,
+        kind: 'report_uploaded',
+        title: `File attached to ${wo.ref}`,
+        body: file.name,
+        entityType: 'work_order',
+        entityId: wo.id,
+      })
+    }
+    return activity
+  })
   res.status(201).json(row)
-})
+}))
 
 const commentInput = z.object({ body: z.string().min(1) })
 

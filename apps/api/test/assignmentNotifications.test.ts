@@ -146,9 +146,10 @@ describe('report_uploaded notification', () => {
   it('uploading a maintenance report notifies role holders, deduped on a repeat upload', async () => {
     const task = await createPendingTask()
 
-    const upload1 = await opsApi.post(`/api/pm-tasks/${task.id}/report`).attach('report', Buffer.from('report v1'), 'report.pdf')
+    // Real PDF bytes: report uploads are content-checked (uploads.test.ts).
+    const upload1 = await opsApi.post(`/api/pm-tasks/${task.id}/report`).attach('report', Buffer.from('%PDF-1.4 report v1'), 'report.pdf')
     expect(upload1.status).toBe(201)
-    const upload2 = await opsApi.post(`/api/pm-tasks/${task.id}/report`).attach('report', Buffer.from('report v2'), 'report2.pdf')
+    const upload2 = await opsApi.post(`/api/pm-tasks/${task.id}/report`).attach('report', Buffer.from('%PDF-1.4 report v2'), 'report2.pdf')
     expect(upload2.status).toBe(201)
 
     const ownerNotifs = await ownerApi.get('/api/notifications?limit=200')

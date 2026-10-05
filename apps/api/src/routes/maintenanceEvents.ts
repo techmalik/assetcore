@@ -5,12 +5,12 @@ import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
-import { uploadTo, guardedSingle, validateUploadOrCleanup, cleanupOrphanedUpload, DOCUMENT_MIME_TYPES } from '../files.js'
+import { uploadRoute, optionalUploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyRoleHolders, notifyWorkOrderClosed } from '../notify.js'
 
 export const maintenanceEventsRouter = Router()
 
-const reportUpload = uploadTo('maintenance-completions', { maxSizeBytes: 25 * 1024 * 1024 })
+const REPORT_UPLOAD = { subdir: 'maintenance-completions', field: 'report', mime: DOCUMENT_MIME_TYPES, maxBytes: 25 * 1024 * 1024 }
 
 // Multipart bodies arrive with every field as a string, including the ones
 // that would otherwise be omitted — an empty string from a blank optional
@@ -62,8 +62,9 @@ maintenanceEventsRouter.get('/assets/:id/maintenance-completions', async (req, r
 maintenanceEventsRouter.post(
   '/assets/:id/maintenance-completions',
   requireCap('maintenance:complete'),
-  guardedSingle(reportUpload.single('report')),
-  async (req, res) => {
+  // The report is optional here. A stored file is deleted again if the
+  // request then fails, early validation included.
+  ...optionalUploadRoute(REPORT_UPLOAD, async (req, res, file) => {
     const parsed = completionInput.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
     const { source, pm_task_id, work_order_id, completed_at, next_maintenance_at, notes } = parsed.data
@@ -75,17 +76,9 @@ maintenanceEventsRouter.post(
       return res.status(400).json({ error: 'next_maintenance_before_completed' })
     }
 
-    let reportUrl: string | null = null
-    if (req.file) {
-      if (!(await validateUploadOrCleanup(req.file.path, DOCUMENT_MIME_TYPES))) {
-        return res.status(400).json({ error: 'unsupported_type' })
-      }
-      reportUrl = `maintenance-completions/${req.file.filename}`
-    }
+    const reportUrl = file?.url ?? null
 
-    let result
-    try {
-      result = await withOrgContext(claimsFromReq(req), async (c) => {
+    const result = await withOrgContext(claimsFromReq(req), async (c) => {
       const { rows: assetRows } = await c.query('select id, org_id, site_id, name from public.assets where id = $1', [req.params.id])
       const asset = assetRows[0]
       if (!asset) return { error: 'not_found' as const }
@@ -137,7 +130,7 @@ maintenanceEventsRouter.post(
       await c.query(
         `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
          values (current_org_id(), $1, current_user_id(), 'maintenance', $2, $3::jsonb)`,
-        [asset.id, activityBody, JSON.stringify(reportUrl ? [{ url: reportUrl, name: req.file!.originalname }] : [])]
+        [asset.id, activityBody, JSON.stringify(file ? [{ url: file.url, name: file.name }] : [])]
       )
 
       await writeAuditLog(c, {
@@ -158,60 +151,39 @@ maintenanceEventsRouter.post(
       })
 
       return { data: event }
-      })
-    } catch (err) {
-      await cleanupOrphanedUpload(req.file?.path)
-      throw err
-    }
+    })
 
-    if ('error' in result) {
-      await cleanupOrphanedUpload(req.file?.path)
-      return res.status(404).json({ error: 'not_found' })
-    }
+    if ('error' in result) return res.status(404).json({ error: 'not_found' })
     res.status(201).json(result.data)
-  }
+  })
 )
 
 // Upload or replace the report on an already-recorded completion.
 maintenanceEventsRouter.post(
   '/maintenance-completions/:id/report',
   requireCap('maintenance:complete'),
-  guardedSingle(reportUpload.single('report')),
-  async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'missing_file' })
-    if (!(await validateUploadOrCleanup(req.file.path, DOCUMENT_MIME_TYPES))) {
-      return res.status(400).json({ error: 'unsupported_type' })
-    }
-    const url = `maintenance-completions/${req.file.filename}`
-    let row
-    try {
-      row = await withOrgContext(claimsFromReq(req), async (c) => {
-        const { rows } = await c.query('update public.maintenance_events set report_url = $2 where id = $1 returning id, org_id, asset_id, site_id', [req.params.id, url])
-        if (!rows[0]) return null
-        await c.query(
-          `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
-           values (current_org_id(), $1, current_user_id(), 'maintenance', 'Maintenance completion report uploaded.', $2::jsonb)`,
-          [rows[0].asset_id, JSON.stringify([{ url, name: req.file!.originalname }])]
-        )
-        const { rows: full } = await c.query('select * from public.maintenance_events where id = $1', [req.params.id])
-        await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'maintenance_event.attachment.add', entityType: 'maintenance_event', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
-        await notifyRoleHolders(c, {
-          orgId: rows[0].org_id, siteId: rows[0].site_id, roles: ['owner', 'admin', 'manager'],
-          actorId: req.claims!.sub, kind: 'report_uploaded',
-          title: 'Maintenance report uploaded', body: req.file!.originalname,
-          entityType: 'asset', entityId: rows[0].asset_id,
-          dedupePrefix: `report_uploaded:maintenance_event:${rows[0].id}`,
-        })
-        return full[0]
+  ...uploadRoute(REPORT_UPLOAD, async (req, res, file) => {
+    const url = file.url
+    const row = await withOrgContext(claimsFromReq(req), async (c) => {
+      const { rows } = await c.query('update public.maintenance_events set report_url = $2 where id = $1 returning id, org_id, asset_id, site_id', [req.params.id, url])
+      if (!rows[0]) return null
+      await c.query(
+        `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
+         values (current_org_id(), $1, current_user_id(), 'maintenance', 'Maintenance completion report uploaded.', $2::jsonb)`,
+        [rows[0].asset_id, JSON.stringify([{ url, name: file.name }])]
+      )
+      const { rows: full } = await c.query('select * from public.maintenance_events where id = $1', [req.params.id])
+      await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'maintenance_event.attachment.add', entityType: 'maintenance_event', entityId: rows[0].id, after: { url, name: file.name } })
+      await notifyRoleHolders(c, {
+        orgId: rows[0].org_id, siteId: rows[0].site_id, roles: ['owner', 'admin', 'manager'],
+        actorId: req.claims!.sub, kind: 'report_uploaded',
+        title: 'Maintenance report uploaded', body: file.name,
+        entityType: 'asset', entityId: rows[0].asset_id,
+        dedupePrefix: `report_uploaded:maintenance_event:${rows[0].id}`,
       })
-    } catch (err) {
-      await cleanupOrphanedUpload(req.file.path)
-      throw err
-    }
-    if (!row) {
-      await cleanupOrphanedUpload(req.file.path)
-      return res.status(404).json({ error: 'not_found' })
-    }
+      return full[0]
+    })
+    if (!row) return res.status(404).json({ error: 'not_found' })
     res.status(201).json(row)
-  }
+  })
 )

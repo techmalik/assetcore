@@ -2,7 +2,7 @@ import { createReadStream, existsSync, mkdirSync } from 'node:fs'
 import { open as openFile, unlink } from 'node:fs/promises'
 import path from 'node:path'
 import multer from 'multer'
-import { Router, type RequestHandler } from 'express'
+import { Router, type Request, type Response, type RequestHandler } from 'express'
 import type { PoolClient } from 'pg'
 import { config } from './config.js'
 import { withOrgContext } from './db.js'
@@ -13,7 +13,7 @@ import { logger } from './logger.js'
  * authenticated caller's claims, never the request body, so uploads can't cross
  * tenants. One fixed-subdir instance per upload surface (asset photos, WO
  * attachments, compliance documents) — no reliance on multipart field ordering. */
-export function uploadTo(subdir: string, opts: { maxSizeBytes?: number } = {}) {
+function uploadTo(subdir: string, opts: { maxSizeBytes?: number } = {}) {
   const storage = multer.diskStorage({
     destination(req, _file, cb) {
       const orgId = req.claims?.org_id
@@ -32,7 +32,7 @@ export function uploadTo(subdir: string, opts: { maxSizeBytes?: number } = {}) {
 /** Wraps a multer `.single(field)` middleware so a file-too-large rejection
  * comes back as a clean 400 instead of falling through to the generic 500
  * error handler (multer's own error otherwise just gets `next(err)`ed). */
-export function guardedSingle(mw: RequestHandler): RequestHandler {
+function guardedSingle(mw: RequestHandler): RequestHandler {
   return (req, res, next) => {
     mw(req, res, (err: unknown) => {
       if (err) {
@@ -52,7 +52,9 @@ export function guardedSingle(mw: RequestHandler): RequestHandler {
 export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 // Office formats (docx/xlsx/pptx) are zip containers, so 'application/zip'
 // covers them at the signature level along with plain .zip attachments.
-export const DOCUMENT_MIME_TYPES = [...IMAGE_MIME_TYPES, 'application/pdf', 'application/zip'] as const
+// Legacy Office files (.doc/.xls/.ppt) and Outlook .msg share the OLE
+// compound-file signature.
+export const DOCUMENT_MIME_TYPES = [...IMAGE_MIME_TYPES, 'application/pdf', 'application/zip', 'application/x-ole-storage'] as const
 
 async function sniffMime(filePath: string): Promise<string | null> {
   const fh = await openFile(filePath, 'r')
@@ -65,20 +67,11 @@ async function sniffMime(filePath: string): Promise<string | null> {
     if (head.length >= 12 && head.subarray(0, 4).toString('ascii') === 'RIFF' && head.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp'
     if (head.length >= 4 && head.subarray(0, 4).toString('ascii') === '%PDF') return 'application/pdf'
     if (head.length >= 4 && head.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))) return 'application/zip'
+    if (head.length >= 8 && head.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))) return 'application/x-ole-storage'
     return null
   } finally {
     await fh.close()
   }
-}
-
-/** Validate an already-written upload against an allowlist by content, not
- * filename/header; deletes the file and returns false when it doesn't match
- * (caller is responsible for responding 400). */
-export async function validateUploadOrCleanup(filePath: string, allowed: readonly string[]): Promise<boolean> {
-  const mime = await sniffMime(filePath)
-  if (mime && allowed.includes(mime)) return true
-  await unlink(filePath).catch(() => {})
-  return false
 }
 
 /** Best-effort delete of a just-written upload after the DB write that was
@@ -86,7 +79,7 @@ export async function validateUploadOrCleanup(filePath: string, allowed: readonl
  * exist) — otherwise the file is orphaned on disk with nothing pointing to
  * it. Never throws; logs and swallows so cleanup failure doesn't mask the
  * original error the caller is already handling. */
-export async function cleanupOrphanedUpload(filePath: string | undefined | null): Promise<void> {
+async function cleanupOrphanedUpload(filePath: string | undefined | null): Promise<void> {
   if (!filePath) return
   await unlink(filePath).catch((err) => {
     logger.warn({ err, filePath }, 'failed to clean up orphaned upload')
@@ -107,6 +100,61 @@ export async function deleteUploadedFile(orgId: string, relPath: string): Promis
       logger.warn({ err, fullPath }, 'failed to delete removed upload')
     }
   })
+}
+
+/** A file that has passed the size limit and the content check. `url` is the
+ * org-relative path stored in the database and served by /api/files. */
+type UploadedFile = { url: string; name: string; size: number; mime: string; path: string }
+type UploadOpts = { subdir: string; field: string; mime: readonly string[]; maxBytes?: number }
+type UploadHandler<F> = (req: Request, res: Response, file: F) => Promise<unknown>
+
+/**
+ * Every upload route, in one shape: multer into FILES_DIR/{org}/{subdir},
+ * a too-large file answered 400 file_too_large, a missing file 400
+ * missing_file, the content sniffed against `mime` (400 unsupported_type),
+ * and the stored file deleted again if the handler throws or answers an
+ * error. Ten routes used to write this out by hand, and six of them skipped
+ * the size answer and the content check.
+ */
+export function uploadRoute(opts: UploadOpts, handler: UploadHandler<UploadedFile>): RequestHandler[] {
+  return buildUploadRoute(opts, true, handler as UploadHandler<UploadedFile | null>)
+}
+
+/** uploadRoute for a form where the file is optional: `file` is null when
+ * none was sent. */
+export function optionalUploadRoute(opts: UploadOpts, handler: UploadHandler<UploadedFile | null>): RequestHandler[] {
+  return buildUploadRoute(opts, false, handler)
+}
+
+function buildUploadRoute(opts: UploadOpts, required: boolean, handler: UploadHandler<UploadedFile | null>): RequestHandler[] {
+  const upload = uploadTo(opts.subdir, { maxSizeBytes: opts.maxBytes })
+  const run: RequestHandler = async (req, res) => {
+    if (!req.file) {
+      if (required) return void res.status(400).json({ error: 'missing_file' })
+      await handler(req, res, null)
+      return
+    }
+    const mime = await sniffMime(req.file.path)
+    if (!mime || !opts.mime.includes(mime)) {
+      await cleanupOrphanedUpload(req.file.path)
+      return void res.status(400).json({ error: 'unsupported_type' })
+    }
+    const file: UploadedFile = {
+      url: `${opts.subdir}/${req.file.filename}`,
+      name: req.file.originalname,
+      size: req.file.size,
+      mime,
+      path: req.file.path,
+    }
+    try {
+      await handler(req, res, file)
+    } catch (err) {
+      await cleanupOrphanedUpload(file.path)
+      throw err
+    }
+    if (res.statusCode >= 400) await cleanupOrphanedUpload(file.path)
+  }
+  return [guardedSingle(upload.single(opts.field)), run]
 }
 
 export const filesRouter = Router()

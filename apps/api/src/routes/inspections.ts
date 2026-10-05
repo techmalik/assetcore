@@ -5,14 +5,13 @@ import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
-import { uploadTo, cleanupOrphanedUpload } from '../files.js'
+import { uploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyUsers, notifyRoleHolders } from '../notify.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 
 export const inspectionsRouter = Router()
 
-const reportUpload = uploadTo('inspection-reports')
 
 const ALLOWED = [
   'asset_id', 'site_id', 'title', 'kind', 'status', 'inspector_id',
@@ -232,43 +231,33 @@ inspectionsRouter.patch('/inspections/:id', requireCap('inspection:update'), asy
 })
 
 // Inspection report upload — attach a report file after the inspection is done.
-inspectionsRouter.post('/inspections/:id/report', requireCap('inspection:update'), reportUpload.single('report'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'missing_file' })
-  const url = `inspection-reports/${req.file.filename}`
-  let row
-  try {
-    row = await withOrgContext(claimsFromReq(req), async (c) => {
-      const { rows } = await c.query('update public.inspections set report_url = $2 where id = $1 returning id, org_id, asset_id', [req.params.id, url])
-      if (!rows[0]) return null
-      if (rows[0].asset_id) {
-        await c.query(
-          `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
-           values (current_org_id(), $1, current_user_id(), 'inspection', 'Inspection report uploaded.', $2::jsonb)`,
-          [rows[0].asset_id, JSON.stringify([{ url, name: req.file!.originalname }])]
-        )
-      }
-      const { rows: full } = await c.query(`${SELECT} where i.id = $1`, [req.params.id])
-      const inspection = full[0]
-      await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'inspection.attachment.add', entityType: 'inspection', entityId: rows[0].id, after: { url, name: req.file!.originalname } })
-      await notifyRoleHolders(c, {
-        orgId: inspection.org_id, siteId: inspection.site_id, roles: ['owner', 'admin', 'manager', 'hse_officer'],
-        actorId: req.claims!.sub, kind: 'report_uploaded',
-        title: `Inspection report uploaded: ${inspection.title}`,
-        body: req.file!.originalname, entityType: 'inspection', entityId: inspection.id,
-        dedupePrefix: `report_uploaded:inspection:${inspection.id}`,
-      })
-      return inspection
+inspectionsRouter.post('/inspections/:id/report', requireCap('inspection:update'), ...uploadRoute({ subdir: 'inspection-reports', field: 'report', mime: DOCUMENT_MIME_TYPES }, async (req, res, file) => {
+  const url = file.url
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query('update public.inspections set report_url = $2 where id = $1 returning id, org_id, asset_id', [req.params.id, url])
+    if (!rows[0]) return null
+    if (rows[0].asset_id) {
+      await c.query(
+        `insert into public.asset_activity (org_id, asset_id, user_id, kind, body, attachments)
+         values (current_org_id(), $1, current_user_id(), 'inspection', 'Inspection report uploaded.', $2::jsonb)`,
+        [rows[0].asset_id, JSON.stringify([{ url, name: file.name }])]
+      )
+    }
+    const { rows: full } = await c.query(`${SELECT} where i.id = $1`, [req.params.id])
+    const inspection = full[0]
+    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'inspection.attachment.add', entityType: 'inspection', entityId: rows[0].id, after: { url, name: file.name } })
+    await notifyRoleHolders(c, {
+      orgId: inspection.org_id, siteId: inspection.site_id, roles: ['owner', 'admin', 'manager', 'hse_officer'],
+      actorId: req.claims!.sub, kind: 'report_uploaded',
+      title: `Inspection report uploaded: ${inspection.title}`,
+      body: file.name, entityType: 'inspection', entityId: inspection.id,
+      dedupePrefix: `report_uploaded:inspection:${inspection.id}`,
     })
-  } catch (err) {
-    await cleanupOrphanedUpload(req.file.path)
-    throw err
-  }
-  if (!row) {
-    await cleanupOrphanedUpload(req.file.path)
-    return res.status(404).json({ error: 'not_found' })
-  }
+    return inspection
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
   res.status(201).json(row)
-})
+}))
 
 // ── Checklist templates ──────────────────────────────────────────────────────
 // The checklist definition inspections never had (0023). PM's template lives
