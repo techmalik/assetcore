@@ -83,14 +83,14 @@ Baseline: 14 files, 236 tests, all pass (2026-10-05). The app is checked with `n
 | 2.11 | Add request helpers for parsing, result mapping and list queries | 2 | M | Done `4216d0b` |
 | 3.1 | Shared value lists in `packages/domain`, used by the API | 3 | M | Done `abf5dbb` (also shipped in the client tarball) |
 | 3.2 | App labels and tones keyed by the shared lists; one status badge | 3 | M | Done `82bc432` (pills keep inline style; .badge migration moves to Wave 5) |
-| 4.1 | One `useCan()` hook so per-user grants count everywhere | 4 | S | Open |
-| 4.2 | Show every failed save; one error-text path | 4 | S | Open |
-| 4.3 | One date module and money through `useMoney` | 4 | S | Open |
-| 4.4 | Stable context values and an error path for sign-in loading | 4 | S | Open |
-| 4.5 | `useResource` hook for loading, errors and stale responses | 4 | M | Open |
-| 4.6 | One `<Modal>`, an in-app confirm, and toasts instead of alerts | 4 | M | Open |
-| 4.7 | Shared `Stat`, `EmptyState`, `TableState`, `Field` | 4 | S | Open |
-| 4.8 | Profile, password and file helpers in `lib`, one query-string builder | 4 | S | Open |
+| 4.1 | One `useCan()` hook so per-user grants count everywhere | 4 | S | Done `e350123` (68 calls; lint blocks a direct `can` import) |
+| 4.2 | Show every failed save; one error-text path | 4 | S | Done `6b8986e` (4 swallowed failures fixed; no-body 5xx gets a code) |
+| 4.3 | One date module and money through `useMoney` | 4 | S | Done `3436402` (calendar grid keys stay UTC on purpose) |
+| 4.4 | Stable context values and an error path for sign-in loading | 4 | S | Done `2c80bc7` (offline sign-in no longer hangs; org load failure toasts) |
+| 4.5 | `useResource` hook for loading, errors and stale responses | 4 | M | Done `92d0253` (piloted on Integrity and Depreciation; the rest move in Wave 5) |
+| 4.6 | One `<Modal>`, an in-app confirm, and toasts instead of alerts | 4 | M | Done `5512d26` (16 alerts, 13 confirms; Modal piloted on Defects and Risks; lint warnings cap 2) |
+| 4.7 | Shared `Stat`, `EmptyState`, `TableState`, `Field` | 4 | S | Done `e85d491` (fixed Defects form losing focus per keystroke; lint refuses nested components; Scan's row renamed InfoRow) |
+| 4.8 | Profile, password and file helpers in `lib`, one query-string builder | 4 | S | Done `d8be350` (file fetches now refresh tokens, OOS-26; `api.raw` is a first step of 5.7) |
 | 5.0 | Route smoke test for each role | 5 | M | Open |
 | 5.1 | One way to close a work order | 5 | L | Open |
 | 5.2 | Split `approvals.ts` into rules, reads, matrix and direct | 5 | M | Open |
