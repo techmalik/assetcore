@@ -15,7 +15,7 @@ import {
 } from '../lib/db/approvals'
 import { errorText } from '../lib/errors'
 
-export function approvalErrorText(ex, fallback) {
+function approvalErrorText(ex, fallback) {
   return DIRECT_ERROR_TEXT[ex?.code] || errorText(ex, fallback)
 }
 
@@ -37,7 +37,7 @@ export function useApprovers(enabled = true) {
   return { approvers, loaded, lineManagerId }
 }
 
-export function approverLabel(a) {
+function approverLabel(a) {
   return `${a.full_name || a.email}${a.role_label ? ` · ${a.role_label}` : ''}${a.is_line_manager ? ' (line manager)' : ''}`
 }
 

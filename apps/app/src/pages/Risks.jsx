@@ -159,14 +159,14 @@ function ScalePicker({ label, scale, value, onChange, allowClear }) {
   )
 }
 
-function RiskModal({ risk, prefill, onClose, onSave, assets, sites, members }) {
+function RiskModal({ risk, onClose, onSave, assets, sites, members }) {
   const [form, setForm] = useState(() => risk ? {
     title: risk.title, description: risk.description ?? '', category: risk.category,
     likelihood: risk.likelihood, consequence: risk.consequence, controls: risk.controls ?? '',
     residual_likelihood: risk.residual_likelihood ?? '', residual_consequence: risk.residual_consequence ?? '',
     asset_id: risk.asset_id ?? '', site_id: risk.site_id ?? '', owner_id: risk.owner_id ?? '',
     review_date: risk.review_date ?? '', status: risk.status,
-  } : { ...EMPTY, ...prefill })
+  } : { ...EMPTY })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))

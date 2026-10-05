@@ -4,10 +4,6 @@ export async function listIntegrations() {
   return api.get('/integrations')
 }
 
-export async function getIntegration(kind) {
-  return api.get(`/integrations/${kind}`)
-}
-
 export async function upsertIntegration(kind, { label, config, enabled }) {
   return api.put(`/integrations/${kind}`, { label, config, enabled })
 }

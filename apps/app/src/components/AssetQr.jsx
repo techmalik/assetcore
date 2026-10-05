@@ -4,7 +4,7 @@ import { QRCodeSVG } from 'qrcode.react'
 // A label encodes a URL rather than a bare AIN so a phone's stock camera app
 // opens the asset directly. /scan also accepts a bare AIN, for scanners that
 // only emit text.
-export function assetQrValue(ain) {
+function assetQrValue(ain) {
   return `${window.location.origin}/scan?ain=${encodeURIComponent(ain)}`
 }
 

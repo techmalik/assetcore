@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { api, isConfigured } from './apiClient'
+import { api } from './apiClient'
 import { getSession, onAuthStateChange, getOrgRole, signOut as doSignOut } from './auth'
 
 const AuthCtx = createContext(null)
@@ -22,7 +22,6 @@ export function AuthProvider({ children }) {
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
 
   useEffect(() => {
-    if (!isConfigured) { setLoading(false); return }
     getSession().then((s) => { setSession(s); setLoading(false) })
     const sub = onAuthStateChange((s) => setSession(s))
     return () => sub.unsubscribe()
@@ -49,7 +48,7 @@ export function AuthProvider({ children }) {
 
   // Load org and check if onboarding is needed (no sites yet).
   useEffect(() => {
-    if (!isConfigured || !orgId) { setOrg(null); setNeedsOnboarding(false); return }
+    if (!orgId) { setOrg(null); setNeedsOnboarding(false); return }
     let cancelled = false
     Promise.all([api.get('/org'), api.get('/sites')]).then(([orgData, sites]) => {
       if (cancelled) return
@@ -66,7 +65,6 @@ export function AuthProvider({ children }) {
   const value = {
     loading,
     authed: Boolean(session),
-    session,
     user,
     orgId,
     roleKey,

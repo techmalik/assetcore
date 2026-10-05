@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { isConfigured } from './lib/apiClient'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { NotificationsProvider } from './lib/NotificationsContext'
 import { SidebarProvider } from './lib/SidebarContext'
@@ -10,7 +9,6 @@ import { can, ADMIN_ENTRY_CAPS } from './lib/rbac'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
 import LicenceBanner from './components/LicenceBanner.jsx'
-import NotConfigured from './pages/NotConfigured.jsx'
 import Auth from './pages/Auth.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
@@ -172,7 +170,6 @@ function Routed() {
 }
 
 export default function App() {
-  if (!isConfigured) return <NotConfigured />
   return (
     <ErrorBoundary>
       <AuthProvider>

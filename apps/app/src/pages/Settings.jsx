@@ -4,6 +4,7 @@ import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 import { api } from '../lib/apiClient'
+import { updateOrg } from '../lib/db/org'
 import { SUPPORT_EMAIL } from '../lib/instance'
 import { getLicence, licenceDaysRemaining } from '../lib/db/licence'
 import { CURRENCY_CODE, currencySymbol, fmtMoneyExact } from '../lib/money.jsx'
@@ -233,7 +234,7 @@ function CurrencyCard() {
     }
     setSaving(true); setErr(null); setOk(null)
     try {
-      await api.patch('/org', {
+      await updateOrg({
         base_currency: form.base_currency,
         // Clearing the secondary clears the rate and its date server-side, so
         // a stale rate cannot resurface if one is set again later.
@@ -345,7 +346,7 @@ function OrgTab() {
   const save = async () => {
     setSaving(true); setErr(null); setOk(null)
     try {
-      await api.patch('/org', { name: form.name, short_name: form.short_name, region: form.region || null })
+      await updateOrg({ name: form.name, short_name: form.short_name, region: form.region || null })
       setOk('Organisation details saved.')
     } catch (e) { setErr(errorText(e)) }
     finally { setSaving(false) }

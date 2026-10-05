@@ -4,8 +4,8 @@ export async function getOrg() {
   return api.get('/org')
 }
 
-// PATCH replaces the settings jsonb wholesale — callers must merge before saving
-// so unrelated keys (e.g. { onboarded: true }) are preserved.
+// Owner-only. PATCH replaces the settings jsonb wholesale, so callers must
+// merge before saving or unrelated keys (e.g. { onboarded: true }) are lost.
 export async function updateOrg(patch) {
   return api.patch('/org', patch)
 }

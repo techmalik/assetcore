@@ -1,5 +1,4 @@
 export declare const ROLE_CAPABILITIES: Record<string, string[]>
-export declare const EXPLICIT_ONLY_CAPS: string[]
 export declare function can(
   roleKey: string | null | undefined,
   capability: string,

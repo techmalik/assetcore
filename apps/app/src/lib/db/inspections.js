@@ -46,25 +46,9 @@ export const CONDITION_RATINGS = [
 
 export const RATING_LABEL = Object.fromEntries(CONDITION_RATINGS.map(([v, l]) => [v, l]))
 
-export async function getInspection(id) {
-  return api.get(`/inspections/${id}`)
-}
-
 // The checklist definition behind an inspection. Picked when the inspection is
 // raised and copied onto it, so editing a template later never rewrites an
 // inspection already carried out.
 export async function listInspectionTemplates({ include_inactive = false } = {}) {
   return api.get(`/inspection-templates${include_inactive ? '?include_inactive=true' : ''}`)
-}
-
-export async function createInspectionTemplate(input) {
-  return api.post('/inspection-templates', input)
-}
-
-export async function updateInspectionTemplate(id, patch) {
-  return api.patch(`/inspection-templates/${id}`, patch)
-}
-
-export async function retireInspectionTemplate(id) {
-  await api.del(`/inspection-templates/${id}`)
 }

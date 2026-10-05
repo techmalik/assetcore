@@ -13,10 +13,6 @@ export async function listAssets({ status, archived, locationId } = {}) {
   return api.get(`/assets${s ? `?${s}` : ''}`)
 }
 
-export async function getAsset(id) {
-  return api.get(`/assets/${id}`)
-}
-
 export async function createAsset(input) {
   return api.post('/assets', input)
 }

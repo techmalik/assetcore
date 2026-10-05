@@ -57,13 +57,13 @@ const EMPTY = {
   identified_date: new Date().toISOString().slice(0, 10),
 }
 
-function DefectModal({ defect, prefill, onClose, onSave, assets, sites, inspections }) {
+function DefectModal({ defect, onClose, onSave, assets, sites, inspections }) {
   const [form, setForm] = useState(() => defect ? {
     title: defect.title, description: defect.description ?? '', severity: defect.severity,
     category: defect.category ?? '', asset_id: defect.asset_id ?? '', site_id: defect.site_id ?? '',
     inspection_id: defect.inspection_id ?? '', due_date: defect.due_date ?? '',
     identified_date: defect.identified_date,
-  } : { ...EMPTY, ...prefill })
+  } : { ...EMPTY })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))

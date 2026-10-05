@@ -40,8 +40,8 @@ export const WO_PRIORITY_STYLE = {
 // tone-per-status) - status progression is shown by position/label, not color.
 // Draft is the one exception: a system-proposed WO awaiting approval renders
 // muted/neutral so it reads as "not yet real work".
-export const WO_STATUS_STYLE = { bg: 'var(--b50)', c: 'var(--b700)', br: 'var(--b200)' }
-export const WO_DRAFT_STYLE = { bg: 'var(--n100)', c: 'var(--n600)', br: 'var(--n300)' }
+const WO_STATUS_STYLE = { bg: 'var(--b50)', c: 'var(--b700)', br: 'var(--b200)' }
+const WO_DRAFT_STYLE = { bg: 'var(--n100)', c: 'var(--n600)', br: 'var(--n300)' }
 
 export function woStatusStyle(status) {
   return status === 'draft' ? WO_DRAFT_STYLE : WO_STATUS_STYLE
@@ -77,19 +77,12 @@ export async function addWorkOrderComment(workOrderId, body) {
   return api.post(`/work-orders/${workOrderId}/comments`, { body })
 }
 
-export async function softDeleteWorkOrder(id) {
-  await api.del(`/work-orders/${id}`)
-}
-
 export async function uploadWorkOrderAttachment(id, file) {
   const form = new FormData()
   form.append('file', file)
   return api.upload(`/work-orders/${id}/attachments`, form)
 }
 // ── Task checklist ───────────────────────────────────────────────────────────
-export async function listWorkOrderTasks(id) {
-  return api.get(`/work-orders/${id}/tasks`)
-}
 
 export async function addWorkOrderTask(id, description) {
   return api.post(`/work-orders/${id}/tasks`, { description })
@@ -104,16 +97,9 @@ export async function deleteWorkOrderTask(id, taskId) {
 }
 
 // ── Parts drawn against the job ──────────────────────────────────────────────
-export async function listWorkOrderParts(id) {
-  return api.get(`/work-orders/${id}/parts`)
-}
 
 export async function addWorkOrderPart(id, line) {
   return api.post(`/work-orders/${id}/parts`, line)
-}
-
-export async function updateWorkOrderPart(id, lineId, patch) {
-  return api.patch(`/work-orders/${id}/parts/${lineId}`, patch)
 }
 
 export async function deleteWorkOrderPart(id, lineId) {

@@ -25,11 +25,6 @@ export function healthColor(score) {
   return { good: 'var(--sg)', attention: 'var(--sa)', critical: 'var(--sr)' }[healthBand(score)]
 }
 
-/** Text-weight semantic color token (for numbers/labels on light backgrounds). */
-export function healthTextColor(score) {
-  return { good: 'var(--sgt)', attention: 'var(--sat)', critical: 'var(--srt)' }[healthBand(score)]
-}
-
 /** Human-readable condition label for a score. */
 export function healthLabel(score) {
   return { good: 'Healthy', attention: 'Needs attention', critical: 'Critical condition' }[healthBand(score)]

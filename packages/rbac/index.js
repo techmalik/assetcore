@@ -123,7 +123,7 @@ export const ROLE_CAPABILITIES = {
 // ADMIN_ENTRY_CAPS). This list makes the wildcard mean what it was written to
 // mean and brings the auditor's (and the directors') explicit grant back to
 // life.
-export const EXPLICIT_ONLY_CAPS = ['audit:read']
+const EXPLICIT_ONLY_CAPS = ['audit:read']
 
 /** Role → capability check. Per-user grants (extraCaps) sit on top of the
  * role baseline. */

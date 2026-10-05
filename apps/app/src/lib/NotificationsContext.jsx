@@ -62,7 +62,7 @@ export function NotificationsProvider({ children }) {
   }, [])
 
   return (
-    <NotifCtx.Provider value={{ unreadCount, notifications, refresh, markRead, markUnread, markAllRead }}>
+    <NotifCtx.Provider value={{ unreadCount, notifications, markRead, markUnread, markAllRead }}>
       {children}
     </NotifCtx.Provider>
   )

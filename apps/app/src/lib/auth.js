@@ -1,6 +1,4 @@
-import { api, isConfigured, getAccessToken, setAccessToken, onTokenChange, refreshAccessToken } from './apiClient'
-
-export { isConfigured }
+import { api, getAccessToken, setAccessToken, onTokenChange, refreshAccessToken } from './apiClient'
 
 // --- claims (org_id + role_key live in the JWT, same claim names as before) ---
 function decodeJwt(token) {
@@ -79,11 +77,6 @@ export function getOrgRole(session) {
   return { orgId: c.org_id ?? null, roleKey: c.role_key ?? null, extraCaps: c.extra_caps ?? [] }
 }
 
-export async function currentOrgId() {
-  const session = await getSession()
-  return session ? getOrgRole(session).orgId : null
-}
-
 // --- email/password ---------------------------------------------------------
 export async function signIn(email, password) {
   const data = await api.post('/auth/login', { email, password })
@@ -99,10 +92,4 @@ export async function signIn(email, password) {
 export async function signOut() {
   try { await api.post('/auth/logout') } catch { /* already signed out */ }
   setAccessToken(null)
-}
-
-// SSO/SAML (Azure AD) is parked backlog — this boundary keeps the call site stable
-// for when it's picked up, even with no caller today.
-export async function signInWithSSO(/* domain */) {
-  throw new Error('SSO is not enabled yet')
 }

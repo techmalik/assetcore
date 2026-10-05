@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
@@ -11,7 +11,6 @@ import { listPMSchedules, createPMSchedule, softDeletePMSchedule } from '../lib/
 import { listPMTasks, updatePMTask, generatePMTasks, uploadMaintenanceReport } from '../lib/db/pmTasks'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { listAssets } from '../lib/db/assets'
-import { api } from '../lib/apiClient'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 import { useToast } from '../lib/ToastContext'
@@ -26,7 +25,6 @@ const TASK_STATUS = {
   skipped:     { bg:'var(--n100)', c:'var(--n500)', br:'var(--n200)', label:'Skipped' },
 }
 const FREQ_LABEL = { daily:'Daily', weekly:'Weekly', monthly:'Monthly', quarterly:'Quarterly', semi_annual:'Semi-annual', annual:'Annual' }
-const PRIORITY_COLOR = { critical:'var(--srt)', high:'var(--sat)', medium:'var(--n600)', low:'var(--sgt)' }
 
 function fmtDate(d) {
   if (!d) return '—'

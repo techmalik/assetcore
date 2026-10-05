@@ -2,11 +2,6 @@
 // handle routing) — override with VITE_API_URL for a split-host dev setup.
 const BASE = import.meta.env.VITE_API_URL || '/api'
 
-// No external keys are needed anymore — same-origin (or VITE_API_URL) always
-// works. Kept as a named export so call sites that still branch on it don't
-// need to change shape (removed entirely in Phase 2's copy sweep).
-export const isConfigured = true
-
 const TOKEN_KEY = 'ac_access_token'
 let accessToken = localStorage.getItem(TOKEN_KEY) || null
 const listeners = new Set()

@@ -8,14 +8,14 @@
 // identically; reports counts via onCounts so a host can badge a tab without a
 // second fetch. `embedded` suppresses only the page-level title block.
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import StatusBadge from './StatusBadge.jsx'
 import { useAuth } from '../lib/AuthContext'
 import { can } from '../lib/rbac'
 import {
   listComplianceLicences, createComplianceLicence, updateComplianceLicence,
   softDeleteComplianceLicence, listAuthorities, checkLicenceExpiry,
-  licenceStatus, daysUntilExpiry, uploadComplianceDocument, deleteComplianceDocument,
+  daysUntilExpiry, uploadComplianceDocument, deleteComplianceDocument,
   listComplianceAudits, createComplianceAudit, updateComplianceAudit, softDeleteComplianceAudit, uploadAuditDocument,
   getComplianceAudit, addAuditFinding, updateAuditFinding, raiseFindingDefect,
   AUDIT_OUTCOMES, OUTCOME_LABEL, OUTCOME_CLASS, FINDING_SEVERITIES, FINDING_CLASS,
@@ -170,11 +170,6 @@ function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded })
   const days = daysUntilExpiry(lic.expiry_date)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef(null)
-
-  async function viewDocument() {
-    try { await api.download(`/files/${lic.document_url}`, lic.document_url.split('/').pop()) }
-    catch (ex) { toast.error(errorText(ex, 'Failed to download document.')) }
-  }
 
   async function handleDocPick(e) {
     const file = e.target.files?.[0]

@@ -23,8 +23,6 @@ export const DEFECT_STATUSES = [
 
 export const STATUS_LABEL = Object.fromEntries(DEFECT_STATUSES)
 
-export const OPEN_STATUSES = ['open', 'acknowledged', 'in_progress', 'deferred']
-
 // Any of: status, severity, asset_id, inspection_id, open, overdue, q.
 export async function listDefects(filters = {}) {
   const params = new URLSearchParams()

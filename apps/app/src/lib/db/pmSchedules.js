@@ -8,10 +8,6 @@ export async function createPMSchedule(data) {
   return api.post('/pm-schedules', data)
 }
 
-export async function updatePMSchedule(id, updates) {
-  return api.patch(`/pm-schedules/${id}`, updates)
-}
-
 export async function softDeletePMSchedule(id) {
   await api.del(`/pm-schedules/${id}`)
 }

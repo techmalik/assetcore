@@ -416,7 +416,6 @@ function MatrixTab({ canManage }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Approvals({ dark, toggleDark }) {
-  const { money } = useMoney()
   const { roleKey, user } = useAuth()
   const userId = user?.id
   const canDecide = can(roleKey, 'approval:decide')
@@ -456,7 +455,7 @@ export default function Approvals({ dark, toggleDark }) {
   // "returned") lands on the request itself rather than on a list to search.
   const [searchParams] = useSearchParams()
   const deepLinkId = searchParams.get('id')
-  useEffect(() => { if (deepLinkId) openDetail(deepLinkId) }, [deepLinkId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (deepLinkId) openDetail(deepLinkId) }, [deepLinkId])
 
   const { extraCaps } = useAuth()
   // The direct-route actions are gated server-side on approval:decide with

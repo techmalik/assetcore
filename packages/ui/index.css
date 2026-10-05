@@ -205,8 +205,6 @@ a { text-decoration: none; color: inherit; }
 .btn-secondary { background: var(--n0); color: var(--n800); border: 1px solid var(--n300); }
 .btn-secondary:hover:not(:disabled) { background: var(--n50); }
 /* Destructive actions read red so archive/delete visibly warn before acting. */
-.btn-danger { background: var(--sr); color: #fff; }
-.btn-danger:hover:not(:disabled) { background: var(--srt); }
 .btn-danger-soft { background: var(--srb); color: var(--srt); border: 1px solid var(--srbr); }
 .btn-danger-soft:hover:not(:disabled) { background: var(--sr); color: #fff; border-color: var(--sr); }
 
@@ -232,14 +230,7 @@ a { text-decoration: none; color: inherit; }
   margin-bottom: 5px;
 }
 
-/* KPI cards */
-.kpi {
-  background: var(--n0);
-  border: var(--bdr);
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: var(--sh-sm);
-}
+/* Clickable KPI cards (a modifier on .stat-card) */
 .kpi-link {
   cursor: pointer;
   transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;

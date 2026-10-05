@@ -12,7 +12,7 @@
 // `category.*` is filed under entity type `asset_category`; `user.*` under
 // `membership`; and `maintenance.complete` under `asset`.
 
-export const ACTION_LABEL = {
+const ACTION_LABEL = {
   // Work orders
   'wo.create': 'Created work order',
   'wo.update': 'Updated work order',

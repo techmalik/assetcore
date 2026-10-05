@@ -27,7 +27,6 @@ const SYMBOLS = {
 
 /** The currency in force before an org has configured one. */
 export const CURRENCY_CODE = 'NGN'
-export const CURRENCY_SYMBOL = SYMBOLS[CURRENCY_CODE]
 
 /** A currency's symbol, or its ISO code when we don't have one — a code is
  * always better than the wrong symbol. */
@@ -66,7 +65,7 @@ export function fmtMoneyExact(cents, { zero = '—', code = CURRENCY_CODE } = {}
 }
 
 /** The converted figure in minor units, or null when no second currency is set. */
-export function convert(cents, org) {
+function convert(cents, org) {
   if (!org?.secondary_currency || !org?.fx_rate) return null
   if (cents == null) return null
   const n = Number(cents)
@@ -87,10 +86,6 @@ export function useMoney() {
   const base = org?.base_currency || CURRENCY_CODE
 
   return {
-    base,
-    secondary: org?.secondary_currency || null,
-    fxRate: org?.fx_rate ? Number(org.fx_rate) : null,
-    fxRateAt: org?.fx_rate_at || null,
     money: (cents) => fmtMoney(cents, { zero: '—', code: base }),
     moneyFull: (cents) => fmtMoneyExact(cents, { code: base }),
     // `full` mirrors the base figure's own formatting: an exact base figure

@@ -9,10 +9,6 @@ export async function listComplianceLicences({ locationId } = {}) {
   }))
 }
 
-export async function getComplianceLicenceCounts() {
-  return api.get('/compliance-licences/counts')
-}
-
 export async function createComplianceLicence(data) {
   return api.post('/compliance-licences', data)
 }

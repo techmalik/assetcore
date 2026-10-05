@@ -50,10 +50,6 @@ export async function adjustStock(id, { kind, quantity, reason, unit_cost_cents 
   return api.post(`/spare-parts/${id}/adjust`, { kind, quantity, reason, unit_cost_cents })
 }
 
-export async function listMovements(id) {
-  return api.get(`/spare-parts/${id}/movements`)
-}
-
 export async function linkPartToAsset(partId, assetId) {
   await api.post(`/spare-parts/${partId}/assets`, { asset_id: assetId })
 }

@@ -601,7 +601,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
   async function transition(newStatus) {
     setTransitioning(true)
     try {
-      const updated = await transitionWorkOrder(wo.id, newStatus)
+      await transitionWorkOrder(wo.id, newStatus)
       const fresh = await getWorkOrder(wo.id)
       setWo(fresh)
       onUpdate()
