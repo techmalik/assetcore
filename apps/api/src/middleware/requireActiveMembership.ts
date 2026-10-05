@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 import { ownerPool } from '../db.js'
-import { resolveSiteIds } from '../auth/routes.js'
+import { resolveSiteIds } from '../auth/membership.js'
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
