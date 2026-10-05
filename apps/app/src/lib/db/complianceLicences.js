@@ -72,7 +72,7 @@ export async function getPmCompliance({ from, to, siteId } = {}) {
 }
 
 // Client-side status helper (mirrors the DB function)
-export function licenceStatus(expiryDate) {
+function licenceStatus(expiryDate) {
   const exp = new Date(expiryDate); exp.setHours(0,0,0,0)
   const now = new Date(); now.setHours(0,0,0,0)
   const diff = Math.floor((exp - now) / 86400000)

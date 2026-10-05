@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
-import { useAuth } from '../lib/AuthContext.jsx'
+import { useAuth, initialsOf } from '../lib/AuthContext.jsx'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { getDashboardStats, getRecentWorkOrders, getDashboardAlerts } from '../lib/db/dashboard.js'
 import { getPmCompliance } from '../lib/db/complianceLicences.js'
@@ -51,12 +51,6 @@ function slaDueLabel(sla_due) {
   if (days === 0) return { text: 'Today', color: 'var(--sat)' }
   if (days <= 2) return { text: `${days}d left`, color: 'var(--sat)' }
   return { text: new Date(sla_due).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), color: 'var(--n500)' }
-}
-
-function initialsOf(name) {
-  if (!name) return '?'
-  const p = name.trim().split(/\s+/)
-  return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase()
 }
 
 // Time of day from the viewer's own clock — a greeting is about where they are.

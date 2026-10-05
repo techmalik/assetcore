@@ -8,7 +8,7 @@ import { ownerPool } from './db.js'
 // version is kept equal to the product version in the root package.json, and
 // test/system.test.ts fails if the two part.
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-export const APP_VERSION: string = JSON.parse(
+const APP_VERSION: string = JSON.parse(
   readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')
 ).version
 

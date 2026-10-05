@@ -1,0 +1,61 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [
+        "scripts/*.mjs"
+      ]
+    },
+    "apps/app": {
+      "entry": [
+        "src/main.jsx",
+        "src/**/*.test.{js,jsx}",
+        "src/test/setup.js"
+      ],
+      "project": [
+        "src/**/*.{js,jsx}"
+      ],
+      "ignore": [
+        "src/pages/SpareParts.jsx",
+        "src/lib/db/spareParts.js"
+      ]
+    },
+    "apps/admin": {
+      "entry": [
+        "src/main.jsx"
+      ],
+      "project": [
+        "src/**/*.{js,jsx}"
+      ]
+    },
+    "apps/api": {
+      "entry": [
+        "src/index.ts",
+        "src/cli/*.ts",
+        "test/**/*.ts",
+        "src/**/*.test.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "test/**/*.ts"
+      ],
+      "ignore": [
+        "test/tmp/**"
+      ],
+      "ignoreDependencies": [
+        "pino-pretty",
+        "pino-roll"
+      ]
+    },
+    "packages/rbac": {
+      "entry": [
+        "index.js",
+        "*.test.js"
+      ],
+      "ignoreDependencies": [
+        "vitest"
+      ]
+    },
+    "packages/ui": {}
+  }
+}

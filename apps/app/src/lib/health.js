@@ -9,8 +9,8 @@
 // defaults to 50, maintenance/auto-WO defaults to 30 — Admin → Configuration);
 // the color bands intentionally stay at the spec values regardless.
 
-export const HEALTH_YELLOW_MAX = 50
-export const HEALTH_RED_MAX = 30
+const HEALTH_YELLOW_MAX = 50
+const HEALTH_RED_MAX = 30
 
 /** Band key for a 0–100 score: 'good' | 'attention' | 'critical'. */
 export function healthBand(score) {
