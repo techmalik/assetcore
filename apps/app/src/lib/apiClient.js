@@ -123,36 +123,75 @@ async function upload(path, formData, { retry = true } = {}) {
   return payload
 }
 
-// Authenticated file download — plain <a href> can't carry the Authorization
-// header, so this fetches the blob and triggers a save via a throwaway link.
-async function download(path, filename) {
+/**
+ * An authenticated GET that returns the raw Response, for files: an <img src>
+ * or <a href> cannot carry the Authorization header. Like request(), it
+ * refreshes the token once on a 401 and throws an error with a code; the file
+ * helpers used to do neither, so a photo or download failed once the access
+ * token expired, and said only "Download failed (401)".
+ */
+async function raw(path, { retry = true } = {}) {
   const res = await fetch(`${BASE}${path}`, {
     credentials: 'include',
     headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
   })
-  if (!res.ok) throw new Error(`Download failed (${res.status})`)
-  const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
+  if (res.status === 401 && retry) {
+    const refreshed = await refresh()
+    if (refreshed) return raw(path, { retry: false })
+  }
+  if (!res.ok) {
+    let payload = null
+    try { payload = await res.json() } catch { /* not JSON */ }
+    const err = new Error(payload?.error || `Download failed (${res.status})`)
+    err.status = res.status
+    err.code = payload?.error ?? fallbackCode(res.status)
+    throw err
+  }
+  return res
+}
+
+/** Saves a blob through a throwaway link. The object URL is revoked a little
+ * later: revoking it in the same tick can cancel the save in Firefox and
+ * Safari. */
+export function saveBlob(blob, filename) {
+  const href = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url
+  a.href = href
   a.download = filename
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(href), 10_000)
 }
 
-// Authenticated file fetch for inline display (<img>, "View document" links) —
-// same auth problem as download(), but returns an object URL instead of
-// triggering a save. Caller is responsible for URL.revokeObjectURL when done.
+async function download(path, filename) {
+  const res = await raw(path)
+  saveBlob(await res.blob(), filename)
+}
+
+// For inline display (<img>, "View document"). The caller revokes the URL.
 async function blobUrl(path) {
-  const res = await fetch(`${BASE}${path}`, {
-    credentials: 'include',
-    headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-  })
-  if (!res.ok) throw new Error(`Fetch failed (${res.status})`)
-  const blob = await res.blob()
-  return URL.createObjectURL(blob)
+  const res = await raw(path)
+  return URL.createObjectURL(await res.blob())
+}
+
+/**
+ * A query string, with its '?', or '' when nothing is set. Leaves out
+ * undefined, null, '', false and 'all' (every filter dropdown's "no filter"
+ * value, which the API also reads as no filter), joins arrays with commas, and
+ * encodes every value.
+ *
+ *   api.get(`/defects${qs({ status, severity, q })}`)
+ */
+export function qs(params = {}) {
+  const p = new URLSearchParams()
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '' || v === false || v === 'all') continue
+    if (Array.isArray(v)) { if (v.length) p.set(k, v.join(',')) }
+    else p.set(k, String(v))
+  }
+  const s = p.toString()
+  return s ? `?${s}` : ''
 }
 
 export const api = {
@@ -164,4 +203,5 @@ export const api = {
   upload,
   download,
   blobUrl,
+  raw,
 }

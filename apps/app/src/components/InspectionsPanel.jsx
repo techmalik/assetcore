@@ -25,7 +25,7 @@ import { createDefect, DEFECT_SEVERITIES } from '../lib/db/defects'
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
 import { listOrgUsers } from '../lib/db/orgMembers'
-import { api } from '../lib/apiClient'
+import { downloadFile } from '../lib/db/files'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
@@ -233,7 +233,7 @@ function FindingsModal({ inspection, onClose, onSaved, readOnly = false }) {
   }
 
   async function viewReport() {
-    try { await api.download(`/files/${reportUrl}`, reportUrl.split('/').pop()) } catch (e) { toast.error(errorText(e)) }
+    try { await downloadFile(reportUrl) } catch (e) { toast.error(errorText(e)) }
   }
 
   const inp = { width:'100%', border:'1px solid var(--n200)', borderRadius:4, padding:'8px 10px', fontSize:13, fontFamily:'var(--ff-u)', outline:'none', resize:'vertical', boxSizing:'border-box', background:'var(--n0)', color:'var(--n900)' }

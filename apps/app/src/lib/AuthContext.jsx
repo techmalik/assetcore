@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
-import { api } from './apiClient'
+import { getOrg } from './db/org'
+import { listSites } from './db/sites'
 import { getSession, onAuthStateChange, getOrgRole, signOut as doSignOut } from './auth'
 import { can } from './rbac'
 import { useToast } from './ToastContext'
@@ -50,7 +51,7 @@ export function AuthProvider({ children }) {
   // money figure in the app reads through useMoney() — takes effect without a
   // reload.
   const refreshOrg = useCallback(async () => {
-    const o = await api.get('/org')
+    const o = await getOrg()
     setOrg(o || null)
     return o
   }, [])
@@ -63,7 +64,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!orgId) { setOrg(null); setNeedsOnboarding(false); return }
     let cancelled = false
-    Promise.all([api.get('/org'), api.get('/sites')]).then(([orgData, sites]) => {
+    Promise.all([getOrg(), listSites()]).then(([orgData, sites]) => {
       if (cancelled) return
       setOrg(orgData || null)
       const alreadyOnboarded = orgData?.settings?.onboarded === true

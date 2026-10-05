@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../lib/apiClient'
+import { forgotPassword } from '../lib/auth'
 import { errorText } from '../lib/errors'
 
 const Logo = () => (
@@ -21,7 +21,7 @@ export default function ForgotPassword() {
     setError(null); setBusy(true)
     try {
       // The API always returns 200 here, whether or not the email is registered.
-      await api.post('/auth/forgot-password', { email })
+      await forgotPassword(email)
       setSent(true)
     } catch (err) {
       setError(errorText(err, 'Something went wrong. Please try again.'))

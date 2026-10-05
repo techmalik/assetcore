@@ -1,4 +1,4 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 export const ESCALATION_ENTITY_TYPES = [
   ['work_order', 'Work order'],
@@ -26,7 +26,7 @@ export async function listEscalationRules() {
 }
 
 export async function listEscalationEvents(limit = 50) {
-  return api.get(`/escalation-events?limit=${limit}`)
+  return api.get(`/escalation-events${qs({ limit })}`)
 }
 
 export async function createEscalationRule(input) {

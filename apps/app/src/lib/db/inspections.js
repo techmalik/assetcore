@@ -1,12 +1,7 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 export async function listInspections({ statuses, asset_id, locationId, limit = 100 } = {}) {
-  const params = new URLSearchParams()
-  if (statuses?.length) params.set('statuses', statuses.join(','))
-  if (asset_id) params.set('asset_id', asset_id)
-  if (locationId) params.set('location_id', locationId)
-  params.set('limit', limit)
-  return api.get(`/inspections?${params.toString()}`)
+  return api.get(`/inspections${qs({ statuses, asset_id, location_id: locationId, limit })}`)
 }
 
 export async function createInspection(data) {

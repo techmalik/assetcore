@@ -1,14 +1,7 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 export async function listPMTasks({ statuses, dueBefore, dueAfter, asset_id, locationId, limit = 100 } = {}) {
-  const params = new URLSearchParams()
-  if (statuses?.length) params.set('statuses', statuses.join(','))
-  if (dueBefore) params.set('dueBefore', dueBefore)
-  if (dueAfter) params.set('dueAfter', dueAfter)
-  if (asset_id) params.set('asset_id', asset_id)
-  if (locationId) params.set('location_id', locationId)
-  params.set('limit', limit)
-  return api.get(`/pm-tasks?${params.toString()}`)
+  return api.get(`/pm-tasks${qs({ statuses, dueBefore, dueAfter, asset_id, location_id: locationId, limit })}`)
 }
 
 export async function updatePMTask(id, updates) {

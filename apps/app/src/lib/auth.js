@@ -93,3 +93,17 @@ export async function signOut() {
   try { await api.post('/auth/logout') } catch { /* already signed out */ }
   setAccessToken(null)
 }
+
+// --- passwords ----------------------------------------------------------------
+export async function changePassword(currentPassword, newPassword) {
+  return api.post('/auth/change-password', { currentPassword, newPassword })
+}
+
+/** Always answers ok, whether or not the address has an account. */
+export async function forgotPassword(email) {
+  return api.post('/auth/forgot-password', { email })
+}
+
+export async function resetPassword(token, password) {
+  return api.post('/auth/reset-password', { token, password })
+}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { api } from '../lib/apiClient'
+import { resetPassword } from '../lib/auth'
 import { useAuth } from '../lib/AuthContext'
 import { errorText } from '../lib/errors'
 
@@ -30,7 +30,7 @@ export default function ResetPassword() {
     if (password.length < 8) return setError('Password must be at least 8 characters.')
     setBusy(true)
     try {
-      await api.post('/auth/reset-password', { token, password })
+      await resetPassword(token, password)
       // The link is normally opened by the admin who generated it, still
       // signed in as themselves. The password just set belongs to somebody
       // else, so end that session before sending them to the sign-in form —

@@ -1,4 +1,4 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 export const APPROVAL_ENTITY_TYPES = [
   ['work_order', 'Work order'],
@@ -122,12 +122,7 @@ export async function retireApprovalRule(id) {
 // ── Requests ─────────────────────────────────────────────────────────────────
 // scope: 'inbox' (waiting on me), 'mine' (I submitted), 'all'.
 export async function listApprovals(filters = {}) {
-  const params = new URLSearchParams()
-  for (const [k, v] of Object.entries(filters)) {
-    if (v !== undefined && v !== null && v !== '' && v !== 'all') params.set(k, v)
-  }
-  const qs = params.toString()
-  return api.get(`/approvals${qs ? `?${qs}` : ''}`)
+  return api.get(`/approvals${qs(filters)}`)
 }
 
 export async function getApprovalStats() {

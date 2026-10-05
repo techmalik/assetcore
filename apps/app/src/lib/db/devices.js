@@ -1,8 +1,7 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 export async function listDevices({ statuses } = {}) {
-  const qs = statuses?.length ? `?statuses=${statuses.join(',')}` : ''
-  return api.get(`/devices${qs}`)
+  return api.get(`/devices${qs({ statuses })}`)
 }
 
 export async function createDevice(data) {

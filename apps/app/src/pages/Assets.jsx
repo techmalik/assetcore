@@ -30,7 +30,7 @@ import {
   ASSET_STATUS, ASSET_DEPRECIATION_METHOD, PM_TASK_STATUS, PM_TASK_STATUSES, INSPECTION_STATUS, INSPECTION_STATUSES,
   PRIORITY, toneOf, labelOf,
 } from '../lib/domain'
-import { api } from '../lib/apiClient'
+import { downloadFile } from '../lib/db/files'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
@@ -953,7 +953,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
   }
 
   async function viewDoc(doc) {
-    try { await api.download(`/files/${doc.url}`, doc.name) } catch (ex) { toast.error(errorText(ex, 'Failed to download file.')) }
+    try { await downloadFile(doc.url, doc.name) } catch (ex) { toast.error(errorText(ex, 'Failed to download file.')) }
   }
 
   const section = { fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)', marginBottom: 8 }

@@ -1,16 +1,11 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 // Canonical data-access module — copy this shape for every other entity
 // (work orders, PM, inspections, compliance). Components call these helpers;
 // they never inline fetch calls.
 
 export async function listAssets({ status, archived, locationId } = {}) {
-  const qs = new URLSearchParams()
-  if (status && status !== 'all') qs.set('status', status)
-  if (archived) qs.set('archived', '1')
-  if (locationId) qs.set('location_id', locationId)
-  const s = qs.toString()
-  return api.get(`/assets${s ? `?${s}` : ''}`)
+  return api.get(`/assets${qs({ status, archived: archived ? '1' : null, location_id: locationId })}`)
 }
 
 export async function createAsset(input) {
@@ -40,7 +35,7 @@ export async function uploadAssetPhoto(id, file) {
 }
 
 export async function deleteAssetPhoto(id, url) {
-  return api.del(`/assets/${id}/photos?url=${encodeURIComponent(url)}`)
+  return api.del(`/assets/${id}/photos${qs({ url })}`)
 }
 
 export async function uploadAssetDocument(id, file) {
@@ -50,7 +45,7 @@ export async function uploadAssetDocument(id, file) {
 }
 
 export async function deleteAssetDocument(id, url) {
-  return api.del(`/assets/${id}/documents?url=${encodeURIComponent(url)}`)
+  return api.del(`/assets/${id}/documents${qs({ url })}`)
 }
 
 export async function listAssetActivity(id) {

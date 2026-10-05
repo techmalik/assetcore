@@ -1,4 +1,4 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 // Worst first — the order the page lists them in and the order a filter reads.
 export const INTEGRITY_STATUS_META = {
@@ -12,5 +12,5 @@ export const INTEGRITY_STATUS_META = {
 export const INTEGRITY_STATUSES = Object.keys(INTEGRITY_STATUS_META)
 
 export async function getIntegrityOverview({ locationId } = {}) {
-  return api.get(`/integrity/overview${locationId ? `?location_id=${encodeURIComponent(locationId)}` : ''}`)
+  return api.get(`/integrity/overview${qs({ location_id: locationId })}`)
 }

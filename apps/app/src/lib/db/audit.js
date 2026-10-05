@@ -1,13 +1,8 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 export async function listAuditLog({ limit = 50, offset = 0, filters = {} } = {}) {
-  const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) })
-  // Only send filters that are actually set — an empty `action=` would be sent
-  // as a real value and match nothing.
-  for (const [k, v] of Object.entries(filters)) {
-    if (v) qs.set(k, v)
-  }
-  return api.get(`/audit-log?${qs.toString()}`)
+  // qs() leaves out blank filters: an empty `action=` would match nothing.
+  return api.get(`/audit-log${qs({ limit, offset, ...filters })}`)
 }
 
 /** Actors, actions and entity types present in this org's log, for the filter

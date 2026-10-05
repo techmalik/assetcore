@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { useAuth, useCan } from '../lib/AuthContext'
-import { api } from '../lib/apiClient'
+import { getProfile, updateProfile } from '../lib/db/profile'
+import { changePassword } from '../lib/auth'
 import { updateOrg } from '../lib/db/org'
 import { SUPPORT_EMAIL } from '../lib/instance'
 import { getLicence, licenceDaysRemaining } from '../lib/db/licence'
@@ -43,7 +44,7 @@ function ProfileTab() {
   // filled would have written a blank name over the real one.
   const [loaded, setLoaded] = useState(false)
   useEffect(() => {
-    api.get('/profile')
+    getProfile()
       .then(data => { if (data) setForm({ full_name: data.full_name || '', phone: data.phone || '' }); setLoaded(true) })
       .catch((e) => setErr(errorText(e, 'Could not load your profile. Reload the page to try again.')))
   }, [])
@@ -52,19 +53,19 @@ function ProfileTab() {
     if (!form.full_name.trim()) return setErr('Your name cannot be empty.')
     setSaving(true); setErr(null); setOk(null)
     try {
-      await api.patch('/profile', { full_name: form.full_name, phone: form.phone || null })
+      await updateProfile({ full_name: form.full_name, phone: form.phone || null })
       setOk('Profile updated.')
     } catch (e) { setErr(errorText(e)) }
     finally { setSaving(false) }
   }
 
-  const changePassword = async () => {
+  const savePassword = async () => {
     if (!pwForm.current) return setPwErr('Enter your current password.')
     if (pwForm.next !== pwForm.confirm) return setPwErr('Passwords do not match.')
     if (pwForm.next.length < 8) return setPwErr('Password must be at least 8 characters.')
     setPwSaving(true); setPwErr(null); setPwOk(null)
     try {
-      await api.post('/auth/change-password', { currentPassword: pwForm.current, newPassword: pwForm.next })
+      await changePassword(pwForm.current, pwForm.next)
       setPwOk('Password changed successfully.')
       setPwForm({ current: '', next: '', confirm: '' })
     } catch (e) { setPwErr(errorText(e, 'Could not change your password.')) }
@@ -124,7 +125,7 @@ function ProfileTab() {
             <input type="password" value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} style={inp} autoComplete="new-password" />
           </label>
         </div>
-        <button onClick={changePassword} disabled={pwSaving || !pwForm.next} className="btn btn-secondary" style={{ marginTop: 16, height: 36, padding: '0 20px', fontSize: 13 }}>
+        <button onClick={savePassword} disabled={pwSaving || !pwForm.next} className="btn btn-secondary" style={{ marginTop: 16, height: 36, padding: '0 20px', fontSize: 13 }}>
           {pwSaving ? 'Updating…' : 'Change password'}
         </button>
       </div>

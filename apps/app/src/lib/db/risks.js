@@ -1,4 +1,4 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 export const RISK_CATEGORIES = [
   ['safety', 'Safety'],
@@ -55,12 +55,7 @@ export function bandOf(score) {
 }
 
 export async function listRisks(filters = {}) {
-  const params = new URLSearchParams()
-  for (const [k, v] of Object.entries(filters)) {
-    if (v !== undefined && v !== null && v !== '' && v !== 'all' && v !== false) params.set(k, v)
-  }
-  const qs = params.toString()
-  return api.get(`/risks${qs ? `?${qs}` : ''}`)
+  return api.get(`/risks${qs(filters)}`)
 }
 
 // basis: 'current' (residual where rated) or 'inherent' (before controls).

@@ -1,8 +1,7 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 export async function listComplianceLicences({ locationId } = {}) {
-  const qs = locationId ? `?location_id=${encodeURIComponent(locationId)}` : ''
-  const rows = await api.get(`/compliance-licences${qs}`)
+  const rows = await api.get(`/compliance-licences${qs({ location_id: locationId })}`)
   return (rows || []).map(row => ({
     ...row,
     status: licenceStatus(row.expiry_date),
@@ -28,7 +27,7 @@ export async function uploadComplianceDocument(id, file) {
 }
 
 export async function deleteComplianceDocument(id, url) {
-  return api.del(`/compliance-licences/${id}/documents?url=${encodeURIComponent(url)}`)
+  return api.del(`/compliance-licences/${id}/documents${qs({ url })}`)
 }
 
 // Compliance audits (ISO / routine-maintenance attestations)
@@ -63,12 +62,7 @@ export async function checkLicenceExpiry() {
 // (defaults to the trailing 12 months) — the objective counterpart to the
 // audit form's self-reported routine-maintenance Yes/No.
 export async function getPmCompliance({ from, to, siteId } = {}) {
-  const params = new URLSearchParams()
-  if (from) params.set('from', from)
-  if (to) params.set('to', to)
-  if (siteId) params.set('site_id', siteId)
-  const qs = params.toString()
-  return api.get(`/compliance/pm-compliance${qs ? `?${qs}` : ''}`)
+  return api.get(`/compliance/pm-compliance${qs({ from, to, site_id: siteId })}`)
 }
 
 // Client-side status helper (mirrors the DB function)

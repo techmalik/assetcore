@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../lib/apiClient'
+import { changePassword } from '../lib/auth'
 import { useAuth } from '../lib/AuthContext'
 import { errorText } from '../lib/errors'
 
@@ -27,7 +27,7 @@ export default function ForcePasswordChange() {
     if (next.length < 8) return setError('Password must be at least 8 characters.')
     setBusy(true)
     try {
-      await api.post('/auth/change-password', { currentPassword: current, newPassword: next })
+      await changePassword(current, next)
       await refreshSession()
       nav('/', { replace: true })
     } catch (err) {

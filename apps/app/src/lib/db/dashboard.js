@@ -1,8 +1,6 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
-function qsFor(locationId) {
-  return locationId ? `?location_id=${encodeURIComponent(locationId)}` : ''
-}
+const qsFor = (locationId) => qs({ location_id: locationId })
 
 export async function getDashboardStats({ locationId } = {}) {
   return api.get(`/dashboard/stats${qsFor(locationId)}`)

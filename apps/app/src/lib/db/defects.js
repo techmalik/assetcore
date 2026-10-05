@@ -1,4 +1,4 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 // Severity is about the finding, priority is about the response — the server
 // maps between them when a defect becomes a work order. The hints below are
@@ -25,12 +25,7 @@ export const STATUS_LABEL = Object.fromEntries(DEFECT_STATUSES)
 
 // Any of: status, severity, asset_id, inspection_id, open, overdue, q.
 export async function listDefects(filters = {}) {
-  const params = new URLSearchParams()
-  for (const [k, v] of Object.entries(filters)) {
-    if (v !== undefined && v !== null && v !== '' && v !== 'all' && v !== false) params.set(k, v)
-  }
-  const qs = params.toString()
-  return api.get(`/defects${qs ? `?${qs}` : ''}`)
+  return api.get(`/defects${qs(filters)}`)
 }
 
 export async function getDefectStats() {

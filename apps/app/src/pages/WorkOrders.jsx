@@ -14,7 +14,7 @@ import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { useAuth, useCan } from '../lib/AuthContext.jsx'
-import { api } from '../lib/apiClient'
+import { downloadFile } from '../lib/db/files'
 import { useToast } from '../lib/ToastContext'
 import { useMoney } from '../lib/money'
 import { listSpareParts } from '../lib/db/spareParts'
@@ -645,7 +645,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
   }
 
   async function downloadAttachment(att) {
-    try { await api.download(`/files/${att.url}`, att.name) }
+    try { await downloadFile(att.url, att.name) }
     catch (ex) { toast.error(errorText(ex, 'Failed to download file.')) }
   }
 

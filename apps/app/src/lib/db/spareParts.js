@@ -1,4 +1,4 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 export const MOVEMENT_KINDS = [
   ['receipt', 'Receipt', 'Stock came in'],
@@ -13,12 +13,7 @@ export const MOVEMENT_LABEL = {
 }
 
 export async function listSpareParts(filters = {}) {
-  const params = new URLSearchParams()
-  for (const [k, v] of Object.entries(filters)) {
-    if (v !== undefined && v !== null && v !== '' && v !== 'all' && v !== false) params.set(k, v)
-  }
-  const qs = params.toString()
-  return api.get(`/spare-parts${qs ? `?${qs}` : ''}`)
+  return api.get(`/spare-parts${qs(filters)}`)
 }
 
 export async function getSparePart(id) {

@@ -23,7 +23,7 @@ import {
 import { listSites } from '../lib/db/sites'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { listAssets } from '../lib/db/assets'
-import { api } from '../lib/apiClient'
+import { downloadFile } from '../lib/db/files'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
@@ -220,7 +220,7 @@ function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded })
               <span style={{fontSize:12,color:'var(--n400)'}}>No documents uploaded</span>
             ) : docList.map((d, i) => (
               <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:2}}>
-                <button onClick={() => api.download(`/files/${d.url}`, d.name)} style={{fontSize:12,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0,flex:1,textAlign:'left',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>📄 {d.name}</button>
+                <button onClick={() => downloadFile(d.url, d.name).catch((e) => toast.error(errorText(e, 'Could not download the document.')))} style={{fontSize:12,color:'var(--b600)',background:'none',border:'none',cursor:'pointer',padding:0,flex:1,textAlign:'left',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>📄 {d.name}</button>
                 {canEdit && lic.documents?.length > 0 && <button onClick={() => removeDoc(d.url)} title="Remove" style={{fontSize:13,color:'var(--srt)',background:'none',border:'none',cursor:'pointer',padding:0}}>×</button>}
               </div>
             ))}
@@ -564,7 +564,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
           </label>
           <label style={labelStyle}>Certificate / report document
             <input type="file" onChange={(e) => setReportFile(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
-            {audit?.document_url && <button type="button" onClick={() => api.download(`/files/${audit.document_url}`, audit.document_url.split('/').pop())} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 12, padding: 0 }}>View current document</button>}
+            {audit?.document_url && <button type="button" onClick={() => downloadFile(audit.document_url).catch((e) => toast.error(errorText(e, 'Could not download the document.')))} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--b600)', cursor: 'pointer', fontSize: 12, padding: 0 }}>View current document</button>}
           </label>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 18, justifyContent: 'flex-end' }}>
@@ -663,7 +663,7 @@ function AuditsPanel({ canCreate }) {
                 <td style={{ padding: '10px 14px', fontSize: 12 }}>{yn(a.routine_maintenance_complied)}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12 }}>{yn(a.iso_audit_conducted)}</td>
                 <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)' }}>{a.site?.name || '—'}</td>
-                <td style={{ padding: '10px 14px', fontSize: 12 }}>{a.document_url ? <button onClick={() => api.download(`/files/${a.document_url}`, a.document_url.split('/').pop())} className="row-action" style={{ color: 'var(--b600)', fontSize: 12 }}>view</button> : '—'}</td>
+                <td style={{ padding: '10px 14px', fontSize: 12 }}>{a.document_url ? <button onClick={() => downloadFile(a.document_url).catch((e) => toast.error(errorText(e, 'Could not download the document.')))} className="row-action" style={{ color: 'var(--b600)', fontSize: 12 }}>view</button> : '—'}</td>
                 <td style={{ padding: '10px 14px' }}>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => setFindingsFor(a)} className="row-action" style={{ fontSize: 11, color: 'var(--b600)' }}>Findings</button>

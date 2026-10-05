@@ -1,7 +1,7 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 
 export async function listNotifications({ limit = 60 } = {}) {
-  return api.get(`/notifications?limit=${limit}`)
+  return api.get(`/notifications${qs({ limit })}`)
 }
 
 export async function countUnread() {

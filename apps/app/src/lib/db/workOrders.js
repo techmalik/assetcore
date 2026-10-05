@@ -1,4 +1,4 @@
-import { api } from '../apiClient'
+import { api, qs } from '../apiClient'
 import {
   WO_TRANSITIONS, WO_STATUSES, PRIORITIES, WO_TYPES, WO_STATUS, PRIORITY, WO_TYPE, toneOf, labelOf,
 } from '../domain'
@@ -17,13 +17,7 @@ export function woStatusStyle(status) {
 }
 
 export async function listWorkOrders({ status, priority, asset_id, locationId } = {}) {
-  const params = new URLSearchParams()
-  if (status) params.set('status', status)
-  if (priority) params.set('priority', priority)
-  if (asset_id) params.set('asset_id', asset_id)
-  if (locationId) params.set('location_id', locationId)
-  const qs = params.toString()
-  return api.get(`/work-orders${qs ? `?${qs}` : ''}`)
+  return api.get(`/work-orders${qs({ status, priority, asset_id, location_id: locationId })}`)
 }
 
 export async function getWorkOrder(id) {

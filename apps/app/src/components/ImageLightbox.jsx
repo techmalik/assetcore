@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import AuthImage from './AuthImage.jsx'
-import { api } from '../lib/apiClient'
+import { downloadFile } from '../lib/db/files'
 import { errorText } from '../lib/errors'
 import { useToast } from '../lib/ToastContext'
 
@@ -31,7 +31,7 @@ export default function ImageLightbox({ images, index = 0, onClose }) {
 
   async function downloadImage() {
     setBusy(true)
-    try { await api.download(`/files/${rel}`, name) } catch (e) { toast.error(errorText(e, 'Download failed.')) }
+    try { await downloadFile(rel, name) } catch (e) { toast.error(errorText(e, 'Download failed.')) }
     finally { setBusy(false) }
   }
 
