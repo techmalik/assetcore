@@ -11,6 +11,7 @@ import { useCan } from '../lib/AuthContext.jsx'
 import { useMoney, Money } from '../lib/money'
 import { LineChart } from '../components/Charts.jsx'
 import { errorText } from '../lib/errors'
+import { useResource } from '../lib/useResource'
 
 const THIS_YEAR = new Date().getFullYear()
 
@@ -344,32 +345,20 @@ export default function Depreciation({ dark, toggleDark }) {
   const { money, moneyFull } = useMoney()
   const canManage = can('depreciation:manage')
 
-  const [schedules, setSchedules] = useState([])
-  const [stats, setStats] = useState(null)
-  const [forecast, setForecast] = useState([])
-  const [assets, setAssets] = useState([])
+  const register = useResource(
+    () => Promise.all([listSchedules(), getDepreciationStats(), getForecast()]),
+    [],
+    { keepPrevious: true, errorFallback: 'Failed to load.', overrides: { forbidden: 'Your role cannot see the depreciation register.' } },
+  )
+  const [schedules = [], stats = null, forecast = []] = register.data || []
+  const { loading, error, reload: load } = register
+  // Only feeds the new-schedule picker: a failure leaves it empty.
+  const { data: assets = [] } = useResource(() => listAssets().catch(() => []), [], { initial: [] })
   const [detail, setDetail] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [creating, setCreating] = useState(false)
   const [busy, setBusy] = useState(false)
   const [tab, setTab] = useState('schedules')
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const [s, st, f] = await Promise.all([listSchedules(), getDepreciationStats(), getForecast()])
-      setSchedules(s); setStats(st); setForecast(f)
-    } catch (e) {
-      setError(errorText(e, 'Failed to load.', { forbidden: 'Your role cannot see the depreciation register.' }))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { load() }, [load])
-  useEffect(() => { listAssets().then(setAssets).catch(() => setAssets([])) }, [])
 
   const openDetail = useCallback(async (assetId) => {
     setDetail({ loading: true })

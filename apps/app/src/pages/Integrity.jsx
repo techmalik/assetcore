@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
@@ -8,8 +8,8 @@ import { useLocationFilter } from '../lib/LocationFilterContext'
 import { getIntegrityOverview, INTEGRITY_STATUS_META, INTEGRITY_STATUSES } from '../lib/db/integrity'
 import { BAND_META, bandOf } from '../lib/db/risks'
 import { RATING_LABEL } from '../lib/db/inspections'
-import { errorText } from '../lib/errors'
 import { fmtDate } from '../lib/dates'
+import { useResource } from '../lib/useResource'
 
 function Pill({ meta, children }) {
   return (
@@ -50,15 +50,14 @@ export default function Integrity({ dark, toggleDark }) {
   const { locationId, locations } = useLocationFilter()
   const location = locations.find((l) => l.id === locationId)
 
-  const [data, setData] = useState(null)
-  const [err, setErr] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [q, setQ] = useState('')
 
-  useEffect(() => {
-    setData(null); setErr('')
-    getIntegrityOverview({ locationId }).then(setData).catch((e) => setErr(errorText(e, 'Could not load the integrity overview.')))
-  }, [locationId])
+  // A quick change of location used to let the slower, older answer land
+  // last; useResource applies only the newest.
+  const { data, error: err } = useResource(() => getIntegrityOverview({ locationId }), [locationId], {
+    errorFallback: 'Could not load the integrity overview.',
+  })
 
   const rows = useMemo(() => {
     if (!data) return []
