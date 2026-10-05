@@ -1,0 +1,28 @@
+# Out of scope (seen, not fixed)
+
+| ID | Severity | Finding | Evidence | Status |
+|---|---|---|---|---|
+| OOS-01 | HIGH | Any active member, a Viewer included, can change integration settings (SAP, Termii) by calling the API directly. The UI hides the button; the API does not check a capability. RLS only checks org. Same class as the July audit's C1 (sites/locations/categories), which was fixed there but not here. | `apps/api/src/routes/integrations.ts:10` (router.use has no requireCap), `:32` PUT handler; `db/migrations/0001_baseline.sql:978-979` policies check org only | source-confirmed, open |
+| OOS-02 | LOW | The "no organisation" warning icon uses `var(--a500)`, which is not defined, so it renders with no stroke colour. Should be `--sa`. | `apps/app/src/pages/NoOrganisation.jsx:29-31` | source-confirmed, open |
+| OOS-03 | MEDIUM | Any member can edit or archive any record in the `/documents` registry (no capability check). The registry has no screen, but the endpoint is live. | `apps/api/src/routes/documents.ts:114`, `:138`; RLS `0021_asset_master_and_documents.sql:147-148` org-only | source-confirmed; closed by plan Q2 (delete) or TASK-2.2 |
+| OOS-04 | MEDIUM | 6 of 10 upload routes skip the content check and the size-limit 400 (work order attachments, PM report, inspection report, licence document, audit document, documents). | 05d RF-API-14 table | source-confirmed; closed by TASK-2.5 |
+| OOS-05 | MEDIUM | Three ways to close a work order; only `/transition` consumes parts, resolves defects, stamps `actual_end` and notifies. `PATCH /work-orders/:id {status}` and closing through a maintenance completion skip most of it. | `workOrders.ts:25,112,379-421`; `maintenanceEvents.ts:111-127` | source-confirmed; closed by TASK-5.1 |
+| OOS-06 | MEDIUM | Defect, risk and audit references are `count(*)+1`: concurrent creates collide (500). Audit refs are counted through site-scoped RLS, so a site-scoped user collides every time once another site has audits that year. | `defects.ts:76-80`, `risks.ts:69-72`, `compliance.ts:352-355,594-596`; `0005_compliance_iso.sql:55-56` | source-confirmed; closed by TASK-2.8 |
+| OOS-07 | MEDIUM | Per-user capability grants are ignored on Risks, Defects, Approvals and Depreciation buttons (13 `can()` calls omit `extraCaps`). | `Risks.jsx:342-343`, `Defects.jsx:308-312`, `Approvals.jsx:422-423`, `Depreciation.jsx:354`, `SpareParts.jsx:239-241` | source-confirmed (grep); closed by TASK-4.1 |
+| OOS-08 | MEDIUM | Approve/reject decide "is this waiting on you" from the JWT role (up to 60 min stale) after the cap check used the live role. | `approvals.ts:508-509,607` | source-confirmed; closed by TASK-2.3 |
+| OOS-09 | MEDIUM | Silent failures on save: Integrations Save, notification preference toggle (no rollback), new-asset photo/document uploads, Settings profile load failure then Save writes a blank name. | 05c RF-FE-10 | source-confirmed; closed by TASK-4.2 |
+| OOS-10 | MEDIUM | App stays on the splash screen forever if the server is unreachable at load and the stored token has expired. | `lib/auth.js:48-51`, `lib/AuthContext.jsx:26` | source-confirmed; closed by TASK-4.4 |
+| OOS-11 | MEDIUM | Work order costs and the depreciation preview always show the naira sign, whatever the org's base currency. | `WorkOrders.jsx:38-43,711,1030`; `Depreciation.jsx:19-22` | source-confirmed; closed by TASK-4.3 |
+| OOS-12 | LOW | "Today" is the UTC date in 7 frontend places and the DB server's UTC date in 26 SQL `current_date` uses outside exports; for one hour after Lagos midnight defaults and overdue checks are a day behind. | 05c RF-FE-18; 05d RF-API-33 | closed by TASK-4.3 and TASK-2.7 |
+| OOS-13 | LOW | Last-owner protection reads outside the transaction with no lock; two concurrent demotions can remove both owners. | `orgMembers.ts:36-42,55-63` | closed by TASK-2.4 |
+| OOS-14 | LOW | Malformed JSON, oversized bodies, a non-uuid id and unique/FK violations answer 500. | `app.ts:41-44` | closed by TASK-2.6 |
+| OOS-15 | LOW | Approval notifications ignore notification preferences, actor exclusion and de-duplication. | `approvals.ts:194-219`, `approvalRouting.ts:55-66` | closed by TASK-2.9 |
+| OOS-16 | LOW | Platform invite on an existing email overwrites that user's role in the target org. | `routes/admin/users.ts:83-86` | closed by TASK-1.4 (route deleted, Q6) |
+| OOS-17 | LOW | Dev seed scores asset health with the retired linear-decay SQL, so dev and production scores differ until the first nightly run. | `scripts/seed-dev.mjs:266` | closed by TASK-1.3 |
+| OOS-18 | LOW | Both version endpoints report the API package version 1.0.0 while the product is 1.1.0. | `routes/health.ts:21`, `routes/admin/version.ts:15`, `apps/api/package.json` | closed by TASK-1.5 |
+| OOS-19 | LOW | Money column headers in exports say "(NGN)" whatever the base currency. | `reportBuilders.ts:41-43`, `exports.ts:137-141,188` | open, not in plan |
+| OOS-20 | LOW | `/org/settings` changes the depreciation policy (recomputing every book value) with no audit row; `PATCH /org`, `PUT /integrations`, WO task and part-line edits are also unaudited. | 05d RF-API-08, RF-API-16 | open, not in plan (governance pass) |
+| OOS-21 | LOW | Neither the Compliance page nor `GET /compliance-licences` checks `compliance:read`, which supervisor and officer roles lack. | `Sidebar.jsx:50`, `App.jsx:150`, `compliance.ts:45` | needs owner decision on what `compliance:read` means; TASK-2.2 lists it |
+| OOS-22 | LOW | The mail fallback prints invite and reset links with live tokens to stdout in production when SMTP is unset. | `auth/mailer.ts:26-27` | open, not in plan |
+
+Full detail for every row is in 05b/05c/05d under "Bugs seen in passing".

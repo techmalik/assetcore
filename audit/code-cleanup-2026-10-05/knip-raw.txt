@@ -1,0 +1,50 @@
+Unused files (3)
+apps/app/src/components/DocumentsPanel.jsx
+apps/app/src/lib/db/documents.js
+apps/app/src/pages/SpareParts.jsx
+Unused dependencies (1)
+apps/api/package.json: pino-pretty, pino-roll
+Unused exports (36)
+apps/api/src/auth/mailer.ts: mailerConfigured
+apps/api/src/auth/routes.ts: NO_SITE
+apps/api/src/files.ts: sniffMime
+apps/api/src/health.ts: DEFECT_PENALTY
+apps/api/src/healthService.ts: recomputeAssetHealth
+apps/api/src/middleware/platformRbac.ts: hasCap
+apps/api/src/middleware/rbac.ts: ROLE_CAPABILITIES
+apps/api/src/routes/approvals.ts: APPROVAL_ENTITY_TYPES, APPROVAL_KINDS
+apps/api/src/routes/assets.ts: DEPRECIATION_METHODS, LIFECYCLE_STATUSES, CRITICALITIES
+apps/api/src/routes/compliance.ts: AUDIT_KINDS, AUDIT_OUTCOMES, FINDING_SEVERITIES
+apps/api/src/routes/defects.ts: DEFECT_SEVERITIES, DEFECT_STATUSES
+apps/api/src/routes/escalations.ts: ESCALATION_ENTITY_TYPES, ESCALATION_TRIGGERS, VALID_TRIGGERS
+apps/api/src/routes/inspections.ts: INSPECTION_KINDS, CHECKLIST_RESULTS
+apps/api/src/routes/integrity.ts: INTEGRITY_STATUSES, integrityStatusOf
+apps/api/src/routes/risks.ts: RISK_CATEGORIES, RISK_STATUSES
+apps/app/src/components/AssetQr.jsx: assetQrValue
+apps/app/src/components/InspectionsPanel.jsx: STATUS_META, KIND_META
+apps/app/src/components/SendForApproval.jsx: approvalErrorText, approverLabel
+apps/app/src/lib/AuthContext.jsx: initialsOf
+apps/app/src/lib/auditLabels.js: ACTION_LABEL
+apps/app/src/lib/auth.js: isConfigured, currentOrgId, signInWithSSO
+apps/app/src/lib/db/assets.js: getAsset
+apps/app/src/lib/db/complianceLicences.js: getComplianceLicenceCounts
+apps/app/src/lib/db/defects.js: OPEN_STATUSES
+apps/app/src/lib/db/devices.js: getLatestReadings
+apps/app/src/lib/db/inspections.js: getInspection, createInspectionTemplate, updateInspectionTemplate, retireInspectionTemplate
+apps/app/src/lib/db/integrations.js: getIntegration
+apps/app/src/lib/db/maintenanceEvents.js: listMaintenanceCompletions, uploadMaintenanceCompletionReport
+apps/app/src/lib/db/org.js: updateOrg
+apps/app/src/lib/db/pmSchedules.js: updatePMSchedule
+apps/app/src/lib/db/spareParts.js: MOVEMENT_KINDS, MOVEMENT_LABEL, getSparePart, getPartStats, listPartCategories, createSparePart, updateSparePart, archiveSparePart, adjustStock, listMovements, linkPartToAsset, unlinkPartFromAsset
+apps/app/src/lib/db/workOrders.js: WO_STATUS_STYLE, WO_DRAFT_STYLE, softDeleteWorkOrder, listWorkOrderTasks, listWorkOrderParts, updateWorkOrderPart
+apps/app/src/lib/errors.js: ERROR_MESSAGES
+apps/app/src/lib/health.js: HEALTH_YELLOW_MAX, HEALTH_RED_MAX, healthTextColor
+apps/app/src/lib/instance.js: INSTANCE_NAME
+apps/app/src/lib/money.jsx: CURRENCY_SYMBOL, fmtMoney, convert
+Unused exported types (6)
+apps/api/src/approvalRouting.ts: DirectSubmit
+apps/api/src/auth/tokens.ts: TokenKind
+apps/api/src/depreciation.ts: PeriodEntry
+apps/api/src/health.ts: HealthComponentKey
+apps/api/src/healthService.ts: AssetHealth
+apps/api/src/kpis.ts: RepairRow, Mttr, MtbfInput, Mtbf, BacklogRow, BacklogBucket
