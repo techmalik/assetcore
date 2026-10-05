@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { authRouter } from '../auth/routes.js'
-import { healthRouter } from './health.js'
+import { systemRouter } from './system.js'
 import { sitesRouter } from './sites.js'
 import { locationsRouter } from './locations.js'
 import { categoriesRouter } from './categories.js'
@@ -35,7 +35,7 @@ export const apiRouter = Router()
 
 apiRouter.use('/auth', authRouter)
 apiRouter.use('/admin', adminRouter)
-apiRouter.use(healthRouter)
+apiRouter.use(systemRouter)
 apiRouter.use(sitesRouter)
 apiRouter.use(locationsRouter)
 apiRouter.use(categoriesRouter)
