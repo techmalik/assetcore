@@ -31,11 +31,27 @@ import { escalationsRouter } from './escalations.js'
 import { analyticsRouter } from './analytics.js'
 import { integrityRouter } from './integrity.js'
 
+import { filesRouter } from '../files.js'
+import { requireAuth } from '../middleware/requireAuth.js'
+import { requireOrg } from '../middleware/requireOrg.js'
+import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
+
 export const apiRouter = Router()
+
+// Public first: sign-in, the platform console (which runs its own platform
+// admin gate) and the liveness probe.
 
 apiRouter.use('/auth', authRouter)
 apiRouter.use('/admin', adminRouter)
 apiRouter.use(systemRouter)
+
+// Every route below is a tenant route: signed in, attached to an org, and an
+// active member. Checked once here, per request. The routers used to carry
+// this line each, and since they are mounted without a path prefix every
+// router a request passed re-ran it, membership query included (about 28
+// times for a write to the last router). Routers add only requireCap.
+apiRouter.use(requireAuth, requireOrg, requireActiveMembership)
+
 apiRouter.use(sitesRouter)
 apiRouter.use(locationsRouter)
 apiRouter.use(categoriesRouter)
@@ -64,3 +80,9 @@ apiRouter.use(approvalsRouter)
 apiRouter.use(escalationsRouter)
 apiRouter.use(analyticsRouter)
 apiRouter.use(integrityRouter)
+apiRouter.use(filesRouter)
+
+// A signed-in member asking for a path that does not exist.
+apiRouter.use((_req, res) => {
+  res.status(404).json({ error: 'not_found' })
+})

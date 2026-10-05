@@ -4,9 +4,6 @@ import { z } from 'zod'
 import { ownerPool, withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { config } from '../config.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap, GRANTABLE_CAPS, ROLE_KEYS } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { hashPassword } from '../auth/passwords.js'
@@ -14,14 +11,11 @@ import { issueToken } from '../auth/tokens.js'
 import { sendMail } from '../auth/mailer.js'
 
 export const orgMembersRouter = Router()
-// Path-scoped, unlike every other router's blanket `.use(requireAuth, ...)`:
-// this one also carries requireCap('user:manage'), and this router (like all
-// the others) is mounted at apiRouter's root with no prefix. An unscoped
-// `.use(mw)` here would run for ANY request that reaches this point in the
-// chain — including ones meant for routers mounted later (profile, licence,
-// files) — and requireCap's 403 stops the request dead before it ever gets
-// there. Scoping to '/org/members' keeps it to this router's own routes.
-orgMembersRouter.use('/org/members', requireAuth, requireOrg, requireActiveMembership, requireCap('user:manage'))
+// Sign-in and membership are checked once for every tenant route, in
+// routes/index.ts. This router adds user:manage, path-scoped: it is mounted
+// at apiRouter's root with no prefix, so an unscoped `.use(mw)` would also run
+// for requests meant for routers mounted after it and 403 them.
+orgMembersRouter.use('/org/members', requireCap('user:manage'))
 
 // ROLE_KEYS and GRANTABLE_CAPS come from @assetcore/rbac (via middleware/rbac)
 // — the same lists the app's Admin UI renders, so what the UI offers and what

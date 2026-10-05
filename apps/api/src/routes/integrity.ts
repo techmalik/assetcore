@@ -1,13 +1,9 @@
 import { Router } from 'express'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { hasCap } from '../middleware/rbac.js'
 
 export const integrityRouter = Router()
-integrityRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 // Integrity is where inspections and risk assessments meet: one asks "what
 // condition is it in", the other "what happens if it fails". Neither answers

@@ -2,13 +2,9 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 
 export const auditRouter = Router()
-auditRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 // Filters an auditor actually asks for: who did it, what they did, what it was
 // done to, and when. Anything unparseable is dropped rather than 400'd — a

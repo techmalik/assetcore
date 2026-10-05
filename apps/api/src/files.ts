@@ -7,7 +7,6 @@ import type { PoolClient } from 'pg'
 import { config } from './config.js'
 import { withOrgContext } from './db.js'
 import { claimsFromReq } from './claims.js'
-import { requireAuth } from './middleware/requireAuth.js'
 import { logger } from './logger.js'
 
 /** multer storage rooted at FILES_DIR/{org_id}/{subdir}/ — org_id comes from the
@@ -142,7 +141,7 @@ const FILE_OWNERSHIP_CHECKS: Record<string, OwnershipCheck> = {
 // resolves to FILES_DIR/{caller's org_id}/reports/some-file.xlsx, and — for
 // every known upload bucket — only streams if a row the caller's current
 // scope can see actually references that path.
-filesRouter.get('/files/*filePath', requireAuth, async (req, res) => {
+filesRouter.get('/files/*filePath', async (req, res) => {
   const orgId = req.claims?.org_id
   if (!orgId) return res.status(403).json({ error: 'no_org_context' })
 

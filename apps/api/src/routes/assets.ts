@@ -2,9 +2,6 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import type { PoolClient } from 'pg'
 import { writeAuditLog } from '../audit.js'
@@ -14,7 +11,6 @@ import { uploadTo, guardedSingle, validateUploadOrCleanup, cleanupOrphanedUpload
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 
 export const assetsRouter = Router()
-assetsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 // operational/maintenance/standby/offline is the current model (TASK-4.2);
 // attention/critical are legacy values kept legal so existing rows stay

@@ -2,15 +2,11 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 
 export const locationsRouter = Router()
-locationsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const ALLOWED = ['name', 'code']
 const locationInput = z.object({ name: z.string().min(1), code: z.string().nullable().optional() })

@@ -2,9 +2,6 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
@@ -12,7 +9,6 @@ import { uploadTo, guardedSingle, validateUploadOrCleanup, cleanupOrphanedUpload
 import { notifyRoleHolders, notifyWorkOrderClosed } from '../notify.js'
 
 export const maintenanceEventsRouter = Router()
-maintenanceEventsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const reportUpload = uploadTo('maintenance-completions', { maxSizeBytes: 25 * 1024 * 1024 })
 

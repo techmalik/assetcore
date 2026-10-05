@@ -2,9 +2,6 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
@@ -12,7 +9,6 @@ import { refreshAssetHealth } from '../healthService.js'
 import { generateWoRef } from './workOrders.js'
 
 export const defectsRouter = Router()
-defectsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const DEFECT_SEVERITIES = ['minor', 'moderate', 'major', 'critical'] as const
 const DEFECT_STATUSES = ['open', 'acknowledged', 'in_progress', 'resolved', 'closed', 'deferred'] as const

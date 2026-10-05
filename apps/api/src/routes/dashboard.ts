@@ -1,13 +1,9 @@
 import { Router } from 'express'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { hasCap } from '../middleware/rbac.js'
 
 export const dashboardRouter = Router()
-dashboardRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 dashboardRouter.get('/dashboard/stats', async (req, res) => {
   const locationId = typeof req.query.location_id === 'string' ? req.query.location_id : null

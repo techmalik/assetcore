@@ -2,9 +2,6 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap, ROLE_KEYS, can } from '../middleware/rbac.js'
 import { ROLE_RANK } from '@assetcore/rbac'
 import { writeAuditLog } from '../audit.js'
@@ -15,7 +12,6 @@ import {
 } from '../approvalRouting.js'
 
 export const approvalsRouter = Router()
-approvalsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 // What can be sent for approval, and for what. 0001 shipped the table with
 // these as comments; they are enumerated here so a typo doesn't quietly create

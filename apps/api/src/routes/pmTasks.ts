@@ -2,9 +2,6 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
@@ -13,7 +10,6 @@ import { uploadTo, cleanupOrphanedUpload } from '../files.js'
 import { notifyUsers, notifyRoleHolders } from '../notify.js'
 
 export const pmTasksRouter = Router()
-pmTasksRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const reportUpload = uploadTo('maintenance-reports')
 

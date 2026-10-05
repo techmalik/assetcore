@@ -2,9 +2,6 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap, hasCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
@@ -15,7 +12,6 @@ import { notifyUsers, notifyWorkOrderClosed } from '../notify.js'
 import { eligibleAssignee, insertDirectApproval, loadApproval } from '../approvalRouting.js'
 
 export const workOrdersRouter = Router()
-workOrdersRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const attachmentUpload = uploadTo('attachments')
 

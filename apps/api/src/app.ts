@@ -6,7 +6,6 @@ import { pinoHttp } from 'pino-http'
 import { config, isDev } from './config.js'
 import { logger } from './logger.js'
 import { apiRouter } from './routes/index.js'
-import { filesRouter } from './files.js'
 
 // Express app construction, split from index.ts's listen()/startJobs() so
 // tests can drive it with supertest without binding a real port or
@@ -31,7 +30,6 @@ app.use(express.json())
 app.use(pinoHttp({ logger }))
 
 app.use('/api', apiRouter)
-app.use('/api', filesRouter)
 
 app.use((req, res) => {
   res.status(404).json({ error: 'not_found' })

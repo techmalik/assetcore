@@ -2,9 +2,6 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
@@ -14,7 +11,6 @@ import { refreshAssetHealth } from '../healthService.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 
 export const inspectionsRouter = Router()
-inspectionsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 const reportUpload = uploadTo('inspection-reports')
 

@@ -2,15 +2,11 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 
 export const devicesRouter = Router()
-devicesRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 // Device writes were unauthorized: the router applied only auth + membership,
 // so any active member — including viewer and auditor, whose whole role is

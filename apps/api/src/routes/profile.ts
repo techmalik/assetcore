@@ -2,11 +2,9 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
 import { buildSet } from '../sqlUtil.js'
 
 export const profileRouter = Router()
-profileRouter.use(requireAuth)
 
 // Deliberately narrow: only full_name/phone are settable here, never
 // password_hash/status/email — those go through /api/auth/change-password

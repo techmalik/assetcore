@@ -2,9 +2,6 @@ import { Router, type Request } from 'express'
 import type { PoolClient } from 'pg'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { hasCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { config } from '../config.js'
@@ -22,7 +19,6 @@ import { buildWhere as buildAuditWhere, filters as auditFilters } from './audit.
 // read capabilities.
 
 export const exportsRouter = Router()
-exportsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 /** Past this a spreadsheet stops being something a person opens. The file
  * says so (X-Export-Truncated) rather than silently dropping the tail. */

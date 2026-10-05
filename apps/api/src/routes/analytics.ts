@@ -2,14 +2,10 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { requireAuth } from '../middleware/requireAuth.js'
-import { requireOrg } from '../middleware/requireOrg.js'
-import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap } from '../middleware/rbac.js'
 import { meanTimeToRepair, meanTimeBetweenFailures, bucketBacklog } from '../kpis.js'
 
 export const analyticsRouter = Router()
-analyticsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
 // A failure is a job someone had to raise because something broke. Planned
 // work is not a failure, and counting it as one flatters MTBF badly.
