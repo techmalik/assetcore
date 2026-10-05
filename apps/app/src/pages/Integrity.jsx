@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import IntegrityTabs from '../components/IntegrityTabs.jsx'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can } from '../lib/rbac'
+import { useCan } from '../lib/AuthContext.jsx'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { getIntegrityOverview, INTEGRITY_STATUS_META, INTEGRITY_STATUSES } from '../lib/db/integrity'
 import { BAND_META, bandOf } from '../lib/db/risks'
@@ -47,11 +46,11 @@ function Figure({ label, value, color }) {
 }
 
 export default function Integrity({ dark, toggleDark }) {
+  const can = useCan()
   const nav = useNavigate()
-  const { roleKey, extraCaps } = useAuth()
-  const canInspections = can(roleKey, 'inspection:read', extraCaps)
-  const canRisks = can(roleKey, 'risk:read', extraCaps)
-  const canDefects = can(roleKey, 'defect:read', extraCaps)
+  const canInspections = can('inspection:read')
+  const canRisks = can('risk:read')
+  const canDefects = can('defect:read')
   const { locationId, locations } = useLocationFilter()
   const location = locations.find((l) => l.id === locationId)
 

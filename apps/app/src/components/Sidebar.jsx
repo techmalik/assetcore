@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../lib/AuthContext'
-import { can, ROLE_LABELS, ADMIN_ENTRY_CAPS } from '../lib/rbac'
+import { useAuth, useCan } from '../lib/AuthContext'
+import { ROLE_LABELS, ADMIN_ENTRY_CAPS } from '../lib/rbac'
 import { useSidebar } from '../lib/SidebarContext'
 import { useNotifications } from '../lib/NotificationsContext'
 import { getDashboardStats } from '../lib/db/dashboard'
@@ -61,11 +61,12 @@ const REPORT = [
 ]
 
 export default function Sidebar({ active }) {
+  const can = useCan()
   const nav = useNavigate()
-  const { org, fullName, initials, roleKey, extraCaps } = useAuth()
+  const { org, fullName, initials, roleKey } = useAuth()
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
   const { unreadCount } = useNotifications()
-  const canAdmin = ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c, extraCaps))
+  const canAdmin = ADMIN_ENTRY_CAPS.some((c) => can(c))
   const [orgMenu, setOrgMenu] = useState(false)
   const orgRef = useRef(null)
   const [openWOCount, setOpenWOCount] = useState(0)
@@ -93,8 +94,8 @@ export default function Sidebar({ active }) {
   const goMenu = (path) => { setOrgMenu(false); go(path) }
 
   const visible = (item) =>
-    (!item.cap || can(roleKey, item.cap, extraCaps)) &&
-    (!item.anyCap || item.anyCap.some((c) => can(roleKey, c, extraCaps)))
+    (!item.cap || can(item.cap)) &&
+    (!item.anyCap || item.anyCap.some((c) => can(c)))
   const reportItems = REPORT.filter(visible)
   const sectionStyle = {padding:'12px 16px 4px',fontSize:10,fontWeight:600,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--n400)',fontFamily:'var(--ff-m)'}
 

@@ -1,11 +1,11 @@
 import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { AuthProvider, useAuth } from './lib/AuthContext'
+import { AuthProvider, useAuth, useCan } from './lib/AuthContext'
 import { NotificationsProvider } from './lib/NotificationsContext'
 import { SidebarProvider } from './lib/SidebarContext'
 import { ToastProvider } from './lib/ToastContext'
 import { LocationFilterProvider } from './lib/LocationFilterContext'
-import { can, ADMIN_ENTRY_CAPS } from './lib/rbac'
+import { ADMIN_ENTRY_CAPS } from './lib/rbac'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
 import LicenceBanner from './components/LicenceBanner.jsx'
@@ -84,7 +84,8 @@ function applyTheme(dark) {
 }
 
 function Routed() {
-  const { loading, authed, orgId, needsOnboarding, mustChangePassword, roleKey, extraCaps } = useAuth()
+  const can = useCan()
+  const { loading, authed, orgId, needsOnboarding, mustChangePassword } = useAuth()
   const [dark, setDark] = useState(preferredTheme)
 
   // The attribute lives on <html>, which React does not own, so it has to be
@@ -148,22 +149,22 @@ function Routed() {
       <Route path="/calendar" element={gate(<Calendar {...props} />)} />
       <Route path="/spare-parts" element={gate(<ComingSoon {...props} active="spare-parts" title="Warehouse Inventory"
         description="Stock levels, bin locations and issues to work orders across your warehouses. This module is being prepared and will open here." />)} />
-      <Route path="/integrity" element={gate(['inspection:read', 'defect:read', 'risk:read'].some((c) => can(roleKey, c, extraCaps)) ? <Integrity {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/defects" element={gate(can(roleKey, 'defect:read', extraCaps) ? <Defects {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/risks" element={gate(can(roleKey, 'risk:read', extraCaps) ? <Risks {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/approvals" element={gate(can(roleKey, 'approval:read', extraCaps) ? <Approvals {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/depreciation" element={gate(can(roleKey, 'depreciation:read', extraCaps) ? <Depreciation {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/analytics" element={gate(can(roleKey, 'report:read', extraCaps) ? <Analytics {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/integrity" element={gate(['inspection:read', 'defect:read', 'risk:read'].some((c) => can(c)) ? <Integrity {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/defects" element={gate(can('defect:read') ? <Defects {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/risks" element={gate(can('risk:read') ? <Risks {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/approvals" element={gate(can('approval:read') ? <Approvals {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/depreciation" element={gate(can('depreciation:read') ? <Depreciation {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/analytics" element={gate(can('report:read') ? <Analytics {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="/compliance" element={gate(<Compliance {...props} />)} />
       <Route path="/inspections" element={gate(<Inspections {...props} />)} />
       <Route path="/devices" element={gate(<Devices {...props} />)} />
       <Route path="/integrations" element={gate(<Integrations {...props} />)} />
       <Route path="/notifications" element={gate(<Notifications {...props} />)} />
       <Route path="/settings" element={gate(<Settings {...props} />)} />
-      <Route path="/export" element={gate(can(roleKey, 'report:read', extraCaps) ? <Export {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/export" element={gate(can('report:read') ? <Export {...props} /> : <Navigate to="/dashboard" replace />)} />
       {/* Reports became Export; old bookmarks still land somewhere real. */}
       <Route path="/reports" element={<Navigate to="/export" replace />} />
-      <Route path="/admin" element={gate(ADMIN_ENTRY_CAPS.some((c) => can(roleKey, c, extraCaps)) ? <Admin {...props} /> : <Navigate to="/dashboard" replace />)} />
+      <Route path="/admin" element={gate(ADMIN_ENTRY_CAPS.some((c) => can(c)) ? <Admin {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

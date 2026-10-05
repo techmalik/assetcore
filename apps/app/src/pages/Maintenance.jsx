@@ -11,8 +11,7 @@ import { listPMSchedules, createPMSchedule, softDeletePMSchedule } from '../lib/
 import { listPMTasks, updatePMTask, generatePMTasks, uploadMaintenanceReport } from '../lib/db/pmTasks'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { listAssets } from '../lib/db/assets'
-import { useAuth } from '../lib/AuthContext'
-import { can } from '../lib/rbac'
+import { useAuth, useCan } from '../lib/AuthContext'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
@@ -111,15 +110,16 @@ function ScheduleModal({ onClose, onSaved, users, assets }) {
 }
 
 export default function Maintenance({ dark, toggleDark }) {
+  const can = useCan()
   const toast = useToast()
-  const { roleKey, extraCaps, user } = useAuth()
+  const { user } = useAuth()
   // Both "Schedule PM" and "Generate Tasks" hit endpoints gated on pm:create
   // (pmSchedules.ts, pmTasks.ts) — this used to check wo:create, so the button
   // appeared for roles whose request would 403 and hid from roles that could.
   // extraCaps is passed so a per-user grant from Admin -> Access settings
   // actually surfaces the control the API would already accept.
-  const canCreate = can(roleKey, 'pm:create', extraCaps)
-  const canAssign = can(roleKey, 'pm:update', extraCaps)
+  const canCreate = can('pm:create')
+  const canAssign = can('pm:update')
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
 
@@ -214,7 +214,7 @@ export default function Maintenance({ dark, toggleDark }) {
 
   // The report is to hand straight after a task is marked done, so sending it
   // for approval is offered then, rather than left for someone to find later.
-  const canSendReport = can(roleKey, 'approval:create', extraCaps)
+  const canSendReport = can('approval:create')
   const onTaskCompleted = (taskId) => {
     const done = completing
     setCompleting(null)

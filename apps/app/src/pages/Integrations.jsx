@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
-import { useAuth } from '../lib/AuthContext'
-import { can } from '../lib/rbac'
+import { useCan } from '../lib/AuthContext'
 import { listIntegrations, upsertIntegration } from '../lib/db/integrations'
 
 // ── Integration card configs ──────────────────────────────────────────────────
@@ -202,8 +201,8 @@ function IntegrationCard({ def, row, canEdit, onSaved }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Integrations({ dark, toggleDark }) {
-  const { roleKey, extraCaps } = useAuth()
-  const canEdit = can(roleKey, 'integration:manage', extraCaps)
+  const can = useCan()
+  const canEdit = can('integration:manage')
   const [rows, setRows]       = useState([])
   const [loading, setLoading] = useState(true)
 

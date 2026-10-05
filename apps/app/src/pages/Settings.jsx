@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
-import { useAuth } from '../lib/AuthContext'
-import { can } from '../lib/rbac'
+import { useAuth, useCan } from '../lib/AuthContext'
 import { api } from '../lib/apiClient'
 import { updateOrg } from '../lib/db/org'
 import { SUPPORT_EMAIL } from '../lib/instance'
@@ -205,8 +204,9 @@ const CURRENCIES = [
 ]
 
 function CurrencyCard() {
-  const { org, roleKey, extraCaps, refreshOrg } = useAuth()
-  const canEdit = can(roleKey, 'org:manage', extraCaps)
+  const can = useCan()
+  const { org, refreshOrg } = useAuth()
+  const canEdit = can('org:manage')
   const [form, setForm] = useState({ base_currency: CURRENCY_CODE, secondary_currency: '', fx_rate: '', fx_rate_at: '' })
   const [saving, setSaving] = useState(false)
   const [ok, setOk] = useState(null)
@@ -332,8 +332,9 @@ function CurrencyCard() {
 }
 
 function OrgTab() {
-  const { org, roleKey, extraCaps } = useAuth()
-  const canEdit = can(roleKey, 'org:manage', extraCaps)
+  const can = useCan()
+  const { org } = useAuth()
+  const canEdit = can('org:manage')
   const [form, setForm] = useState({ name: '', short_name: '', region: '' })
   const [saving, setSaving] = useState(false)
   const [ok, setOk]   = useState(null)

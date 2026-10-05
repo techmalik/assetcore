@@ -7,8 +7,7 @@ import {
   linkPartToAsset, unlinkPartFromAsset, MOVEMENT_KINDS, MOVEMENT_LABEL,
 } from '../lib/db/spareParts'
 import { listAssets } from '../lib/db/assets'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can } from '../lib/rbac'
+import { useCan } from '../lib/AuthContext.jsx'
 import { useMoney, Money } from '../lib/money'
 import { errorText } from '../lib/errors'
 
@@ -234,11 +233,11 @@ function AdjustModal({ part, onClose, onSaved }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function SpareParts({ dark, toggleDark }) {
+  const can = useCan()
   const { money } = useMoney()
-  const { roleKey } = useAuth()
-  const canCreate = can(roleKey, 'parts:create')
-  const canEdit = can(roleKey, 'parts:update')
-  const canAdjust = can(roleKey, 'parts:adjust')
+  const canCreate = can('parts:create')
+  const canEdit = can('parts:update')
+  const canAdjust = can('parts:adjust')
 
   const [parts, setParts] = useState([])
   const [stats, setStats] = useState(null)

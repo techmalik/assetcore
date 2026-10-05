@@ -7,8 +7,7 @@ import {
   DEPRECIATION_METHODS, METHOD_LABEL,
 } from '../lib/db/depreciation'
 import { listAssets } from '../lib/db/assets'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can } from '../lib/rbac'
+import { useCan } from '../lib/AuthContext.jsx'
 import { useMoney, Money } from '../lib/money'
 import { LineChart } from '../components/Charts.jsx'
 import { errorText } from '../lib/errors'
@@ -349,9 +348,9 @@ function ScheduleDetail({ detail, canManage, busy, onPost, onRetire, onClose }) 
 }
 
 export default function Depreciation({ dark, toggleDark }) {
+  const can = useCan()
   const { money } = useMoney()
-  const { roleKey } = useAuth()
-  const canManage = can(roleKey, 'depreciation:manage')
+  const canManage = can('depreciation:manage')
 
   const [schedules, setSchedules] = useState([])
   const [stats, setStats] = useState(null)

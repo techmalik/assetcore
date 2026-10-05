@@ -11,8 +11,8 @@ import {
   approvalStatusMeta, EVENT_LABEL, DIRECT_ERROR_TEXT,
 } from '../lib/db/approvals'
 import { useApprovers, ApproverSelect } from '../components/SendForApproval.jsx'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can, ROLE_LABELS } from '../lib/rbac'
+import { useAuth, useCan } from '../lib/AuthContext.jsx'
+import { ROLE_LABELS } from '../lib/rbac'
 import { useMoney, Money } from '../lib/money'
 import { errorText } from '../lib/errors'
 
@@ -416,10 +416,11 @@ function MatrixTab({ canManage }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Approvals({ dark, toggleDark }) {
+  const can = useCan()
   const { roleKey, user } = useAuth()
   const userId = user?.id
-  const canDecide = can(roleKey, 'approval:decide')
-  const canManage = can(roleKey, 'approval:manage')
+  const canDecide = can('approval:decide')
+  const canManage = can('approval:manage')
 
   const [tab, setTab] = useState('inbox')
   const [rows, setRows] = useState([])
@@ -457,10 +458,9 @@ export default function Approvals({ dark, toggleDark }) {
   const deepLinkId = searchParams.get('id')
   useEffect(() => { if (deepLinkId) openDetail(deepLinkId) }, [deepLinkId])
 
-  const { extraCaps } = useAuth()
   // The direct-route actions are gated server-side on approval:decide with
   // per-user grants counted, so these buttons count the grants too.
-  const canDecideDirect = can(roleKey, 'approval:decide', extraCaps)
+  const canDecideDirect = can('approval:decide')
 
   // Waiting on me: a matrix request routed to my role that I did not raise,
   // or a request sent to me by name.

@@ -10,8 +10,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import StatusBadge from './StatusBadge.jsx'
-import { useAuth } from '../lib/AuthContext'
-import { can } from '../lib/rbac'
+import { useCan } from '../lib/AuthContext'
 import {
   listComplianceLicences, createComplianceLicence, updateComplianceLicence,
   softDeleteComplianceLicence, listAuthorities, checkLicenceExpiry,
@@ -250,10 +249,10 @@ function DetailPanel({ lic, onEdit, onDelete, onClose, canEdit, onDocUploaded })
 // defect register, where it becomes a work order like any other repair — which
 // is what carries it from "the regulator wrote this down" to "we fixed it".
 function AuditFindingsModal({ audit, onClose, onChanged }) {
+  const can = useCan()
   const toast = useToast()
-  const { roleKey, extraCaps } = useAuth()
-  const canEdit = can(roleKey, 'compliance:update', extraCaps)
-  const canRaise = can(roleKey, 'defect:create', extraCaps)
+  const canEdit = can('compliance:update')
+  const canRaise = can('defect:create')
   const [detail, setDetail] = useState(null)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ clause: '', description: '', severity: 'minor', due_date: '' })
@@ -686,17 +685,17 @@ function AuditsPanel({ canCreate }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CompliancePanel({ embedded = false, selectedId = null, onCounts = null }) {
+  const can = useCan()
   const toast = useToast()
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
-  const { roleKey, extraCaps } = useAuth()
   // Was 'wo:create'. POST /compliance-licences is gated on compliance:create,
   // so an HSE officer — the role that owns compliance — could not see the
   // button their own role exists for, while a manager saw a button whose
   // request would 403.
-  const canCreate = can(roleKey, 'compliance:create', extraCaps)
-  const canAudit = can(roleKey, 'compliance:create', extraCaps)
-  const canEditDoc = can(roleKey, 'compliance:update', extraCaps)
+  const canCreate = can('compliance:create')
+  const canAudit = can('compliance:create')
+  const canEditDoc = can('compliance:update')
   const [searchParams] = useSearchParams()
   const [view, setView] = useState(searchParams.get('view') === 'audits' ? 'audits' : 'licences') // 'licences' | 'audits'
   const [licences, setLicences]       = useState([])

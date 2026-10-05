@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { api } from './apiClient'
 import { getSession, onAuthStateChange, getOrgRole, signOut as doSignOut } from './auth'
+import { can } from './rbac'
 
 const AuthCtx = createContext(null)
 
@@ -85,4 +86,17 @@ export function useAuth() {
   const ctx = useContext(AuthCtx)
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
+}
+
+/**
+ * The permission check for UI gating: `const can = useCan(); can('risk:create')`.
+ *
+ * Always applies the caller's per-user grants on top of their role. Pages used
+ * to call can(roleKey, cap) themselves, and thirteen of those calls left out
+ * the grants, so a member granted risk:create never saw New Risk although the
+ * API would have accepted it.
+ */
+export function useCan() {
+  const { roleKey, extraCaps } = useAuth()
+  return useCallback((capability) => can(roleKey, capability, extraCaps), [roleKey, extraCaps])
 }

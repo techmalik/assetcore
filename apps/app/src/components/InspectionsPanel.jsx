@@ -16,8 +16,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import StatusBadge from './StatusBadge.jsx'
 import SendForApproval from './SendForApproval.jsx'
 import AssignModal, { assignmentSummary } from './AssignModal.jsx'
-import { useAuth } from '../lib/AuthContext'
-import { can } from '../lib/rbac'
+import { useAuth, useCan } from '../lib/AuthContext'
 import {
   listInspections, createInspection, updateInspection, uploadInspectionReport,
   listInspectionTemplates, CHECKLIST_RESULTS, CONDITION_RATINGS,
@@ -361,14 +360,15 @@ function FindingsModal({ inspection, onClose, onSaved, readOnly = false }) {
 }
 
 export default function InspectionsPanel({ embedded = false, selectedId = null, onCounts = null }) {
+  const can = useCan()
   const toast = useToast()
-  const { roleKey, extraCaps, user } = useAuth()
+  const { user } = useAuth()
   // POST /inspections is gated on inspection:create (not wo:create), and
   // per-user grants count as much as the role baseline — extraCaps is passed
   // so a capability granted in Admin -> Access settings actually surfaces the
   // button the API would already accept.
-  const canCreate   = can(roleKey, 'inspection:create', extraCaps)
-  const canReassign = can(roleKey, 'inspection:update', extraCaps)
+  const canCreate   = can('inspection:create')
+  const canReassign = can('inspection:update')
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
   const [inspections, setInspections] = useState([])

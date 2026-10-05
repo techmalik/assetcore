@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
-import { useAuth } from '../lib/AuthContext'
-import { can } from '../lib/rbac'
+import { useCan } from '../lib/AuthContext'
 import { listDevices, createDevice, updateDevice } from '../lib/db/devices'
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
@@ -145,11 +144,11 @@ function SummaryChip({ label, count, active, onClick, color }) {
 }
 
 export default function Devices({ dark, toggleDark }) {
-  const { roleKey, extraCaps } = useAuth()
+  const can = useCan()
   // Was 'wo:create'. Device writes are gated on asset:update server-side
   // (routes/devices.ts) — before that gate existed they were gated on
   // nothing at all, and this UI check named an unrelated capability.
-  const canCreate = can(roleKey, 'asset:update', extraCaps)
+  const canCreate = can('asset:update')
   const [devices, setDevices]   = useState([])
   const [sites, setSites]       = useState([])
   const [assets, setAssets]     = useState([])

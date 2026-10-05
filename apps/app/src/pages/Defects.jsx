@@ -12,8 +12,7 @@ import { listAssets } from '../lib/db/assets'
 import { listSites } from '../lib/db/sites'
 import { listInspections } from '../lib/db/inspections'
 import { listApprovals, submitApproval, APPROVAL_STATUS_META } from '../lib/db/approvals'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can } from '../lib/rbac'
+import { useCan } from '../lib/AuthContext.jsx'
 import { errorText } from '../lib/errors'
 
 const SEVERITY_CLASS = {
@@ -304,13 +303,13 @@ function DeferralSection({ defect, canSubmit, canRead }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Defects({ dark, toggleDark }) {
+  const can = useCan()
   const nav = useNavigate()
-  const { roleKey } = useAuth()
-  const canCreate = can(roleKey, 'defect:create')
-  const canEdit = can(roleKey, 'defect:update')
-  const canRaise = can(roleKey, 'wo:create')
-  const canSubmitApproval = can(roleKey, 'approval:create')
-  const canReadApproval = can(roleKey, 'approval:read')
+  const canCreate = can('defect:create')
+  const canEdit = can('defect:update')
+  const canRaise = can('wo:create')
+  const canSubmitApproval = can('approval:create')
+  const canReadApproval = can('approval:read')
 
   const [defects, setDefects] = useState([])
   const [stats, setStats] = useState(null)

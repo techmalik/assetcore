@@ -27,6 +27,21 @@ export default [
         selector: "CallExpression[callee.name='alert']",
         message: 'Show errors with toast.error(errorText(e)), not alert().',
       }],
+      // Gate UI with useCan() from AuthContext, which applies per-user grants.
+      // Calling can() directly is how thirteen checks came to ignore them.
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: ['**/rbac', '**/rbac.js', '@assetcore/rbac'],
+          importNames: ['can'],
+          message: 'Use const can = useCan() from lib/AuthContext so per-user grants apply.',
+        }],
+      }],
     },
+  },
+  {
+    // AuthContext builds useCan() on can(); the Admin permissions matrix shows
+    // what each role grants on its own, before any per-user grant.
+    files: ['src/lib/AuthContext.jsx', 'src/lib/rbac.js', 'src/pages/Admin.jsx'],
+    rules: { 'no-restricted-imports': 'off' },
   },
 ]

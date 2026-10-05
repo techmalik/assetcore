@@ -13,8 +13,7 @@ import {
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
 import { listOrgUsers } from '../lib/db/orgMembers'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can } from '../lib/rbac'
+import { useAuth, useCan } from '../lib/AuthContext.jsx'
 import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useMoney } from '../lib/money'
@@ -54,11 +53,11 @@ function SlaDue({ date }) {
 
 // ── New WO Modal ──────────────────────────────────────────────────────────────
 function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
+  const can = useCan()
   const toast = useToast()
-  const { roleKey, extraCaps } = useAuth()
   // Sending the job for approval raises an approval request as well, so it
   // needs the capability that request needs.
-  const canSendForApproval = can(roleKey, 'approval:create', extraCaps)
+  const canSendForApproval = can('approval:create')
   const { approvers, loaded: approversLoaded, lineManagerId } = useApprovers(canSendForApproval)
   const [form, setForm] = useState({ title: '', description: '', type: 'corrective', priority: 'medium', site_id: '', asset_id: '', assignee_id: '', sla_due: '', cost: '' })
   // null = not chosen yet, so it follows the line manager once the list loads;
@@ -573,8 +572,8 @@ function PartsSection({ wo, canEdit, onChanged }) {
 }
 
 function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, users }) {
+  const can = useCan()
   const toast = useToast()
-  const { roleKey, extraCaps } = useAuth()
   const [wo, setWo] = useState(null)
   const [loading, setLoading] = useState(true)
   const [comment, setComment] = useState('')
@@ -744,8 +743,8 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
 
         <PartsSection wo={wo} canEdit={canEdit} onChanged={reload} />
 
-        <SpendApproval wo={wo} canRead={can(roleKey, 'approval:read', extraCaps)}
-          canSubmit={can(roleKey, 'approval:create', extraCaps)} onChanged={reload} />
+        <SpendApproval wo={wo} canRead={can('approval:read')}
+          canSubmit={can('approval:create')} onChanged={reload} />
 
         {/* Letting a draft go ahead, decided by the person it is sent to.
             Accepting it moves the job to New on the server. */}
@@ -835,16 +834,17 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function WorkOrders({ dark, toggleDark }) {
-  const { roleKey, extraCaps, user } = useAuth()
+  const can = useCan()
+  const { user } = useAuth()
   const toast = useToast()
   // extraCaps matters: an admin can grant these per-user in Admin -> Access
   // settings and the API honours them (middleware/rbac.ts), but every
   // can() call here used to omit the third argument, so a granted
   // capability produced a button that never appeared.
-  const canCreate     = can(roleKey, 'wo:create', extraCaps)
-  const canTransition = can(roleKey, 'wo:transition', extraCaps)
-  const canEdit       = can(roleKey, 'wo:update', extraCaps)
-  const canAssign     = can(roleKey, 'wo:assign', extraCaps)
+  const canCreate     = can('wo:create')
+  const canTransition = can('wo:transition')
+  const canEdit       = can('wo:update')
+  const canAssign     = can('wo:assign')
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
 

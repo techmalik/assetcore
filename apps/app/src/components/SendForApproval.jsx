@@ -7,8 +7,7 @@
 // order, an inspection and a maintenance task, so each gets the same panel
 // rather than three slightly different ones.
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can } from '../lib/rbac'
+import { useAuth, useCan } from '../lib/AuthContext.jsx'
 import {
   listApprovals, listApprovers, submitApproval, resubmitRequest,
   approvalStatusMeta, EVENT_LABEL, DIRECT_ERROR_TEXT,
@@ -68,9 +67,10 @@ function whereItIs(a) {
 }
 
 export default function SendForApproval({ entityType, entityId, kind, title, onChanged, heading = 'Approval' }) {
-  const { roleKey, extraCaps, user } = useAuth()
-  const canRead = can(roleKey, 'approval:read', extraCaps)
-  const canSubmit = can(roleKey, 'approval:create', extraCaps)
+  const can = useCan()
+  const { user } = useAuth()
+  const canRead = can('approval:read')
+  const canSubmit = can('approval:create')
 
   const [rows, setRows] = useState([])
   const [loaded, setLoaded] = useState(false)

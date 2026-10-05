@@ -24,8 +24,7 @@ import { createWorkOrder, listWorkOrders, WO_STATUS_LABEL, WO_TYPE_LABEL, WO_PRI
 import { listPMTasks, updatePMTask, uploadMaintenanceReport } from '../lib/db/pmTasks'
 import { listInspections, updateInspection } from '../lib/db/inspections'
 import { completeMaintenance } from '../lib/db/maintenanceEvents'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can } from '../lib/rbac'
+import { useCan } from '../lib/AuthContext.jsx'
 import { healthColor, healthLabel, healthBand } from '../lib/health'
 import {
   ASSET_STATUS, ASSET_DEPRECIATION_METHOD, PM_TASK_STATUS, PM_TASK_STATUSES, INSPECTION_STATUS, INSPECTION_STATUSES,
@@ -600,12 +599,12 @@ function AssetModal({ asset, sites, locations, categories, operators, allAssets 
 
 // ── Raise Work Order Modal ─────────────────────────────────────────────────────
 function RaiseWOModal({ asset, users = [], onClose, onCreated }) {
+  const can = useCan()
   const toast = useToast()
-  const { roleKey, extraCaps } = useAuth()
   // The Work Orders page has always been able to assign at creation; this
   // asset-context path couldn't, so a WO raised from the asset it concerns
   // always landed unassigned and needed a second trip to route it.
-  const canAssign = can(roleKey, 'wo:assign', extraCaps)
+  const canAssign = can('wo:assign')
   const [form, setForm] = useState({ title: `Work order — ${asset.name}`, description: '', type: 'corrective', priority: 'medium', assignee_id: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -887,6 +886,7 @@ function ImportModal({ onClose, onDone }) {
 const ACTIVITY_DOT_C = { maintenance: 'var(--sgt)', alert: 'var(--srt)', inspection: 'var(--sat)', comment: 'var(--b400)', status_change: 'var(--b400)', attachment: 'var(--b400)' }
 
 function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdit, onArchive, onRestore, onRaiseWO, onCompleteMaintenance, onTransfer, onClose, refreshToken, allAssets = [], orgDepreciation = null }) {
+  const can = useCan()
   // Where the asset has been. Own state, loaded beside the other lists below
   // and refetched on the same refreshToken, so a transfer made from this panel
   // shows up here without closing it.
@@ -899,9 +899,8 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
   }, [asset.id, refreshToken])
   const nav = useNavigate()
   const toast = useToast()
-  const { roleKey, extraCaps } = useAuth()
-  const canUpdatePM = can(roleKey, 'pm:update', extraCaps)
-  const canUpdateInspection = can(roleKey, 'inspection:update', extraCaps)
+  const canUpdatePM = can('pm:update')
+  const canUpdateInspection = can('inspection:update')
   const [activity, setActivity] = useState(null)
   const [pmTasks, setPMTasks] = useState(null)
   const [inspections, setInspections] = useState(null)
@@ -1312,14 +1311,14 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Assets({ dark, toggleDark }) {
+  const can = useCan()
   const toast = useToast()
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
-  const { roleKey, extraCaps } = useAuth()
-  const canCreate = can(roleKey, 'asset:create', extraCaps)
-  const canEdit = can(roleKey, 'asset:update', extraCaps)
-  const canWO = can(roleKey, 'wo:create', extraCaps)
-  const canCompleteMaintenance = can(roleKey, 'maintenance:complete', extraCaps)
+  const canCreate = can('asset:create')
+  const canEdit = can('asset:update')
+  const canWO = can('wo:create')
+  const canCompleteMaintenance = can('maintenance:complete')
 
   const [assets, setAssets] = useState([])
   const [sites, setSites] = useState([])

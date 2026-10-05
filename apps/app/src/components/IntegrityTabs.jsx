@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can } from '../lib/rbac'
+import { useCan } from '../lib/AuthContext.jsx'
 
 const TABS = [
   { key: 'overview', label: 'Overview', path: '/integrity' },
@@ -15,9 +14,9 @@ const TABS = [
  * and permission rules as the overview.
  */
 export default function IntegrityTabs({ active }) {
+  const can = useCan()
   const nav = useNavigate()
-  const { roleKey, extraCaps } = useAuth()
-  const tabs = TABS.filter((tab) => !tab.cap || can(roleKey, tab.cap, extraCaps))
+  const tabs = TABS.filter((tab) => !tab.cap || can(tab.cap))
 
   return (
     <div className="integrity-section-tabs">

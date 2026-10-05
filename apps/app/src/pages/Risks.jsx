@@ -10,8 +10,7 @@ import {
 import { listAssets } from '../lib/db/assets'
 import { listSites } from '../lib/db/sites'
 import { listOrgMembers } from '../lib/db/orgMembers'
-import { useAuth } from '../lib/AuthContext.jsx'
-import { can } from '../lib/rbac'
+import { useCan } from '../lib/AuthContext.jsx'
 import { errorText } from '../lib/errors'
 
 const STATUS_CLASS = {
@@ -339,9 +338,9 @@ function Stat({ label, value, tone }) {
 }
 
 export default function Risks({ dark, toggleDark }) {
-  const { roleKey } = useAuth()
-  const canCreate = can(roleKey, 'risk:create')
-  const canEdit = can(roleKey, 'risk:update')
+  const can = useCan()
+  const canCreate = can('risk:create')
+  const canEdit = can('risk:update')
 
   const [tab, setTab] = useState('matrix')
   const [basis, setBasis] = useState('current')

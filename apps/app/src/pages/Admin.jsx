@@ -12,8 +12,10 @@ import {
   listEscalationRules, listEscalationEvents, createEscalationRule, updateEscalationRule,
   retireEscalationRule, runEscalationsNow, ESCALATION_ENTITY_TYPES, VALID_TRIGGERS, TRIGGER_LABEL,
 } from '../lib/db/escalations.js'
-import { useAuth, initialsOf } from '../lib/AuthContext.jsx'
-import { can, ROLE_CAPABILITIES, ROLE_KEYS, ROLE_LABELS, ROLE_DESCRIPTIONS, ADMIN_ENTRY_CAPS, GRANTABLE_CAPS as GRANTABLE_CAP_KEYS } from '../lib/rbac.js'
+import { useAuth, initialsOf, useCan } from '../lib/AuthContext.jsx'
+// The permissions matrix shows what each ROLE grants, before any per-user
+// grant, so it calls the role-only check directly rather than useCan().
+import { can as roleCan, ROLE_CAPABILITIES, ROLE_KEYS, ROLE_LABELS, ROLE_DESCRIPTIONS, ADMIN_ENTRY_CAPS, GRANTABLE_CAPS as GRANTABLE_CAP_KEYS } from '../lib/rbac.js'
 import { useToast } from '../lib/ToastContext'
 import { errorText } from '../lib/errors'
 
@@ -650,7 +652,7 @@ function PermissionsMatrix() {
                   <tr key={rk} style={{borderTop:'var(--bdr)'}}>
                     <td style={{padding:'8px 10px',fontWeight:500,color:'var(--n800)',whiteSpace:'nowrap'}}>{ROLE_LABELS[rk] || rk}</td>
                     {PERMISSION_MATRIX_GROUPS.map(g => {
-                      const has = g.caps ? g.caps.some((c) => can(rk, c)) : can(rk, g.cap)
+                      const has = g.caps ? g.caps.some((c) => roleCan(rk, c)) : roleCan(rk, g.cap)
                       return (
                         <td key={g.label} style={{textAlign:'center',padding:'8px 10px',color:has?'var(--sgt)':'var(--n300)',fontWeight:600}}>
                           {has ? '✓' : '–'}
@@ -813,6 +815,7 @@ function AccessModal({ member, members = [], locations, sites, onClose, onSaved 
 }
 
 function UsersTab() {
+  const can = useCan()
   const toast = useToast()
   const [subtab, setSubtab] = useState('members')
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -823,8 +826,8 @@ function UsersTab() {
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
   const [resetLink, setResetLink] = useState(null)
-  const { roleKey, extraCaps, user } = useAuth()
-  const canManage = can(roleKey, 'user:manage', extraCaps)
+  const { user } = useAuth()
+  const canManage = can('user:manage')
 
   function load() {
     setLoading(true)
@@ -1147,8 +1150,8 @@ function AuditTab() {
 // ── Configuration Tab ─────────────────────────────────────────────────────────
 
 function ConfigTab() {
-  const { roleKey, extraCaps } = useAuth()
-  const canEdit = can(roleKey, 'org:manage', extraCaps)
+  const can = useCan()
+  const canEdit = can('org:manage')
   const [org, setOrg] = useState(null)
   const [threshold, setThreshold] = useState(50)
   const [maintThreshold, setMaintThreshold] = useState(30)
@@ -1471,9 +1474,9 @@ function RuleModal({ rule, onClose, onSaved }) {
 }
 
 function EscalationsTab() {
+  const can = useCan()
   const toast = useToast()
-  const { roleKey, extraCaps } = useAuth()
-  const canManage = can(roleKey, 'escalation:manage', extraCaps)
+  const canManage = can('escalation:manage')
   const [rules, setRules] = useState([])
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1628,8 +1631,9 @@ const TABS = [
 ]
 
 export default function Admin({ dark, toggleDark }) {
-  const { roleKey, extraCaps } = useAuth()
-  const visibleTabs = TABS.filter((t) => can(roleKey, t.cap, extraCaps))
+  const can = useCan()
+  const { roleKey } = useAuth()
+  const visibleTabs = TABS.filter((t) => can(t.cap))
   const [tab, setTab] = useState(visibleTabs[0]?.k)
 
   useEffect(() => {
