@@ -62,13 +62,13 @@ Baseline: 14 files, 236 tests, all pass (2026-10-05). The app is checked with `n
 | 0.1 | Make the deploy wait for lint, typecheck, build and tests | 0 | M | Done `d9e0f04` (awaiting first green run in Actions) |
 | 0.2 | Add ESLint to the app | 0 | S | Done `ed55a7b` (cap 28 warnings, not 20: the 16 alert() calls count) |
 | 0.3 | Typecheck the API's test files | 0 | S | Done `baae166` (tests already clean) |
-| 0.4 | Commit the dead-code check so new dead code shows up | 0 | S | Open |
+| 0.4 | Commit the dead-code check so new dead code shows up | 0 | S | Done `89332e9` (in `npm run check`; Dashboard's `initialsOf` copy merged) |
 | 0.5 | Add a unit-test runner to the app and cover the pure helpers | 0 | S | Done `4701f73` (vitest 2: vitest 5 needs Vite 6; 29 tests) |
-| 1.1 | Remove the app's dead code | 1 | M | Open |
-| 1.2 | Remove the API's dead code and the shadowed audit DELETE | 1 | M | Open |
-| 1.3 | Retire the old linear-decay health SQL | 1 | M | Open |
-| 1.4 | Remove the documents registry, Reports API and platform invite | 1 | M | Open |
-| 1.5 | One version source, and call the liveness router "system" | 1 | S | Open |
+| 1.1 | Remove the app's dead code | 1 | M | Done `1272f40` (lint warnings 28 -> 18) |
+| 1.2 | Remove the API's dead code and the shadowed audit DELETE | 1 | M | Done `ff96080` |
+| 1.3 | Retire the old linear-decay health SQL | 1 | M | Done `bf07cb6` (migration 0029) |
+| 1.4 | Remove the documents registry, Reports API and platform invite | 1 | M | Done `92a63b2` (`report:create` now gates nothing; TASK-2.2 removes it) |
+| 1.5 | One version source, and call the liveness router "system" | 1 | S | Done `a71f3a7` |
 | 1.6 | Drop the unused `sms_log` and `documents` tables | 1 | S | BLOCKED (owner action 1) |
 | 2.1 | Check auth and membership once per request | 2 | M | Open |
 | 2.2 | Put a capability check on every tenant route, and test it stays that way | 2 | M | Open |
@@ -428,6 +428,8 @@ Mutation check: re-add the blanket line to one late router and see (a) go red.
 5. Integration test: as the fixture viewer, `PUT /api/integrations/sap` answers 403; as the owner it answers 200.
 
 **Siblings**: `documents.ts` is deleted in TASK-1.4. If Q2 changed and it was kept, gate `PATCH`/`DELETE /documents/:id` here with the parent's update cap.
+
+Also remove `report:create` from `packages/rbac` (role map and `GRANTABLE_CAPS`) and its label in `Admin.jsx` (`CAP_LABELS`): since TASK-1.4 deleted `POST /reports` it gates nothing. Before removing it from `GRANTABLE_CAPS`, check `orgMembers.ts` validates `extra_caps` against that list; if it does, a member who already holds the grant would fail a later access save, so strip it from stored grants in the same commit with a migration (`update public.memberships set extra_caps = array_remove(extra_caps, 'report:create')`, adjusted to the column's real type).
 
 **Must not break**: every page each role sees today. Run the API tests, then sign in as the seeded owner and check Dashboard, Assets, Work Orders, Maintenance, Compliance and Integrations load.
 
