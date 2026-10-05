@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { apiAs } from './helpers.js'
 import { seedFixtures, ownerClient, USERS, ORG_A, SITE_A1 } from './fixtures.js'
+import { ownerPool } from '../src/db.js'
+import { previewAssetHealth, recomputeAllHealthScores } from '../src/healthService.js'
 
 beforeAll(async () => {
   await seedFixtures()
@@ -40,20 +42,28 @@ async function withClient<T>(fn: (client: Awaited<ReturnType<typeof ownerClient>
   }
 }
 
-describe('decay math', () => {
-  it('recompute_asset_health computes a linear value over a 100-day maintenance window', async () => {
-    // 50 days elapsed of a 100-day window (last=-50, next=+50) => 50% left.
-    // createHealthTestAsset only binds literal values, so the interval dates
-    // are set via a follow-up update using real SQL date arithmetic instead.
+describe('nightly rescore', () => {
+  // The nightly job (jobs.ts) rescores through recomputeAllHealthScores, the
+  // five-signal engine. This pins that what it stores is what the engine
+  // computes; it replaced a test of the retired linear-decay SQL function.
+  it('stores the score the health engine computes for the asset', async () => {
     const assetId = await createHealthTestAsset({ healthScore: 100 })
     await withClient(async (c) => {
+      // Old enough to carry an age signal, so the engine has evidence to score.
       await c.query(
-        `update public.assets set last_maintenance_at = current_date - 50, next_maintenance_at = current_date + 50 where id = $1`,
+        `update public.assets set install_date = current_date - 3650, useful_life_years = 12, criticality = 'high' where id = $1`,
         [assetId]
       )
-      await c.query('select public.recompute_asset_health($1)', [ORG_A])
+    })
+    const preview = await previewAssetHealth(ownerPool, assetId)
+    expect(preview?.score).not.toBeNull()
+    expect(preview!.score).not.toBe(100)
+
+    await recomputeAllHealthScores(ownerPool, ORG_A)
+
+    await withClient(async (c) => {
       const { rows } = await c.query('select health_score from public.assets where id = $1', [assetId])
-      expect(rows[0].health_score).toBe(50)
+      expect(rows[0].health_score).toBe(preview!.score)
     })
   })
 })

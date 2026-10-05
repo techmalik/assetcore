@@ -19,7 +19,7 @@ const jobs: Job[] = [
   // pass has marked them — otherwise a task that went overdue overnight would
   // not affect the score until tomorrow.
   {
-    name: 'recompute_asset_health',
+    name: 'rescore_asset_health',
     schedule: '0 1 * * *',
     run: async () => ({ assets_rescored: await recomputeAllHealthScores(ownerPool) }),
   },

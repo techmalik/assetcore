@@ -118,9 +118,9 @@ const assetInput = z.object({
   tags: z.array(z.string().min(1)).optional(),
   notes: z.string().nullable().optional(),
 
-  // Required on create (and never clearable via PATCH): without both dates
-  // the asset is invisible to recompute_asset_health()'s daily decay pass —
-  // it would sit at its initial health forever and never alert.
+  // Required on create (and never clearable via PATCH). They came in for the
+  // linear-decay health pass, since retired; maintenance completion still
+  // moves this window forward, and the register shows it.
   last_maintenance_at: z.string().min(1),
   next_maintenance_at: z.string().min(1),
 // strict() so a body still carrying a derived field — health_score, nbv_cents,

@@ -13,6 +13,7 @@
 // DEMO ADMIN LOGIN  → email: admin@assetcore.io      password: Password123!
 // ============================================================================
 import { fileURLToPath } from 'node:url'
+import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import pg from 'pg'
 import argon2 from 'argon2'
@@ -262,11 +263,17 @@ async function main() {
 
   // Derived figures, computed the same way the running app computes them —
   // rather than seeded literals that drift from whatever the functions
-  // actually produce.
-  await client.query('select public.recompute_asset_health($1)', [ORG])
+  // actually produce. Book value is SQL; health is the API's TypeScript
+  // engine, run after the commit so it sees the seeded rows.
   await client.query('select public.recompute_asset_depreciation($1)', [ORG])
 
   await client.query('commit')
+
+  execFileSync('npm', ['run', 'rescore:health', '-w', '@assetcore/api', '--', ORG], {
+    cwd: root,
+    stdio: 'inherit',
+    env: { ...process.env, DATABASE_URL_OWNER: connectionString },
+  })
 
   console.log('Seed complete.')
   console.log(`  Owner login: a.okeke@ngml.example / Password123!`)
