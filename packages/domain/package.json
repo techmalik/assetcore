@@ -1,0 +1,15 @@
+{
+  "name": "@assetcore/domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The allowed values for every status, kind and category the API validates and the app shows, defined once.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  }
+}

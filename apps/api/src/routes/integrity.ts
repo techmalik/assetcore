@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { hasCap, requireAnyCap } from '../middleware/rbac.js'
+import { INTEGRITY_STATUSES } from '@assetcore/domain'
 
 export const integrityRouter = Router()
 
@@ -12,7 +13,6 @@ export const integrityRouter = Router()
 //
 // The status is the worst thing true about the asset, not an average. An
 // asset with a failed inspection and a clean risk register is not "fair".
-const INTEGRITY_STATUSES = ['critical', 'at_risk', 'watch', 'sound', 'unassessed'] as const
 type IntegrityStatus = typeof INTEGRITY_STATUSES[number]
 
 // An inspection older than this no longer vouches for the asset.

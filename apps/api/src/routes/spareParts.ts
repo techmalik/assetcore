@@ -5,6 +5,7 @@ import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
+import { STOCK_MOVEMENT_KINDS } from '@assetcore/domain'
 
 export const sparePartsRouter = Router()
 
@@ -200,7 +201,7 @@ sparePartsRouter.delete('/spare-parts/:id', requireCap('parts:update'), async (r
 
 // ── Stock movement ───────────────────────────────────────────────────────────
 const adjustInput = z.object({
-  kind: z.enum(['receipt', 'issue', 'adjustment', 'return']),
+  kind: z.enum(STOCK_MOVEMENT_KINDS),
   // Always positive; `kind` decides the sign. A UI that has to remember to send
   // -3 for an issue will eventually send +3.
   quantity: z.number().positive(),

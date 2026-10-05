@@ -11,6 +11,7 @@ import { notifyUsers, notifyRoleHolders } from '../notify.js'
 import { listQuery } from '../http/query.js'
 import { parseOr400 } from '../http/validate.js'
 import { isoDate } from '../http/zod.js'
+import { PM_TASK_STATUSES } from '@assetcore/domain'
 
 export const pmTasksRouter = Router()
 
@@ -63,7 +64,7 @@ pmTasksRouter.get('/pm-tasks', async (req, res) => {
 })
 
 const taskUpdateInput = z.object({
-  status: z.enum(['pending', 'in_progress', 'completed', 'overdue', 'skipped']).optional(),
+  status: z.enum(PM_TASK_STATUSES).optional(),
   assignee_id: z.string().uuid().nullable().optional(),
   notes: z.string().nullable().optional(),
   checklist_results: z.record(z.unknown()).nullable().optional(),

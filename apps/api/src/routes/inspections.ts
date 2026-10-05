@@ -11,6 +11,7 @@ import { refreshAssetHealth } from '../healthService.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 import { listQuery } from '../http/query.js'
 import { parseOr400 } from '../http/validate.js'
+import { INSPECTION_KINDS, INSPECTION_STATUSES, CHECKLIST_RESULTS } from '@assetcore/domain'
 
 export const inspectionsRouter = Router()
 
@@ -23,8 +24,6 @@ const ALLOWED = [
   'template_id', 'condition_rating',
 ]
 
-const INSPECTION_KINDS = ['safety', 'condition', 'integrity', 'regulatory', 'environmental'] as const
-const CHECKLIST_RESULTS = ['pass', 'fail', 'na', 'pending'] as const
 
 const SELECT = `
   select i.*,
@@ -46,8 +45,8 @@ const inspectionInput = z.object({
   asset_id: z.string().uuid().nullable().optional(),
   site_id: z.string().uuid().nullable().optional(),
   title: z.string().min(1),
-  kind: z.enum(['safety', 'condition', 'integrity', 'regulatory', 'environmental']).optional(),
-  status: z.enum(['scheduled', 'due', 'in_progress', 'completed', 'overdue']).optional(),
+  kind: z.enum(INSPECTION_KINDS).optional(),
+  status: z.enum(INSPECTION_STATUSES).optional(),
   inspector_id: z.string().uuid().nullable().optional(),
   scheduled_date: z.string(),
   completed_date: z.string().nullable().optional(),

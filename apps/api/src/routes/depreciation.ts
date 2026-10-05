@@ -4,7 +4,8 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
-import { buildSchedule, UnsupportedMethodError, DEPRECIATION_METHODS } from '../depreciation.js'
+import { buildSchedule, UnsupportedMethodError } from '../depreciation.js'
+import { SCHEDULE_DEPRECIATION_METHODS } from '@assetcore/domain'
 
 export const depreciationRouter = Router()
 
@@ -25,7 +26,7 @@ const scheduleInput = z.object({
   asset_id: z.string().uuid(),
   // Everything below is optional: omitted values fall back to what the asset
   // already carries from Phase 1, which is the point of having captured them.
-  method: z.enum(DEPRECIATION_METHODS).optional(),
+  method: z.enum(SCHEDULE_DEPRECIATION_METHODS).optional(),
   cost_cents: z.number().int().nonnegative().optional(),
   salvage_value_cents: z.number().int().nonnegative().optional(),
   useful_life_years: z.number().positive().optional(),
@@ -34,7 +35,7 @@ const scheduleInput = z.object({
 })
 
 type Resolved = {
-  method: (typeof DEPRECIATION_METHODS)[number]
+  method: (typeof SCHEDULE_DEPRECIATION_METHODS)[number]
   cost_cents: number
   salvage_value_cents: number
   useful_life_years: number

@@ -7,13 +7,11 @@ import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { nextRef } from '../refs.js'
+import { RISK_CATEGORIES, RISK_STATUSES, RISK_LIVE_STATUSES } from '@assetcore/domain'
 
 export const risksRouter = Router()
 
-const RISK_CATEGORIES = ['safety', 'environmental', 'operational', 'financial', 'compliance', 'security'] as const
-const RISK_STATUSES = ['open', 'mitigating', 'accepted', 'closed'] as const
 /** A risk that is still live and therefore still counts. */
-const LIVE_STATUSES = ['open', 'mitigating', 'accepted']
 
 const ALLOWED = [
   'asset_id', 'site_id', 'title', 'description', 'category',
@@ -84,7 +82,7 @@ risksRouter.get('/risks', requireCap('risk:read'), async (req, res) => {
 
     const status = qp(req, 'status')
     if (status) add('and r.status = $?', status)
-    if (req.query.live === 'true') { values.push(LIVE_STATUSES); clauses.push(`and r.status = any($${values.length})`) }
+    if (req.query.live === 'true') { values.push(RISK_LIVE_STATUSES); clauses.push(`and r.status = any($${values.length})`) }
     const category = qp(req, 'category')
     if (category) add('and r.category = $?', category)
     const assetId = qp(req, 'asset_id')
@@ -132,7 +130,7 @@ risksRouter.get('/risks/matrix', requireCap('risk:read'), async (req, res) => {
        from public.risk_assessments r
        where r.deleted_at is null and r.status = any($1)
        group by 1, 2`,
-      [LIVE_STATUSES]
+      [RISK_LIVE_STATUSES]
     )
 
     // Fill all 25 cells, so an empty grid still reads as a matrix rather than
@@ -170,7 +168,7 @@ risksRouter.get('/risks/stats', requireCap('risk:read'), async (req, res) => {
          count(*) filter (where status <> 'closed' and review_date is not null
            and review_date <= current_date)::int          as due_review
        from public.risk_assessments where deleted_at is null`,
-      [LIVE_STATUSES]
+      [RISK_LIVE_STATUSES]
     ).then((r) => r.rows[0])
   )
   res.json(row)

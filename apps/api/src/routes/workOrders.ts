@@ -11,6 +11,7 @@ import { uploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyUsers, notifyWorkOrderClosed } from '../notify.js'
 import { eligibleAssignee, insertDirectApproval, loadApproval } from '../approvalRouting.js'
 import { nextWoRef } from '../refs.js'
+import { WO_TRANSITIONS, WO_TYPES, WO_STATUSES, PRIORITIES } from '@assetcore/domain'
 
 export const workOrdersRouter = Router()
 
@@ -37,18 +38,6 @@ const REPORT_FIELDS = [
   'safety_observations', 'downtime_hours', 'actual_hours', 'cost_cents',
 ]
 
-// Status transitions allowed per current status — mirrors apps/app/src/lib/db/workOrders.js.
-// `draft` is where auto-generated WOs land (apply_asset_health, 0013) — a
-// planner approves it into `new` (or closes it) before the normal flow starts.
-const WO_TRANSITIONS: Record<string, string[]> = {
-  draft: ['new', 'closed'],
-  new: ['assigned', 'in_progress', 'closed'],
-  assigned: ['in_progress', 'awaiting_parts', 'closed'],
-  in_progress: ['awaiting_parts', 'inspection', 'closed'],
-  awaiting_parts: ['in_progress', 'closed'],
-  inspection: ['closed', 'in_progress'],
-  closed: [],
-}
 const WO_STATUS_LABEL: Record<string, string> = {
   draft: 'Draft', new: 'New', assigned: 'Assigned', in_progress: 'In Progress',
   awaiting_parts: 'Awaiting Parts', inspection: 'Inspection', closed: 'Closed',
@@ -104,9 +93,9 @@ const woInput = z.object({
   ref: z.string().min(1).optional(),
   title: z.string().min(1),
   description: z.string().nullable().optional(),
-  type: z.enum(['corrective', 'preventive', 'inspection', 'emergency']).optional(),
-  status: z.enum(['draft', 'new', 'assigned', 'in_progress', 'awaiting_parts', 'inspection', 'closed']).optional(),
-  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  type: z.enum(WO_TYPES).optional(),
+  status: z.enum(WO_STATUSES).optional(),
+  priority: z.enum(PRIORITIES).optional(),
   assignee_id: z.string().uuid().nullable().optional(),
   sla_due: z.string().nullable().optional(),
   parts: z.array(z.unknown()).optional(),
@@ -474,7 +463,7 @@ workOrdersRouter.post('/work-orders/:id/transition', requireCap('wo:transition')
       [req.params.id]
     )
     if (!cur[0]) return { error: 'not_found' as const }
-    const allowed = WO_TRANSITIONS[cur[0].status] || []
+    const allowed: readonly string[] = WO_TRANSITIONS[cur[0].status as keyof typeof WO_TRANSITIONS] ?? []
     if (!allowed.includes(newStatus)) return { error: 'invalid_transition' as const, from: cur[0].status }
 
     // Closing draws the reserved parts out of stock. Done before the status

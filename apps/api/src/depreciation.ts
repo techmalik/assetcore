@@ -6,15 +6,9 @@
  * one period per year makes every figure checkable by hand against the client's
  * existing spreadsheet, which is what wins the first review.
  */
+import { SCHEDULE_DEPRECIATION_METHODS } from '@assetcore/domain'
 
-export const DEPRECIATION_METHODS = [
-  'straight_line',
-  'declining_balance',
-  'sum_of_years_digits',
-  'units_of_production',
-] as const
-
-export type DepreciationMethod = (typeof DEPRECIATION_METHODS)[number]
+export type DepreciationMethod = (typeof SCHEDULE_DEPRECIATION_METHODS)[number]
 
 export type ScheduleInput = {
   method: DepreciationMethod

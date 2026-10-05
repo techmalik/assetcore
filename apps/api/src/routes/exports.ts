@@ -8,6 +8,7 @@ import { writeAuditLog } from '../audit.js'
 import { localDateStamp, renderCsv, renderXlsx, type ColumnType, type ReportColumn, type ReportData } from '../reportBuilders.js'
 import { buildWhere as buildAuditWhere, filters as auditFilters } from './audit.js'
 import { Where } from '../http/query.js'
+import { ASSET_STATUSES, WO_STATUSES, PM_TASK_STATUSES, INSPECTION_STATUSES, DEFECT_STATUSES, RISK_STATUSES } from '@assetcore/domain'
 
 // Export module: every register a role can read, as CSV or Excel, built in
 // memory and streamed straight back. Unlike /reports nothing is stored — an
@@ -41,7 +42,7 @@ type Dataset = {
   filters: FilterKey[] | ((s: SchemaFlags) => FilterKey[])
   /** What the date range is measured against, so the page can label it. */
   dateLabel?: string
-  statuses?: string[]
+  statuses?: readonly string[]
   available?: (s: SchemaFlags) => boolean
   /** Datasets with their own filter vocabulary (the audit log) parse the
    * query themselves; everything else gets the common filters. */
@@ -81,7 +82,7 @@ const DATASETS: Dataset[] = [
     cap: 'asset:read',
     filters: ['location', 'site', 'status', 'date'],
     dateLabel: 'Purchase date',
-    statuses: ['operational', 'maintenance', 'standby', 'offline', 'attention', 'critical', 'inactive'],
+    statuses: ASSET_STATUSES,
     build: async ({ c, req, f }) => {
       // Book value is depreciation data; /analytics and /depreciation gate it
       // on depreciation:read, so the register must not be a way around that.
@@ -133,7 +134,7 @@ const DATASETS: Dataset[] = [
     cap: 'wo:read',
     filters: ['location', 'site', 'status', 'date'],
     dateLabel: 'Raised',
-    statuses: ['draft', 'new', 'assigned', 'in_progress', 'awaiting_parts', 'inspection', 'closed'],
+    statuses: WO_STATUSES,
     build: async ({ c, f }) => {
       const w = new Where()
       w.add('w.deleted_at is null')
@@ -180,7 +181,7 @@ const DATASETS: Dataset[] = [
     cap: 'pm:read',
     filters: ['location', 'site', 'status', 'date'],
     dateLabel: 'Due date',
-    statuses: ['pending', 'in_progress', 'completed', 'overdue', 'skipped'],
+    statuses: PM_TASK_STATUSES,
     build: async ({ c, f }) => {
       const w = new Where()
       applyFilters(w, f, { site: 't.site_id', location: 's.location_id', date: 't.due_date', status: 't.status' })
@@ -253,7 +254,7 @@ const DATASETS: Dataset[] = [
     cap: 'inspection:read',
     filters: ['location', 'site', 'status', 'date'],
     dateLabel: 'Scheduled date',
-    statuses: ['scheduled', 'due', 'in_progress', 'completed', 'overdue'],
+    statuses: INSPECTION_STATUSES,
     build: async ({ c, f }) => {
       const w = new Where()
       applyFilters(w, f, { site: 'i.site_id', location: 's.location_id', date: 'i.scheduled_date', status: 'i.status' })
@@ -288,7 +289,7 @@ const DATASETS: Dataset[] = [
     cap: 'defect:read',
     filters: ['location', 'site', 'status', 'date'],
     dateLabel: 'Identified',
-    statuses: ['open', 'acknowledged', 'in_progress', 'resolved', 'closed', 'deferred'],
+    statuses: DEFECT_STATUSES,
     build: async ({ c, f }) => {
       const w = new Where()
       w.add('d.deleted_at is null')
@@ -329,7 +330,7 @@ const DATASETS: Dataset[] = [
     cap: 'risk:read',
     filters: ['location', 'site', 'status', 'date'],
     dateLabel: 'Raised',
-    statuses: ['open', 'mitigating', 'accepted', 'closed'],
+    statuses: RISK_STATUSES,
     build: async ({ c, f }) => {
       const w = new Where()
       w.add('r.deleted_at is null')

@@ -7,6 +7,7 @@ import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadRoute, deleteUploadedFile, DOCUMENT_MIME_TYPES } from '../files.js'
 import { nextRef } from '../refs.js'
+import { AUDIT_KINDS, AUDIT_OUTCOMES, AUDIT_STATUSES, FINDING_SEVERITIES, FINDING_STATUSES, LICENCE_KINDS, DEFECT_SEVERITIES } from '@assetcore/domain'
 
 export const complianceRouter = Router()
 
@@ -29,7 +30,7 @@ const licenceInput = z.object({
   asset_id: z.string().uuid().nullable().optional(),
   authority_id: z.string().uuid().nullable().optional(),
   name: z.string().min(1),
-  kind: z.enum(['licence', 'permit', 'certificate', 'iso_certificate']).optional(),
+  kind: z.enum(LICENCE_KINDS).optional(),
   licence_number: z.string().nullable().optional(),
   issued_date: z.string(),
   expiry_date: z.string(),
@@ -223,9 +224,6 @@ complianceRouter.get('/compliance/pm-compliance', requireCap('compliance:read'),
 // recording is the outcome, not the appointment. Same capabilities as
 // licences, because it is the same job done by the same people.
 
-const AUDIT_KINDS = ['internal', 'external', 'regulatory', 'certification'] as const
-const AUDIT_OUTCOMES = ['pass', 'pass_with_findings', 'fail', 'not_applicable'] as const
-const FINDING_SEVERITIES = ['observation', 'minor', 'major', 'critical'] as const
 
 // The lifecycle half (0024) plus the ISO questionnaire half 0005 already had.
 // Both are editable; they answer different questions about the same audit.
@@ -286,7 +284,7 @@ const auditInput = z.object({
   scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   audit_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   completed_date: auditDate,
-  status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
+  status: z.enum(AUDIT_STATUSES).optional(),
   outcome: z.enum(AUDIT_OUTCOMES).nullable().optional(),
   summary: z.string().nullable().optional(),
   next_due_date: auditDate,
@@ -450,7 +448,7 @@ complianceRouter.post('/compliance-audits/:id/findings', requireCap('compliance:
 })
 
 complianceRouter.patch('/compliance-audits/:id/findings/:findingId', requireCap('compliance:update'), async (req, res) => {
-  const parsed = findingInput.partial().extend({ status: z.enum(['open', 'closed']).optional() }).safeParse(req.body)
+  const parsed = findingInput.partial().extend({ status: z.enum(FINDING_STATUSES).optional() }).safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
 
   const row = await withOrgContext(claimsFromReq(req), (c) =>
@@ -486,7 +484,7 @@ complianceRouter.patch('/compliance-audits/:id/findings/:findingId', requireCap(
  */
 complianceRouter.post('/compliance-audits/:id/findings/:findingId/defect', requireCap('defect:create'), async (req, res) => {
   const parsed = z.object({
-    severity: z.enum(['minor', 'moderate', 'major', 'critical']).optional(),
+    severity: z.enum(DEFECT_SEVERITIES).optional(),
     asset_id: z.string().uuid().nullable().optional(),
   }).safeParse(req.body ?? {})
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })

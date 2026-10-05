@@ -56,6 +56,16 @@
         "vitest"
       ]
     },
-    "packages/ui": {}
+    "packages/ui": {},
+    "packages/domain": {
+      "entry": [
+        "index.js",
+        "gen-dts.mjs",
+        "*.test.js"
+      ],
+      "ignoreDependencies": [
+        "vitest"
+      ]
+    }
   }
 }

@@ -5,27 +5,12 @@ import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
-import { ROLE_KEYS } from './approvals.js'
+import { ROLE_KEYS } from '../middleware/rbac.js'
+import { ESCALATION_ENTITY_TYPES, ESCALATION_TRIGGERS, VALID_TRIGGERS, PRIORITIES, DEFECT_SEVERITIES } from '@assetcore/domain'
 
 export const escalationsRouter = Router()
 
-const ESCALATION_ENTITY_TYPES = [
-  'work_order', 'pm_task', 'defect', 'inspection', 'approval', 'compliance_licence',
-] as const
-const ESCALATION_TRIGGERS = ['overdue', 'unassigned', 'unacknowledged', 'stale'] as const
 
-// Not every trigger makes sense for every entity, and run_escalations() has no
-// query for the pairs left out. Offering a combination the evaluator would
-// silently skip is worse than not offering it, so the same table gates the
-// API and feeds the form.
-const VALID_TRIGGERS: Record<string, string[]> = {
-  work_order: ['overdue', 'unassigned', 'stale'],
-  pm_task: ['overdue', 'unassigned'],
-  defect: ['overdue', 'unacknowledged', 'stale'],
-  inspection: ['overdue', 'unassigned'],
-  approval: ['overdue', 'unacknowledged'],
-  compliance_licence: ['overdue'],
-}
 
 const SELECT = `
   select r.*,
@@ -44,8 +29,8 @@ const ruleInput = z.object({
   // Narrowing filters. priority only applies to work orders and severity only
   // to defects; anything else is left null rather than filtering on a column
   // the entity does not have.
-  priority: z.enum(['low', 'medium', 'high', 'critical']).nullable().optional(),
-  severity: z.enum(['minor', 'moderate', 'major', 'critical']).nullable().optional(),
+  priority: z.enum(PRIORITIES).nullable().optional(),
+  severity: z.enum(DEFECT_SEVERITIES).nullable().optional(),
   notify_role_key: z.enum(ROLE_KEYS),
   active: z.boolean().optional(),
 })
@@ -56,7 +41,7 @@ const ALLOWED = ['name', 'entity_type', 'trigger', 'threshold_days', 'priority',
  * don't apply to the chosen entity. */
 function validateRule(d: Partial<z.infer<typeof ruleInput>>): { error: string } | { patch: Record<string, unknown> } {
   const patch: Record<string, unknown> = { ...d }
-  if (d.entity_type && d.trigger && !VALID_TRIGGERS[d.entity_type].includes(d.trigger)) {
+  if (d.entity_type && d.trigger && !(VALID_TRIGGERS[d.entity_type] as readonly string[]).includes(d.trigger)) {
     return { error: 'invalid_trigger_for_entity' }
   }
   if (d.entity_type && d.entity_type !== 'work_order') patch.priority = null

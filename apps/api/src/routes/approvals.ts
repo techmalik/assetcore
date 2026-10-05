@@ -11,29 +11,11 @@ import {
   insertDirectApproval, applyDirectOutcome, type NoticeCtx,
 } from '../approvalRouting.js'
 import { send, type Result } from '../http/result.js'
+import { APPROVAL_ENTITY_TYPES, APPROVAL_KINDS } from '@assetcore/domain'
 
 export const approvalsRouter = Router()
 
 // What can be sent for approval, and for what. 0001 shipped the table with
-// these as comments; they are enumerated here so a typo doesn't quietly create
-// a category of request no rule will ever match.
-const APPROVAL_ENTITY_TYPES = [
-  'work_order', 'defect', 'compliance_licence', 'pm_task',
-  'inspection', 'maintenance_event',
-] as const
-const APPROVAL_KINDS = [
-  'wo_closure',      // sign-off that a job is genuinely finished
-  'wo_cost',         // spend on a job above a threshold
-  'defect_deferral', // accepting a defect rather than fixing it
-  'licence_renewal',
-  'pm_signoff',
-  'wo_approval',        // letting a drafted job go ahead (0028)
-  'inspection_report',  // a completed inspection sent up for review (0028)
-  'maintenance_report', // a completed maintenance record sent up for review (0028)
-] as const
-// Re-exported from @assetcore/rbac (escalations.ts imports it from here) — a
-// local copy of the role list drifted the moment the role set changed.
-export { ROLE_KEYS }
 
 const RULE_SELECT = `
   select r.*,

@@ -60,6 +60,7 @@ copy('node_modules')
 // Workspace packages the API imports at runtime (node_modules/@assetcore/*
 // are symlinks into packages/, so the targets must ship too).
 copy('packages/rbac')
+copy('packages/domain')
 copy('apps/app/dist')
 copy('apps/admin/dist')
 copy('apps/api/dist')

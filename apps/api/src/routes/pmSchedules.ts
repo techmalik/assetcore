@@ -6,6 +6,7 @@ import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
+import { PM_FREQUENCIES } from '@assetcore/domain'
 
 export const pmSchedulesRouter = Router()
 
@@ -27,7 +28,7 @@ const scheduleInput = z.object({
   site_id: z.string().uuid().nullable().optional(),
   title: z.string().min(1),
   description: z.string().nullable().optional(),
-  frequency: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'semi_annual', 'annual']),
+  frequency: z.enum(PM_FREQUENCIES),
   estimated_hours: z.number().nullable().optional(),
   next_due: z.string(),
   assignee_id: z.string().uuid().nullable().optional(),

@@ -8,6 +8,6 @@ export default defineConfig({
   test: {
     environment: 'node',
     setupFiles: ['./src/test/setup.js'],
-    include: ['src/**/*.test.{js,jsx}', '../../packages/rbac/*.test.js'],
+    include: ['src/**/*.test.{js,jsx}', '../../packages/rbac/*.test.js', '../../packages/domain/*.test.js'],
   },
 })

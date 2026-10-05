@@ -7,12 +7,10 @@ import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { nextRef, nextWoRef } from '../refs.js'
+import { DEFECT_SEVERITIES, DEFECT_STATUSES, DEFECT_OPEN_STATUSES, PRIORITIES, WO_TYPES } from '@assetcore/domain'
 
 export const defectsRouter = Router()
 
-const DEFECT_SEVERITIES = ['minor', 'moderate', 'major', 'critical'] as const
-const DEFECT_STATUSES = ['open', 'acknowledged', 'in_progress', 'resolved', 'closed', 'deferred'] as const
-const OPEN_STATUSES = ['open', 'acknowledged', 'in_progress', 'deferred']
 
 // A defect's severity is about the finding; a work order's priority is about
 // the response. They are not the same scale, so the jump between them is
@@ -81,7 +79,7 @@ defectsRouter.get('/defects', requireCap('defect:read'), async (req, res) => {
     const status = qp(req, 'status')
     if (status) add('and d.status = $?', status)
     // The default view of a register is what still needs doing.
-    if (req.query.open === 'true') { values.push(OPEN_STATUSES); clauses.push(`and d.status = any($${values.length})`) }
+    if (req.query.open === 'true') { values.push(DEFECT_OPEN_STATUSES); clauses.push(`and d.status = any($${values.length})`) }
     const severity = qp(req, 'severity')
     if (severity) add('and d.severity = $?', severity)
     const assetId = qp(req, 'asset_id')
@@ -115,7 +113,7 @@ defectsRouter.get('/defects/stats', requireCap('defect:read'), async (req, res) 
          count(*) filter (where status = any($1) and work_order_id is null)::int     as unactioned,
          count(*) filter (where status in ('resolved','closed'))::int                as closed
        from public.defects where deleted_at is null`,
-      [OPEN_STATUSES]
+      [DEFECT_OPEN_STATUSES]
     ).then((r) => r.rows[0])
   )
   res.json(row)
@@ -203,10 +201,10 @@ defectsRouter.patch('/defects/:id', requireCap('defect:update'), async (req, res
 const raiseInput = z.object({
   title: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
-  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  priority: z.enum(PRIORITIES).optional(),
   assignee_id: z.string().uuid().nullable().optional(),
   sla_due: z.string().nullable().optional(),
-  type: z.enum(['corrective', 'preventive', 'inspection', 'emergency']).optional(),
+  type: z.enum(WO_TYPES).optional(),
 })
 
 defectsRouter.post('/defects/:id/work-order', requireCap('wo:create'), async (req, res) => {

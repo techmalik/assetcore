@@ -9,6 +9,7 @@ import { refreshAssetHealth, previewAssetHealth } from '../healthService.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadRoute, deleteUploadedFile, IMAGE_MIME_TYPES, DOCUMENT_MIME_TYPES } from '../files.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
+import { ASSET_STATUSES, ASSET_DEPRECIATION_METHODS, LIFECYCLE_STATUSES, CRITICALITIES } from '@assetcore/domain'
 
 export const assetsRouter = Router()
 
@@ -20,7 +21,6 @@ export const assetsRouter = Router()
 //
 // 'inactive' (0027) is what an asset at a shut-down site is. It is set by the
 // shutdown and cleared by a reopen or a transfer out; the UI never offers it.
-const ASSET_STATUSES = ['operational', 'maintenance', 'standby', 'offline', 'attention', 'critical', 'inactive'] as const
 
 const PHOTO_UPLOAD = { subdir: 'assets', field: 'photo', mime: IMAGE_MIME_TYPES, maxBytes: 10 * 1024 * 1024 }
 const DOCUMENT_UPLOAD = { subdir: 'asset-documents', field: 'document', mime: DOCUMENT_MIME_TYPES, maxBytes: 25 * 1024 * 1024 }
@@ -54,9 +54,6 @@ const ALLOWED = [
 
 // 0022 widened the column's check to admit sum-of-years' digits, which the
 // posted subledger supports.
-const DEPRECIATION_METHODS = ['none', 'straight_line', 'declining_balance', 'sum_of_years_digits'] as const
-const LIFECYCLE_STATUSES = ['planned', 'in_service', 'standby', 'under_maintenance', 'in_storage', 'disposed'] as const
-const CRITICALITIES = ['low', 'medium', 'high', 'critical'] as const
 
 // Columns whose change invalidates the stored book value.
 const DEPRECIATION_INPUTS = [
@@ -97,7 +94,7 @@ const assetInput = z.object({
   // Per-asset depreciation overrides. null means "inherit the organisation
   // default" (organizations.settings->'depreciation'), matching how the SQL
   // resolves them.
-  depreciation_method: z.enum(DEPRECIATION_METHODS).nullable().optional(),
+  depreciation_method: z.enum(ASSET_DEPRECIATION_METHODS).nullable().optional(),
   useful_life_years: z.number().positive().nullable().optional(),
   salvage_value_cents: z.number().int().min(0).nullable().optional(),
   declining_rate_pct: z.number().gt(0).lt(100).nullable().optional(),
