@@ -7,8 +7,8 @@ import { ROLE_RANK } from '@assetcore/rbac'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 import {
-  APPROVAL_SELECT, approvalEvents, loadApproval, notifyApprovalUser, eligibleAssignee,
-  insertDirectApproval, applyDirectOutcome,
+  APPROVAL_SELECT, approvalEvents, loadApproval, notifyApprovalUser, notifyApprovalRole, eligibleAssignee,
+  insertDirectApproval, applyDirectOutcome, type NoticeCtx,
 } from '../approvalRouting.js'
 
 export const approvalsRouter = Router()
@@ -187,32 +187,10 @@ approvalsRouter.delete('/approval-rules/:id', requireCap('approval:manage'), asy
 
 // ── Requests ─────────────────────────────────────────────────────────────────
 
-async function notifyRole(
-  c: import('pg').PoolClient,
-  roleKey: string,
-  n: { kind: string; title: string; body: string; entityId: string }
-): Promise<void> {
-  await c.query(
-    `insert into public.notifications (org_id, user_id, kind, title, body, entity_type, entity_id)
-     select current_org_id(), m.user_id, $1, $2, $3, 'approval', $4
-     from public.memberships m
-     where m.org_id = current_org_id() and m.status = 'active' and m.role_key = $5`,
-    [n.kind, n.title, n.body, n.entityId, roleKey]
-  )
-}
-
-async function notifyUser(
-  c: import('pg').PoolClient,
-  userId: string | null,
-  n: { kind: string; title: string; body: string; entityId: string }
-): Promise<void> {
-  if (!userId) return
-  await c.query(
-    `insert into public.notifications (org_id, user_id, kind, title, body, entity_type, entity_id)
-     values (current_org_id(), $1, $2, $3, $4, 'approval', $5)`,
-    [userId, n.kind, n.title, n.body, n.entityId]
-  )
-}
+const noticeCtx = (req: import('express').Request): NoticeCtx => ({
+  orgId: req.claims!.org_id as string,
+  actorId: req.claims!.sub,
+})
 
 // Events now carry `to_user` as well as `actor`: a forward is only legible if
 // it says who it went to.
@@ -402,7 +380,7 @@ approvalsRouter.post('/approvals', requireCap('approval:create'), async (req, re
        values (current_org_id(), $1, 1, 'submitted', current_user_id(), $2, $3)`,
       [approval.id, effectiveRole(req), d.notes ?? null]
     )
-    await notifyRole(c, first.role_key, {
+    await notifyApprovalRole(c, noticeCtx(req), first.role_key, {
       kind: 'approval_pending',
       title: `Approval needed: ${d.title || d.kind}`,
       body: `Step 1 of ${rule.levels.length} under "${rule.name}".`,
@@ -471,7 +449,7 @@ approvalsRouter.post('/approvals/:id/approve', requireCap('approval:decide'), as
          values (current_org_id(), $1, $2, 'approved', current_user_id(), $3, $4)`,
         [ap.id, ap.level, effectiveRole(req), notes]
       )
-      await notifyUser(c, ap.requester_id, {
+      await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
         kind: 'approval_decided',
         title: `Accepted: ${ap.title || ap.kind}`,
         body: notes || 'Accepted and kept on record.',
@@ -506,7 +484,7 @@ approvalsRouter.post('/approvals/:id/approve', requireCap('approval:decide'), as
           where id = $1`,
         [ap.id]
       )
-      await notifyUser(c, ap.requester_id, {
+      await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
         kind: 'approval_decided',
         title: `Approved: ${ap.title || ap.kind}`,
         body: `Signed off at step ${ap.level} of ${ap.max_levels}.`,
@@ -527,7 +505,7 @@ approvalsRouter.post('/approvals/:id/approve', requireCap('approval:decide'), as
             where id = $1`,
           [ap.id]
         )
-        await notifyUser(c, ap.requester_id, {
+        await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
           kind: 'approval_decided',
           title: `Approved: ${ap.title || ap.kind}`,
           body: 'Signed off at the final step available on its rule.',
@@ -538,7 +516,7 @@ approvalsRouter.post('/approvals/:id/approve', requireCap('approval:decide'), as
           'update public.approvals set level = level + 1, current_role_key = $2 where id = $1',
           [ap.id, next[0].role_key]
         )
-        await notifyRole(c, next[0].role_key, {
+        await notifyApprovalRole(c, noticeCtx(req), next[0].role_key, {
           kind: 'approval_pending',
           title: `Approval needed: ${ap.title || ap.kind}`,
           body: `Step ${ap.level + 1} of ${ap.max_levels}.`,
@@ -600,7 +578,7 @@ approvalsRouter.post('/approvals/:id/reject', requireCap('approval:decide'), asy
        values (current_org_id(), $1, $2, 'rejected', current_user_id(), $3, $4)`,
       [ap.id, ap.level, effectiveRole(req), notes]
     )
-    await notifyUser(c, ap.requester_id, {
+    await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
       kind: 'approval_decided',
       title: `Rejected: ${ap.title || ap.kind}`,
       body: notes || `Rejected at step ${ap.level} of ${ap.max_levels}.`,
@@ -760,14 +738,14 @@ approvalsRouter.post('/approvals/:id/forward', requireCap('approval:decide'), as
 
     await c.query('update public.approvals set assignee_id = $2 where id = $1', [ap.id, toUserId])
     await recordDirectEvent(c, ap, 'forwarded', effectiveRole(req), notes, toUserId)
-    await notifyApprovalUser(c, toUserId, {
+    await notifyApprovalUser(c, noticeCtx(req), toUserId, {
       kind: 'approval_pending',
       title: `Forwarded to you for approval: ${ap.title || ap.kind}`,
       body: notes || 'Accept it, forward it, return it or discard it.',
       entityId: ap.id,
     })
     // The requester would otherwise only see the change by opening it.
-    await notifyApprovalUser(c, ap.requester_id, {
+    await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
       kind: 'approval_forwarded',
       title: `Forwarded: ${ap.title || ap.kind}`,
       body: `Now with ${target.full_name || 'another reviewer'}.`,
@@ -803,7 +781,7 @@ approvalsRouter.post('/approvals/:id/return', requireCap('approval:decide'), asy
 
     await c.query("update public.approvals set status = 'returned', assignee_id = null where id = $1", [ap.id])
     await recordDirectEvent(c, ap, 'returned', effectiveRole(req), notes)
-    await notifyApprovalUser(c, ap.requester_id, {
+    await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
       kind: 'approval_decided',
       title: `Returned to you: ${ap.title || ap.kind}`,
       body: notes,
@@ -845,7 +823,7 @@ approvalsRouter.post('/approvals/:id/discard', requireCap('approval:decide'), as
       [ap.id]
     )
     await recordDirectEvent(c, ap, 'discarded', effectiveRole(req), notes)
-    await notifyApprovalUser(c, ap.requester_id, {
+    await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
       kind: 'approval_decided',
       title: `Discarded: ${ap.title || ap.kind}`,
       body: notes,
@@ -901,7 +879,7 @@ approvalsRouter.post('/approvals/:id/resubmit', requireCap('approval:create'), a
       [ap.id, assigneeId]
     )
     await recordDirectEvent(c, ap, 'resubmitted', effectiveRole(req), notes, assigneeId)
-    await notifyApprovalUser(c, assigneeId, {
+    await notifyApprovalUser(c, noticeCtx(req), assigneeId, {
       kind: 'approval_pending',
       title: `Sent to you for approval: ${ap.title || ap.kind}`,
       body: notes || 'Resubmitted after changes. Accept it, forward it, return it or discard it.',

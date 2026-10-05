@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg'
 import { can } from '@assetcore/rbac'
 import { writeAuditLog } from './audit.js'
+import { notifyUsers, notifyRoleHolders } from './notify.js'
 
 // Shared by routes/approvals.ts and routes/workOrders.ts. It lives outside
 // both routers because a work order sent for approval at creation has to raise
@@ -52,17 +53,37 @@ export async function loadApproval(c: PoolClient, approvalId: string) {
   return { ...rows[0], events: await approvalEvents(c, approvalId) }
 }
 
+type ApprovalNotice = { kind: string; title: string; body: string; entityId: string }
+/** Who is acting, for the notification's actor and self-exclusion. */
+export type NoticeCtx = { orgId: string; actorId: string }
+
+/**
+ * Approval notices go through notify_users / notify_role_holders like every
+ * other notification, so the recipient's preferences apply, the person acting
+ * is never told about their own action, and the bell can show who did it.
+ * They used to be raw inserts that did none of that. No de-duplication key:
+ * a request can be returned and resubmitted any number of times, and each
+ * hand-off is news to the person it lands on.
+ */
 export async function notifyApprovalUser(
-  c: PoolClient,
-  userId: string | null,
-  n: { kind: string; title: string; body: string; entityId: string }
+  c: PoolClient, ctx: NoticeCtx, userId: string | null, n: ApprovalNotice
 ): Promise<void> {
   if (!userId) return
-  await c.query(
-    `insert into public.notifications (org_id, user_id, kind, title, body, entity_type, entity_id)
-     values (current_org_id(), $1, $2, $3, $4, 'approval', $5)`,
-    [userId, n.kind, n.title, n.body, n.entityId]
-  )
+  await notifyUsers(c, {
+    orgId: ctx.orgId, actorId: ctx.actorId, userIds: [userId],
+    kind: n.kind, title: n.title, body: n.body, entityType: 'approval', entityId: n.entityId,
+  })
+}
+
+/** Every active member holding `roleKey`. Approvals carry no site, so no
+ * site filter applies. */
+export async function notifyApprovalRole(
+  c: PoolClient, ctx: NoticeCtx, roleKey: string, n: ApprovalNotice
+): Promise<void> {
+  await notifyRoleHolders(c, {
+    orgId: ctx.orgId, actorId: ctx.actorId, siteId: null, roles: [roleKey],
+    kind: n.kind, title: n.title, body: n.body, entityType: 'approval', entityId: n.entityId,
+  })
 }
 
 /**
@@ -137,7 +158,7 @@ export async function insertDirectApproval(
      values (current_org_id(), $1, 1, 'submitted', current_user_id(), $2, $3, $4)`,
     [approval.id, actor.roleKey, d.notes ?? null, d.assignee_id]
   )
-  await notifyApprovalUser(c, d.assignee_id, {
+  await notifyApprovalUser(c, { orgId: approval.org_id, actorId: actor.userId }, d.assignee_id, {
     kind: 'approval_pending',
     title: `Sent to you for approval: ${d.title || d.kind}`,
     body: d.notes ? String(d.notes).slice(0, 160) : 'Accept it, forward it, return it or discard it.',

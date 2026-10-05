@@ -47,3 +47,44 @@ describe('matrix approvals decide on the live role, not the token', () => {
     }
   })
 })
+
+describe('approval notifications follow the notification rules', () => {
+  const countFor = async (userId: string, approvalId: string) => {
+    const c = ownerClient()
+    await c.connect()
+    try {
+      const { rows } = await c.query(
+        `select actor_id from public.notifications where user_id = $1 and entity_type = 'approval' and entity_id = $2`,
+        [userId, approvalId]
+      )
+      return rows
+    } finally {
+      await c.end()
+    }
+  }
+
+  // They were raw inserts: no preference check, no actor on the notice.
+  it('respect a recipient who turned approval notices off, and name the actor otherwise', async () => {
+    const officer = await apiAs(USERS.fieldTechA1.email)
+    const manager = await apiAs(USERS.opsManagerA.email)
+    const send = () => officer.post('/api/approvals').send({
+      entity_type: 'inspection', entity_id: randomUUID(), kind: 'inspection_report',
+      title: 'Notification rules test', assignee_id: USERS.opsManagerA.id,
+    })
+
+    const on = await send()
+    expect(on.status).toBe(201)
+    const delivered = await countFor(USERS.opsManagerA.id, on.body.id)
+    expect(delivered.length).toBe(1)
+    expect(delivered[0].actor_id).toBe(USERS.fieldTechA1.id)
+
+    expect((await manager.put('/api/notification-preferences').send({ kind: 'approval_pending', in_app: false, email: false })).status).toBe(204)
+    try {
+      const off = await send()
+      expect(off.status).toBe(201)
+      expect((await countFor(USERS.opsManagerA.id, off.body.id)).length).toBe(0)
+    } finally {
+      await manager.put('/api/notification-preferences').send({ kind: 'approval_pending', in_app: true, email: false })
+    }
+  })
+})
