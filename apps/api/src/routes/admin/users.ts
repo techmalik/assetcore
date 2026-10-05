@@ -1,10 +1,8 @@
 import { Router } from 'express'
-import { randomUUID } from 'node:crypto'
 import { ownerPool } from '../../db.js'
 import { config } from '../../config.js'
 import { requirePlatformCap } from '../../middleware/platformRbac.js'
 import { writePlatformAuditLog } from '../../audit.js'
-import { hashPassword } from '../../auth/passwords.js'
 import { issueToken } from '../../auth/tokens.js'
 import { sendMail } from '../../auth/mailer.js'
 
@@ -59,46 +57,6 @@ function setMembershipStatus(status: string, action: string) {
 }
 adminUsersRouter.post('/users/:id/disable', requirePlatformCap('user:write'), setMembershipStatus('disabled', 'user.disable'))
 adminUsersRouter.post('/users/:id/enable', requirePlatformCap('user:write'), setMembershipStatus('active', 'user.enable'))
-
-// Our own token flow replaces auth.admin.inviteUserByEmail: creates the user
-// (random unguessable password, must_change_password) + membership, then
-// emails a set-password (invite-token) link — or prints it in dev.
-adminUsersRouter.post('/users/:id/invite', requirePlatformCap('user:write'), async (req, res) => {
-  const { email, full_name, org_id, role_key } = req.body ?? {}
-  if (!email || !org_id || !role_key) return res.status(400).json({ error: 'email, org_id, role_key required' })
-
-  const client = await ownerPool.connect()
-  try {
-    await client.query('begin')
-    const tempPasswordHash = await hashPassword(randomUUID())
-    const { rows: userRows } = await client.query(
-      `insert into public.users (email, password_hash, full_name, must_change_password)
-       values ($1, $2, $3, true)
-       on conflict (email) do update set email = excluded.email
-       returning id`,
-      [email, tempPasswordHash, full_name ?? '']
-    )
-    const userId = userRows[0].id
-    await client.query(
-      `insert into public.memberships (org_id, user_id, role_key, status)
-       values ($1, $2, $3, 'active')
-       on conflict (org_id, user_id) do update set role_key = excluded.role_key, status = 'active'`,
-      [org_id, userId, role_key]
-    )
-    const token = await issueToken(client, userId, 'invite')
-    await client.query('commit')
-
-    const link = `${config.APP_ORIGIN}/reset-password?token=${token}&invite=1`
-    await sendMail({ to: email, subject: "You've been invited to AssetCore", text: `Set your password: ${link}\n\nThis link expires in 7 days.` })
-    await writePlatformAuditLog({ actorId: req.claims!.sub, action: 'user.invite', targetType: 'user', targetId: userId, orgId: org_id, after: { email, role_key }, ip: req.ip })
-    res.status(201).json({ user_id: userId })
-  } catch (err) {
-    await client.query('rollback')
-    throw err
-  } finally {
-    client.release()
-  }
-})
 
 // Our own token flow replaces auth.admin.generateLink: issues a reset token
 // and returns the link (also emailed) for the admin to hand to the user.

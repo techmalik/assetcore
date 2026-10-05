@@ -14,7 +14,6 @@ import { inspectionsRouter } from './inspections.js'
 import { devicesRouter } from './devices.js'
 import { integrationsRouter } from './integrations.js'
 import { notificationsRouter } from './notifications.js'
-import { reportsRouter } from './reports.js'
 import { exportsRouter } from './exports.js'
 import { auditRouter } from './audit.js'
 import { dashboardRouter } from './dashboard.js'
@@ -23,7 +22,6 @@ import { orgMembersRouter } from './orgMembers.js'
 import { profileRouter } from './profile.js'
 import { licenceRouter } from './licence.js'
 import { adminRouter } from './admin/index.js'
-import { documentsRouter } from './documents.js'
 import { sparePartsRouter } from './spareParts.js'
 import { depreciationRouter } from './depreciation.js'
 import { defectsRouter } from './defects.js'
@@ -51,7 +49,6 @@ apiRouter.use(inspectionsRouter)
 apiRouter.use(devicesRouter)
 apiRouter.use(integrationsRouter)
 apiRouter.use(notificationsRouter)
-apiRouter.use(reportsRouter)
 apiRouter.use(exportsRouter)
 apiRouter.use(auditRouter)
 apiRouter.use(dashboardRouter)
@@ -59,7 +56,6 @@ apiRouter.use(orgRouter)
 apiRouter.use(orgMembersRouter)
 apiRouter.use(profileRouter)
 apiRouter.use(licenceRouter)
-apiRouter.use(documentsRouter)
 apiRouter.use(sparePartsRouter)
 apiRouter.use(depreciationRouter)
 apiRouter.use(defectsRouter)

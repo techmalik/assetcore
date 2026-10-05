@@ -31,41 +31,6 @@ async function withClient<T>(fn: (client: ReturnType<typeof ownerClient>) => Pro
 const suffix = () => randomBytes(4).toString('hex')
 
 // ---------------------------------------------------------------------------
-// F1 — /reports and its analytics were readable by every role.
-// ---------------------------------------------------------------------------
-describe('F1: report routes are capability-gated', () => {
-  it('a field technician cannot list reports', async () => {
-    const api = await apiAs(USERS.fieldTechA1.email)
-    const res = await api.get('/api/reports')
-    expect(res.status).toBe(403)
-    expect(res.body.error).toBe('forbidden')
-  })
-
-  it('a field technician cannot read the location analytics rollup', async () => {
-    const api = await apiAs(USERS.fieldTechA1.email)
-    expect((await api.get('/api/reports/location-analytics')).status).toBe(403)
-  })
-
-  it('an owner still can', async () => {
-    const api = await apiAs(USERS.ownerA.email)
-    expect((await api.get('/api/reports')).status).toBe(200)
-    expect((await api.get('/api/reports/location-analytics')).status).toBe(200)
-  })
-
-  it('withholds book value from a caller without depreciation:read', async () => {
-    // hse_officer holds report:read but not depreciation:read, so the rollup
-    // must arrive with total_nbv_cents blanked rather than populated.
-    expect(can('hse_officer', 'report:read')).toBe(true)
-    expect(can('hse_officer', 'depreciation:read')).toBe(false)
-
-    const api = await apiAs(USERS.hseOfficerA1.email)
-    const res = await api.get('/api/reports/location-analytics')
-    expect(res.status).toBe(200)
-    for (const loc of res.body.locations) expect(loc.total_nbv_cents).toBeNull()
-  })
-})
-
-// ---------------------------------------------------------------------------
 // F4 — '*:read' silently satisfied audit:read, so viewers reached the Admin
 // audit log and the auditor's explicit grant was dead code.
 // ---------------------------------------------------------------------------

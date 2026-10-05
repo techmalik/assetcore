@@ -60,6 +60,20 @@ describe('export catalogue', () => {
 })
 
 describe('assets export', () => {
+  // Book value is depreciation data. This was pinned on the old
+  // /reports/location-analytics rollup; the register export is where the same
+  // figures are downloadable now.
+  it('leaves book value out for a caller without depreciation:read', async () => {
+    const hse = await apiAs(USERS.hseOfficerA1.email)
+    const header = async (api: typeof owner) => {
+      const res = await api.get('/api/exports/assets?format=csv').buffer(true).parse(binary)
+      expect(res.status).toBe(200)
+      return parseCsv((res.body as Buffer).toString('utf8').slice(1))[0]
+    }
+    expect(await header(owner)).toContain('Book Value (NGN)')
+    expect(await header(hse)).not.toContain('Book Value (NGN)')
+  })
+
   it('downloads a CSV attachment with a BOM, scoped to the org', async () => {
     const res = await owner.get('/api/exports/assets?format=csv').buffer(true).parse(binary)
     expect(res.status).toBe(200)

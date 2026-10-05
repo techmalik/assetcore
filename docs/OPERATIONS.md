@@ -43,6 +43,28 @@ Day-to-day user management (invite, role change, disable) is self-service via
 access needed. Use the CLI only for the one-off account bootstrap in
 `docs/DEPLOYMENT.md` step 6.
 
+## Platform runbook endpoints
+
+Three platform-admin endpoints have no button in the backoffice on purpose.
+Each instance normally holds one organisation, created by `provision.mjs`,
+and the backoffice no longer offers create or suspend. They stay for the rare
+support case, and every call is written to Platform Audit.
+
+| Endpoint | What it does | Platform capability |
+|---|---|---|
+| `POST /api/admin/orgs` | Creates an organisation (`name` required; `short_name`, `industry`, `region` optional) | `org:write` |
+| `POST /api/admin/orgs/:id/suspend` | Sets the organisation's `deleted_at`, which removes `org_id` from its members' next tokens and so cuts their access | `org:suspend` |
+| `POST /api/admin/orgs/:id/restore` | Clears `deleted_at`; members get access back at their next sign-in | `org:suspend` |
+
+Call them with a platform admin's access token (the same sign-in the
+backoffice uses):
+
+```bash
+TOKEN=$(curl -s https://<host>/api/auth/login -H 'content-type: application/json' \
+  -d '{"email":"<platform admin email>","password":"<password>"}' | jq -r .accessToken)
+curl -s -X POST https://<host>/api/admin/orgs/<org id>/suspend -H "authorization: Bearer $TOKEN"
+```
+
 ## Licence renewal
 
 Edit `licence_info` via the backoffice (`/admin/` → Licence & Invoices),
