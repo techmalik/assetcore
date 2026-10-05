@@ -669,19 +669,6 @@ const taskInput = z.object({
   notes: z.string().max(500).nullable().optional(),
 })
 
-workOrdersRouter.get('/work-orders/:id/tasks', async (req, res) => {
-  const rows = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(
-      `select t.*, case when u.id is null then null else jsonb_build_object('id', u.id, 'full_name', u.full_name) end as completed_by
-       from public.work_order_tasks t
-       left join public.users u on u.id = t.done_by
-       where t.work_order_id = $1 order by t.sequence asc, t.created_at asc`,
-      [req.params.id]
-    ).then((r) => r.rows)
-  )
-  res.json(rows)
-})
-
 workOrdersRouter.post('/work-orders/:id/tasks', requireCap('wo:update'), async (req, res) => {
   const parsed = taskInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
@@ -752,22 +739,6 @@ const woPartInput = z.object({
   quantity_used: z.number().nonnegative().optional(),
   unit_cost_cents: z.number().int().nonnegative().nullable().optional(),
 }).refine((v) => v.part_id || v.description, { message: 'part_id or description required' })
-
-workOrdersRouter.get('/work-orders/:id/parts', async (req, res) => {
-  const rows = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(
-      `select wp.*,
-         case when sp.id is null then null else jsonb_build_object(
-           'id', sp.id, 'part_number', sp.part_number, 'name', sp.name,
-           'unit', sp.unit, 'quantity_in_stock', sp.quantity_in_stock) end as part
-       from public.work_order_parts wp
-       left join public.spare_parts sp on sp.id = wp.part_id
-       where wp.work_order_id = $1 order by wp.created_at asc`,
-      [req.params.id]
-    ).then((r) => r.rows)
-  )
-  res.json(rows)
-})
 
 workOrdersRouter.post('/work-orders/:id/parts', requireCap('wo:update'), async (req, res) => {
   const parsed = woPartInput.safeParse(req.body)

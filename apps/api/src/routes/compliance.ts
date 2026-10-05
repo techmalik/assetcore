@@ -61,24 +61,6 @@ complianceRouter.get('/compliance-licences', async (req, res) => {
   res.json(rows)
 })
 
-complianceRouter.get('/compliance-licences/counts', async (req, res) => {
-  const rows = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query('select expiry_date from public.compliance_licences where deleted_at is null').then((r) => r.rows)
-  )
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const d30 = new Date(today); d30.setDate(today.getDate() + 30)
-  const d90 = new Date(today); d90.setDate(today.getDate() + 90)
-  let active = 0, dueSoon = 0, expiring = 0, expired = 0
-  for (const row of rows) {
-    const exp = new Date(row.expiry_date)
-    if (exp < today) expired++
-    else if (exp < d30) expiring++
-    else if (exp < d90) dueSoon++
-    else active++
-  }
-  res.json({ active, dueSoon, expiring, expired, total: rows.length })
-})
-
 complianceRouter.get('/regulatory-authorities', async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) =>
     c.query('select id, name, code from public.regulatory_authorities order by code').then((r) => r.rows)
@@ -204,17 +186,6 @@ complianceRouter.post('/compliance-audits/:id/document', requireCap('compliance:
   res.status(201).json(row)
 })
 
-complianceRouter.delete('/compliance-audits/:id', requireCap('compliance:update'), async (req, res) => {
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query('update public.compliance_audits set deleted_at = now() where id = $1 returning id, org_id', [req.params.id])
-    const audit = rows[0]
-    if (audit) await writeAuditLog(c, { orgId: audit.org_id, actorId: req.claims!.sub, action: 'compliance_audit.archive', entityType: 'compliance_audit', entityId: audit.id })
-    return audit
-  })
-  if (!row) return res.status(404).json({ error: 'not_found' })
-  res.status(204).end()
-})
-
 complianceRouter.delete('/compliance-licences/:id', requireCap('compliance:update'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
@@ -279,9 +250,9 @@ complianceRouter.get('/compliance/pm-compliance', requireCap('compliance:read'),
 // recording is the outcome, not the appointment. Same capabilities as
 // licences, because it is the same job done by the same people.
 
-export const AUDIT_KINDS = ['internal', 'external', 'regulatory', 'certification'] as const
-export const AUDIT_OUTCOMES = ['pass', 'pass_with_findings', 'fail', 'not_applicable'] as const
-export const FINDING_SEVERITIES = ['observation', 'minor', 'major', 'critical'] as const
+const AUDIT_KINDS = ['internal', 'external', 'regulatory', 'certification'] as const
+const AUDIT_OUTCOMES = ['pass', 'pass_with_findings', 'fail', 'not_applicable'] as const
+const FINDING_SEVERITIES = ['observation', 'minor', 'major', 'critical'] as const
 
 // The lifecycle half (0024) plus the ISO questionnaire half 0005 already had.
 // Both are editable; they answer different questions about the same audit.
@@ -370,25 +341,6 @@ complianceRouter.get('/compliance-audits', requireCap('compliance:read'), async 
     return c.query(clauses.join(' '), values).then((r) => r.rows)
   })
   res.json(rows)
-})
-
-complianceRouter.get('/compliance-audits/stats', requireCap('compliance:read'), async (req, res) => {
-  const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(
-      `select
-         count(*) filter (where status in ('scheduled','in_progress'))::int as upcoming,
-         count(*) filter (where status = 'completed')::int                  as completed,
-         count(*) filter (where status = 'completed' and outcome = 'fail')::int as failed,
-         (select count(*)::int from public.compliance_audit_findings f
-           join public.compliance_audits a on a.id = f.audit_id and a.deleted_at is null
-           where f.status = 'open')                                          as open_findings,
-         (select count(*)::int from public.compliance_audit_findings f
-           join public.compliance_audits a on a.id = f.audit_id and a.deleted_at is null
-           where f.status = 'open' and f.severity in ('major','critical'))    as serious_findings
-       from public.compliance_audits where deleted_at is null`
-    ).then((r) => r.rows[0])
-  )
-  res.json(row)
 })
 
 complianceRouter.get('/compliance-audits/:id', requireCap('compliance:read'), async (req, res) => {

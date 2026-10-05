@@ -16,13 +16,6 @@ integrationsRouter.get('/integrations', async (req, res) => {
   res.json(rows)
 })
 
-integrationsRouter.get('/integrations/:kind', async (req, res) => {
-  const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query('select * from public.integrations where kind = $1', [req.params.kind]).then((r) => r.rows[0] ?? null)
-  )
-  res.json(row)
-})
-
 const upsertInput = z.object({
   label: z.string().nullable().optional(),
   config: z.record(z.unknown()).optional(),

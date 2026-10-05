@@ -43,7 +43,7 @@ const forgotLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: isTest ? 1000
 // Exported: requireActiveMembership.ts reuses this + resolveSiteIds below so a
 // live per-request scope check (TASK-2.6) uses the exact same resolution the
 // login/refresh path uses, rather than a second, driftable implementation.
-export const NO_SITE = '00000000-0000-0000-0000-000000000000'
+const NO_SITE = '00000000-0000-0000-0000-000000000000'
 
 /** Resolves the active membership (org/role/scope/grants) for a user: earliest
  * active membership in a non-deleted org, or nulls for a platform admin with no

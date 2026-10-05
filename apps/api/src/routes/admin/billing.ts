@@ -47,7 +47,7 @@ billingRouter.patch('/billing/invoices/:id', requirePlatformCap('billing:write')
   const { setSql, values } = buildSet(body, ALLOWED)
   if (!setSql) return res.status(400).json({ error: 'empty_patch' })
 
-  // Stamp lifecycle timestamps on status transitions, same as the old Edge Function.
+  // Stamp lifecycle timestamps on status transitions.
   const stampSql = [
     body.status === 'sent' && !before.issued_at ? `, issued_at = now()` : '',
     body.status === 'paid' && !before.paid_at ? `, paid_at = now()` : '',

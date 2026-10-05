@@ -12,12 +12,12 @@
 const MS_PER_HOUR = 1000 * 60 * 60
 
 /** Work order shape the repair-time figures read. */
-export type RepairRow = {
+type RepairRow = {
   actual_start: string | Date | null
   actual_end: string | Date | null
 }
 
-export type Mttr = {
+type Mttr = {
   /** Mean hours from work starting to work finishing, or null if nothing qualified. */
   hours: number | null
   /** Jobs that had both clock stamps and so counted towards the mean. */
@@ -76,7 +76,7 @@ export function meanTimeToRepair(rows: RepairRow[]): Mttr {
   }
 }
 
-export type MtbfInput = {
+type MtbfInput = {
   /** Failures counted in the window — corrective and emergency jobs. */
   failures: number
   /** Calendar hours in the window, multiplied by the assets being watched. */
@@ -85,7 +85,7 @@ export type MtbfInput = {
   downtime_hours: number
 }
 
-export type Mtbf = {
+type Mtbf = {
   /** Mean operating hours between one failure and the next, or null. */
   hours: number | null
   failures: number
@@ -143,12 +143,12 @@ export const BACKLOG_BUCKETS = [
   { key: 'over_90', label: 'Over 90 days', min: 91, max: Infinity },
 ] as const
 
-export type BacklogRow = {
+type BacklogRow = {
   created_at: string | Date
   priority: string
 }
 
-export type BacklogBucket = {
+type BacklogBucket = {
   key: string
   label: string
   count: number

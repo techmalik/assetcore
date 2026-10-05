@@ -13,8 +13,8 @@ import { refreshAssetHealth } from '../healthService.js'
 export const risksRouter = Router()
 risksRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
-export const RISK_CATEGORIES = ['safety', 'environmental', 'operational', 'financial', 'compliance', 'security'] as const
-export const RISK_STATUSES = ['open', 'mitigating', 'accepted', 'closed'] as const
+const RISK_CATEGORIES = ['safety', 'environmental', 'operational', 'financial', 'compliance', 'security'] as const
+const RISK_STATUSES = ['open', 'mitigating', 'accepted', 'closed'] as const
 /** A risk that is still live and therefore still counts. */
 const LIVE_STATUSES = ['open', 'mitigating', 'accepted']
 

@@ -2,11 +2,6 @@ import nodemailer from 'nodemailer'
 import { config } from '../config.js'
 import { logger } from '../logger.js'
 
-/** Whether this instance can actually deliver mail. Exported so routes can
- * tell the UI the truth — the invite modal used to claim "SMTP isn't
- * configured" even on an instance where the invite had just been emailed. */
-export const mailerConfigured = Boolean(config.SMTP_HOST)
-
 const transport = config.SMTP_HOST
   ? nodemailer.createTransport({
       host: config.SMTP_HOST,

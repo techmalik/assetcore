@@ -126,7 +126,7 @@ function toSignals(row: SignalRow): HealthSignals {
   }
 }
 
-export type AssetHealth = HealthResult & {
+type AssetHealth = HealthResult & {
   asset_id: string
   /** What the asset currently carries, before this recompute is applied. */
   stored_score: number | null
@@ -168,7 +168,7 @@ async function applyScore(
 }
 
 /** Recomputes one asset, stores the breakdown, and lets the crossings fire. */
-export async function recomputeAssetHealth(
+async function recomputeAssetHealth(
   c: Queryable,
   assetId: string,
   actorId: string | null = null

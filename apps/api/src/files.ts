@@ -55,7 +55,7 @@ export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as con
 // covers them at the signature level along with plain .zip attachments.
 export const DOCUMENT_MIME_TYPES = [...IMAGE_MIME_TYPES, 'application/pdf', 'application/zip'] as const
 
-export async function sniffMime(filePath: string): Promise<string | null> {
+async function sniffMime(filePath: string): Promise<string | null> {
   const fh = await openFile(filePath, 'r')
   try {
     const buf = Buffer.alloc(16)

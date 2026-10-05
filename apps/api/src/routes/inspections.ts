@@ -26,8 +26,8 @@ const ALLOWED = [
   'template_id', 'condition_rating',
 ]
 
-export const INSPECTION_KINDS = ['safety', 'condition', 'integrity', 'regulatory', 'environmental'] as const
-export const CHECKLIST_RESULTS = ['pass', 'fail', 'na', 'pending'] as const
+const INSPECTION_KINDS = ['safety', 'condition', 'integrity', 'regulatory', 'environmental'] as const
+const CHECKLIST_RESULTS = ['pass', 'fail', 'na', 'pending'] as const
 
 const SELECT = `
   select i.*,
@@ -356,23 +356,3 @@ inspectionsRouter.delete('/inspection-templates/:id', requireCap('inspection:upd
   res.status(204).end()
 })
 
-/** One inspection with the defects raised from it — the first half of the
- * inspection -> defect -> work order chain, read from the inspection's end. */
-inspectionsRouter.get('/inspections/:id', async (req, res) => {
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(`${SELECT} where i.id = $1`, [req.params.id])
-    if (!rows[0]) return null
-    const { rows: defects } = await c.query(
-      `select d.id, d.ref, d.title, d.severity, d.status, d.work_order_id,
-         case when w.id is null then null else jsonb_build_object('id', w.id, 'ref', w.ref, 'status', w.status) end as work_order
-       from public.defects d
-       left join public.work_orders w on w.id = d.work_order_id
-       where d.inspection_id = $1 and d.deleted_at is null
-       order by d.identified_date desc`,
-      [req.params.id]
-    )
-    return { ...rows[0], defects }
-  })
-  if (!row) return res.status(404).json({ error: 'not_found' })
-  res.json(row)
-})

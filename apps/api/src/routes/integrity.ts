@@ -16,7 +16,7 @@ integrityRouter.use(requireAuth, requireOrg, requireActiveMembership)
 //
 // The status is the worst thing true about the asset, not an average. An
 // asset with a failed inspection and a clean risk register is not "fair".
-export const INTEGRITY_STATUSES = ['critical', 'at_risk', 'watch', 'sound', 'unassessed'] as const
+const INTEGRITY_STATUSES = ['critical', 'at_risk', 'watch', 'sound', 'unassessed'] as const
 type IntegrityStatus = typeof INTEGRITY_STATUSES[number]
 
 // An inspection older than this no longer vouches for the asset.
@@ -45,7 +45,7 @@ function daysSince(date: string | null): number | null {
   return Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
 }
 
-export function integrityStatusOf(a: AssetRow, opts: { risks: boolean; inspections: boolean; defects: boolean }): { status: IntegrityStatus; reasons: string[] } {
+function integrityStatusOf(a: AssetRow, opts: { risks: boolean; inspections: boolean; defects: boolean }): { status: IntegrityStatus; reasons: string[] } {
   const reasons: string[] = []
   const score = opts.risks ? a.max_risk_score : null
   const rating = opts.inspections ? a.last_condition_rating : null

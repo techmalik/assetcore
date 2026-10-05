@@ -28,11 +28,11 @@ export const HEALTH_WEIGHTS = {
   age: 15,
 } as const
 
-export type HealthComponentKey = keyof typeof HEALTH_WEIGHTS
+type HealthComponentKey = keyof typeof HEALTH_WEIGHTS
 
 /** Points knocked off the defect sub-score per open defect, by severity. Four
  * critical defects, or ten major ones, take that signal to zero. */
-export const DEFECT_PENALTY: Record<string, number> = {
+const DEFECT_PENALTY: Record<string, number> = {
   minor: 4,
   moderate: 10,
   major: 20,

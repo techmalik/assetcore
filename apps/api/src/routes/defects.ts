@@ -14,8 +14,8 @@ import { generateWoRef } from './workOrders.js'
 export const defectsRouter = Router()
 defectsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
-export const DEFECT_SEVERITIES = ['minor', 'moderate', 'major', 'critical'] as const
-export const DEFECT_STATUSES = ['open', 'acknowledged', 'in_progress', 'resolved', 'closed', 'deferred'] as const
+const DEFECT_SEVERITIES = ['minor', 'moderate', 'major', 'critical'] as const
+const DEFECT_STATUSES = ['open', 'acknowledged', 'in_progress', 'resolved', 'closed', 'deferred'] as const
 const OPEN_STATUSES = ['open', 'acknowledged', 'in_progress', 'deferred']
 
 // A defect's severity is about the finding; a work order's priority is about

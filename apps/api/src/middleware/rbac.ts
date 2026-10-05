@@ -4,7 +4,7 @@ import type { Request, Response, NextFunction } from 'express'
 // (UI gating), so the two sides can no longer drift apart.
 import { can } from '@assetcore/rbac'
 
-export { can, ROLE_CAPABILITIES, GRANTABLE_CAPS, ROLE_KEYS } from '@assetcore/rbac'
+export { can, GRANTABLE_CAPS, ROLE_KEYS } from '@assetcore/rbac'
 
 /** Mount after requireAuth (and, on every router that has it, after
  * requireActiveMembership — req.membership, when present, is read fresh

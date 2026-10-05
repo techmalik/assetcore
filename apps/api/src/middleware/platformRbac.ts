@@ -12,7 +12,7 @@ const ROLE_CAPS: Record<string, string[]> = {
   billing: ['org:read', 'billing:read', 'billing:write', 'audit:read'],
 }
 
-export function hasCap(role: string | undefined, cap: string): boolean {
+function hasCap(role: string | undefined, cap: string): boolean {
   const caps = role ? ROLE_CAPS[role] : undefined
   if (!caps) return false
   return caps[0] === '*' || caps.includes(cap)

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import type { PoolClient } from 'pg'
 
-export type TokenKind = 'refresh' | 'reset' | 'invite'
+type TokenKind = 'refresh' | 'reset' | 'invite'
 
 const TTL_MS: Record<TokenKind, number> = {
   refresh: 30 * 24 * 60 * 60 * 1000, // 30 days

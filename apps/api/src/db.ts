@@ -14,9 +14,9 @@ pg.types.setTypeParser(1082, (val) => val)
  * tenant-scoped request handling via `withOrgContext`. */
 export const pool = new Pool({ connectionString: config.DATABASE_URL })
 
-/** Owner-role pool. Bypasses RLS. Reserved for the same narrow set of privileged
- * surfaces the old service_role covered: auth (pre-session user/token lookups),
- * /api/admin + /api/org privileged writes, and node-cron jobs. */
+/** Owner-role pool. Bypasses RLS. Reserved for a narrow set of privileged
+ * surfaces: auth (pre-session user/token lookups), /api/admin + /api/org
+ * privileged writes, and node-cron jobs. */
 export const ownerPool = new Pool({ connectionString: config.DATABASE_URL_OWNER })
 
 export type Claims = {

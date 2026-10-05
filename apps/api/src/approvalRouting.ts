@@ -95,7 +95,7 @@ export async function eligibleAssignee(
   return { id: m.id, full_name: m.full_name }
 }
 
-export type DirectSubmit = {
+type DirectSubmit = {
   entity_type: string
   entity_id: string
   kind: string

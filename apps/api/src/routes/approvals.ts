@@ -6,7 +6,7 @@ import { requireAuth } from '../middleware/requireAuth.js'
 import { requireOrg } from '../middleware/requireOrg.js'
 import { requireActiveMembership } from '../middleware/requireActiveMembership.js'
 import { requireCap, ROLE_KEYS, can } from '../middleware/rbac.js'
-import * as rbac from '@assetcore/rbac'
+import { ROLE_RANK } from '@assetcore/rbac'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 import {
@@ -20,11 +20,11 @@ approvalsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 // What can be sent for approval, and for what. 0001 shipped the table with
 // these as comments; they are enumerated here so a typo doesn't quietly create
 // a category of request no rule will ever match.
-export const APPROVAL_ENTITY_TYPES = [
+const APPROVAL_ENTITY_TYPES = [
   'work_order', 'defect', 'compliance_licence', 'pm_task',
   'inspection', 'maintenance_event',
 ] as const
-export const APPROVAL_KINDS = [
+const APPROVAL_KINDS = [
   'wo_closure',      // sign-off that a job is genuinely finished
   'wo_cost',         // spend on a job above a threshold
   'defect_deferral', // accepting a defect rather than fixing it
@@ -318,9 +318,7 @@ approvalsRouter.get('/approvals/approvers', (req, res, next) => {
     return { members: rows, lineManagerId: (me[0]?.manager_id as string | null) ?? null }
   })
 
-  // ROLE_RANK is recent in @assetcore/rbac. Without it everyone ranks
-  // equal and the list falls back to name order.
-  const rank: Record<string, number> = (rbac as { ROLE_RANK?: Record<string, number> }).ROLE_RANK ?? {}
+  const rank: Record<string, number> = ROLE_RANK
   const out = members
     .filter((m) => can(m.role_key, 'approval:decide', m.extra_caps ?? []))
     .map(({ extra_caps: _caps, ...m }) => ({ ...m, line_manager_id: lineManagerId, is_line_manager: m.id === lineManagerId }))

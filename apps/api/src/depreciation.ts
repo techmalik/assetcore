@@ -25,7 +25,7 @@ export type ScheduleInput = {
   declining_factor?: number
 }
 
-export type PeriodEntry = {
+type PeriodEntry = {
   period_year: number
   opening_cents: number
   charge_cents: number

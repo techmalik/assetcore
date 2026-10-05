@@ -13,16 +13,16 @@ import { ROLE_KEYS } from './approvals.js'
 export const escalationsRouter = Router()
 escalationsRouter.use(requireAuth, requireOrg, requireActiveMembership)
 
-export const ESCALATION_ENTITY_TYPES = [
+const ESCALATION_ENTITY_TYPES = [
   'work_order', 'pm_task', 'defect', 'inspection', 'approval', 'compliance_licence',
 ] as const
-export const ESCALATION_TRIGGERS = ['overdue', 'unassigned', 'unacknowledged', 'stale'] as const
+const ESCALATION_TRIGGERS = ['overdue', 'unassigned', 'unacknowledged', 'stale'] as const
 
 // Not every trigger makes sense for every entity, and run_escalations() has no
 // query for the pairs left out. Offering a combination the evaluator would
 // silently skip is worse than not offering it, so the same table gates the
 // API and feeds the form.
-export const VALID_TRIGGERS: Record<string, string[]> = {
+const VALID_TRIGGERS: Record<string, string[]> = {
   work_order: ['overdue', 'unassigned', 'stale'],
   pm_task: ['overdue', 'unassigned'],
   defect: ['overdue', 'unacknowledged', 'stale'],

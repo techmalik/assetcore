@@ -58,9 +58,9 @@ const ALLOWED = [
 
 // 0022 widened the column's check to admit sum-of-years' digits, which the
 // posted subledger supports.
-export const DEPRECIATION_METHODS = ['none', 'straight_line', 'declining_balance', 'sum_of_years_digits'] as const
-export const LIFECYCLE_STATUSES = ['planned', 'in_service', 'standby', 'under_maintenance', 'in_storage', 'disposed'] as const
-export const CRITICALITIES = ['low', 'medium', 'high', 'critical'] as const
+const DEPRECIATION_METHODS = ['none', 'straight_line', 'declining_balance', 'sum_of_years_digits'] as const
+const LIFECYCLE_STATUSES = ['planned', 'in_service', 'standby', 'under_maintenance', 'in_storage', 'disposed'] as const
+const CRITICALITIES = ['low', 'medium', 'high', 'critical'] as const
 
 // Columns whose change invalidates the stored book value.
 const DEPRECIATION_INPUTS = [
