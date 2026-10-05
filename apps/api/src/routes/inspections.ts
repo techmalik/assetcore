@@ -64,7 +64,7 @@ const inspectionInput = z.object({
   condition_rating: z.number().int().min(1).max(5).nullable().optional(),
 })
 
-inspectionsRouter.get('/inspections', async (req, res) => {
+inspectionsRouter.get('/inspections', requireCap('inspection:read'), async (req, res) => {
   const { statuses, limit, asset_id, location_id } = req.query
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [SELECT, 'where 1=1']
@@ -285,7 +285,7 @@ const templateInput = z.object({
 
 const TEMPLATE_ALLOWED = ['name', 'kind', 'description', 'items', 'active']
 
-inspectionsRouter.get('/inspection-templates', async (req, res) => {
+inspectionsRouter.get('/inspection-templates', requireCap('inspection:read'), async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = ['select * from public.inspection_templates where deleted_at is null']
     if (req.query.include_inactive !== 'true') clauses.push('and active')

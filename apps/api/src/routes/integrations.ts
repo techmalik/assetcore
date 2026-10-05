@@ -2,14 +2,19 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
+import { requireCap, hasCap } from '../middleware/rbac.js'
 
 export const integrationsRouter = Router()
 
+// Every member sees which connectors are set up (the Integrations page is open
+// to all). Only integration:manage holders (the owner) see the settings
+// themselves: they hold system URLs, usernames and sender ids.
 integrationsRouter.get('/integrations', async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) =>
     c.query('select * from public.integrations order by kind').then((r) => r.rows)
   )
-  res.json(rows)
+  const canManage = hasCap(req, 'integration:manage')
+  res.json(canManage ? rows : rows.map((r) => ({ ...r, config: {} })))
 })
 
 const upsertInput = z.object({
@@ -18,7 +23,7 @@ const upsertInput = z.object({
   enabled: z.boolean().optional(),
 })
 
-integrationsRouter.put('/integrations/:kind', async (req, res) => {
+integrationsRouter.put('/integrations/:kind', requireCap('integration:manage'), async (req, res) => {
   const parsed = upsertInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { label, config, enabled } = parsed.data

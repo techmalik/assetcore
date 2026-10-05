@@ -113,7 +113,7 @@ const woInput = z.object({
   cost_cents: z.number().int().nullable().optional(),
 })
 
-workOrdersRouter.get('/work-orders', async (req, res) => {
+workOrdersRouter.get('/work-orders', requireCap('wo:read'), async (req, res) => {
   const { status, priority, asset_id, location_id } = req.query
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [SELECT, 'where w.deleted_at is null']
@@ -128,7 +128,7 @@ workOrdersRouter.get('/work-orders', async (req, res) => {
   res.json(rows)
 })
 
-workOrdersRouter.get('/work-orders/:id', async (req, res) => {
+workOrdersRouter.get('/work-orders/:id', requireCap('wo:read'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(`${SELECT} where w.id = $1`, [req.params.id])
     const wo = rows[0]

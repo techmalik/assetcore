@@ -186,7 +186,7 @@ analyticsRouter.get('/analytics/worst-assets', requireCap('report:read'), async 
  * Assets with no coordinates are counted but not returned — the map says how
  * many it cannot place rather than quietly showing a partial fleet.
  */
-analyticsRouter.get('/analytics/asset-map', async (req, res) => {
+analyticsRouter.get('/analytics/asset-map', requireCap('asset:read'), async (req, res) => {
   const payload = await withOrgContext(claimsFromReq(req), async (c) => {
     const [{ rows: placed }, { rows: missing }] = await Promise.all([
       c.query(

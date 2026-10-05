@@ -149,7 +149,7 @@ function maintenanceDatesOrdered(data: { last_maintenance_at?: string; next_main
   return data.next_maintenance_at > data.last_maintenance_at
 }
 
-assetsRouter.get('/assets', async (req, res) => {
+assetsRouter.get('/assets', requireCap('asset:read'), async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : null
   const archived = req.query.archived === '1' || req.query.archived === 'true'
   const locationId = typeof req.query.location_id === 'string' ? req.query.location_id : null
@@ -169,7 +169,7 @@ assetsRouter.get('/assets', async (req, res) => {
 // Asset tag lookup — what a QR scan resolves against. AIN is unique per org
 // and RLS scopes the query, so no org filter is needed here. Declared before
 // /assets/:id so the literal segment is not swallowed by the parameter.
-assetsRouter.get('/assets/by-ain/:ain', async (req, res) => {
+assetsRouter.get('/assets/by-ain/:ain', requireCap('asset:read'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(`${SELECT} where upper(a.ain) = upper($1) and a.deleted_at is null`, [req.params.ain])
       .then((r) => r.rows[0])
@@ -186,13 +186,13 @@ assetsRouter.get('/assets/by-ain/:ain', async (req, res) => {
  * each with its own sub-score and a sentence saying what it was read from —
  * rather than restating a number nobody can interrogate.
  */
-assetsRouter.get('/assets/:id/health', async (req, res) => {
+assetsRouter.get('/assets/:id/health', requireCap('asset:read'), async (req, res) => {
   const health = await withOrgContext(claimsFromReq(req), (c) => previewAssetHealth(c, String(req.params.id)))
   if (!health) return res.status(404).json({ error: 'not_found' })
   res.json(health)
 })
 
-assetsRouter.get('/assets/:id', async (req, res) => {
+assetsRouter.get('/assets/:id', requireCap('asset:read'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(`${SELECT} where a.id = $1`, [req.params.id]).then((r) => r.rows[0])
   )
@@ -202,7 +202,7 @@ assetsRouter.get('/assets/:id', async (req, res) => {
 
 // Merged, newest-first per-asset activity feed: human events from asset_activity
 // (comments, alerts) UNION system events from audit_log (create/update/archive).
-assetsRouter.get('/assets/:id/activity', async (req, res) => {
+assetsRouter.get('/assets/:id/activity', requireCap('asset:read'), async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), async (c) => {
     // asset_activity and audit_log are org-scoped only, not site-scoped — a
     // caller who knows/guesses an out-of-scope asset's id could otherwise
@@ -255,7 +255,7 @@ assetsRouter.get('/assets/:id/activity', async (req, res) => {
 
 // Where an asset has been. Same visibility check as the activity feed:
 // asset_transfers is org-scoped, the asset is site-scoped.
-assetsRouter.get('/assets/:id/transfers', async (req, res) => {
+assetsRouter.get('/assets/:id/transfers', requireCap('asset:read'), async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows: assetRows } = await c.query('select 1 from public.assets where id = $1', [req.params.id])
     if (!assetRows[0]) return null

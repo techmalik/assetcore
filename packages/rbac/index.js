@@ -38,6 +38,24 @@
 // checks have to pass, which is why the capability can be granted broadly.
 // ============================================================================
 
+// Every capability the app and API check, including the owner-only ones that
+// no role lists by name (owner holds them through '*'). requireCap() in the
+// API is typed against this list, so a misspelt capability fails the build
+// instead of quietly refusing everyone.
+export const CAPABILITIES = [
+  'approval:create', 'approval:decide', 'approval:manage', 'approval:read',
+  'asset:create', 'asset:read', 'asset:update', 'audit:read',
+  'compliance:create', 'compliance:read', 'compliance:update', 'defect:create',
+  'defect:read', 'defect:update', 'depreciation:manage', 'depreciation:read',
+  'escalation:manage', 'escalation:read', 'inspection:create', 'inspection:read',
+  'inspection:update', 'integration:manage', 'maintenance:complete', 'org:manage',
+  'parts:adjust', 'parts:create', 'parts:read', 'parts:update',
+  'pm:create', 'pm:read', 'pm:update', 'report:read',
+  'risk:create', 'risk:read', 'risk:update', 'user:manage',
+  'user:read', 'wo:assign', 'wo:create', 'wo:read',
+  'wo:transition', 'wo:update',
+]
+
 // Operations manager baseline, shared by `manager` and (as a subset) `admin`,
 // so the two can't drift: an admin is a manager plus governance rights.
 const MANAGER_CAPS = [
@@ -51,14 +69,14 @@ const MANAGER_CAPS = [
   'risk:read', 'risk:create', 'risk:update',
   'approval:read', 'approval:create', 'approval:decide',
   'escalation:read',
-  'report:read', 'report:create', 'audit:read', 'user:read',
+  'report:read', 'audit:read', 'user:read',
   'org:manage',
 ]
 
 const EXECUTIVE_CAPS = [
   '*:read', 'audit:read',
   'approval:read', 'approval:create', 'approval:decide',
-  'report:read', 'report:create',
+  'report:read',
   'depreciation:read',
 ]
 
@@ -103,7 +121,7 @@ export const ROLE_CAPABILITIES = {
     'defect:read', 'defect:create', 'defect:update',
     'risk:read', 'risk:create', 'risk:update',
     'approval:read', 'approval:create', 'approval:decide',
-    'report:read', 'report:create',
+    'report:read',
   ],
   // Read-only across entities, plus audit visibility.
   auditor: ['*:read', 'audit:read'],
@@ -150,7 +168,7 @@ export const GRANTABLE_CAPS = [
   'defect:create', 'defect:update',
   'risk:create', 'risk:update',
   'approval:create', 'approval:decide',
-  'report:create', 'audit:read',
+  'audit:read',
 ]
 
 export const ROLE_KEYS = [

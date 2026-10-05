@@ -3,6 +3,7 @@ import type { PoolClient } from 'pg'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { hasCap } from '../middleware/rbac.js'
+import type { Capability } from '@assetcore/rbac'
 import { writeAuditLog } from '../audit.js'
 import { config } from '../config.js'
 import { localDateStamp, renderCsv, renderXlsx, type ColumnType, type ReportColumn, type ReportData } from '../reportBuilders.js'
@@ -36,7 +37,7 @@ type Dataset = {
   key: string
   label: string
   description: string
-  cap: string
+  cap: Capability
   filters: FilterKey[] | ((s: SchemaFlags) => FilterKey[])
   /** What the date range is measured against, so the page can label it. */
   dateLabel?: string

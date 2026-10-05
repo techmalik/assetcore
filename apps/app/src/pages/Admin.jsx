@@ -43,7 +43,6 @@ const CAP_LABELS = {
   'risk:update': 'Update risks',
   'approval:create': 'Submit for approval',
   'approval:decide': 'Approve or reject requests',
-  'report:create': 'Generate reports',
   'audit:read': 'View audit log',
 }
 const GRANTABLE_CAPS = GRANTABLE_CAP_KEYS.map((key) => ({ key, label: CAP_LABELS[key] || key }))
