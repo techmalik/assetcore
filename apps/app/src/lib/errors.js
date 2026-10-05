@@ -89,6 +89,10 @@ export const ERROR_MESSAGES = {
 
   // --- Shape and generic ---
   invalid_request: 'Some of what was entered is not valid. Check the fields and try again.',
+  invalid_json: 'The request could not be read. Reload the page and try again.',
+  payload_too_large: 'That is more data than can be sent at once.',
+  conflict: 'That already exists. Use a different name or number.',
+  invalid_reference: 'Something this refers to no longer exists. Reload the page and try again.',
   empty_patch: 'Nothing was changed.',
   duplicate_name: 'That name is already in use.',
   not_found: 'That record could not be found.',

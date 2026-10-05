@@ -35,8 +35,35 @@ app.use((req, res) => {
   res.status(404).json({ error: 'not_found' })
 })
 
+// Postgres errors a client can cause with bad input, and the code to answer.
+// Anything else is ours, and stays a 500.
+const PG_CLIENT_ERRORS: Record<string, [number, string]> = {
+  '22P02': [400, 'invalid_request'],    // not a valid uuid, number or enum value
+  '22007': [400, 'invalid_request'],    // not a valid date
+  '22008': [400, 'invalid_request'],    // date out of range
+  '23505': [409, 'conflict'],           // unique violation (a duplicate)
+  '23503': [422, 'invalid_reference'],  // points at a record that does not exist
+  '23514': [422, 'invalid_request'],    // check constraint
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: Error & { status?: number; statusCode?: number; type?: string; code?: string }, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  // Malformed JSON, an oversized body and other request-parsing failures
+  // arrive with a 4xx status of their own; they were answered 500 and logged
+  // as server errors.
+  const status = err.status ?? err.statusCode
+  if (status && status >= 400 && status < 500) {
+    logger.warn({ err }, 'client error')
+    const error = err.type === 'entity.parse.failed' ? 'invalid_json'
+      : status === 413 ? 'payload_too_large'
+      : 'invalid_request'
+    return res.status(status).json({ error })
+  }
+  const pg = typeof err.code === 'string' ? PG_CLIENT_ERRORS[err.code] : undefined
+  if (pg) {
+    logger.warn({ err }, 'client error (database)')
+    return res.status(pg[0]).json({ error: pg[1] })
+  }
   logger.error({ err }, 'unhandled error')
   res.status(500).json({ error: 'internal_error' })
 })
