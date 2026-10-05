@@ -18,6 +18,7 @@ import { errorText } from '../lib/errors'
 import { PM_TASK_STATUS, badgeMap } from '../lib/domain'
 import { fmtDate, fmtDateLong, todayISO, addDaysISO, toISODate, parseISODate } from '../lib/dates'
 import { useConfirm } from '../lib/ConfirmContext'
+import EmptyState from '../components/EmptyState.jsx'
 
 const TASK_STATUS = badgeMap(PM_TASK_STATUS)
 const FREQ_LABEL = { daily:'Daily', weekly:'Weekly', monthly:'Monthly', quarterly:'Quarterly', semi_annual:'Semi-annual', annual:'Annual' }
@@ -610,21 +611,15 @@ function SchedulesView({ schedules, canManage, onArchive }) {
 
 function EmptyPM({ onSchedule, canCreate, locationName, onShowAll }) {
   return (
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',gap:12,textAlign:'center'}}>
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round"/></svg>
-      <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>{locationName ? `No PM tasks in ${locationName}` : 'No PM tasks or schedules yet'}</div>
-      {!locationName && (
-        <div style={{fontSize:13,color:'var(--n500)',maxWidth:320}}>
-          Create a PM schedule to start generating preventive maintenance tasks. Tasks are generated automatically based on frequency.
-        </div>
-      )}
-      {locationName ? (
-        <button onClick={onShowAll} className="btn btn-secondary" style={{height:34,padding:'0 16px',fontSize:13}}>Show all locations</button>
+    <EmptyState
+      icon={<svg width="36" height="36" viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round"/></svg>}
+      title={locationName ? `No PM tasks in ${locationName}` : 'No PM tasks or schedules yet'}
+      body={!locationName && 'Create a PM schedule to start generating preventive maintenance tasks. Tasks are generated automatically based on frequency.'}
+      action={locationName ? (
+        <button onClick={onShowAll} className="btn btn-secondary" style={{height:36,padding:'0 18px',fontSize:13}}>Show all locations</button>
       ) : canCreate && (
-        <button onClick={onSchedule} className="btn btn-primary" style={{marginTop:8,height:36,padding:'0 18px',fontSize:13}}>
-          Create first schedule
-        </button>
+        <button onClick={onSchedule} className="btn btn-primary" style={{height:36,padding:'0 18px',fontSize:13}}>Create first schedule</button>
       )}
-    </div>
+    />
   )
 }

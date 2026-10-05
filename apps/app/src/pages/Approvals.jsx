@@ -16,19 +16,11 @@ import { ROLE_LABELS } from '../lib/rbac'
 import { useMoney, Money } from '../lib/money'
 import { errorText } from '../lib/errors'
 import { fmtDateTime } from '../lib/dates'
+import Stat from '../components/Stat.jsx'
 
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS).filter(([k]) => k !== 'viewer')
 
 
-function Stat({ label, value, tone }) {
-  const color = tone === 'warn' ? 'var(--sat)' : tone === 'bad' ? 'var(--srt)' : 'var(--n900)'
-  return (
-    <div style={{ padding: '12px 16px', borderRight: 'var(--bdr)', flex: 1, minWidth: 0 }}>
-      <div style={{ fontFamily: 'var(--ff-m)', fontSize: 20, fontWeight: 500, color }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 2 }}>{label}</div>
-    </div>
-  )
-}
 
 /** Where a request has got to: one dot per level, filled up to the current one. */
 function LevelTrack({ approval }) {

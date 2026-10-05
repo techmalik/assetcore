@@ -3,21 +3,13 @@ import { transferAssets } from '../lib/db/assets'
 import { useToast } from '../lib/ToastContext'
 import { errorText } from '../lib/errors'
 import { todayISO } from '../lib/dates'
+import { Field } from './form.jsx'
 
 // Why the API skipped an asset, in words. Anything unlisted falls back to a
 // generic line rather than showing the code.
 const SKIP_REASON = {
   same_site: 'Already at that site',
   not_found: 'Not found, or outside the sites you can see',
-}
-
-function Field({ label, required, children }) {
-  return (
-    <div>
-      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>{label}{required && ' *'}</label>
-      {children}
-    </div>
-  )
 }
 
 /**

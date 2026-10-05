@@ -22,7 +22,8 @@ function tagFromScan(text) {
   }
 }
 
-function Field({ label, value, mono }) {
+/** One read-only line of the asset card: label left, value right. */
+function InfoRow({ label, value, mono }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '9px 14px', borderBottom: 'var(--bdr)', fontSize: 12 }}>
       <span style={{ color: 'var(--n500)', flexShrink: 0 }}>{label}</span>
@@ -173,18 +174,18 @@ export default function Scan({ dark, toggleDark }) {
                     {asset.site && <span className="badge badge-n">{asset.site.name}</span>}
                   </div>
                 </div>
-                <Field label="Category" value={asset.category?.name} />
+                <InfoRow label="Category" value={asset.category?.name} />
                 {/* The asset form and the CSV importer both write these three
                     into specs, while the assets table also carries real
                     columns for them that nothing populates. Reading only the
                     columns left every scanned label showing '—' for the three
                     fields a technician standing at the asset most wants.
                     Column first so a future migration that fills them wins. */}
-                <Field label="Manufacturer" value={[asset.manufacturer ?? asset.specs?.manufacturer, asset.model ?? asset.specs?.model].filter(Boolean).join(' ')} />
-                <Field label="Serial number" value={asset.serial_number ?? asset.specs?.serial_number} mono />
-                <Field label="Installed" value={asset.install_date} mono />
-                <Field label="Warranty expires" value={asset.warranty_expiry} mono />
-                <Field label="Custodian" value={asset.custodian?.full_name} />
+                <InfoRow label="Manufacturer" value={[asset.manufacturer ?? asset.specs?.manufacturer, asset.model ?? asset.specs?.model].filter(Boolean).join(' ')} />
+                <InfoRow label="Serial number" value={asset.serial_number ?? asset.specs?.serial_number} mono />
+                <InfoRow label="Installed" value={asset.install_date} mono />
+                <InfoRow label="Warranty expires" value={asset.warranty_expiry} mono />
+                <InfoRow label="Custodian" value={asset.custodian?.full_name} />
                 {/* Where it is, for the half of scans that happen because
                     someone is looking for the *next* one. An asset with no fix
                     of its own falls back to its site. */}

@@ -6,6 +6,7 @@ import { listDevices, createDevice, updateDevice } from '../lib/db/devices'
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
 import { errorText } from '../lib/errors'
+import EmptyState from '../components/EmptyState.jsx'
 
 const STATUS_META = {
   online:          { label: 'Online',         dot: 'var(--sg)',    c: 'var(--sgt)', bg: 'var(--sgb)', br: 'var(--sgbr)' },
@@ -220,7 +221,7 @@ export default function Devices({ dark, toggleDark }) {
                 </div>
               </div>
             ) : shown.length === 0 ? (
-              <EmptyState canCreate={canCreate} onAdd={() => setModal('add')} />
+              <EmptyDevices canCreate={canCreate} onAdd={() => setModal('add')} />
             ) : (
               <div className="table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
@@ -283,24 +284,21 @@ export default function Devices({ dark, toggleDark }) {
   )
 }
 
-function EmptyState({ canCreate, onAdd }) {
+function EmptyDevices({ canCreate, onAdd }) {
   return (
     <div style={{ padding: 'clamp(16px, 4vw, 40px)', display: 'flex', gap: 40, alignItems: 'flex-start', flexWrap: 'wrap' }}>
       {/* Left: empty state */}
-      <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', gap: 14, textAlign: 'center', background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8 }}>
-        <div style={{ width: 56, height: 56, borderRadius: 12, background: 'var(--n100)', border: 'var(--bdr)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="var(--n400)" strokeWidth="1.4" /><path d="M6 10h.01M6 14h.01M10 10h4M10 14h4" stroke="var(--n400)" strokeWidth="1.3" strokeLinecap="round" /></svg>
-        </div>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--n800)', marginBottom: 6 }}>No devices connected yet</div>
-          <div style={{ fontSize: 13, color: 'var(--n500)', maxWidth: 340, lineHeight: 1.6 }}>
-            Register IoT devices — pressure transmitters, flow meters, gateway units — and stream real-time telemetry into AssetCore. Contact your SCADA/IoT team to begin provisioning.
+      <EmptyState
+        style={{ flex: '1 1 320px', padding: '40px 20px', background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8 }}
+        icon={(
+          <div style={{ width: 56, height: 56, borderRadius: 12, background: 'var(--n100)', border: 'var(--bdr)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="var(--n400)" strokeWidth="1.4" /><path d="M6 10h.01M6 14h.01M10 10h4M10 14h4" stroke="var(--n400)" strokeWidth="1.3" strokeLinecap="round" /></svg>
           </div>
-        </div>
-        {canCreate && (
-          <button onClick={onAdd} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13, marginTop: 4 }}>Register first device</button>
         )}
-      </div>
+        title="No devices connected yet"
+        body="Register IoT devices — pressure transmitters, flow meters, gateway units — and stream real-time telemetry into AssetCore. Contact your SCADA/IoT team to begin provisioning."
+        action={canCreate && <button onClick={onAdd} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Register first device</button>}
+      />
 
       {/* Right: how it works */}
       <div style={{ flex: '1 1 300px', minWidth: 260, background: 'var(--n0)', border: 'var(--bdr)', borderRadius: 8, padding: 20 }}>

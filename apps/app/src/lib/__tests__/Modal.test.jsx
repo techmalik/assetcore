@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
-import { render, fireEvent, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render, fireEvent, screen } from '@testing-library/react'
 import Modal from '../../components/Modal.jsx'
+
+afterEach(cleanup)
 
 describe('Modal', () => {
   it('closes on Escape, on the backdrop and on its close button', () => {

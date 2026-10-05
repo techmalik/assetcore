@@ -14,19 +14,11 @@ import { errorText } from '../lib/errors'
 import { useResource } from '../lib/useResource'
 import { useConfirm } from '../lib/ConfirmContext'
 import { useToast } from '../lib/ToastContext'
+import Stat from '../components/Stat.jsx'
 
 const THIS_YEAR = new Date().getFullYear()
 
 
-function Stat({ label, value, hint, tone }) {
-  return (
-    <div style={{ padding: '12px 16px', borderRight: 'var(--bdr)', flex: 1, minWidth: 0 }}>
-      <div style={{ fontFamily: 'var(--ff-m)', fontSize: 19, fontWeight: 500, color: tone === 'warn' ? 'var(--sat)' : 'var(--n900)' }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 2 }}>{label}</div>
-      {hint && <div style={{ fontSize: 10.5, color: 'var(--n400)', marginTop: 1 }}>{hint}</div>}
-    </div>
-  )
-}
 
 // ── Create a schedule ─────────────────────────────────────────────────────────
 // Two steps on one screen: choose the basis, then read the table it produces
@@ -425,11 +417,11 @@ export default function Depreciation({ dark, toggleDark }) {
 
             {stats && (
               <div style={{ display: 'flex', border: 'var(--bdr)', borderRadius: 6, marginBottom: 12, overflow: 'hidden' }}>
-                <Stat label="Active schedules" value={stats.schedules} />
-                <Stat label="Assets with a value but no schedule" value={stats.assets_without_schedule} tone={stats.assets_without_schedule > 0 ? 'warn' : undefined} />
-                <Stat label="Gross cost" value={<Money cents={stats.gross_cost_cents} />} />
-                <Stat label={`Charge posted for ${THIS_YEAR}`} value={<Money cents={stats.charge_this_year_cents} />} />
-                <Stat label="Accumulated to date" value={<Money cents={stats.accumulated_cents} />} />
+                <Stat size={19} label="Active schedules" value={stats.schedules} />
+                <Stat size={19} label="Assets with a value but no schedule" value={stats.assets_without_schedule} tone={stats.assets_without_schedule > 0 ? 'warn' : undefined} />
+                <Stat size={19} label="Gross cost" value={<Money cents={stats.gross_cost_cents} />} />
+                <Stat size={19} label={`Charge posted for ${THIS_YEAR}`} value={<Money cents={stats.charge_this_year_cents} />} />
+                <Stat size={19} label="Accumulated to date" value={<Money cents={stats.accumulated_cents} />} />
               </div>
             )}
 

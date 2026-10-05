@@ -29,6 +29,7 @@ import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
 import { fmtDate, todayISO } from '../lib/dates'
 import { useConfirm } from '../lib/ConfirmContext'
+import EmptyState from './EmptyState.jsx'
 
 const STATUS_META = {
   active:   { label:'Active',        bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -838,7 +839,7 @@ export default function CompliancePanel({ embedded = false, selectedId = null, o
                   <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>{loadErrorMessage(err)}</div>
                 </div>
               ) : filtered.length === 0 ? (
-                <EmptyState canCreate={canCreate} onAdd={() => setModal('add')} locationName={globalLocation?.name} onShowAll={() => setGlobalLocationId(null)} />
+                <EmptyLicences canCreate={canCreate} onAdd={() => setModal('add')} locationName={globalLocation?.name} onShowAll={() => setGlobalLocationId(null)} />
               ) : (
                 <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
                   <thead style={{position:'sticky',top:0,zIndex:10}}>
@@ -908,15 +909,15 @@ export default function CompliancePanel({ embedded = false, selectedId = null, o
   )
 }
 
-function EmptyState({ canCreate, onAdd, locationName, onShowAll }) {
+function EmptyLicences({ canCreate, onAdd, locationName, onShowAll }) {
   return (
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'60px 20px',gap:12,textAlign:'center'}}>
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="var(--n300)" strokeWidth="1.4"/><path d="M12 8v4.5l2.5 1.5" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-      <div style={{fontSize:14,fontWeight:600,color:'var(--n700)'}}>{locationName ? `No licences or certificates in ${locationName}` : 'No licences or certificates yet'}</div>
-      {!locationName && <div style={{fontSize:13,color:'var(--n500)',maxWidth:320}}>Track regulatory licences, certificates, and their renewal deadlines. Alerts fire at 90, 30, and 7 days before expiry.</div>}
-      {locationName ? (
-        <button onClick={onShowAll} className="btn btn-secondary" style={{marginTop:8,height:36,padding:'0 18px',fontSize:13}}>Show all locations</button>
-      ) : canCreate && <button onClick={onAdd} className="btn btn-primary" style={{marginTop:8,height:36,padding:'0 18px',fontSize:13}}>Add first licence</button>}
-    </div>
+    <EmptyState
+      icon={<svg width="36" height="36" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="var(--n300)" strokeWidth="1.4"/><path d="M12 8v4.5l2.5 1.5" stroke="var(--n300)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+      title={locationName ? `No licences or certificates in ${locationName}` : 'No licences or certificates yet'}
+      body={!locationName && 'Track regulatory licences, certificates, and their renewal deadlines. Alerts fire at 90, 30, and 7 days before expiry.'}
+      action={locationName ? (
+        <button onClick={onShowAll} className="btn btn-secondary" style={{height:36,padding:'0 18px',fontSize:13}}>Show all locations</button>
+      ) : canCreate && <button onClick={onAdd} className="btn btn-primary" style={{height:36,padding:'0 18px',fontSize:13}}>Add first licence</button>}
+    />
   )
 }

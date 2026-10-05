@@ -23,6 +23,10 @@ export default [
       'react/jsx-uses-vars': 'error',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+      // A component declared inside another is a new type on every render, so
+      // React rebuilds it each time: the Defects form lost focus on every
+      // keystroke this way. Declare it at module level and pass props.
+      'react/no-unstable-nested-components': 'error',
       'no-restricted-syntax': ['error', {
         selector: "CallExpression[callee.name=/^(alert|confirm)$/]",
         message: 'Use toast.error(errorText(e)) instead of alert(), and await useConfirm() instead of confirm().',
@@ -46,5 +50,11 @@ export default [
     // what each role grants on its own, before any per-user grant.
     files: ['src/lib/AuthContext.jsx', 'src/lib/rbac.js', 'src/pages/Admin.jsx'],
     rules: { 'no-restricted-imports': 'off' },
+  },
+  {
+    // Spare Parts is parked (owner decision Q1). Its PartModal has the same
+    // nested field component (OUT-OF-SCOPE.md OOS-25).
+    files: ['src/pages/SpareParts.jsx'],
+    rules: { 'react/no-unstable-nested-components': 'off' },
   },
 ]

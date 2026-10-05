@@ -16,6 +16,10 @@ import { useCan } from '../lib/AuthContext.jsx'
 import { errorText } from '../lib/errors'
 import { fmtDate, todayISO } from '../lib/dates'
 import Modal from '../components/Modal.jsx'
+import Stat from '../components/Stat.jsx'
+import EmptyState from '../components/EmptyState.jsx'
+import TableState from '../components/TableState.jsx'
+import { Field, FormError, useForm } from '../components/form.jsx'
 
 const SEVERITY_CLASS = {
   minor: 'badge-n', moderate: 'badge-b', major: 'badge-a', critical: 'badge-r',
@@ -36,16 +40,6 @@ function DueCell({ defect }) {
   )
 }
 
-function Stat({ label, value, tone }) {
-  const color = tone === 'warn' ? 'var(--sat)' : tone === 'bad' ? 'var(--srt)' : 'var(--n900)'
-  return (
-    <div style={{ padding: '12px 16px', borderRight: 'var(--bdr)', flex: 1, minWidth: 0 }}>
-      <div style={{ fontFamily: 'var(--ff-m)', fontSize: 20, fontWeight: 500, color }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 2 }}>{label}</div>
-    </div>
-  )
-}
-
 // ── Raise / edit ──────────────────────────────────────────────────────────────
 const EMPTY = {
   title: '', description: '', severity: 'moderate', category: '',
@@ -53,7 +47,7 @@ const EMPTY = {
 }
 
 function DefectModal({ defect, onClose, onSave, assets, sites, inspections }) {
-  const [form, setForm] = useState(() => defect ? {
+  const { form, set } = useForm(() => defect ? {
     title: defect.title, description: defect.description ?? '', severity: defect.severity,
     category: defect.category ?? '', asset_id: defect.asset_id ?? '', site_id: defect.site_id ?? '',
     inspection_id: defect.inspection_id ?? '', due_date: defect.due_date ?? '',
@@ -61,7 +55,6 @@ function DefectModal({ defect, onClose, onSave, assets, sites, inspections }) {
   } : { ...EMPTY, identified_date: todayISO() })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
-  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
 
   async function submit(e) {
     e.preventDefault()
@@ -89,14 +82,6 @@ function DefectModal({ defect, onClose, onSave, assets, sites, inspections }) {
     }
   }
 
-  const F = ({ label, children, span, hint }) => (
-    <div style={span ? { gridColumn: `span ${span}` } : undefined}>
-      <label className="label" style={{ display: 'block', marginBottom: 5 }}>{label}</label>
-      {children}
-      {hint && <p style={{ fontSize: 11.5, color: 'var(--n500)', marginTop: 5 }}>{hint}</p>}
-    </div>
-  )
-
   return (
     <Modal
       title={defect ? `Edit ${defect.ref}` : 'Raise a defect'}
@@ -112,14 +97,14 @@ function DefectModal({ defect, onClose, onSave, assets, sites, inspections }) {
         </>
       )}
     >
-        <F label="What is wrong *" span={2}>
-          <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Earth bonding strap corroded" style={{ width: '100%' }} />
-        </F>
-        <F label="Detail" span={2}>
-          <textarea className="input" rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Where it is, what was observed, what it affects…" style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
-        </F>
+        <Field label="What is wrong" required span={2}>
+          <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Earth bonding strap corroded" />
+        </Field>
+        <Field label="Detail" span={2}>
+          <textarea className="input" rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Where it is, what was observed, what it affects…" style={{ resize: 'vertical', paddingTop: 8 }} />
+        </Field>
 
-        <F label="Severity *" span={2} hint="Severity describes the finding. The work order raised from it gets a matching priority.">
+        <Field label="Severity" required span={2} hint="Severity describes the finding. The work order raised from it gets a matching priority.">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {DEFECT_SEVERITIES.map(([v, l, hint]) => (
               <button key={v} type="button" onClick={() => set('severity', v)}
@@ -131,36 +116,36 @@ function DefectModal({ defect, onClose, onSave, assets, sites, inspections }) {
               </button>
             ))}
           </div>
-        </F>
+        </Field>
 
-        <F label="Asset">
-          <select className="input" value={form.asset_id} onChange={(e) => set('asset_id', e.target.value)} style={{ width: '100%' }}>
+        <Field label="Asset">
+          <select className="input" value={form.asset_id} onChange={(e) => set('asset_id', e.target.value)}>
             <option value="">— Not asset-specific —</option>
             {assets.map((a) => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
           </select>
-        </F>
-        <F label="Site">
-          <select className="input" value={form.site_id} onChange={(e) => set('site_id', e.target.value)} style={{ width: '100%' }}>
+        </Field>
+        <Field label="Site">
+          <select className="input" value={form.site_id} onChange={(e) => set('site_id', e.target.value)}>
             <option value="">— Not site-specific —</option>
             {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-        </F>
-        <F label="Found during" span={2} hint="Linking the inspection is what lets a finding be traced from the walk-round to the job that cleared it.">
-          <select className="input" value={form.inspection_id} onChange={(e) => set('inspection_id', e.target.value)} style={{ width: '100%' }}>
+        </Field>
+        <Field label="Found during" span={2} hint="Linking the inspection is what lets a finding be traced from the walk-round to the job that cleared it.">
+          <select className="input" value={form.inspection_id} onChange={(e) => set('inspection_id', e.target.value)}>
             <option value="">— Raised outside an inspection —</option>
             {inspections.map((i) => <option key={i.id} value={i.id}>{i.title} ({fmtDate(i.completed_date || i.scheduled_date)})</option>)}
           </select>
-        </F>
-        <F label="Identified on">
-          <input className="input" type="date" value={form.identified_date} onChange={(e) => set('identified_date', e.target.value)} style={{ width: '100%' }} />
-        </F>
-        <F label="Fix by">
-          <input className="input" type="date" value={form.due_date} onChange={(e) => set('due_date', e.target.value)} style={{ width: '100%' }} />
-        </F>
-        <F label="Category" span={2}>
-          <input className="input" value={form.category} onChange={(e) => set('category', e.target.value)} placeholder="electrical / mechanical / structural" style={{ width: '100%' }} />
-        </F>
-        {err && <p style={{ gridColumn: 'span 2', fontSize: 12, color: 'var(--srt)' }}>{err}</p>}
+        </Field>
+        <Field label="Identified on">
+          <input className="input" type="date" value={form.identified_date} onChange={(e) => set('identified_date', e.target.value)} />
+        </Field>
+        <Field label="Fix by">
+          <input className="input" type="date" value={form.due_date} onChange={(e) => set('due_date', e.target.value)} />
+        </Field>
+        <Field label="Category" span={2}>
+          <input className="input" value={form.category} onChange={(e) => set('category', e.target.value)} placeholder="electrical / mechanical / structural" />
+        </Field>
+        <FormError style={{ gridColumn: 'span 2' }}>{err}</FormError>
     </Modal>
   )
 }
@@ -208,13 +193,13 @@ function RaiseModal({ defect, onClose, onRaised }) {
         Closing the job resolves the defect.
       </p>
 
-      <label className="label" style={{ display: 'block', marginBottom: 5 }}>Job title</label>
-      <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%', marginBottom: 14 }} />
-
-      <label className="label" style={{ display: 'block', marginBottom: 5 }}>SLA due</label>
-      <input className="input" type="date" value={slaDue} onChange={(e) => setSlaDue(e.target.value)} style={{ width: '100%' }} />
-
-      {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12 }}>{err}</p>}
+      <Field label="Job title" style={{ marginBottom: 14 }}>
+        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
+      </Field>
+      <Field label="SLA due">
+        <input className="input" type="date" value={slaDue} onChange={(e) => setSlaDue(e.target.value)} />
+      </Field>
+      <FormError style={{ marginTop: 12 }}>{err}</FormError>
     </Modal>
   )
 }
@@ -415,28 +400,24 @@ export default function Defects({ dark, toggleDark }) {
 
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
             <div style={{ flex: 1, overflowY: 'auto' }}>
-              {loading ? (
-                <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>Loading defects…</div>
-              ) : error ? (
-                <div style={{ padding: 48, textAlign: 'center' }}>
-                  <p style={{ color: 'var(--srt)', fontSize: 13, marginBottom: 12 }}>{error}</p>
-                  <button onClick={load} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Retry</button>
-                </div>
-              ) : defects.length === 0 ? (
-                <div style={{ padding: 64, textAlign: 'center' }}>
-                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ margin: '0 auto 16px' }}>
-                    <path d="M20 6l14 26H6L20 6Z" stroke="var(--n300)" strokeWidth="1.5" strokeLinejoin="round" />
-                    <path d="M20 16v8M20 27.5v.5" stroke="var(--n300)" strokeWidth="1.8" strokeLinecap="round" />
-                  </svg>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>
-                    {filters.q || filters.severity !== 'all' || filters.status !== 'all' ? 'No defects match these filters' : 'Nothing outstanding'}
-                  </p>
-                  <p style={{ fontSize: 13, color: 'var(--n400)', marginBottom: 20, maxWidth: 380, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
-                    Defects are what an inspection actually found. Recording them here is what connects a finding to the job that clears it — and to the asset&apos;s condition score.
-                  </p>
-                  {canCreate && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Raise the first defect</button>}
-                </div>
-              ) : (
+              <TableState
+                loading={loading} loadingText="Loading defects…" error={error} onRetry={load}
+                isEmpty={defects.length === 0}
+                empty={(
+                  <EmptyState
+                    style={{ padding: 64 }}
+                    icon={(
+                      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <path d="M20 6l14 26H6L20 6Z" stroke="var(--n300)" strokeWidth="1.5" strokeLinejoin="round" />
+                        <path d="M20 16v8M20 27.5v.5" stroke="var(--n300)" strokeWidth="1.8" strokeLinecap="round" />
+                      </svg>
+                    )}
+                    title={filters.q || filters.severity !== 'all' || filters.status !== 'all' ? 'No defects match these filters' : 'Nothing outstanding'}
+                    body={<>Defects are what an inspection actually found. Recording them here is what connects a finding to the job that clears it — and to the asset&apos;s condition score.</>}
+                    action={canCreate && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Raise the first defect</button>}
+                  />
+                )}
+              >
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr style={{ background: 'var(--n50)', borderBottom: 'var(--bdr)' }}>
@@ -477,7 +458,7 @@ export default function Defects({ dark, toggleDark }) {
                     ))}
                   </tbody>
                 </table>
-              )}
+              </TableState>
             </div>
 
             {detail && (

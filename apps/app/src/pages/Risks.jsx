@@ -14,6 +14,10 @@ import { useCan } from '../lib/AuthContext.jsx'
 import { errorText } from '../lib/errors'
 import { fmtDate, todayISO } from '../lib/dates'
 import Modal from '../components/Modal.jsx'
+import Stat from '../components/Stat.jsx'
+import EmptyState from '../components/EmptyState.jsx'
+import TableState from '../components/TableState.jsx'
+import { Field, FormError, useForm } from '../components/form.jsx'
 
 const STATUS_CLASS = {
   open: 'badge-r', mitigating: 'badge-a', accepted: 'badge-b', closed: 'badge-n',
@@ -132,8 +136,7 @@ const EMPTY = {
  * two people will apply the same way. */
 function ScalePicker({ label, scale, value, onChange, allowClear }) {
   return (
-    <div>
-      <label className="label" style={{ display: 'block', marginBottom: 5 }}>{label}</label>
+    <Field label={label}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 5 }}>
         {scale.map(([v, name, hint]) => {
           const active = String(value) === String(v)
@@ -151,12 +154,25 @@ function ScalePicker({ label, scale, value, onChange, allowClear }) {
           )
         })}
       </div>
+    </Field>
+  )
+}
+
+/** A rating's score and band, as the form shows it while you pick. */
+function ScoreChip({ label, score }) {
+  const band = bandOf(score)
+  const m = band ? BAND_META[band] : null
+  return (
+    <div style={{ flex: 1, textAlign: 'center', padding: '10px 8px', borderRadius: 6, border: `1px solid ${m?.br || 'var(--n200)'}`, background: m?.bg || 'var(--n50)' }}>
+      <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)' }}>{label}</div>
+      <div style={{ fontFamily: 'var(--ff-m)', fontSize: 22, fontWeight: 600, color: m?.c || 'var(--n400)', marginTop: 3 }}>{score ?? '—'}</div>
+      <div style={{ fontSize: 11, color: m?.c || 'var(--n400)' }}>{m?.label || 'not rated'}</div>
     </div>
   )
 }
 
 function RiskModal({ risk, onClose, onSave, assets, sites, members }) {
-  const [form, setForm] = useState(() => risk ? {
+  const { form, set } = useForm(() => risk ? {
     title: risk.title, description: risk.description ?? '', category: risk.category,
     likelihood: risk.likelihood, consequence: risk.consequence, controls: risk.controls ?? '',
     residual_likelihood: risk.residual_likelihood ?? '', residual_consequence: risk.residual_consequence ?? '',
@@ -165,7 +181,6 @@ function RiskModal({ risk, onClose, onSave, assets, sites, members }) {
   } : { ...EMPTY })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
-  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
 
   const inherent = form.likelihood * form.consequence
   const hasResidual = form.residual_likelihood !== '' && form.residual_consequence !== ''
@@ -203,18 +218,6 @@ function RiskModal({ risk, onClose, onSave, assets, sites, members }) {
     }
   }
 
-  const ScoreChip = ({ label, score }) => {
-    const band = bandOf(score)
-    const m = band ? BAND_META[band] : null
-    return (
-      <div style={{ flex: 1, textAlign: 'center', padding: '10px 8px', borderRadius: 6, border: `1px solid ${m?.br || 'var(--n200)'}`, background: m?.bg || 'var(--n50)' }}>
-        <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--n500)', fontFamily: 'var(--ff-m)' }}>{label}</div>
-        <div style={{ fontFamily: 'var(--ff-m)', fontSize: 22, fontWeight: 600, color: m?.c || 'var(--n400)', marginTop: 3 }}>{score ?? '—'}</div>
-        <div style={{ fontSize: 11, color: m?.c || 'var(--n400)' }}>{m?.label || 'not rated'}</div>
-      </div>
-    )
-  }
-
   return (
     <Modal
       title={risk ? `Edit ${risk.ref}` : 'Assess a risk'}
@@ -230,36 +233,31 @@ function RiskModal({ risk, onClose, onSave, assets, sites, members }) {
         </>
       )}
     >
-        <div>
-          <label className="label" style={{ display: 'block', marginBottom: 5 }}>What could happen *</label>
-          <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Gas leak at the inlet flange" style={{ width: '100%' }} />
-        </div>
-        <div>
-          <label className="label" style={{ display: 'block', marginBottom: 5 }}>Detail</label>
-          <textarea className="input" rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
-        </div>
+        <Field label="What could happen" required>
+          <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Gas leak at the inlet flange" />
+        </Field>
+        <Field label="Detail">
+          <textarea className="input" rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} style={{ resize: 'vertical', paddingTop: 8 }} />
+        </Field>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          <div>
-            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Category</label>
-            <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)} style={{ width: '100%' }}>
+          <Field label="Category">
+            <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)}>
               {RISK_CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
-          </div>
-          <div>
-            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Asset</label>
-            <select className="input" value={form.asset_id} onChange={(e) => set('asset_id', e.target.value)} style={{ width: '100%' }}>
+          </Field>
+          <Field label="Asset">
+            <select className="input" value={form.asset_id} onChange={(e) => set('asset_id', e.target.value)}>
               <option value="">— None —</option>
               {assets.map((a) => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
             </select>
-          </div>
-          <div>
-            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Site</label>
-            <select className="input" value={form.site_id} onChange={(e) => set('site_id', e.target.value)} style={{ width: '100%' }}>
+          </Field>
+          <Field label="Site">
+            <select className="input" value={form.site_id} onChange={(e) => set('site_id', e.target.value)}>
               <option value="">— None —</option>
               {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-          </div>
+          </Field>
         </div>
 
         <div style={{ borderTop: 'var(--bdr)', paddingTop: 16 }}>
@@ -270,10 +268,9 @@ function RiskModal({ risk, onClose, onSave, assets, sites, members }) {
           </div>
         </div>
 
-        <div>
-          <label className="label" style={{ display: 'block', marginBottom: 5 }}>Controls in place</label>
-          <textarea className="input" rows={2} value={form.controls} onChange={(e) => set('controls', e.target.value)} placeholder="Weekly leak survey; detector interlocked to ESD." style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
-        </div>
+        <Field label="Controls in place">
+          <textarea className="input" rows={2} value={form.controls} onChange={(e) => set('controls', e.target.value)} placeholder="Weekly leak survey; detector interlocked to ESD." style={{ resize: 'vertical', paddingTop: 8 }} />
+        </Field>
 
         <div style={{ borderTop: 'var(--bdr)', paddingTop: 16 }}>
           <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--n800)', marginBottom: 4 }}>After controls</div>
@@ -293,42 +290,29 @@ function RiskModal({ risk, onClose, onSave, assets, sites, members }) {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, borderTop: 'var(--bdr)', paddingTop: 16 }}>
-          <div>
-            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Owner</label>
-            <select className="input" value={form.owner_id} onChange={(e) => set('owner_id', e.target.value)} style={{ width: '100%' }}>
+          <Field label="Owner">
+            <select className="input" value={form.owner_id} onChange={(e) => set('owner_id', e.target.value)}>
               <option value="">— Unassigned —</option>
               {members.map((m) => <option key={m.user_id || m.id} value={m.user_id || m.id}>{m.full_name || m.email}</option>)}
             </select>
-          </div>
-          <div>
-            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Review by</label>
-            <input className="input" type="date" value={form.review_date} onChange={(e) => set('review_date', e.target.value)} style={{ width: '100%' }} />
-          </div>
-          <div>
-            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Status</label>
-            <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)} style={{ width: '100%' }}>
+          </Field>
+          <Field label="Review by">
+            <input className="input" type="date" value={form.review_date} onChange={(e) => set('review_date', e.target.value)} />
+          </Field>
+          <Field label="Status">
+            <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
               {RISK_STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
-          </div>
+          </Field>
         </div>
 
-        {err && <p style={{ fontSize: 12, color: 'var(--srt)' }}>{err}</p>}
+        <FormError>{err}</FormError>
       
     </Modal>
   )
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-function Stat({ label, value, tone }) {
-  const color = tone === 'warn' ? 'var(--sat)' : tone === 'bad' ? 'var(--srt)' : 'var(--n900)'
-  return (
-    <div style={{ padding: '12px 16px', borderRight: 'var(--bdr)', flex: 1, minWidth: 0 }}>
-      <div style={{ fontFamily: 'var(--ff-m)', fontSize: 20, fontWeight: 500, color }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 2 }}>{label}</div>
-    </div>
-  )
-}
-
 export default function Risks({ dark, toggleDark }) {
   const can = useCan()
   const canCreate = can('risk:create')
@@ -429,14 +413,8 @@ export default function Risks({ dark, toggleDark }) {
 
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
             <div style={{ flex: 1, overflowY: 'auto' }}>
-              {loading ? (
-                <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>Loading…</div>
-              ) : error ? (
-                <div style={{ padding: 48, textAlign: 'center' }}>
-                  <p style={{ color: 'var(--srt)', fontSize: 13, marginBottom: 12 }}>{error}</p>
-                  <button onClick={load} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Retry</button>
-                </div>
-              ) : tab === 'matrix' ? (
+              <TableState loading={loading} error={error} onRetry={load}>
+              {tab === 'matrix' ? (
                 <div style={{ padding: 24, maxWidth: 860 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                     <p style={{ fontSize: 12.5, color: 'var(--n600)', lineHeight: 1.6, flex: 1 }}>
@@ -490,14 +468,13 @@ export default function Risks({ dark, toggleDark }) {
                   </div>
 
                   {risks.length === 0 ? (
-                    <div style={{ padding: 64, textAlign: 'center' }}>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>Nothing on the register</p>
-                      <p style={{ fontSize: 13, color: 'var(--n400)', maxWidth: 420, margin: '0 auto 20px', lineHeight: 1.6 }}>
-                        An assessment records what could go wrong, how likely it is, and what it would cost — and
-                        the worst one against an asset feeds that asset&apos;s condition score.
-                      </p>
-                      {canCreate && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Assess the first risk</button>}
-                    </div>
+                    <EmptyState
+                      style={{ padding: 64 }}
+                      title="Nothing on the register"
+                      body={<>An assessment records what could go wrong, how likely it is, and what it would cost — and
+                        the worst one against an asset feeds that asset&apos;s condition score.</>}
+                      action={canCreate && <button onClick={() => setModal('add')} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>Assess the first risk</button>}
+                    />
                   ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
@@ -529,6 +506,7 @@ export default function Risks({ dark, toggleDark }) {
                   )}
                 </>
               )}
+              </TableState>
             </div>
 
             {/* One panel for both tabs. A cell used to open its risks in a strip

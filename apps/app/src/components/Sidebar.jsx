@@ -60,6 +60,29 @@ const REPORT = [
   { key: 'export', label: 'Export', path: '/export', icon: icons.reports, cap: 'report:read' },
 ]
 
+function NavItem({ item, count, countColor, active, onGo }) {
+  return item.soon ? (
+    <div className="nav-item disabled" aria-disabled="true" title={`${item.label} — coming soon`}>
+      {item.icon}<span className="nav-label">{item.label}</span><span className="nav-soon">Soon</span>
+    </div>
+  ) : (
+    <div className={`nav-item${active === item.key ? ' active' : ''}`} onClick={() => onGo(item.path)} title={item.label}>
+      {item.icon}<span className="nav-label">{item.label}</span>
+      {count > 0 && (
+        <span className="nav-badge" style={{
+          marginLeft: 'auto', minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999,
+          background: countColor === 'red' ? 'var(--srb)' : 'var(--sab)',
+          color: countColor === 'red' ? 'var(--srt)' : 'var(--sat)',
+          border: `1px solid ${countColor === 'red' ? 'var(--srbr)' : 'var(--sabr)'}`,
+          fontSize: 10, fontWeight: 600, lineHeight: '14px', textAlign: 'center', flexShrink: 0,
+        }}>
+          {capCount(count)}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function Sidebar({ active }) {
   const can = useCan()
   const nav = useNavigate()
@@ -99,26 +122,6 @@ export default function Sidebar({ active }) {
   const reportItems = REPORT.filter(visible)
   const sectionStyle = {padding:'12px 16px 4px',fontSize:10,fontWeight:600,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--n400)',fontFamily:'var(--ff-m)'}
 
-  const NavItem = ({ item, count, countColor }) => item.soon ? (
-    <div className="nav-item disabled" aria-disabled="true" title={`${item.label} — coming soon`}>
-      {item.icon}<span className="nav-label">{item.label}</span><span className="nav-soon">Soon</span>
-    </div>
-  ) : (
-    <div className={`nav-item${active === item.key ? ' active' : ''}`} onClick={() => go(item.path)} title={item.label}>
-      {item.icon}<span className="nav-label">{item.label}</span>
-      {count > 0 && (
-        <span className="nav-badge" style={{
-          marginLeft: 'auto', minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999,
-          background: countColor === 'red' ? 'var(--srb)' : 'var(--sab)',
-          color: countColor === 'red' ? 'var(--srt)' : 'var(--sat)',
-          border: `1px solid ${countColor === 'red' ? 'var(--srbr)' : 'var(--sabr)'}`,
-          fontSize: 10, fontWeight: 600, lineHeight: '14px', textAlign: 'center', flexShrink: 0,
-        }}>
-          {capCount(count)}
-        </span>
-      )}
-    </div>
-  )
   const orgMenuItem = { display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 14px', background: 'none', border: 'none', fontFamily: 'var(--ff-u)', fontSize: 13, color: 'var(--n700)', cursor: 'pointer', textAlign: 'left' }
 
   return (
@@ -164,22 +167,22 @@ export default function Sidebar({ active }) {
         <div className="sidebar-section" style={sectionStyle}>Operations</div>
 
         {OPERATIONS.filter(visible).map((item) => (
-          <NavItem key={item.key} item={item} count={item.key === 'work-orders' ? openWOCount : undefined} countColor="amber" />
+          <NavItem active={active} onGo={go} key={item.key} item={item} count={item.key === 'work-orders' ? openWOCount : undefined} countColor="amber" />
         ))}
 
         {reportItems.length > 0 && (
           <>
             <div className="sidebar-section" style={sectionStyle}>Report</div>
-            {reportItems.map((item) => <NavItem key={item.key} item={item} />)}
+            {reportItems.map((item) => <NavItem active={active} onGo={go} key={item.key} item={item} />)}
           </>
         )}
 
         <div style={{height:1,background:'var(--n200)',margin:'8px 16px'}}/>
 
-        <NavItem item={{ key: 'notifications', label: 'Notifications', path: '/notifications', icon: icons.notifications }} count={unreadCount} countColor="red" />
-        {canAdmin && <NavItem item={{ key: 'admin', label: 'Admin', path: '/admin', icon: icons.users }} />}
-        <NavItem item={{ key: 'integrations', label: 'Integrations', path: '/integrations', icon: icons.integrations }} />
-        <NavItem item={{ key: 'settings', label: 'Settings', path: '/settings', icon: icons.settings }} />
+        <NavItem active={active} onGo={go} item={{ key: 'notifications', label: 'Notifications', path: '/notifications', icon: icons.notifications }} count={unreadCount} countColor="red" />
+        {canAdmin && <NavItem active={active} onGo={go} item={{ key: 'admin', label: 'Admin', path: '/admin', icon: icons.users }} />}
+        <NavItem active={active} onGo={go} item={{ key: 'integrations', label: 'Integrations', path: '/integrations', icon: icons.integrations }} />
+        <NavItem active={active} onGo={go} item={{ key: 'settings', label: 'Settings', path: '/settings', icon: icons.settings }} />
       </nav>
 
       <button className="sidebar-collapse-btn" onClick={toggleCollapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
