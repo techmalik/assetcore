@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useRef, useState } from 'react'
+import { createContext, useContext, useCallback, useMemo, useRef, useState } from 'react'
 
 const ToastContext = createContext({ toast: { success() {}, error() {}, info() {} } })
 
@@ -30,8 +30,12 @@ export function ToastProvider({ children }) {
     info: (message) => push('info', message),
   }).current
 
+  // toast never changes, so neither does the value: showing or dismissing a
+  // toast no longer re-renders every component that can raise one.
+  const value = useMemo(() => ({ toast }), [toast])
+
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastContext.Provider value={value}>
       {children}
       <div
         aria-live="polite"

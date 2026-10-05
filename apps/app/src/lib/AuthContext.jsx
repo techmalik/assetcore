@@ -1,7 +1,9 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { api } from './apiClient'
 import { getSession, onAuthStateChange, getOrgRole, signOut as doSignOut } from './auth'
 import { can } from './rbac'
+import { useToast } from './ToastContext'
+import { errorText } from './errors'
 
 const AuthCtx = createContext(null)
 
@@ -21,9 +23,17 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [org, setOrg] = useState(null)
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
-    getSession().then((s) => { setSession(s); setLoading(false) })
+    // If the server cannot be reached while an expired token is being
+    // refreshed, getSession() rejects. Without the catch, loading never ended
+    // and the app sat on the splash screen; now it lands on sign-in, with the
+    // offline banner saying why.
+    getSession()
+      .then((s) => setSession(s))
+      .catch(() => setSession(null))
+      .finally(() => setLoading(false))
     const sub = onAuthStateChange((s) => setSession(s))
     return () => sub.unsubscribe()
   }, [])
@@ -45,7 +55,9 @@ export function AuthProvider({ children }) {
     return o
   }, [])
 
-  const { orgId, roleKey, extraCaps } = getOrgRole(session)
+  // Decoded once per session, so extraCaps keeps one identity between renders
+  // and hooks keyed on it (useCan) stay stable.
+  const { orgId, roleKey, extraCaps } = useMemo(() => getOrgRole(session), [session])
 
   // Load org and check if onboarding is needed (no sites yet).
   useEffect(() => {
@@ -56,20 +68,26 @@ export function AuthProvider({ children }) {
       setOrg(orgData || null)
       const alreadyOnboarded = orgData?.settings?.onboarded === true
       setNeedsOnboarding(!alreadyOnboarded && (sites?.length ?? 0) === 0)
+    }).catch((e) => {
+      // Every money figure reads the currency from org, so say it is missing
+      // rather than quietly showing the default.
+      if (!cancelled) toast.error(errorText(e, 'Could not load your organisation. Some figures may show default settings until you reload.'))
     })
     return () => { cancelled = true }
-  }, [orgId])
+  }, [orgId, toast])
 
   const user = session?.user ?? null
   const fullName = user?.user_metadata?.full_name || user?.email || ''
 
-  const value = {
+  // One value object per change, not per render: every useAuth() consumer
+  // re-renders when it changes identity.
+  const value = useMemo(() => ({
     loading,
     authed: Boolean(session),
     user,
     orgId,
     roleKey,
-    extraCaps: extraCaps ?? [],
+    extraCaps,
     org,
     fullName,
     initials: initialsOf(fullName),
@@ -78,7 +96,7 @@ export function AuthProvider({ children }) {
     signOut: doSignOut,
     refreshSession,
     refreshOrg,
-  }
+  }), [loading, session, user, orgId, roleKey, extraCaps, org, fullName, needsOnboarding, refreshSession, refreshOrg])
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }
 

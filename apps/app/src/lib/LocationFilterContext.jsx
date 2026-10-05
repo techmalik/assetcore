@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from './AuthContext'
 import { listMyLocations } from './db/locations'
 
@@ -46,8 +46,10 @@ export function LocationFilterProvider({ children }) {
     } catch { /* ignore */ }
   }, [user?.id])
 
+  const value = useMemo(() => ({ locationId, setLocationId, locations, loading }), [locationId, setLocationId, locations, loading])
+
   return (
-    <LocationFilterContext.Provider value={{ locationId, setLocationId, locations, loading }}>
+    <LocationFilterContext.Provider value={value}>
       {children}
     </LocationFilterContext.Provider>
   )

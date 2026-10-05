@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
 import { errorText } from './errors'
@@ -64,8 +64,13 @@ export function NotificationsProvider({ children }) {
     } catch (e) { toast.error(errorText(e, 'Could not mark everything as read.')) }
   }, [toast])
 
+  const value = useMemo(
+    () => ({ unreadCount, notifications, markRead, markUnread, markAllRead }),
+    [unreadCount, notifications, markRead, markUnread, markAllRead],
+  )
+
   return (
-    <NotifCtx.Provider value={{ unreadCount, notifications, markRead, markUnread, markAllRead }}>
+    <NotifCtx.Provider value={value}>
       {children}
     </NotifCtx.Provider>
   )

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react'
 
 const SidebarContext = createContext({
   isOpen: false, toggle: () => {}, close: () => {},
@@ -22,8 +22,10 @@ export function SidebarProvider({ children }) {
     try { localStorage.setItem(STORE_KEY, collapsed ? '1' : '0') } catch { /* ignore */ }
   }, [collapsed])
 
+  const value = useMemo(() => ({ isOpen, toggle, close, collapsed, toggleCollapsed }), [isOpen, toggle, close, collapsed, toggleCollapsed])
+
   return (
-    <SidebarContext.Provider value={{ isOpen, toggle, close, collapsed, toggleCollapsed }}>
+    <SidebarContext.Provider value={value}>
       {children}
     </SidebarContext.Provider>
   )
