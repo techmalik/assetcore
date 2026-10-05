@@ -27,3 +27,4 @@
 
 Full detail for every row is in 05b/05c/05d under "Bugs seen in passing".
 | OOS-23 | LOW | The audit-log filter test asserts total equals the rows on one 200-row page, so on a long-lived local test database it fails once more than 200 matching rows pile up. CI uses a fresh database each run. | `apps/api/test/attributionAndAudit.test.ts:277` | open; reset the local test DB, or make the test filter to its own rows |
+| OOS-24 | LOW | The asset map's "Health score" colouring uses its own bands (70 and above green, 40-69 amber, below 40 red) while every other screen uses the product bands in lib/health.js (above 50 healthy, 31-50 attention, 30 and below critical). The same asset can be green on the map and amber in its panel. | `apps/app/src/components/AssetMap.jsx` MAP_COLOUR_MODES.health; `apps/app/src/lib/health.js:12-13` | open; one-line fix to use healthBand(), owner to confirm the bands |

@@ -81,8 +81,8 @@ Baseline: 14 files, 236 tests, all pass (2026-10-05). The app is checked with `n
 | 2.9 | Send approval notifications through the notify helpers | 2 | S | Done `9437627` (no dedupe key: hand-offs repeat) |
 | 2.10 | Move membership resolution out of the auth router | 2 | S | Done `83b65cb` |
 | 2.11 | Add request helpers for parsing, result mapping and list queries | 2 | M | Done `4216d0b` |
-| 3.1 | Shared value lists in `packages/domain`, used by the API | 3 | M | Open |
-| 3.2 | App labels and tones keyed by the shared lists; one status badge | 3 | M | Open |
+| 3.1 | Shared value lists in `packages/domain`, used by the API | 3 | M | Done `abf5dbb` (also shipped in the client tarball) |
+| 3.2 | App labels and tones keyed by the shared lists; one status badge | 3 | M | Done `82bc432` (pills keep inline style; .badge migration moves to Wave 5) |
 | 4.1 | One `useCan()` hook so per-user grants count everywhere | 4 | S | Open |
 | 4.2 | Show every failed save; one error-text path | 4 | S | Open |
 | 4.3 | One date module and money through `useMoney` | 4 | S | Open |
