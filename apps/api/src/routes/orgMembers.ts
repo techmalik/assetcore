@@ -1,11 +1,13 @@
 import { Router } from 'express'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { ownerPool, withOrgContext } from '../db.js'
+import type { PoolClient } from 'pg'
+import { withOrgContext, withOwnerTx } from '../db.js'
 import { claimsFromReq, isOwner } from '../claims.js'
 import { config } from '../config.js'
 import { requireCap, GRANTABLE_CAPS, ROLE_KEYS } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
+import { buildSet } from '../sqlUtil.js'
 import { hashPassword } from '../auth/passwords.js'
 import { issueToken } from '../auth/tokens.js'
 import { sendMail } from '../auth/mailer.js'
@@ -27,27 +29,41 @@ const scopeSchema = z.object({
   extra_caps: z.array(z.enum(GRANTABLE_CAPS)).optional(),
 })
 
-async function countActiveOwners(orgId: string): Promise<number> {
-  const { rows } = await ownerPool.query(
-    "select count(*)::int as n from public.memberships where org_id = $1 and role_key = 'owner' and status = 'active'",
+type Fail = { error: string; status: number }
+const fail = (status: number, error: string): Fail => ({ status, error })
+const isFail = (v: unknown): v is Fail => typeof v === 'object' && v !== null && 'error' in v && 'status' in v
+
+/** The org's active owners, locked until the transaction ends. Two admins
+ * demoting or disabling the last two owners at once used to both pass the
+ * last-owner check, because it read outside the transaction with no lock;
+ * the second now waits here and then sees the first one's change.
+ *
+ * Call it before locking the target membership, and always in id order: two
+ * owners demoting each other would otherwise each hold one row and wait on
+ * the other's, and Postgres would abort one of them as a deadlock. */
+async function lockActiveOwners(c: PoolClient, orgId: string): Promise<number> {
+  const { rows } = await c.query(
+    "select id from public.memberships where org_id = $1 and role_key = 'owner' and status = 'active' order by id for update",
     [orgId]
   )
-  return rows[0].n
+  return rows.length
 }
 
 // user:manage is held by `admin` as well as `owner` (System Admin). Without
 // the isOwner() checks below an admin could promote themselves to owner, or
-// demote/disable an owner, or mint a reset link for an owner's account and sign in as them —
-// each a way past the integration/depreciation rights kept owner-only in
-// @assetcore/rbac. So: only an owner may grant the owner role, or touch a
-// membership that is currently an owner's. The last-owner checks below still
-// apply on top, to owners acting on each other.
+// demote/disable an owner, or mint a reset link for an owner's account and
+// sign in as them — each a way past the integration/depreciation rights kept
+// owner-only in @assetcore/rbac. So: only an owner may grant the owner role,
+// or touch a membership that is currently an owner's. The last-owner checks
+// still apply on top, to owners acting on each other.
 
-async function getOrgMembership(orgId: string, membershipId: string) {
-  const { rows } = await ownerPool.query(
+/** The membership, locked for the rest of the transaction. */
+async function getOrgMembership(c: PoolClient, orgId: string, membershipId: string) {
+  const { rows } = await c.query(
     `select m.*, u.email, u.full_name from public.memberships m
      join public.users u on u.id = m.user_id
-     where m.id = $1 and m.org_id = $2`,
+     where m.id = $1 and m.org_id = $2
+     for update of m`,
     [membershipId, orgId]
   )
   return rows[0] ?? null
@@ -85,30 +101,22 @@ orgMembersRouter.post('/org/members/invite', async (req, res) => {
   const orgId = req.claims!.org_id!
   if (role_key === 'owner' && !isOwner(req)) return res.status(403).json({ error: 'owner_only' })
 
-  const client = await ownerPool.connect()
-  try {
-    await client.query('begin')
-    const { rows: existingRows } = await client.query('select id from public.users where email = $1', [email])
+  const out = await withOwnerTx(async (c) => {
+    const { rows: existingRows } = await c.query('select id from public.users where email = $1', [email])
     let userId: string
     let sendInvite = true
 
     if (existingRows[0]) {
       userId = existingRows[0].id
-      const { rows: memberships } = await client.query('select org_id from public.memberships where user_id = $1', [userId])
-      if (memberships.some((m) => m.org_id !== orgId)) {
-        await client.query('rollback')
-        return res.status(409).json({ error: 'email_belongs_to_another_org' })
-      }
-      if (memberships.some((m) => m.org_id === orgId)) {
-        await client.query('rollback')
-        return res.status(409).json({ error: 'already_a_member' })
-      }
+      const { rows: memberships } = await c.query('select org_id from public.memberships where user_id = $1', [userId])
+      if (memberships.some((m) => m.org_id !== orgId)) return fail(409, 'email_belongs_to_another_org')
+      if (memberships.some((m) => m.org_id === orgId)) return fail(409, 'already_a_member')
       // Existing user with no membership anywhere (e.g. platform-admin-only
       // account) — attach them without touching their password.
       sendInvite = false
     } else {
       const passwordHash = await hashPassword(randomUUID())
-      const { rows } = await client.query(
+      const { rows } = await c.query(
         `insert into public.users (email, password_hash, full_name, must_change_password)
          values ($1, $2, $3, true) returning id`,
         [email, passwordHash, full_name]
@@ -116,40 +124,38 @@ orgMembersRouter.post('/org/members/invite', async (req, res) => {
       userId = rows[0].id
     }
 
-    await client.query(
+    const { rows: membership } = await c.query(
       `insert into public.memberships (org_id, user_id, role_key, site_scope, location_scope, extra_caps, status)
-       values ($1, $2, $3, $4, $5, $6, 'active')`,
+       values ($1, $2, $3, $4, $5, $6, 'active') returning id`,
       [orgId, userId, role_key, site_scope ?? null, location_scope ?? null, extra_caps ?? []]
     )
+    const token = sendInvite ? await issueToken(c, userId, 'invite') : null
 
-    let inviteLink: string | null = null
-    // Whether the invite actually reached the mailbox — the UI words its
-    // confirmation differently when there is no relay and the admin has to
-    // pass the link on by hand.
-    let emailSent = false
-    if (sendInvite) {
-      const token = await issueToken(client, userId, 'invite')
-      inviteLink = `${config.APP_ORIGIN}/reset-password?token=${token}`
-      const sent = await sendMail({
-        to: email,
-        subject: "You've been invited to AssetCore",
-        text: `You've been invited to join AssetCore. Set your password: ${inviteLink}\n\nThis link expires in 7 days.`,
-      })
-      emailSent = sent.delivered
-    }
-
-    await writeAuditLog(client, {
-      orgId, actorId: req.claims!.sub, action: 'user.invite', entityType: 'membership', entityId: userId,
+    await writeAuditLog(c, {
+      orgId, actorId: req.claims!.sub, action: 'user.invite', entityType: 'membership', entityId: membership[0].id,
       after: { email, full_name, role_key },
     })
-    await client.query('commit')
-    res.status(201).json({ user_id: userId, invite_link: inviteLink, email_sent: emailSent })
-  } catch (err) {
-    await client.query('rollback')
-    throw err
-  } finally {
-    client.release()
+    return { userId, token }
+  })
+  if (isFail(out)) return res.status(out.status).json({ error: out.error })
+
+  // Mailed only once the invite is committed: a link mailed from inside the
+  // transaction pointed at a user who did not exist if the commit then failed.
+  let inviteLink: string | null = null
+  // Whether the invite actually reached the mailbox — the UI words its
+  // confirmation differently when there is no relay and the admin has to
+  // pass the link on by hand.
+  let emailSent = false
+  if (out.token) {
+    inviteLink = `${config.APP_ORIGIN}/reset-password?token=${out.token}`
+    const sent = await sendMail({
+      to: email,
+      subject: "You've been invited to AssetCore",
+      text: `You've been invited to join AssetCore. Set your password: ${inviteLink}\n\nThis link expires in 7 days.`,
+    })
+    emailSent = sent.delivered
   }
+  res.status(201).json({ user_id: out.userId, invite_link: inviteLink, email_sent: emailSent })
 })
 
 const roleSchema = z.object({ role_key: z.enum(ROLE_KEYS) })
@@ -158,38 +164,30 @@ orgMembersRouter.patch('/org/members/:id/role', async (req, res) => {
   const parsed = roleSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const orgId = req.claims!.org_id!
+  const membershipId = String(req.params.id)
 
-  const client = await ownerPool.connect()
-  try {
-    await client.query('begin')
-    const before = await getOrgMembership(orgId, req.params.id)
-    if (!before) { await client.query('rollback'); return res.status(404).json({ error: 'not_found' }) }
+  const out = await withOwnerTx(async (c) => {
+    const owners = await lockActiveOwners(c, orgId)
+    const before = await getOrgMembership(c, orgId, membershipId)
+    if (!before) return fail(404, 'not_found')
+    if ((before.role_key === 'owner' || parsed.data.role_key === 'owner') && !isOwner(req)) return fail(403, 'owner_only')
 
-    if ((before.role_key === 'owner' || parsed.data.role_key === 'owner') && !isOwner(req)) {
-      await client.query('rollback'); return res.status(403).json({ error: 'owner_only' })
+    if (before.role_key === 'owner' && before.status === 'active' && parsed.data.role_key !== 'owner' && owners <= 1) {
+      return fail(400, 'cannot_demote_last_owner')
     }
 
-    if (before.role_key === 'owner' && parsed.data.role_key !== 'owner') {
-      const owners = await countActiveOwners(orgId)
-      if (owners <= 1) { await client.query('rollback'); return res.status(400).json({ error: 'cannot_demote_last_owner' }) }
-    }
-
-    const { rows } = await client.query(
+    const { rows } = await c.query(
       'update public.memberships set role_key = $2 where id = $1 returning *',
-      [req.params.id, parsed.data.role_key]
+      [membershipId, parsed.data.role_key]
     )
-    await writeAuditLog(client, {
-      orgId, actorId: req.claims!.sub, action: 'user.role', entityType: 'membership', entityId: req.params.id,
+    await writeAuditLog(c, {
+      orgId, actorId: req.claims!.sub, action: 'user.role', entityType: 'membership', entityId: membershipId,
       before: { role_key: before.role_key }, after: { role_key: parsed.data.role_key },
     })
-    await client.query('commit')
-    res.json(rows[0])
-  } catch (err) {
-    await client.query('rollback')
-    throw err
-  } finally {
-    client.release()
-  }
+    return { row: rows[0] }
+  })
+  if (isFail(out)) return res.status(out.status).json({ error: out.error })
+  res.json(out.row)
 })
 
 // Update a member's location/site scope and per-user capability grants. Sending
@@ -197,6 +195,7 @@ orgMembersRouter.patch('/org/members/:id/role', async (req, res) => {
 // The member edit modal also sets a line manager (0028), so this patch carries
 // it. A manager only preselects a name when someone sends work for approval.
 // It grants nothing, so it rides on the same user:manage gate as scope.
+const ACCESS_ALLOWED = ['site_scope', 'location_scope', 'extra_caps', 'manager_id']
 const accessSchema = scopeSchema.extend({
   manager_id: z.string().uuid().nullable().optional(),
 })
@@ -205,87 +204,75 @@ orgMembersRouter.patch('/org/members/:id/access', async (req, res) => {
   const parsed = accessSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const orgId = req.claims!.org_id!
+  const membershipId = String(req.params.id)
 
-  const sets: string[] = []
-  const values: unknown[] = [req.params.id, orgId]
-  if ('site_scope' in parsed.data) { values.push(parsed.data.site_scope ?? null); sets.push(`site_scope = $${values.length}`) }
-  if ('location_scope' in parsed.data) { values.push(parsed.data.location_scope ?? null); sets.push(`location_scope = $${values.length}`) }
-  if ('extra_caps' in parsed.data) { values.push(parsed.data.extra_caps ?? []); sets.push(`extra_caps = $${values.length}`) }
-  if ('manager_id' in parsed.data) { values.push(parsed.data.manager_id ?? null); sets.push(`manager_id = $${values.length}`) }
-  if (!sets.length) return res.status(400).json({ error: 'empty_patch' })
+  // Sending a field replaces it; an empty grant list is [] rather than null.
+  const patch: Record<string, unknown> = { ...parsed.data }
+  if ('extra_caps' in patch) patch.extra_caps = patch.extra_caps ?? []
+  const { setSql, values } = buildSet(patch, ACCESS_ALLOWED, 2)
+  if (!setSql) return res.status(400).json({ error: 'empty_patch' })
 
-  const client = await ownerPool.connect()
-  try {
-    await client.query('begin')
-    const before = await getOrgMembership(orgId, req.params.id)
-    if (!before) { await client.query('rollback'); return res.status(404).json({ error: 'not_found' }) }
-    if (before.role_key === 'owner' && !isOwner(req)) { await client.query('rollback'); return res.status(403).json({ error: 'owner_only' }) }
+  const out = await withOwnerTx(async (c) => {
+    const before = await getOrgMembership(c, orgId, membershipId)
+    if (!before) return fail(404, 'not_found')
+    if (before.role_key === 'owner' && !isOwner(req)) return fail(403, 'owner_only')
     const managerId = parsed.data.manager_id
     if (managerId) {
       // Managed by someone who is actually here: an active member of this org,
       // not the member themselves.
-      if (managerId === before.user_id) { await client.query('rollback'); return res.status(422).json({ error: 'invalid_manager' }) }
-      const { rows: mgr } = await client.query(
+      if (managerId === before.user_id) return fail(422, 'invalid_manager')
+      const { rows: mgr } = await c.query(
         "select manager_id from public.memberships where org_id = $1 and user_id = $2 and status = 'active'",
         [orgId, managerId]
       )
-      if (!mgr[0]) { await client.query('rollback'); return res.status(422).json({ error: 'invalid_manager' }) }
+      if (!mgr[0]) return fail(422, 'invalid_manager')
       // Two people each other's manager is always a data-entry slip, and it
       // would bounce a "send to my manager" request straight back. Longer
       // loops are left alone because the field only preselects a picker.
-      if (mgr[0].manager_id === before.user_id) { await client.query('rollback'); return res.status(422).json({ error: 'manager_cycle' }) }
+      if (mgr[0].manager_id === before.user_id) return fail(422, 'manager_cycle')
     }
-    const { rows } = await client.query(
-      `update public.memberships set ${sets.join(', ')} where id = $1 and org_id = $2 returning *`,
-      values
+    const { rows } = await c.query(
+      `update public.memberships set ${setSql} where id = $1 and org_id = $2 returning *`,
+      [membershipId, orgId, ...values]
     )
-    await writeAuditLog(client, {
-      orgId, actorId: req.claims!.sub, action: 'user.access', entityType: 'membership', entityId: req.params.id,
+    await writeAuditLog(c, {
+      orgId, actorId: req.claims!.sub, action: 'user.access', entityType: 'membership', entityId: membershipId,
       before: { site_scope: before.site_scope, location_scope: before.location_scope, extra_caps: before.extra_caps },
       after: parsed.data,
     })
-    await client.query('commit')
-    res.json(rows[0])
-  } catch (err) {
-    await client.query('rollback')
-    throw err
-  } finally {
-    client.release()
-  }
+    return { row: rows[0] }
+  })
+  if (isFail(out)) return res.status(out.status).json({ error: out.error })
+  res.json(out.row)
 })
 
 function setStatus(status: 'disabled' | 'active', action: string) {
   return async (req: import('express').Request, res: import('express').Response) => {
     const orgId = req.claims!.org_id!
     const membershipId = String(req.params.id)
-    const client = await ownerPool.connect()
-    try {
-      await client.query('begin')
-      const before = await getOrgMembership(orgId, membershipId)
-      if (!before) { await client.query('rollback'); return res.status(404).json({ error: 'not_found' }) }
-      if (before.role_key === 'owner' && !isOwner(req)) { await client.query('rollback'); return res.status(403).json({ error: 'owner_only' }) }
+
+    const out = await withOwnerTx(async (c) => {
+      const owners = await lockActiveOwners(c, orgId)
+      const before = await getOrgMembership(c, orgId, membershipId)
+      if (!before) return fail(404, 'not_found')
+      if (before.role_key === 'owner' && !isOwner(req)) return fail(403, 'owner_only')
 
       if (status === 'disabled') {
-        if (before.user_id === req.claims!.sub) { await client.query('rollback'); return res.status(400).json({ error: 'cannot_disable_self' }) }
-        if (before.role_key === 'owner' && before.status === 'active') {
-          const owners = await countActiveOwners(orgId)
-          if (owners <= 1) { await client.query('rollback'); return res.status(400).json({ error: 'cannot_disable_last_owner' }) }
+        if (before.user_id === req.claims!.sub) return fail(400, 'cannot_disable_self')
+        if (before.role_key === 'owner' && before.status === 'active' && owners <= 1) {
+          return fail(400, 'cannot_disable_last_owner')
         }
       }
 
-      const { rows } = await client.query('update public.memberships set status = $2 where id = $1 returning *', [membershipId, status])
-      await writeAuditLog(client, {
+      const { rows } = await c.query('update public.memberships set status = $2 where id = $1 returning *', [membershipId, status])
+      await writeAuditLog(c, {
         orgId, actorId: req.claims!.sub, action, entityType: 'membership', entityId: membershipId,
         before: { status: before.status }, after: { status },
       })
-      await client.query('commit')
-      res.json(rows[0])
-    } catch (err) {
-      await client.query('rollback')
-      throw err
-    } finally {
-      client.release()
-    }
+      return { row: rows[0] }
+    })
+    if (isFail(out)) return res.status(out.status).json({ error: out.error })
+    res.json(out.row)
   }
 }
 orgMembersRouter.post('/org/members/:id/disable', setStatus('disabled', 'user.disable'))
@@ -293,20 +280,22 @@ orgMembersRouter.post('/org/members/:id/enable', setStatus('active', 'user.enabl
 
 orgMembersRouter.post('/org/members/:id/reset-password', async (req, res) => {
   const orgId = req.claims!.org_id!
-  const client = await ownerPool.connect()
-  try {
-    const membership = await getOrgMembership(orgId, req.params.id)
-    if (!membership) return res.status(404).json({ error: 'not_found' })
+  const membershipId = String(req.params.id)
+
+  const out = await withOwnerTx(async (c) => {
+    const membership = await getOrgMembership(c, orgId, membershipId)
+    if (!membership) return fail(404, 'not_found')
     // The link comes back in the response, so resetting an owner is a way to
     // sign in as one.
-    if (membership.role_key === 'owner' && !isOwner(req)) return res.status(403).json({ error: 'owner_only' })
+    if (membership.role_key === 'owner' && !isOwner(req)) return fail(403, 'owner_only')
 
-    const token = await issueToken(client, membership.user_id, 'reset')
-    const link = `${config.APP_ORIGIN}/reset-password?token=${token}`
-    const sent = await sendMail({ to: membership.email, subject: 'Reset your AssetCore password', text: `Reset your password: ${link}\n\nThis link expires in 1 hour.` })
-    await writeAuditLog(client, { orgId, actorId: req.claims!.sub, action: 'user.reset_password', entityType: 'membership', entityId: req.params.id })
-    res.json({ action_link: link, email_sent: sent.delivered })
-  } finally {
-    client.release()
-  }
+    const token = await issueToken(c, membership.user_id, 'reset')
+    await writeAuditLog(c, { orgId, actorId: req.claims!.sub, action: 'user.reset_password', entityType: 'membership', entityId: membershipId })
+    return { token, email: membership.email as string }
+  })
+  if (isFail(out)) return res.status(out.status).json({ error: out.error })
+
+  const link = `${config.APP_ORIGIN}/reset-password?token=${out.token}`
+  const sent = await sendMail({ to: out.email, subject: 'Reset your AssetCore password', text: `Reset your password: ${link}\n\nThis link expires in 1 hour.` })
+  res.json({ action_link: link, email_sent: sent.delivered })
 })

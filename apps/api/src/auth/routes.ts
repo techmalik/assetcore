@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import rateLimit from 'express-rate-limit'
 import { z } from 'zod'
-import { ownerPool } from '../db.js'
+import { ownerPool, withOwnerTx, withOwnerClient } from '../db.js'
 import { isDev } from '../config.js'
 import { hashPassword, verifyPassword } from './passwords.js'
 import { signAccessToken } from './jwt.js'
@@ -98,13 +98,8 @@ async function issueSession(res: import('express').Response, user: { id: string;
   const accessToken = await signAccessToken({
     sub: user.id, email: user.email, org_id: orgId, role_key: roleKey, site_ids: siteIds, extra_caps: extraCaps,
   })
-  const client = await ownerPool.connect()
-  try {
-    const refreshToken = await issueToken(client, user.id, 'refresh')
-    res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOpts)
-  } finally {
-    client.release()
-  }
+  const refreshToken = await withOwnerClient((c) => issueToken(c, user.id, 'refresh'))
+  res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOpts)
   return { accessToken, orgId, roleKey, extraCaps }
 }
 
@@ -145,13 +140,7 @@ authRouter.post('/refresh', async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE]
   if (!token) return res.status(401).json({ error: 'no_refresh_token' })
 
-  const client = await ownerPool.connect()
-  let userId: string | null
-  try {
-    userId = await consumeToken(client, token, 'refresh')
-  } finally {
-    client.release()
-  }
+  const userId = await withOwnerClient((c) => consumeToken(c, token, 'refresh'))
   if (!userId) {
     res.clearCookie(REFRESH_COOKIE, { path: refreshCookieOpts.path })
     return res.status(401).json({ error: 'invalid_refresh_token' })
@@ -170,14 +159,7 @@ authRouter.post('/refresh', async (req, res) => {
 
 authRouter.post('/logout', async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE]
-  if (token) {
-    const client = await ownerPool.connect()
-    try {
-      await consumeToken(client, token, 'refresh')
-    } finally {
-      client.release()
-    }
-  }
+  if (token) await withOwnerClient((c) => consumeToken(c, token, 'refresh'))
   res.clearCookie(REFRESH_COOKIE, { path: refreshCookieOpts.path })
   res.status(204).end()
 })
@@ -216,18 +198,13 @@ authRouter.post('/forgot-password', forgotLimiter, async (req, res) => {
   const user = rows[0]
   // Always 200 — never reveal whether an email is registered.
   if (user) {
-    const client = await ownerPool.connect()
-    try {
-      const token = await issueToken(client, user.id, 'reset')
-      const link = `${config.APP_ORIGIN}/reset-password?token=${token}`
-      await sendMail({
-        to: user.email,
-        subject: 'Reset your AssetCore password',
-        text: `Reset your password: ${link}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.`,
-      })
-    } finally {
-      client.release()
-    }
+    const token = await withOwnerClient((c) => issueToken(c, user.id, 'reset'))
+    const link = `${config.APP_ORIGIN}/reset-password?token=${token}`
+    await sendMail({
+      to: user.email,
+      subject: 'Reset your AssetCore password',
+      text: `Reset your password: ${link}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.`,
+    })
   }
   res.status(200).json({ ok: true })
 })
@@ -239,21 +216,22 @@ authRouter.post('/reset-password', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { token, password } = parsed.data
 
-  const client = await ownerPool.connect()
-  try {
-    const userId = await consumeToken(client, token, ['reset', 'invite'])
-    if (!userId) return res.status(400).json({ error: 'invalid_or_expired_token' })
-
+  // One transaction: the token is spent, the password changed and every
+  // session revoked together, or none of it happens.
+  const ok = await withOwnerTx(async (c) => {
+    const userId = await consumeToken(c, token, ['reset', 'invite'])
+    if (!userId) return false
+    // Hashed only for a valid token, so a junk token costs no argon2 work.
     const passwordHash = await hashPassword(password)
-    await client.query(
+    await c.query(
       'update public.users set password_hash = $1, must_change_password = false where id = $2',
       [passwordHash, userId]
     )
-    await revokeAll(client, userId, 'refresh')
-    res.status(200).json({ ok: true })
-  } finally {
-    client.release()
-  }
+    await revokeAll(c, userId, 'refresh')
+    return true
+  })
+  if (!ok) return res.status(400).json({ error: 'invalid_or_expired_token' })
+  res.status(200).json({ ok: true })
 })
 
 const changePasswordSchema = z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) })
@@ -270,15 +248,12 @@ authRouter.post('/change-password', requireAuth, async (req, res) => {
   }
 
   const passwordHash = await hashPassword(newPassword)
-  const client = await ownerPool.connect()
-  try {
-    await client.query(
+  await withOwnerTx(async (c) => {
+    await c.query(
       'update public.users set password_hash = $1, must_change_password = false where id = $2',
       [passwordHash, req.claims!.sub]
     )
-    await revokeAll(client, req.claims!.sub, 'refresh')
-  } finally {
-    client.release()
-  }
+    await revokeAll(c, req.claims!.sub, 'refresh')
+  })
   res.status(200).json({ ok: true })
 })

@@ -58,3 +58,35 @@ export async function withOrgContext<T>(
     client.release()
   }
 }
+
+/**
+ * A transaction on the owner pool (no RLS): begin, run, commit, roll back on
+ * throw, always release. Return a value from `fn` to answer the request after
+ * the commit, including `{ error }` results: an early return inside `fn` can
+ * never leave a connection back in the pool mid-transaction, which a missed
+ * hand-written `rollback` would.
+ */
+export async function withOwnerTx<T>(fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+  const client = await ownerPool.connect()
+  try {
+    await client.query('begin')
+    const result = await fn(client)
+    await client.query('commit')
+    return result
+  } catch (err) {
+    await client.query('rollback')
+    throw err
+  } finally {
+    client.release()
+  }
+}
+
+/** An owner-pool connection for a few statements that need no transaction. */
+export async function withOwnerClient<T>(fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+  const client = await ownerPool.connect()
+  try {
+    return await fn(client)
+  } finally {
+    client.release()
+  }
+}
