@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
 import { getCalendar } from '../lib/db/analytics'
 import { errorText } from '../lib/errors'
+import { todayISO } from '../lib/dates'
 
 /**
  * One month, with everything that has a date on it.
@@ -25,6 +26,8 @@ const DONE_STATUSES = new Set(['closed', 'completed', 'skipped'])
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+// Grid keys: the month grid is built from UTC dates (Date.UTC below), so its
+// keys are read in UTC too. "Today" is the local date (todayISO).
 const iso = (d) => d.toISOString().slice(0, 10)
 
 /** Monday-first grid covering the whole month plus the spill either side. */
@@ -53,7 +56,7 @@ function monthGrid(year, month) {
 function EventChip({ event, onOpen }) {
   const meta = ENTITY_META[event.entity]
   const done = DONE_STATUSES.has(event.status)
-  const overdue = !done && event.on_date < iso(new Date())
+  const overdue = !done && event.on_date < todayISO()
 
   return (
     <button
@@ -84,7 +87,7 @@ function EventChip({ event, onOpen }) {
 export default function Calendar({ dark, toggleDark }) {
   const nav = useNavigate()
   const today = new Date()
-  const [cursor, setCursor] = useState({ year: today.getUTCFullYear(), month: today.getUTCMonth() })
+  const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() })
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -127,7 +130,7 @@ export default function Calendar({ dark, toggleDark }) {
 
   const monthLabel = new Date(Date.UTC(cursor.year, cursor.month, 1))
     .toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-  const todayKey = iso(today)
+  const todayKey = todayISO()
   const counts = events.reduce((acc, e) => { acc[e.entity] = (acc[e.entity] || 0) + 1; return acc }, {})
 
   return (
@@ -146,7 +149,7 @@ export default function Calendar({ dark, toggleDark }) {
               <div style={{ flex: 1 }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <button onClick={() => step(-1)} className="btn btn-secondary" style={{ height: 30, width: 30, padding: 0, fontSize: 13 }} title="Previous month">‹</button>
-                <button onClick={() => setCursor({ year: today.getUTCFullYear(), month: today.getUTCMonth() })}
+                <button onClick={() => setCursor({ year: today.getFullYear(), month: today.getMonth() })}
                   className="btn btn-secondary" style={{ height: 30, padding: '0 12px', fontSize: 12.5 }}>Today</button>
                 <button onClick={() => step(1)} className="btn btn-secondary" style={{ height: 30, width: 30, padding: 0, fontSize: 13 }} title="Next month">›</button>
                 <span style={{ fontFamily: 'var(--ff-d)', fontSize: 15, fontWeight: 600, color: 'var(--n900)', marginLeft: 8 }}>{monthLabel}</span>

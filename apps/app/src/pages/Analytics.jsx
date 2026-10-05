@@ -10,6 +10,7 @@ import {
 import { useMoney } from '../lib/money'
 import { errorText } from '../lib/errors'
 import { WO_STATUS, PRIORITY, WO_TYPE, toneOf, labelOf } from '../lib/domain'
+import { todayISO, addDaysISO } from '../lib/dates'
 
 const MONTH_LABEL = (iso) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })
@@ -24,9 +25,8 @@ const WINDOWS = [
 ]
 
 function windowFrom(days) {
-  const to = new Date()
-  const from = new Date(to.getTime() - Number(days) * 24 * 3600 * 1000)
-  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) }
+  const to = todayISO()
+  return { from: addDaysISO(to, -Number(days)), to }
 }
 
 /**

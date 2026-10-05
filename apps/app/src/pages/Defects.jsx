@@ -14,6 +14,7 @@ import { listInspections } from '../lib/db/inspections'
 import { listApprovals, submitApproval, APPROVAL_STATUS_META } from '../lib/db/approvals'
 import { useCan } from '../lib/AuthContext.jsx'
 import { errorText } from '../lib/errors'
+import { fmtDate, todayISO } from '../lib/dates'
 
 const SEVERITY_CLASS = {
   minor: 'badge-n', moderate: 'badge-b', major: 'badge-a', critical: 'badge-r',
@@ -23,15 +24,10 @@ const STATUS_CLASS = {
   resolved: 'badge-g', closed: 'badge-g', deferred: 'badge-n',
 }
 
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })
-}
-
 function DueCell({ defect }) {
   if (!defect.due_date) return <span style={{ fontSize: 11.5, color: 'var(--n400)' }}>No date</span>
   const settled = defect.status === 'resolved' || defect.status === 'closed'
-  const overdue = !settled && defect.due_date < new Date().toISOString().slice(0, 10)
+  const overdue = !settled && defect.due_date < todayISO()
   return (
     <span style={{ fontFamily: 'var(--ff-m)', fontSize: 11, color: overdue ? 'var(--srt)' : 'var(--n600)', whiteSpace: 'nowrap' }}>
       {fmtDate(defect.due_date)}{overdue ? ' · overdue' : ''}
@@ -53,7 +49,6 @@ function Stat({ label, value, tone }) {
 const EMPTY = {
   title: '', description: '', severity: 'moderate', category: '',
   asset_id: '', site_id: '', inspection_id: '', due_date: '',
-  identified_date: new Date().toISOString().slice(0, 10),
 }
 
 function DefectModal({ defect, onClose, onSave, assets, sites, inspections }) {
@@ -62,7 +57,7 @@ function DefectModal({ defect, onClose, onSave, assets, sites, inspections }) {
     category: defect.category ?? '', asset_id: defect.asset_id ?? '', site_id: defect.site_id ?? '',
     inspection_id: defect.inspection_id ?? '', due_date: defect.due_date ?? '',
     identified_date: defect.identified_date,
-  } : { ...EMPTY })
+  } : { ...EMPTY, identified_date: todayISO() })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))

@@ -7,6 +7,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
+    // The instance's zone, so date tests mean what they say.
+    env: { TZ: 'Africa/Lagos' },
     setupFiles: ['./src/test/setup.js'],
     include: ['src/**/*.test.{js,jsx}', '../../packages/rbac/*.test.js', '../../packages/domain/*.test.js'],
   },

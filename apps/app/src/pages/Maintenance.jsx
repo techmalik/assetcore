@@ -16,26 +16,21 @@ import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
 import { PM_TASK_STATUS, badgeMap } from '../lib/domain'
+import { fmtDate, fmtDateLong, todayISO, addDaysISO, toISODate, parseISODate } from '../lib/dates'
 
 const TASK_STATUS = badgeMap(PM_TASK_STATUS)
 const FREQ_LABEL = { daily:'Daily', weekly:'Weekly', monthly:'Monthly', quarterly:'Quarterly', semi_annual:'Semi-annual', annual:'Annual' }
 
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'})
-}
-function isoToday() { return new Date().toISOString().slice(0,10) }
-function addDays(d, n) { const dt = new Date(d); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10) }
 
 function weekDays(refDate) {
-  const ref = new Date(refDate)
+  const ref = parseISODate(refDate)
   const mon = new Date(ref); mon.setDate(ref.getDate() - ((ref.getDay()+6)%7))
   return Array.from({length:7},(_,i) => { const d=new Date(mon); d.setDate(mon.getDate()+i); return d })
 }
 
 // ── Schedule Modal ────────────────────────────────────────────────────────────
 function ScheduleModal({ onClose, onSaved, users, assets }) {
-  const [form, setForm] = useState({ title:'', frequency:'monthly', next_due:isoToday(), assignee_id:'', asset_id:'' })
+  const [form, setForm] = useState({ title:'', frequency:'monthly', next_due:todayISO(), assignee_id:'', asset_id:'' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
 
@@ -150,9 +145,9 @@ export default function Maintenance({ dark, toggleDark }) {
   // back, each with a "Submit report" action.
   const [showCompleted, setShowCompleted] = useState(false)
   const [reporting, setReporting] = useState(null) // task whose report is being sent
-  const today = isoToday()
-  const weekStart = weekDays(today)[0].toISOString().slice(0,10)
-  const weekEnd   = weekDays(today)[6].toISOString().slice(0,10)
+  const today = todayISO()
+  const weekStart = toISODate(weekDays(today)[0])
+  const weekEnd   = toISODate(weekDays(today)[6])
 
   const load = useCallback(async () => {
     if (tab !== 'pm') return
@@ -160,8 +155,8 @@ export default function Maintenance({ dark, toggleDark }) {
     try {
       const [t, s, u, a] = await Promise.all([
         listPMTasks(showCompleted
-          ? { statuses:['completed'], dueAfter: addDays(today,-60), locationId: globalLocationId }
-          : { statuses:['pending','in_progress','overdue'], dueBefore: addDays(today,30), locationId: globalLocationId }),
+          ? { statuses:['completed'], dueAfter: addDaysISO(today,-60), locationId: globalLocationId }
+          : { statuses:['pending','in_progress','overdue'], dueBefore: addDaysISO(today,30), locationId: globalLocationId }),
         listPMSchedules(),
         listOrgUsers().catch(() => []),
         listAssets().catch(() => []),
@@ -329,13 +324,13 @@ export default function Maintenance({ dark, toggleDark }) {
                 <div className="aside-panel" style={{width:300,flexShrink:0,borderLeft:'var(--bdr)',background:'var(--n0)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
                   <div style={{padding:'14px 16px',borderBottom:'var(--bdr)'}}>
                     <div style={{fontSize:13,fontWeight:600,color:'var(--n900)'}}>
-                      {new Date(weekStart).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – {new Date(weekEnd).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+                      {parseISODate(weekStart).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – {fmtDateLong(weekEnd)}
                     </div>
                     <div style={{fontSize:11,color:'var(--n500)'}}>This week's PM tasks</div>
                   </div>
                   <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
                     {weekDays(today).map(day => {
-                      const iso = day.toISOString().slice(0,10)
+                      const iso = toISODate(day)
                       const dayTasks = weekTaskMap[iso] || []
                       const isToday = iso === today
                       return (

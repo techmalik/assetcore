@@ -86,6 +86,8 @@ export function useMoney() {
   const base = org?.base_currency || CURRENCY_CODE
 
   return {
+    /** The base currency's symbol, for field labels: `Asset value (${symbol})`. */
+    symbol: currencySymbol(base).trim(),
     money: (cents) => fmtMoney(cents, { zero: '—', code: base }),
     moneyFull: (cents) => fmtMoneyExact(cents, { code: base }),
     // `full` mirrors the base figure's own formatting: an exact base figure

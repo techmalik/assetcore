@@ -11,6 +11,7 @@ import { listPMTasks } from '../lib/db/pmTasks.js'
 import { WO_STATUS_LABEL, WO_PRIORITY_LABEL, woStatusStyle, WO_PRIORITY_STYLE } from '../lib/db/workOrders.js'
 import { errorText } from '../lib/errors'
 import { useMoney } from '../lib/money'
+import { todayISO, addDaysISO } from '../lib/dates'
 
 const ALERT_SEVERITY_STYLE = {
   critical: { c: 'var(--srt)', bg: 'var(--srb)' },
@@ -109,8 +110,8 @@ export default function Dashboard({ dark, toggleDark }) {
       .catch(e => setStatsErr(errorText(e, 'Could not load the dashboard figures.')))
     getPmCompliance().then(setPmCompliance).catch(() => {})
     getDashboardAlerts({ locationId: globalLocationId }).then(setAlerts).catch(() => setAlerts([]))
-    const today = new Date().toISOString().slice(0, 10)
-    const in14 = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
+    const today = todayISO()
+    const in14 = addDaysISO(today, 14)
     listPMTasks({ statuses: ['pending', 'in_progress'], dueAfter: today, dueBefore: in14, limit: 10 })
       .then(setUpcomingPM).catch(() => setUpcomingPM([]))
   }, [globalLocationId])

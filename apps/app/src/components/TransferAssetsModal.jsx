@@ -2,16 +2,13 @@ import { useState } from 'react'
 import { transferAssets } from '../lib/db/assets'
 import { useToast } from '../lib/ToastContext'
 import { errorText } from '../lib/errors'
+import { todayISO } from '../lib/dates'
 
 // Why the API skipped an asset, in words. Anything unlisted falls back to a
 // generic line rather than showing the code.
 const SKIP_REASON = {
   same_site: 'Already at that site',
   not_found: 'Not found, or outside the sites you can see',
-}
-
-function todayLocal() {
-  return new Date().toLocaleDateString('en-CA') // YYYY-MM-DD in the browser's timezone
 }
 
 function Field({ label, required, children }) {
@@ -40,7 +37,7 @@ export default function TransferAssetsModal({ assets, sites, locations, onClose,
   const [locationId, setLocationId] = useState('')
   const [siteId, setSiteId] = useState('')
   const [reason, setReason] = useState('')
-  const [date, setDate] = useState(todayLocal())
+  const [date, setDate] = useState(todayISO())
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const [result, setResult] = useState(null)
@@ -55,7 +52,7 @@ export default function TransferAssetsModal({ assets, sites, locations, onClose,
   async function submit(e) {
     e.preventDefault()
     if (!siteId) { setErr('Choose the site to move to.'); return }
-    if (date && date > todayLocal()) { setErr('A transfer date cannot be in the future.'); return }
+    if (date && date > todayISO()) { setErr('A transfer date cannot be in the future.'); return }
     setSaving(true); setErr('')
     try {
       const res = await transferAssets({ assetIds: assets.map((a) => a.id), toSiteId: siteId, reason: reason.trim(), transferredAt: date })
@@ -139,7 +136,7 @@ export default function TransferAssetsModal({ assets, sites, locations, onClose,
                 </Field>
               </div>
               <Field label="Transfer date">
-                <input {...inputProps} type="date" max={todayLocal()} value={date} onChange={(e) => setDate(e.target.value)} />
+                <input {...inputProps} type="date" max={todayISO()} value={date} onChange={(e) => setDate(e.target.value)} />
               </Field>
               <Field label="Reason">
                 <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={1000} className="input"

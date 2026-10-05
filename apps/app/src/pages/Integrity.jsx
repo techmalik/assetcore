@@ -9,11 +9,7 @@ import { getIntegrityOverview, INTEGRITY_STATUS_META, INTEGRITY_STATUSES } from 
 import { BAND_META, bandOf } from '../lib/db/risks'
 import { RATING_LABEL } from '../lib/db/inspections'
 import { errorText } from '../lib/errors'
-
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })
-}
+import { fmtDate } from '../lib/dates'
 
 function Pill({ meta, children }) {
   return (

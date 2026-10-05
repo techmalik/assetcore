@@ -27,6 +27,7 @@ import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
+import { fmtDate, todayISO } from '../lib/dates'
 
 const STATUS_META = {
   active:   { label:'Active',        bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -36,11 +37,6 @@ const STATUS_META = {
 }
 
 const KIND_LABEL = { licence: 'Licence', permit: 'Permit', certificate: 'Certificate', iso_certificate: 'ISO Certificate' }
-
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'2-digit' })
-}
 
 // A "relation ... does not exist" error means a migration hasn't been
 // applied yet — give an accurate, generic pointer instead of naming a
@@ -387,7 +383,7 @@ const AUDIT_STATUSES = [
 function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
   const toast = useToast()
   const editing = Boolean(audit)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
   const [form, setForm] = useState({
     title: audit?.title || '', standard: audit?.standard || '', iso_reference: audit?.iso_reference || '',
     audit_date: audit?.audit_date || today, site_id: audit?.site_id || '', auditor_id: audit?.auditor_id || '',

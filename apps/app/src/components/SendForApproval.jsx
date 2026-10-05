@@ -13,6 +13,7 @@ import {
   approvalStatusMeta, EVENT_LABEL, DIRECT_ERROR_TEXT,
 } from '../lib/db/approvals'
 import { errorText } from '../lib/errors'
+import { fmtDateTime } from '../lib/dates'
 
 function approvalErrorText(ex, fallback) {
   return errorText(ex, fallback, DIRECT_ERROR_TEXT)
@@ -50,11 +51,6 @@ export function ApproverSelect({ approvers, value, onChange, noneLabel, excludeI
       {shown.map((a) => <option key={a.id} value={a.id}>{approverLabel(a)}</option>)}
     </select>
   )
-}
-
-function fmtWhen(ts) {
-  if (!ts) return ''
-  return new Date(ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 function whereItIs(a) {
@@ -140,7 +136,7 @@ export default function SendForApproval({ entityType, entityId, kind, title, onC
             {ev && (
               <div style={{ fontSize: 11, color: 'var(--n500)', marginTop: 4, lineHeight: 1.5 }}>
                 {ev.actor || 'Someone'} {EVENT_LABEL[ev.action] || ev.action}
-                {ev.to_user ? ` to ${ev.to_user}` : ''} · {fmtWhen(ev.created_at)}
+                {ev.to_user ? ` to ${ev.to_user}` : ''} · {fmtDateTime(ev.created_at, '')}
                 {ev.notes && <div style={{ color: 'var(--n600)', fontStyle: 'italic' }}>&ldquo;{ev.notes}&rdquo;</div>}
               </div>
             )}

@@ -18,7 +18,7 @@ import { listLocations } from '../lib/db/locations'
 import { listCategories } from '../lib/db/categories'
 import { listOrgUsers } from '../lib/db/orgMembers'
 import { getOrg } from '../lib/db/org'
-import { Money } from '../lib/money'
+import { Money, useMoney } from '../lib/money'
 import { actionLabel } from '../lib/auditLabels.js'
 import { createWorkOrder, listWorkOrders, WO_STATUS_LABEL, WO_TYPE_LABEL, WO_PRIORITY_LABEL } from '../lib/db/workOrders'
 import { listPMTasks, updatePMTask, uploadMaintenanceReport } from '../lib/db/pmTasks'
@@ -34,6 +34,7 @@ import { api } from '../lib/apiClient'
 import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
+import { fmtDate, fmtDateTime, todayISO, addDaysISO } from '../lib/dates'
 
 // Asset status labels and colours live in lib/domain.js (ASSET_STATUS).
 // operational/maintenance/standby/offline say what the asset is doing now;
@@ -173,15 +174,6 @@ function HealthBar({ score }) {
   )
 }
 
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })
-}
-
-function fmtDateTime(d) {
-  return new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
-
 // Next-maintenance cell color: red once past due, amber inside the next 14
 // days, default text color otherwise — mirrors the overdue/expiring color
 // convention already used on Maintenance and Compliance (var(--srt)/var(--sat)).
@@ -265,6 +257,7 @@ function parseCSV(text) {
 const DEPRECIATION_PICKER = ['straight_line', 'declining_balance', 'sum_of_years_digits', 'none']
 
 function AssetModal({ asset, sites, locations, categories, operators, allAssets = [], orgDepreciation = null, onClose, onSave }) {
+  const { symbol } = useMoney()
   const toast = useToast()
   const editing = Boolean(asset)
   const s0 = asset?.specs || {}
@@ -495,7 +488,7 @@ function AssetModal({ asset, sites, locations, categories, operators, allAssets 
           <Field label="Runtime (hours)">
             <input {...inputProps} type="number" min="0" step="1" value={form.runtime_hours} onChange={(e) => set('runtime_hours', e.target.value)} placeholder="e.g. 18240" />
           </Field>
-          <Field label="Asset value (₦)">
+          <Field label={`Asset value (${symbol})`}>
             <input {...inputProps} type="number" min={0} value={form.value} onChange={(e) => set('value', e.target.value)} placeholder="e.g. 5000000" />
           </Field>
           <Field label="Assigned operator">
@@ -521,7 +514,7 @@ function AssetModal({ asset, sites, locations, categories, operators, allAssets 
               onChange={(e) => set('useful_life_years', e.target.value)}
               placeholder={orgDepreciation?.usefulLifeYears != null ? `Default ${orgDepreciation.usefulLifeYears}` : 'Default 10'} />
           </Field>
-          <Field label="Salvage value (₦)">
+          <Field label={`Salvage value (${symbol})`}>
             <input {...inputProps} type="number" min="0" value={form.salvage_value}
               onChange={(e) => set('salvage_value', e.target.value)}
               placeholder={orgDepreciation?.salvageRatePct ? `Default ${orgDepreciation.salvageRatePct}% of value` : 'Default 0'} />
@@ -683,20 +676,14 @@ function RaiseWOModal({ asset, users = [], onClose, onCreated }) {
 }
 
 // ── Complete Maintenance Modal ───────────────────────────────────────────────────
-function localDateStr(offsetDays = 0) {
-  const d = new Date()
-  d.setDate(d.getDate() + offsetDays)
-  return d.toLocaleDateString('en-CA') // YYYY-MM-DD in the browser's local timezone
-}
-
 function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
   const toast = useToast()
   const [pmTasks, setPMTasks] = useState([])
   const [workOrders, setWorkOrders] = useState([])
   const [form, setForm] = useState({
     link: '', // '' | `pm:<id>` | `wo:<id>`
-    completed_at: localDateStr(0),
-    next_maintenance_at: localDateStr(90),
+    completed_at: addDaysISO(todayISO(), 0),
+    next_maintenance_at: addDaysISO(todayISO(), 90),
     notes: '',
   })
   const [report, setReport] = useState(null)
@@ -750,7 +737,7 @@ function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
           )}
           <div className="form-grid" style={{ gap: 12 }}>
             <Field label="Completed on" required>
-              <input {...inputProps} type="date" max={localDateStr(0)} value={form.completed_at} onChange={(e) => set('completed_at', e.target.value)} />
+              <input {...inputProps} type="date" max={addDaysISO(todayISO(), 0)} value={form.completed_at} onChange={(e) => set('completed_at', e.target.value)} />
             </Field>
             <Field label="Next maintenance due" required>
               <input {...inputProps} type="date" min={form.completed_at} value={form.next_maintenance_at} onChange={(e) => set('next_maintenance_at', e.target.value)} />
@@ -780,7 +767,7 @@ function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
 // apply_asset_health) with no record of what was done or a report attached.
 function PMTaskCompleteModal({ task, onClose, onCompleted }) {
   const toast = useToast()
-  const [completedAt, setCompletedAt] = useState(localDateStr(0))
+  const [completedAt, setCompletedAt] = useState(addDaysISO(todayISO(), 0))
   const [notes, setNotes] = useState('')
   const [report, setReport] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -805,7 +792,7 @@ function PMTaskCompleteModal({ task, onClose, onCompleted }) {
         <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16 }}>{task.title} — resets the asset's health to 100% and advances the maintenance schedule.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Field label="Completed on" required>
-            <input className="input" style={{ width: '100%' }} type="date" max={localDateStr(0)} value={completedAt} onChange={(e) => setCompletedAt(e.target.value)} />
+            <input className="input" style={{ width: '100%' }} type="date" max={addDaysISO(todayISO(), 0)} value={completedAt} onChange={(e) => setCompletedAt(e.target.value)} />
           </Field>
           <Field label="Notes">
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="input" style={{ width: '100%', height: 'auto', padding: '8px 10px', resize: 'vertical' }} placeholder="What was done…" />

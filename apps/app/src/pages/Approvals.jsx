@@ -15,14 +15,10 @@ import { useAuth, useCan } from '../lib/AuthContext.jsx'
 import { ROLE_LABELS } from '../lib/rbac'
 import { useMoney, Money } from '../lib/money'
 import { errorText } from '../lib/errors'
+import { fmtDateTime } from '../lib/dates'
 
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS).filter(([k]) => k !== 'viewer')
 
-
-function fmtWhen(ts) {
-  if (!ts) return '—'
-  return new Date(ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
 
 function Stat({ label, value, tone }) {
   const color = tone === 'warn' ? 'var(--sat)' : tone === 'bad' ? 'var(--srt)' : 'var(--n900)'
@@ -182,6 +178,7 @@ const EMPTY_RULE = {
 }
 
 function RuleModal({ rule, onClose, onSave }) {
+  const { symbol } = useMoney()
   const [form, setForm] = useState(() => rule ? {
     name: rule.name, entity_type: rule.entity_type, kind: rule.kind,
     min_naira: String(Number(rule.min_amount_cents) / 100),
@@ -241,7 +238,7 @@ function RuleModal({ rule, onClose, onSave }) {
         <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label className="label" style={{ display: 'block', marginBottom: 5 }}>Rule name *</label>
-            <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Job spend above ₦500,000" style={{ width: '100%' }} />
+            <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder={`Job spend above ${symbol}500,000`} style={{ width: '100%' }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -551,7 +548,7 @@ export default function Approvals({ dark, toggleDark }) {
                           <tr key={a.id} className="row-hover" style={{ borderBottom: 'var(--bdr)', cursor: 'pointer', background: detail?.id === a.id ? 'var(--b50)' : 'transparent' }} onClick={() => openDetail(a.id)}>
                             <td style={{ padding: '11px 14px' }}>
                               <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--n900)' }}>{a.title || KIND_LABEL[a.kind] || a.kind}</div>
-                              <div style={{ fontSize: 11, color: 'var(--n500)' }}>by {a.requester?.full_name || '—'} · {fmtWhen(a.created_at)}</div>
+                              <div style={{ fontSize: 11, color: 'var(--n500)' }}>by {a.requester?.full_name || '—'} · {fmtDateTime(a.created_at)}</div>
                             </td>
                             <td style={{ padding: '11px 14px', fontSize: 12, color: 'var(--n600)', whiteSpace: 'nowrap' }}>{KIND_LABEL[a.kind] || a.kind}</td>
                             <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, color: 'var(--n700)', whiteSpace: 'nowrap' }}><Money cents={a.amount_cents} /></td>
@@ -637,7 +634,7 @@ export default function Approvals({ dark, toggleDark }) {
                             ['Submitted by', detail.requester?.full_name],
                             [detail.route === 'direct' && detail.status === 'approved' ? 'Accepted by'
                               : detail.status === 'discarded' ? 'Discarded by' : 'Decided by', detail.approver?.full_name],
-                            ['Decided', detail.decided_at ? fmtWhen(detail.decided_at) : null],
+                            ['Decided', detail.decided_at ? fmtDateTime(detail.decided_at) : null],
                           ].map(([k, v]) => (
                             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '9px 14px', borderBottom: 'var(--bdr)', fontSize: 12 }}>
                               <span style={{ color: 'var(--n500)', flexShrink: 0 }}>{k}</span>
@@ -660,7 +657,7 @@ export default function Approvals({ dark, toggleDark }) {
                                   {e.to_user && <> {e.action === 'forwarded' ? '→' : 'to'} <strong style={{ fontWeight: 600 }}>{e.to_user.full_name}</strong></>}
                                   {e.role_key && detail.route !== 'direct' ? ` as ${ROLE_LABELS[e.role_key] || e.role_key}` : ''}
                                 </span>
-                                <span style={{ fontSize: 10.5, color: 'var(--n400)', whiteSpace: 'nowrap' }}>{fmtWhen(e.created_at)}</span>
+                                <span style={{ fontSize: 10.5, color: 'var(--n400)', whiteSpace: 'nowrap' }}>{fmtDateTime(e.created_at)}</span>
                               </div>
                               {e.notes && <div style={{ fontSize: 11.5, color: 'var(--n600)', marginTop: 3, paddingLeft: 28, lineHeight: 1.5 }}>{e.notes}</div>}
                             </div>

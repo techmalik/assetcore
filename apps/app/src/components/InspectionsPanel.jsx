@@ -30,6 +30,7 @@ import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
 import { INSPECTION_STATUS, badgeMap } from '../lib/domain'
+import { fmtDate, todayISO } from '../lib/dates'
 
 const STATUS_META = badgeMap(INSPECTION_STATUS)
 const KIND_META = {
@@ -38,11 +39,6 @@ const KIND_META = {
   integrity:     { label:'Integrity',     c:'var(--sl)'  },
   regulatory:    { label:'Regulatory',   c:'var(--b600)' },
   environmental: { label:'Environmental', c:'var(--sgt)' },
-}
-
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'2-digit' })
 }
 
 /** An inspection still open past its scheduled date. Drives the tab badge. */
@@ -54,7 +50,7 @@ function isOverdue(ins) {
 
 // ── Create Modal ─────────────────────────────────────────────────────────────
 function InspectionModal({ onClose, onSaved, sites, assets, users, templates }) {
-  const today = new Date().toISOString().slice(0,10)
+  const today = todayISO()
   const [form, setForm] = useState({ title:'', kind:'condition', scheduled_date:today, asset_id:'', site_id:'', inspector_id:'', template_id:'', notes:'' })
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState(null)

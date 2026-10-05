@@ -15,11 +15,6 @@ import { errorText } from '../lib/errors'
 const THIS_YEAR = new Date().getFullYear()
 
 
-function exact(cents) {
-  if (cents === null || cents === undefined) return '—'
-  return `₦${(Number(cents) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
 function Stat({ label, value, hint, tone }) {
   return (
     <div style={{ padding: '12px 16px', borderRight: 'var(--bdr)', flex: 1, minWidth: 0 }}>
@@ -34,6 +29,7 @@ function Stat({ label, value, hint, tone }) {
 // Two steps on one screen: choose the basis, then read the table it produces
 // before committing. The preview is the same maths the save will run.
 function NewScheduleModal({ assets, onClose, onCreated }) {
+  const { moneyFull, symbol } = useMoney()
   const [assetId, setAssetId] = useState('')
   const [method, setMethod] = useState('')
   const [factor, setFactor] = useState('2')
@@ -128,7 +124,7 @@ function NewScheduleModal({ assets, onClose, onCreated }) {
                 Override the basis {asset ? `(otherwise taken from ${asset.ain})` : ''}
               </summary>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 12 }}>
-                {[['cost', 'Cost (₦)', 'number'], ['salvage', 'Salvage (₦)', 'number'], ['life', 'Life (years)', 'number'], ['start', 'Start date', 'date']].map(([k, l, t]) => (
+                {[['cost', `Cost (${symbol})`, 'number'], ['salvage', `Salvage (${symbol})`, 'number'], ['life', 'Life (years)', 'number'], ['start', 'Start date', 'date']].map(([k, l, t]) => (
                   <div key={k}>
                     <label className="label" style={{ display: 'block', marginBottom: 4 }}>{l}</label>
                     <input className="input" type={t} step="0.01" value={overrides[k]}
@@ -150,8 +146,8 @@ function NewScheduleModal({ assets, onClose, onCreated }) {
             <>
               <div style={{ display: 'flex', gap: 18, fontSize: 12, color: 'var(--n600)', flexWrap: 'wrap' }}>
                 <span>Method <strong style={{ color: 'var(--n900)' }}>{METHOD_LABEL[preview.basis.method]}</strong></span>
-                <span>Cost <strong style={{ fontFamily: 'var(--ff-m)', color: 'var(--n900)' }}>{exact(preview.basis.cost_cents)}</strong></span>
-                <span>Salvage <strong style={{ fontFamily: 'var(--ff-m)', color: 'var(--n900)' }}>{exact(preview.basis.salvage_value_cents)}</strong></span>
+                <span>Cost <strong style={{ fontFamily: 'var(--ff-m)', color: 'var(--n900)' }}>{moneyFull(preview.basis.cost_cents)}</strong></span>
+                <span>Salvage <strong style={{ fontFamily: 'var(--ff-m)', color: 'var(--n900)' }}>{moneyFull(preview.basis.salvage_value_cents)}</strong></span>
                 <span>Life <strong style={{ color: 'var(--n900)' }}>{preview.basis.useful_life_years} years</strong></span>
                 <span>From <strong style={{ fontFamily: 'var(--ff-m)', color: 'var(--n900)' }}>{preview.basis.start_date}</strong></span>
               </div>
@@ -170,10 +166,10 @@ function NewScheduleModal({ assets, onClose, onCreated }) {
                       {preview.entries.map((e) => (
                         <tr key={e.period_year} style={{ borderBottom: 'var(--bdr)' }}>
                           <td style={{ padding: '7px 14px', fontFamily: 'var(--ff-m)', color: 'var(--n700)' }}>{e.period_year}</td>
-                          <td style={{ padding: '7px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{exact(e.opening_cents)}</td>
-                          <td style={{ padding: '7px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n900)', fontWeight: 500 }}>{exact(e.charge_cents)}</td>
-                          <td style={{ padding: '7px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{exact(e.closing_cents)}</td>
-                          <td style={{ padding: '7px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{exact(e.accumulated_cents)}</td>
+                          <td style={{ padding: '7px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{moneyFull(e.opening_cents)}</td>
+                          <td style={{ padding: '7px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n900)', fontWeight: 500 }}>{moneyFull(e.charge_cents)}</td>
+                          <td style={{ padding: '7px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{moneyFull(e.closing_cents)}</td>
+                          <td style={{ padding: '7px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{moneyFull(e.accumulated_cents)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -312,12 +308,12 @@ function ScheduleDetail({ detail, canManage, busy, onPost, onRetire, onClose }) 
                           {e.period_year}
                           {current && <span className="badge badge-b" style={{ marginLeft: 6 }}>This year</span>}
                         </td>
-                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)', whiteSpace: 'nowrap' }}>{exact(e.opening_cents)}</td>
+                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)', whiteSpace: 'nowrap' }}>{moneyFull(e.opening_cents)}</td>
                         {/* The charge is the only figure that leaves the
                             balance sheet, so it is the one shown as a fall. */}
-                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--srt)', fontWeight: 500, whiteSpace: 'nowrap' }}>−{exact(e.charge_cents)}</td>
-                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)', whiteSpace: 'nowrap' }}>{exact(e.accumulated_cents)}</td>
-                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n900)', fontWeight: 500, whiteSpace: 'nowrap' }}>{exact(e.closing_cents)}</td>
+                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--srt)', fontWeight: 500, whiteSpace: 'nowrap' }}>−{moneyFull(e.charge_cents)}</td>
+                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n600)', whiteSpace: 'nowrap' }}>{moneyFull(e.accumulated_cents)}</td>
+                        <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', color: 'var(--n900)', fontWeight: 500, whiteSpace: 'nowrap' }}>{moneyFull(e.closing_cents)}</td>
                         <td style={{ padding: '9px 14px' }}>
                           {e.posted ? <span className="badge badge-g">Posted</span> : <span className="badge badge-n">Open</span>}
                         </td>
@@ -345,7 +341,7 @@ function ScheduleDetail({ detail, canManage, busy, onPost, onRetire, onClose }) 
 
 export default function Depreciation({ dark, toggleDark }) {
   const can = useCan()
-  const { money } = useMoney()
+  const { money, moneyFull } = useMoney()
   const canManage = can('depreciation:manage')
 
   const [schedules, setSchedules] = useState([])
@@ -477,9 +473,9 @@ export default function Depreciation({ dark, toggleDark }) {
                         <tr key={r.period_year} className="row-hover" style={{ borderBottom: 'var(--bdr)', background: r.period_year === THIS_YEAR ? 'var(--b50)' : 'transparent' }}>
                           <td style={{ padding: '10px 14px', fontFamily: 'var(--ff-m)', fontSize: 12, color: r.period_year === THIS_YEAR ? 'var(--b700)' : 'var(--n800)', fontWeight: r.period_year === THIS_YEAR ? 600 : 400 }}>{r.period_year}</td>
                           <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--n600)' }}>{r.asset_count}</td>
-                          <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', fontSize: 12, color: 'var(--n900)', fontWeight: 500 }}>{exact(r.charge_cents)}</td>
-                          <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', fontSize: 12, color: 'var(--n600)' }}>{exact(r.closing_cents)}</td>
-                          <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', fontSize: 12, color: 'var(--n600)' }}>{exact(r.accumulated_cents)}</td>
+                          <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', fontSize: 12, color: 'var(--n900)', fontWeight: 500 }}>{moneyFull(r.charge_cents)}</td>
+                          <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', fontSize: 12, color: 'var(--n600)' }}>{moneyFull(r.closing_cents)}</td>
+                          <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'var(--ff-m)', fontSize: 12, color: 'var(--n600)' }}>{moneyFull(r.accumulated_cents)}</td>
                           <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                             {r.posted_count === r.asset_count
                               ? <span className="badge badge-g">All posted</span>

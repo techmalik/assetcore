@@ -8,6 +8,7 @@ import { SUPPORT_EMAIL } from '../lib/instance'
 import { getLicence, licenceDaysRemaining } from '../lib/db/licence'
 import { CURRENCY_CODE, currencySymbol, fmtMoneyExact } from '../lib/money.jsx'
 import { errorText } from '../lib/errors'
+import { fmtDateLong } from '../lib/dates'
 
 function SuccessBanner({ msg }) {
   if (!msg) return null
@@ -131,7 +132,6 @@ function ProfileTab() {
   )
 }
 
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
 
 function LicenceCard() {
   const [licence, setLicence] = useState(undefined) // undefined = loading, null = none configured
@@ -162,7 +162,7 @@ function LicenceCard() {
             )}
             <div>
               <div style={{ fontSize: 11, color: 'var(--n500)', marginBottom: 2 }}>Expires</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: expired ? 'var(--srt)' : 'var(--n900)' }}>{fmtDate(licence.expires_at)}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: expired ? 'var(--srt)' : 'var(--n900)' }}>{fmtDateLong(licence.expires_at)}</div>
             </div>
             {licence.seats != null && (
               <div>

@@ -12,14 +12,10 @@ import { listSites } from '../lib/db/sites'
 import { listOrgMembers } from '../lib/db/orgMembers'
 import { useCan } from '../lib/AuthContext.jsx'
 import { errorText } from '../lib/errors'
+import { fmtDate, todayISO } from '../lib/dates'
 
 const STATUS_CLASS = {
   open: 'badge-r', mitigating: 'badge-a', accepted: 'badge-b', closed: 'badge-n',
-}
-
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })
 }
 
 function BandBadge({ score }) {
@@ -525,7 +521,7 @@ export default function Risks({ dark, toggleDark }) {
                             <td style={{ padding: '11px 14px' }}><BandBadge score={r.inherent_score} /></td>
                             <td style={{ padding: '11px 14px' }}><BandBadge score={r.current_score} /></td>
                             <td style={{ padding: '11px 14px' }}><span className={`badge ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span></td>
-                            <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, whiteSpace: 'nowrap', color: r.review_date && r.review_date < new Date().toISOString().slice(0, 10) && r.status !== 'closed' ? 'var(--srt)' : 'var(--n600)' }}>
+                            <td style={{ padding: '11px 14px', fontFamily: 'var(--ff-m)', fontSize: 11, whiteSpace: 'nowrap', color: r.review_date && r.review_date < todayISO() && r.status !== 'closed' ? 'var(--srt)' : 'var(--n600)' }}>
                               {fmtDate(r.review_date)}
                             </td>
                           </tr>

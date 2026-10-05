@@ -34,13 +34,6 @@ function TypeBadge({ t }) {
   return <span style={{ padding: '1px 6px', borderRadius: 2, fontSize: 10, fontWeight: 500, background: 'var(--n100)', color: 'var(--n600)', border: '1px solid var(--n200)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{WO_TYPE_LABEL[t] || t}</span>
 }
 
-function fmtNaira(cents) {
-  if (!cents) return '—'
-  const n = cents / 100
-  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`
-  return `₦${n.toLocaleString()}`
-}
-
 function SlaDue({ date }) {
   if (!date) return null
   const d = new Date(date)
@@ -53,6 +46,7 @@ function SlaDue({ date }) {
 
 // ── New WO Modal ──────────────────────────────────────────────────────────────
 function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
+  const { symbol } = useMoney()
   const can = useCan()
   const toast = useToast()
   // Sending the job for approval raises an approval request as well, so it
@@ -152,7 +146,7 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
             <input className="input" type="datetime-local" value={form.sla_due} onChange={e => set('sla_due', e.target.value)} style={{ width: '100%' }} />
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Estimated cost (₦)</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Estimated cost ({symbol})</label>
             <input className="input" type="number" min="0" step="1" value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="e.g. 45000" style={{ width: '100%' }} />
           </div>
         </div>
@@ -204,6 +198,7 @@ function NewWOModal({ sites, assets, users, canAssign, onClose, onSave }) {
 // Backed by the (previously UI-orphaned) PATCH /work-orders/:id — title,
 // description, type, priority, SLA, cost, and (for wo:assign holders) assignee.
 function EditWOModal({ wo, users, canAssign, onClose, onSaved }) {
+  const { symbol } = useMoney()
   const toast = useToast()
   // datetime-local wants "YYYY-MM-DDTHH:mm" in local time, not the stored ISO.
   const toLocalInput = (iso) => {
@@ -280,7 +275,7 @@ function EditWOModal({ wo, users, canAssign, onClose, onSaved }) {
             <input className="input" type="datetime-local" value={form.sla_due} onChange={e => set('sla_due', e.target.value)} style={{ width: '100%' }} />
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Estimated cost (₦)</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>Estimated cost ({symbol})</label>
             <input className="input" type="number" min="0" step="1" value={form.cost} onChange={e => set('cost', e.target.value)} style={{ width: '100%' }} />
           </div>
         </div>
@@ -572,6 +567,7 @@ function PartsSection({ wo, canEdit, onChanged }) {
 }
 
 function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, users }) {
+  const { money } = useMoney()
   const can = useCan()
   const toast = useToast()
   const [wo, setWo] = useState(null)
@@ -707,7 +703,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
               ? `${wo.assigner.full_name}${wo.assigned_at ? ` · ${new Date(wo.assigned_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}` : ''}`
               : '—'],
             ['SLA Due', wo.sla_due ? <SlaDue date={wo.sla_due} /> : '—'],
-            ['Cost', fmtNaira(wo.cost_cents)],
+            ['Cost', wo.cost_cents ? money(wo.cost_cents) : '—'],
           ].map(([k, v]) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: 'var(--bdr)', fontSize: 12 }}>
               <span style={{ color: 'var(--n500)', flexShrink: 0 }}>{k}</span>
@@ -834,6 +830,7 @@ function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, 
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function WorkOrders({ dark, toggleDark }) {
+  const { money } = useMoney()
   const can = useCan()
   const { user } = useAuth()
   const toast = useToast()
@@ -1027,7 +1024,7 @@ export default function WorkOrders({ dark, toggleDark }) {
                           <div style={{ fontSize: 11, color: 'var(--n500)' }}>{w.asset?.ain || w.site?.name || '—'}</div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
                             {w.sla_due ? <SlaDue date={w.sla_due} /> : <span/>}
-                            {w.cost_cents > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{fmtNaira(w.cost_cents)}</span>}
+                            {w.cost_cents > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{money(w.cost_cents)}</span>}
                           </div>
                         </div>
                         )
