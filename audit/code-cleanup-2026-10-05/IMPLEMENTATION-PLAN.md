@@ -70,17 +70,17 @@ Baseline: 14 files, 236 tests, all pass (2026-10-05). The app is checked with `n
 | 1.4 | Remove the documents registry, Reports API and platform invite | 1 | M | Done `92a63b2` (`report:create` now gates nothing; TASK-2.2 removes it) |
 | 1.5 | One version source, and call the liveness router "system" | 1 | S | Done `a71f3a7` |
 | 1.6 | Drop the unused `sms_log` and `documents` tables | 1 | S | BLOCKED (owner action 1) |
-| 2.1 | Check auth and membership once per request | 2 | M | Open |
-| 2.2 | Put a capability check on every tenant route, and test it stays that way | 2 | M | Open |
-| 2.3 | One way to read the caller's live role | 2 | S | Open |
-| 2.4 | Owner-pool transaction helpers; rewrite member management on them | 2 | M | Open |
-| 2.5 | One upload pipeline for all upload routes | 2 | M | Open |
-| 2.6 | Answer client mistakes with 4xx, not 500 | 2 | S | Open |
-| 2.7 | Make SQL "today" the instance's date in every route | 2 | S | Open |
-| 2.8 | Safe reference numbers for defects, risks and audits | 2 | M | Open |
-| 2.9 | Send approval notifications through the notify helpers | 2 | S | Open |
-| 2.10 | Move membership resolution out of the auth router | 2 | S | Open |
-| 2.11 | Add request helpers for parsing, result mapping and list queries | 2 | M | Open |
+| 2.1 | Check auth and membership once per request | 2 | M | Done `8a86729` (unknown path without a token stays 401; /profile keeps its real gate) |
+| 2.2 | Put a capability check on every tenant route, and test it stays that way | 2 | M | Done `486b556` (+ integration settings hidden from non-owners; migration 0030) |
+| 2.3 | One way to read the caller's live role | 2 | S | Done `4317679` |
+| 2.4 | Owner-pool transaction helpers; rewrite member management on them | 2 | M | Done `a46bea7` (owner lock taken first, in id order, to avoid a deadlock) |
+| 2.5 | One upload pipeline for all upload routes | 2 | M | Done `062c73f` (legacy Office/.msg allowed; plain text and CSV now refused) |
+| 2.6 | Answer client mistakes with 4xx, not 500 | 2 | S | Done `f731601` |
+| 2.7 | Make SQL "today" the instance's date in every route | 2 | S | Done `b4f0061` (set on both pools, so jobs too) |
+| 2.8 | Safe reference numbers for defects, risks and audits | 2 | M | Done `6606457` (migration 0031) |
+| 2.9 | Send approval notifications through the notify helpers | 2 | S | Done `9437627` (no dedupe key: hand-offs repeat) |
+| 2.10 | Move membership resolution out of the auth router | 2 | S | Done `83b65cb` |
+| 2.11 | Add request helpers for parsing, result mapping and list queries | 2 | M | Done `4216d0b` |
 | 3.1 | Shared value lists in `packages/domain`, used by the API | 3 | M | Open |
 | 3.2 | App labels and tones keyed by the shared lists; one status badge | 3 | M | Open |
 | 4.1 | One `useCan()` hook so per-user grants count everywhere | 4 | S | Open |
