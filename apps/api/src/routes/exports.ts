@@ -7,6 +7,7 @@ import type { Capability } from '@assetcore/rbac'
 import { writeAuditLog } from '../audit.js'
 import { localDateStamp, renderCsv, renderXlsx, type ColumnType, type ReportColumn, type ReportData } from '../reportBuilders.js'
 import { buildWhere as buildAuditWhere, filters as auditFilters } from './audit.js'
+import { Where } from '../http/query.js'
 
 // Export module: every register a role can read, as CSV or Excel, built in
 // memory and streamed straight back. Unlike /reports nothing is stored — an
@@ -52,24 +53,6 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 const col = (header: string, key: string, type?: ColumnType, width?: number): ReportColumn => ({ header, key, type, width })
-
-/** Positional-parameter where-clause builder. `$?` placeholders are numbered
- * in order, so a clause that needs the same value twice just takes it twice. */
-class Where {
-  clauses: string[] = []
-  params: unknown[] = []
-  add(sql: string, ...values: unknown[]) {
-    let out = sql
-    for (const v of values) {
-      this.params.push(v)
-      out = out.replace('$?', `$${this.params.length}`)
-    }
-    this.clauses.push(out)
-  }
-  get sql() {
-    return this.clauses.length ? `where ${this.clauses.join(' and ')}` : ''
-  }
-}
 
 type FilterCols = { site?: string; location?: string; date?: string; status?: string }
 

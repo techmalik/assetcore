@@ -5,6 +5,8 @@ import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
+import { listQuery } from '../http/query.js'
+import { parseOr400 } from '../http/validate.js'
 
 export const devicesRouter = Router()
 
@@ -106,12 +108,15 @@ devicesRouter.delete('/devices/:id', requireCap(DEVICE_WRITE_CAP), async (req, r
   res.status(204).end()
 })
 
+const readingsInput = listQuery({}, 10)
+
 devicesRouter.get('/devices/:id/readings', async (req, res) => {
-  const limit = Number(req.query.limit) || 10
+  const q = parseOr400(readingsInput, req.query, res)
+  if (!q) return
   const rows = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(
-      'select * from public.telemetry_readings where device_id = $1 order by recorded_at desc limit $2',
-      [req.params.id, limit]
+      'select * from public.telemetry_readings where device_id = $1 order by recorded_at desc limit $2 offset $3',
+      [req.params.id, q.limit, q.offset]
     ).then((r) => r.rows)
   )
   res.json(rows)

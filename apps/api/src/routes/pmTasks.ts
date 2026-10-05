@@ -8,6 +8,9 @@ import { refreshAssetHealth } from '../healthService.js'
 import { buildSet } from '../sqlUtil.js'
 import { uploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyUsers, notifyRoleHolders } from '../notify.js'
+import { listQuery } from '../http/query.js'
+import { parseOr400 } from '../http/validate.js'
+import { isoDate } from '../http/zod.js'
 
 export const pmTasksRouter = Router()
 
@@ -29,22 +32,31 @@ const SELECT = `
   left join public.pm_schedules sch on sch.id = t.schedule_id
 `
 
+const taskListInput = listQuery({
+  statuses: z.string().optional(),
+  asset_id: z.string().uuid().optional().or(z.literal('')),
+  location_id: z.string().uuid().optional().or(z.literal('')),
+  dueBefore: isoDate.optional(),
+  dueAfter: isoDate.optional(),
+})
+
 pmTasksRouter.get('/pm-tasks', async (req, res) => {
-  const { statuses, dueBefore, dueAfter, limit, asset_id, location_id } = req.query
+  const q = parseOr400(taskListInput, req.query, res)
+  if (!q) return
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [SELECT, 'where 1=1']
     const values: unknown[] = []
-    if (typeof statuses === 'string' && statuses) {
-      values.push(statuses.split(','))
+    if (q.statuses) {
+      values.push(q.statuses.split(','))
       clauses.push(`and t.status = any($${values.length})`)
     }
-    if (typeof asset_id === 'string' && asset_id) { values.push(asset_id); clauses.push(`and t.asset_id = $${values.length}`) }
-    if (typeof location_id === 'string' && location_id) { values.push(location_id); clauses.push(`and t.site_id in (select id from public.sites where location_id = $${values.length})`) }
-    if (typeof dueBefore === 'string') { values.push(dueBefore); clauses.push(`and t.due_date <= $${values.length}`) }
-    if (typeof dueAfter === 'string') { values.push(dueAfter); clauses.push(`and t.due_date >= $${values.length}`) }
+    if (q.asset_id) { values.push(q.asset_id); clauses.push(`and t.asset_id = $${values.length}`) }
+    if (q.location_id) { values.push(q.location_id); clauses.push(`and t.site_id in (select id from public.sites where location_id = $${values.length})`) }
+    if (q.dueBefore) { values.push(q.dueBefore); clauses.push(`and t.due_date <= $${values.length}`) }
+    if (q.dueAfter) { values.push(q.dueAfter); clauses.push(`and t.due_date >= $${values.length}`) }
     clauses.push('order by t.due_date asc')
-    values.push(typeof limit === 'string' ? Number(limit) || 100 : 100)
-    clauses.push(`limit $${values.length}`)
+    values.push(q.limit, q.offset)
+    clauses.push(`limit $${values.length - 1} offset $${values.length}`)
     return c.query(clauses.join(' '), values).then((r) => r.rows)
   })
   res.json(rows)

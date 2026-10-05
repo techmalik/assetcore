@@ -10,6 +10,7 @@ import {
   APPROVAL_SELECT, approvalEvents, loadApproval, notifyApprovalUser, notifyApprovalRole, eligibleAssignee,
   insertDirectApproval, applyDirectOutcome, type NoticeCtx,
 } from '../approvalRouting.js'
+import { send, type Result } from '../http/result.js'
 
 export const approvalsRouter = Router()
 
@@ -668,22 +669,13 @@ type DirectErrorCode =
   | 'not_found' | 'not_direct' | 'not_pending' | 'not_returned' | 'already_pending'
   | 'self_approval' | 'not_assignee' | 'not_requester'
   | 'invalid_assignee' | 'cannot_forward_to_self' | 'cannot_forward_to_requester'
-type DirectResult = { error: DirectErrorCode; status?: string } | { data: unknown }
+type DirectResult = Result<unknown, DirectErrorCode>
 
 const DIRECT_HTTP_STATUS: Record<DirectErrorCode, number> = {
   not_found: 404,
   not_direct: 409, not_pending: 409, not_returned: 409, already_pending: 409,
   self_approval: 403, not_assignee: 403, not_requester: 403,
   invalid_assignee: 422, cannot_forward_to_self: 422, cannot_forward_to_requester: 422,
-}
-
-function sendDirect(res: import('express').Response, result: DirectResult) {
-  if ('error' in result) {
-    return res.status(DIRECT_HTTP_STATUS[result.error]).json(
-      result.status ? { error: result.error, status: result.status } : { error: result.error }
-    )
-  }
-  return res.json(result.data)
 }
 
 /** Lock a direct request that is waiting on the caller, or say why it isn't.
@@ -758,7 +750,7 @@ approvalsRouter.post('/approvals/:id/forward', requireCap('approval:decide'), as
     })
     return { data: await loadApproval(c, ap.id) }
   })
-  return sendDirect(res, result)
+  return send(res, result, DIRECT_HTTP_STATUS)
 })
 
 /**
@@ -795,7 +787,7 @@ approvalsRouter.post('/approvals/:id/return', requireCap('approval:decide'), asy
     })
     return { data: await loadApproval(c, ap.id) }
   })
-  return sendDirect(res, result)
+  return send(res, result, DIRECT_HTTP_STATUS)
 })
 
 /**
@@ -837,7 +829,7 @@ approvalsRouter.post('/approvals/:id/discard', requireCap('approval:decide'), as
     })
     return { data: await loadApproval(c, ap.id) }
   })
-  return sendDirect(res, result)
+  return send(res, result, DIRECT_HTTP_STATUS)
 })
 
 /**
@@ -892,5 +884,5 @@ approvalsRouter.post('/approvals/:id/resubmit', requireCap('approval:create'), a
     })
     return { data: await loadApproval(c, ap.id) }
   })
-  return sendDirect(res, result)
+  return send(res, result, DIRECT_HTTP_STATUS)
 })

@@ -9,6 +9,8 @@ import { uploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyUsers, notifyRoleHolders } from '../notify.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
+import { listQuery } from '../http/query.js'
+import { parseOr400 } from '../http/validate.js'
 
 export const inspectionsRouter = Router()
 
@@ -63,20 +65,27 @@ const inspectionInput = z.object({
   condition_rating: z.number().int().min(1).max(5).nullable().optional(),
 })
 
+const inspectionListInput = listQuery({
+  statuses: z.string().optional(),
+  asset_id: z.string().uuid().optional().or(z.literal('')),
+  location_id: z.string().uuid().optional().or(z.literal('')),
+})
+
 inspectionsRouter.get('/inspections', requireCap('inspection:read'), async (req, res) => {
-  const { statuses, limit, asset_id, location_id } = req.query
+  const q = parseOr400(inspectionListInput, req.query, res)
+  if (!q) return
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [SELECT, 'where 1=1']
     const values: unknown[] = []
-    if (typeof statuses === 'string' && statuses) {
-      values.push(statuses.split(','))
+    if (q.statuses) {
+      values.push(q.statuses.split(','))
       clauses.push(`and i.status = any($${values.length})`)
     }
-    if (typeof asset_id === 'string' && asset_id) { values.push(asset_id); clauses.push(`and i.asset_id = $${values.length}`) }
-    if (typeof location_id === 'string' && location_id) { values.push(location_id); clauses.push(`and i.site_id in (select id from public.sites where location_id = $${values.length})`) }
+    if (q.asset_id) { values.push(q.asset_id); clauses.push(`and i.asset_id = $${values.length}`) }
+    if (q.location_id) { values.push(q.location_id); clauses.push(`and i.site_id in (select id from public.sites where location_id = $${values.length})`) }
     clauses.push('order by i.scheduled_date desc')
-    values.push(typeof limit === 'string' ? Number(limit) || 100 : 100)
-    clauses.push(`limit $${values.length}`)
+    values.push(q.limit, q.offset)
+    clauses.push(`limit $${values.length - 1} offset $${values.length}`)
     return c.query(clauses.join(' '), values).then((r) => r.rows)
   })
   res.json(rows)

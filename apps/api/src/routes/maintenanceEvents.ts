@@ -7,28 +7,25 @@ import { writeAuditLog } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { uploadRoute, optionalUploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyRoleHolders, notifyWorkOrderClosed } from '../notify.js'
+import { isoDate, blankToUndefined } from '../http/zod.js'
 
 export const maintenanceEventsRouter = Router()
 
 const REPORT_UPLOAD = { subdir: 'maintenance-completions', field: 'report', mime: DOCUMENT_MIME_TYPES, maxBytes: 25 * 1024 * 1024 }
 
-// Multipart bodies arrive with every field as a string, including the ones
-// that would otherwise be omitted — an empty string from a blank optional
-// input should mean "not provided", not a literal empty value.
-const blankToUndefined = (v: unknown) => (v === '' ? undefined : v)
-
-// Plain YYYY-MM-DD, validated and compared as strings — never wrapped in a
-// JS Date for comparison. Dates round-tripped through `new Date(...)` re-render
-// in the process's local TZ and can drift a calendar day either side of what
-// the user actually typed (see db.ts's DATE type-parser override, same issue).
-const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD')
+// Multipart bodies arrive with every field as a string, so a blank optional
+// input comes as '' and blankToUndefined turns it back into "not provided".
+// Dates are plain YYYY-MM-DD (isoDate), validated and compared as strings —
+// never wrapped in a JS Date for comparison: a date round-tripped through
+// `new Date(...)` re-renders in the process's local TZ and can drift a
+// calendar day either side of what the user typed (see db.ts's DATE parser).
 
 const completionInput = z.object({
   source: z.preprocess(blankToUndefined, z.enum(['pm_task', 'work_order', 'manual'])).default('manual'),
   pm_task_id: z.preprocess(blankToUndefined, z.string().uuid().optional()),
   work_order_id: z.preprocess(blankToUndefined, z.string().uuid().optional()),
-  completed_at: dateStr,
-  next_maintenance_at: dateStr,
+  completed_at: isoDate,
+  next_maintenance_at: isoDate,
   notes: z.preprocess(blankToUndefined, z.string().optional()),
 })
 
