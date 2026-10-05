@@ -12,6 +12,8 @@ import { useMoney, Money } from '../lib/money'
 import { LineChart } from '../components/Charts.jsx'
 import { errorText } from '../lib/errors'
 import { useResource } from '../lib/useResource'
+import { useConfirm } from '../lib/ConfirmContext'
+import { useToast } from '../lib/ToastContext'
 
 const THIS_YEAR = new Date().getFullYear()
 
@@ -341,6 +343,8 @@ function ScheduleDetail({ detail, canManage, busy, onPost, onRetire, onClose }) 
 }
 
 export default function Depreciation({ dark, toggleDark }) {
+  const toast = useToast()
+  const ask = useConfirm()
   const can = useCan()
   const { money, moneyFull } = useMoney()
   const canManage = can('depreciation:manage')
@@ -369,25 +373,25 @@ export default function Depreciation({ dark, toggleDark }) {
   async function post(id, assetId) {
     setBusy(true)
     try { await postSchedule(id, THIS_YEAR); await load(); await openDetail(assetId) }
-    catch (e) { alert(errorText(e)) }
+    catch (e) { toast.error(errorText(e)) }
     finally { setBusy(false) }
   }
 
   async function postAll() {
-    if (!confirm(`Post every open period up to and including ${THIS_YEAR} across all schedules? Posted periods fix the charge and take over each asset's net book value.`)) return
+    if (!(await ask(`Post every open period up to and including ${THIS_YEAR} across all schedules? Posted periods fix the charge and take over each asset's net book value.`, { confirmLabel: 'Post' }))) return
     setBusy(true)
     try {
       const r = await postAllSchedules(THIS_YEAR)
       await load()
-      alert(`${r.entries_posted} period${r.entries_posted === 1 ? '' : 's'} posted across ${r.schedules} schedule${r.schedules === 1 ? '' : 's'}.`)
-    } catch (e) { alert(errorText(e)) }
+      toast.success(`${r.entries_posted} period${r.entries_posted === 1 ? '' : 's'} posted across ${r.schedules} schedule${r.schedules === 1 ? '' : 's'}.`)
+    } catch (e) { toast.error(errorText(e)) }
     finally { setBusy(false) }
   }
 
   async function retire(id) {
-    if (!confirm('Retire this schedule? Posted history is kept, and net book value goes back to being entered by hand.')) return
+    if (!(await ask('Retire this schedule? Posted history is kept, and net book value goes back to being entered by hand.', { danger: true, confirmLabel: 'Retire' }))) return
     try { await retireSchedule(id); setDetail(null); load() }
-    catch (e) { alert(errorText(e)) }
+    catch (e) { toast.error(errorText(e)) }
   }
 
   const eligible = assets.filter((a) => !schedules.some((s) => s.asset_id === a.id))

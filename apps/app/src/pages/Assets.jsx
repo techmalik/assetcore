@@ -35,6 +35,7 @@ import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
 import { fmtDate, fmtDateTime, todayISO, addDaysISO } from '../lib/dates'
+import { useConfirm } from '../lib/ConfirmContext'
 
 // Asset status labels and colours live in lib/domain.js (ASSET_STATUS).
 // operational/maintenance/standby/offline say what the asset is doing now;
@@ -1306,6 +1307,7 @@ function AssetDetailPanel({ asset, canEdit, canWO, canCompleteMaintenance, onEdi
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Assets({ dark, toggleDark }) {
+  const ask = useConfirm()
   const can = useCan()
   const toast = useToast()
   const { locationId: globalLocationId, setLocationId: setGlobalLocationId, locations: myLocations } = useLocationFilter()
@@ -1382,7 +1384,7 @@ export default function Assets({ dark, toggleDark }) {
   const afterSave = async () => { setModal(null); await load() }
 
   async function archiveAsset(id) {
-    if (!confirm('Archive this asset? It will be hidden from the registry but not deleted, and can be restored.')) return
+    if (!(await ask('Archive this asset? It will be hidden from the registry but not deleted, and can be restored.', { danger: true, confirmLabel: 'Archive' }))) return
     try { await softDeleteAsset(id); setSelected(null); load(); toast.success('Asset archived.') }
     catch (e) { toast.error(errorText(e, 'Failed to archive asset.')) }
   }

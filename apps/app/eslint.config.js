@@ -23,9 +23,12 @@ export default [
       'react/jsx-uses-vars': 'error',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      'no-restricted-syntax': ['warn', {
-        selector: "CallExpression[callee.name='alert']",
-        message: 'Show errors with toast.error(errorText(e)), not alert().',
+      'no-restricted-syntax': ['error', {
+        selector: "CallExpression[callee.name=/^(alert|confirm)$/]",
+        message: 'Use toast.error(errorText(e)) instead of alert(), and await useConfirm() instead of confirm().',
+      }, {
+        selector: "CallExpression[callee.object.name='window'][callee.property.name=/^(alert|confirm)$/]",
+        message: 'Use toast.error(errorText(e)) instead of alert(), and await useConfirm() instead of confirm().',
       }],
       // Gate UI with useCan() from AuthContext, which applies per-user grants.
       // Calling can() directly is how thirteen checks came to ignore them.

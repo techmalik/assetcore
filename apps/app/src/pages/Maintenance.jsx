@@ -17,6 +17,7 @@ import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
 import { PM_TASK_STATUS, badgeMap } from '../lib/domain'
 import { fmtDate, fmtDateLong, todayISO, addDaysISO, toISODate, parseISODate } from '../lib/dates'
+import { useConfirm } from '../lib/ConfirmContext'
 
 const TASK_STATUS = badgeMap(PM_TASK_STATUS)
 const FREQ_LABEL = { daily:'Daily', weekly:'Weekly', monthly:'Monthly', quarterly:'Quarterly', semi_annual:'Semi-annual', annual:'Annual' }
@@ -105,6 +106,7 @@ function ScheduleModal({ onClose, onSaved, users, assets }) {
 }
 
 export default function Maintenance({ dark, toggleDark }) {
+  const ask = useConfirm()
   const can = useCan()
   const toast = useToast()
   const { user } = useAuth()
@@ -180,7 +182,7 @@ export default function Maintenance({ dark, toggleDark }) {
   }
 
   const handleArchiveSchedule = async (schedule) => {
-    if (!window.confirm(`Archive "${schedule.title}"? No further tasks will be generated from it. Existing tasks are unaffected.`)) return
+    if (!(await ask(`Archive "${schedule.title}"? No further tasks will be generated from it. Existing tasks are unaffected.`, { danger: true, confirmLabel: 'Archive' }))) return
     try {
       await softDeletePMSchedule(schedule.id)
       toast.success('Schedule archived.')

@@ -10,6 +10,8 @@ import { listAssets } from '../lib/db/assets'
 import { useCan } from '../lib/AuthContext.jsx'
 import { useMoney, Money } from '../lib/money'
 import { errorText } from '../lib/errors'
+import { useConfirm } from '../lib/ConfirmContext'
+import { useToast } from '../lib/ToastContext'
 
 
 // Stock is numeric so consumables can be issued in litres — but 13.00 reads
@@ -233,6 +235,8 @@ function AdjustModal({ part, onClose, onSaved }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function SpareParts({ dark, toggleDark }) {
+  const toast = useToast()
+  const ask = useConfirm()
   const can = useCan()
   const { money } = useMoney()
   const canCreate = can('parts:create')
@@ -274,9 +278,9 @@ export default function SpareParts({ dark, toggleDark }) {
   }, [])
 
   async function archive(id) {
-    if (!confirm('Archive this part? Its movement history is kept.')) return
+    if (!(await ask('Archive this part? Its movement history is kept.', { danger: true, confirmLabel: 'Archive' }))) return
     try { await archiveSparePart(id); setDetail(null); load() }
-    catch (e) { alert(errorText(e)) }
+    catch (e) { toast.error(errorText(e)) }
   }
 
   async function link(assetId) {

@@ -313,6 +313,7 @@ function SectionHead({ children, action }) {
 }
 
 function Checklist({ wo, canEdit, onChanged }) {
+  const toast = useToast()
   const [adding, setAdding] = useState('')
   const [busy, setBusy] = useState(false)
   const tasks = wo.tasks || []
@@ -321,7 +322,7 @@ function Checklist({ wo, canEdit, onChanged }) {
   async function toggle(task) {
     setBusy(true)
     try { await updateWorkOrderTask(wo.id, task.id, { done: !task.done }); await onChanged() }
-    catch (e) { alert(errorText(e)) } finally { setBusy(false) }
+    catch (e) { toast.error(errorText(e)) } finally { setBusy(false) }
   }
 
   async function add(e) {
@@ -329,13 +330,13 @@ function Checklist({ wo, canEdit, onChanged }) {
     if (!adding.trim()) return
     setBusy(true)
     try { await addWorkOrderTask(wo.id, adding.trim()); setAdding(''); await onChanged() }
-    catch (e) { alert(errorText(e)) } finally { setBusy(false) }
+    catch (e) { toast.error(errorText(e)) } finally { setBusy(false) }
   }
 
   async function remove(task) {
     setBusy(true)
     try { await deleteWorkOrderTask(wo.id, task.id); await onChanged() }
-    catch (e) { alert(errorText(e)) } finally { setBusy(false) }
+    catch (e) { toast.error(errorText(e)) } finally { setBusy(false) }
   }
 
   return (
@@ -488,6 +489,7 @@ function SpendApproval({ wo, canRead, canSubmit, onChanged }) {
 const lineQty = (l) => Number(l.consumed_at ? l.quantity_used : l.quantity_required) || 0
 
 function PartsSection({ wo, canEdit, onChanged }) {
+  const toast = useToast()
   const { money } = useMoney()
   const [parts, setParts] = useState([])
   const [partId, setPartId] = useState('')
@@ -506,13 +508,13 @@ function PartsSection({ wo, canEdit, onChanged }) {
     if (!partId || !Number(qty)) return
     setBusy(true)
     try { await addWorkOrderPart(wo.id, { part_id: partId, quantity_required: Number(qty) }); setPartId(''); setQty('1'); await onChanged() }
-    catch (e2) { alert(errorText(e2)) } finally { setBusy(false) }
+    catch (e2) { toast.error(errorText(e2)) } finally { setBusy(false) }
   }
 
   async function remove(line) {
     setBusy(true)
     try { await deleteWorkOrderPart(wo.id, line.id) ; await onChanged() }
-    catch (e) { alert(errorText(e)) }
+    catch (e) { toast.error(errorText(e)) }
     finally { setBusy(false) }
   }
 

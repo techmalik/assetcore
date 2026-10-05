@@ -183,6 +183,7 @@ function InspectionModal({ onClose, onSaved, sites, assets, users, templates }) 
 
 // ── Findings Modal ────────────────────────────────────────────────────────────
 function FindingsModal({ inspection, onClose, onSaved, readOnly = false }) {
+  const toast = useToast()
   const [findings, setFindings] = useState(inspection.findings || '')
   const [notes, setNotes]       = useState(inspection.notes    || '')
   const [reportFile, setReportFile] = useState(null)
@@ -232,7 +233,7 @@ function FindingsModal({ inspection, onClose, onSaved, readOnly = false }) {
   }
 
   async function viewReport() {
-    try { await api.download(`/files/${reportUrl}`, reportUrl.split('/').pop()) } catch (e) { alert(errorText(e)) }
+    try { await api.download(`/files/${reportUrl}`, reportUrl.split('/').pop()) } catch (e) { toast.error(errorText(e)) }
   }
 
   const inp = { width:'100%', border:'1px solid var(--n200)', borderRadius:4, padding:'8px 10px', fontSize:13, fontFamily:'var(--ff-u)', outline:'none', resize:'vertical', boxSizing:'border-box', background:'var(--n0)', color:'var(--n900)' }

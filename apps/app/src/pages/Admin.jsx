@@ -18,6 +18,7 @@ import { useAuth, initialsOf, useCan } from '../lib/AuthContext.jsx'
 import { can as roleCan, ROLE_CAPABILITIES, ROLE_KEYS, ROLE_LABELS, ROLE_DESCRIPTIONS, ADMIN_ENTRY_CAPS, GRANTABLE_CAPS as GRANTABLE_CAP_KEYS } from '../lib/rbac.js'
 import { useToast } from '../lib/ToastContext'
 import { errorText } from '../lib/errors'
+import { useConfirm } from '../lib/ConfirmContext'
 
 // Human labels for the grantable capabilities. The KEYS come from
 // @assetcore/rbac (the same list the API's invite/access schemas validate
@@ -307,6 +308,7 @@ function ShutdownSiteModal({ site, onClose, onDone }) {
 }
 
 function SitesTab() {
+  const ask = useConfirm()
   const toast = useToast()
   const [sites, setSites] = useState([])
   const [locations, setLocations] = useState([])
@@ -326,12 +328,12 @@ function SitesTab() {
   useEffect(() => { load() }, [])
 
   async function archive(id) {
-    if (!confirm('Archive this site? It will no longer appear in lists.')) return
-    try { await softDeleteSite(id); load() } catch (e) { alert(errorText(e)) }
+    if (!(await ask('Archive this site? It will no longer appear in lists.', { danger: true, confirmLabel: 'Archive' }))) return
+    try { await softDeleteSite(id); load() } catch (e) { toast.error(errorText(e)) }
   }
 
   async function reopen(s) {
-    if (!confirm(`Reopen ${s.name}? Its inactive assets get back the status they had before the shutdown, and work can be raised there again.`)) return
+    if (!(await ask(`Reopen ${s.name}? Its inactive assets get back the status they had before the shutdown, and work can be raised there again.`, { confirmLabel: 'Reopen' }))) return
     try {
       const res = await reopenSite(s.id)
       toast.success(`${s.name} reopened. ${res.assets_affected} asset${res.assets_affected !== 1 ? 's' : ''} restored.`)
@@ -450,6 +452,8 @@ function LocationModal({ location, onClose, onSave }) {
 }
 
 function LocationsTab() {
+  const toast = useToast()
+  const ask = useConfirm()
   const [locations, setLocations] = useState([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
@@ -462,8 +466,8 @@ function LocationsTab() {
   useEffect(() => { load() }, [])
 
   async function archive(id) {
-    if (!confirm('Archive this location? Its sites keep working but lose their location link.')) return
-    try { await softDeleteLocation(id); load() } catch (e) { alert(errorText(e)) }
+    if (!(await ask('Archive this location? Its sites keep working but lose their location link.', { danger: true, confirmLabel: 'Archive' }))) return
+    try { await softDeleteLocation(id); load() } catch (e) { toast.error(errorText(e)) }
   }
 
   return (
@@ -549,6 +553,8 @@ function CatModal({ cat, onClose, onSave }) {
 }
 
 function CategoriesTab() {
+  const toast = useToast()
+  const ask = useConfirm()
   const [cats, setCats] = useState([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
@@ -562,8 +568,8 @@ function CategoriesTab() {
   useEffect(() => { load() }, [])
 
   async function remove(id) {
-    if (!confirm('Delete this category? This cannot be undone.')) return
-    try { await deleteCategory(id); load() } catch (e) { alert(errorText(e)) }
+    if (!(await ask('Delete this category? This cannot be undone.', { danger: true, confirmLabel: 'Delete' }))) return
+    try { await deleteCategory(id); load() } catch (e) { toast.error(errorText(e)) }
   }
 
   return (
@@ -815,6 +821,7 @@ function AccessModal({ member, members = [], locations, sites, onClose, onSaved 
 }
 
 function UsersTab() {
+  const ask = useConfirm()
   const can = useCan()
   const toast = useToast()
   const [subtab, setSubtab] = useState('members')
@@ -844,7 +851,7 @@ function UsersTab() {
 
   async function toggleStatus(m) {
     const enable = m.status === 'disabled'
-    if (!enable && !confirm(`Disable ${m.full_name || m.email}? They will lose access immediately.`)) return
+    if (!enable && !(await ask(`Disable ${m.full_name || m.email}? They will lose access immediately.`, { danger: true, confirmLabel: 'Disable' }))) return
     try { await setOrgMemberStatus(m.id, enable); load(); toast.success(enable ? 'Member enabled.' : 'Member disabled.') }
     catch (e) { toast.error(errorText(e, 'Failed to update member status.')) }
   }
@@ -1472,6 +1479,7 @@ function RuleModal({ rule, onClose, onSaved }) {
 }
 
 function EscalationsTab() {
+  const ask = useConfirm()
   const can = useCan()
   const toast = useToast()
   const canManage = can('escalation:manage')
@@ -1491,7 +1499,7 @@ function EscalationsTab() {
   useEffect(() => { load() }, [])
 
   async function retire(rule) {
-    if (!confirm(`Retire “${rule.name}”? It stops being evaluated; the escalations it already raised are kept.`)) return
+    if (!(await ask(`Retire “${rule.name}”? It stops being evaluated; the escalations it already raised are kept.`, { danger: true, confirmLabel: 'Retire' }))) return
     try { await retireEscalationRule(rule.id); toast.success('Rule retired.'); load() }
     catch (e) { toast.error(errorText(e)) }
   }

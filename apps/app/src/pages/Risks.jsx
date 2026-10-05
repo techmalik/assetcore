@@ -13,6 +13,7 @@ import { listOrgMembers } from '../lib/db/orgMembers'
 import { useCan } from '../lib/AuthContext.jsx'
 import { errorText } from '../lib/errors'
 import { fmtDate, todayISO } from '../lib/dates'
+import Modal from '../components/Modal.jsx'
 
 const STATUS_CLASS = {
   open: 'badge-r', mitigating: 'badge-a', accepted: 'badge-b', closed: 'badge-n',
@@ -215,108 +216,105 @@ function RiskModal({ risk, onClose, onSave, assets, sites, members }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
-      <form onSubmit={submit} style={{ position: 'relative', width: 640, maxHeight: '92vh', background: 'var(--n0)', borderRadius: 10, boxShadow: 'var(--sh-lg)', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '18px 24px', borderBottom: 'var(--bdr)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 18, fontWeight: 700, color: 'var(--n950)' }}>{risk ? `Edit ${risk.ref}` : 'Assess a risk'}</h3>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)' }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-          </button>
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <label className="label" style={{ display: 'block', marginBottom: 5 }}>What could happen *</label>
-            <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Gas leak at the inlet flange" style={{ width: '100%' }} />
-          </div>
-          <div>
-            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Detail</label>
-            <textarea className="input" rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <div>
-              <label className="label" style={{ display: 'block', marginBottom: 5 }}>Category</label>
-              <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)} style={{ width: '100%' }}>
-                {RISK_CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="label" style={{ display: 'block', marginBottom: 5 }}>Asset</label>
-              <select className="input" value={form.asset_id} onChange={(e) => set('asset_id', e.target.value)} style={{ width: '100%' }}>
-                <option value="">— None —</option>
-                {assets.map((a) => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="label" style={{ display: 'block', marginBottom: 5 }}>Site</label>
-              <select className="input" value={form.site_id} onChange={(e) => set('site_id', e.target.value)} style={{ width: '100%' }}>
-                <option value="">— None —</option>
-                {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div style={{ borderTop: 'var(--bdr)', paddingTop: 16 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--n800)', marginBottom: 10 }}>Before controls</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <ScalePicker label="Likelihood *" scale={LIKELIHOOD_SCALE} value={form.likelihood} onChange={(v) => set('likelihood', v)} />
-              <ScalePicker label="Consequence *" scale={CONSEQUENCE_SCALE} value={form.consequence} onChange={(v) => set('consequence', v)} />
-            </div>
-          </div>
-
-          <div>
-            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Controls in place</label>
-            <textarea className="input" rows={2} value={form.controls} onChange={(e) => set('controls', e.target.value)} placeholder="Weekly leak survey; detector interlocked to ESD." style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
-          </div>
-
-          <div style={{ borderTop: 'var(--bdr)', paddingTop: 16 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--n800)', marginBottom: 4 }}>After controls</div>
-            <p style={{ fontSize: 11.5, color: 'var(--n500)', marginBottom: 10, lineHeight: 1.55 }}>
-              Optional, but it is the rating everything else reads — the register, the grid and the asset&apos;s
-              condition score all use the residual where one exists. Click a selected number again to clear it.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <ScalePicker label="Residual likelihood" scale={LIKELIHOOD_SCALE} value={form.residual_likelihood} onChange={(v) => set('residual_likelihood', v)} allowClear />
-              <ScalePicker label="Residual consequence" scale={CONSEQUENCE_SCALE} value={form.residual_consequence} onChange={(v) => set('residual_consequence', v)} allowClear />
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <ScoreChip label="Inherent" score={inherent} />
-            <ScoreChip label="Residual" score={residual} />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, borderTop: 'var(--bdr)', paddingTop: 16 }}>
-            <div>
-              <label className="label" style={{ display: 'block', marginBottom: 5 }}>Owner</label>
-              <select className="input" value={form.owner_id} onChange={(e) => set('owner_id', e.target.value)} style={{ width: '100%' }}>
-                <option value="">— Unassigned —</option>
-                {members.map((m) => <option key={m.user_id || m.id} value={m.user_id || m.id}>{m.full_name || m.email}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="label" style={{ display: 'block', marginBottom: 5 }}>Review by</label>
-              <input className="input" type="date" value={form.review_date} onChange={(e) => set('review_date', e.target.value)} style={{ width: '100%' }} />
-            </div>
-            <div>
-              <label className="label" style={{ display: 'block', marginBottom: 5 }}>Status</label>
-              <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)} style={{ width: '100%' }}>
-                {RISK_STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {err && <p style={{ fontSize: 12, color: 'var(--srt)' }}>{err}</p>}
-        </div>
-
-        <div style={{ padding: '14px 24px', borderTop: 'var(--bdr)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+    <Modal
+      title={risk ? `Edit ${risk.ref}` : 'Assess a risk'}
+      width={640}
+      as="form"
+      onSubmit={submit}
+      onClose={onClose}
+      bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+      footer={(
+        <>
           <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
           <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{saving ? 'Saving…' : risk ? 'Save changes' : 'Add to the register'}</button>
+        </>
+      )}
+    >
+        <div>
+          <label className="label" style={{ display: 'block', marginBottom: 5 }}>What could happen *</label>
+          <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Gas leak at the inlet flange" style={{ width: '100%' }} />
         </div>
-      </form>
-    </div>
+        <div>
+          <label className="label" style={{ display: 'block', marginBottom: 5 }}>Detail</label>
+          <textarea className="input" rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div>
+            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Category</label>
+            <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)} style={{ width: '100%' }}>
+              {RISK_CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Asset</label>
+            <select className="input" value={form.asset_id} onChange={(e) => set('asset_id', e.target.value)} style={{ width: '100%' }}>
+              <option value="">— None —</option>
+              {assets.map((a) => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Site</label>
+            <select className="input" value={form.site_id} onChange={(e) => set('site_id', e.target.value)} style={{ width: '100%' }}>
+              <option value="">— None —</option>
+              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ borderTop: 'var(--bdr)', paddingTop: 16 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--n800)', marginBottom: 10 }}>Before controls</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <ScalePicker label="Likelihood *" scale={LIKELIHOOD_SCALE} value={form.likelihood} onChange={(v) => set('likelihood', v)} />
+            <ScalePicker label="Consequence *" scale={CONSEQUENCE_SCALE} value={form.consequence} onChange={(v) => set('consequence', v)} />
+          </div>
+        </div>
+
+        <div>
+          <label className="label" style={{ display: 'block', marginBottom: 5 }}>Controls in place</label>
+          <textarea className="input" rows={2} value={form.controls} onChange={(e) => set('controls', e.target.value)} placeholder="Weekly leak survey; detector interlocked to ESD." style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
+        </div>
+
+        <div style={{ borderTop: 'var(--bdr)', paddingTop: 16 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--n800)', marginBottom: 4 }}>After controls</div>
+          <p style={{ fontSize: 11.5, color: 'var(--n500)', marginBottom: 10, lineHeight: 1.55 }}>
+            Optional, but it is the rating everything else reads — the register, the grid and the asset&apos;s
+            condition score all use the residual where one exists. Click a selected number again to clear it.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <ScalePicker label="Residual likelihood" scale={LIKELIHOOD_SCALE} value={form.residual_likelihood} onChange={(v) => set('residual_likelihood', v)} allowClear />
+            <ScalePicker label="Residual consequence" scale={CONSEQUENCE_SCALE} value={form.residual_consequence} onChange={(v) => set('residual_consequence', v)} allowClear />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <ScoreChip label="Inherent" score={inherent} />
+          <ScoreChip label="Residual" score={residual} />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, borderTop: 'var(--bdr)', paddingTop: 16 }}>
+          <div>
+            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Owner</label>
+            <select className="input" value={form.owner_id} onChange={(e) => set('owner_id', e.target.value)} style={{ width: '100%' }}>
+              <option value="">— Unassigned —</option>
+              {members.map((m) => <option key={m.user_id || m.id} value={m.user_id || m.id}>{m.full_name || m.email}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Review by</label>
+            <input className="input" type="date" value={form.review_date} onChange={(e) => set('review_date', e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label className="label" style={{ display: 'block', marginBottom: 5 }}>Status</label>
+            <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)} style={{ width: '100%' }}>
+              {RISK_STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {err && <p style={{ fontSize: 12, color: 'var(--srt)' }}>{err}</p>}
+      
+    </Modal>
   )
 }
 

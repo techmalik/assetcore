@@ -4,6 +4,7 @@ import { AuthProvider, useAuth, useCan } from './lib/AuthContext'
 import { NotificationsProvider } from './lib/NotificationsContext'
 import { SidebarProvider } from './lib/SidebarContext'
 import { ToastProvider } from './lib/ToastContext'
+import { ConfirmProvider } from './lib/ConfirmContext'
 import { LocationFilterProvider } from './lib/LocationFilterContext'
 import { ADMIN_ENTRY_CAPS } from './lib/rbac'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
@@ -175,6 +176,7 @@ export default function App() {
     <ErrorBoundary>
       {/* Outermost, so every provider below can report a failure as a toast. */}
       <ToastProvider>
+        <ConfirmProvider>
         <AuthProvider>
           <NotificationsProvider>
             <SidebarProvider>
@@ -186,6 +188,7 @@ export default function App() {
             </SidebarProvider>
           </NotificationsProvider>
         </AuthProvider>
+        </ConfirmProvider>
       </ToastProvider>
     </ErrorBoundary>
   )

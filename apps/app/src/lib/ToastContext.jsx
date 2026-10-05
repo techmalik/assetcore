@@ -39,7 +39,7 @@ export function ToastProvider({ children }) {
       {children}
       <div
         aria-live="polite"
-        style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 2000, display: 'flex', flexDirection: 'column', gap: 8, width: 320, maxWidth: 'calc(100vw - 40px)' }}
+        style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 'var(--z-toast)', display: 'flex', flexDirection: 'column', gap: 8, width: 320, maxWidth: 'calc(100vw - 40px)' }}
       >
         {toasts.map((t) => {
           const s = KIND_STYLE[t.kind] || KIND_STYLE.info

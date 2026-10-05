@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
+import { useToast } from '../lib/ToastContext'
 
 // A label encodes a URL rather than a bare AIN so a phone's stock camera app
 // opens the asset directly. /scan also accepts a bare AIN, for scanners that
@@ -22,13 +23,14 @@ export function AssetQrCode({ ain, size = 128 }) {
 // Printable sheet of labels. The preview below is the print source: on Print we
 // copy its markup into a bare window, so what you see is what comes out.
 export function PrintQrSheet({ assets, onClose }) {
+  const toast = useToast()
   const sheetRef = useRef(null)
 
   function print() {
     const markup = sheetRef.current?.innerHTML
     if (!markup) return
     const w = window.open('', '_blank', 'width=900,height=1000')
-    if (!w) { alert('Your browser blocked the print window. Allow pop-ups for this site and try again.'); return }
+    if (!w) { toast.error('Your browser blocked the print window. Allow pop-ups for this site and try again.'); return }
     w.document.write(`<!doctype html><html><head><title>Asset labels</title><style>
       @page { margin: 12mm; }
       body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; }

@@ -15,6 +15,7 @@ import { listApprovals, submitApproval, APPROVAL_STATUS_META } from '../lib/db/a
 import { useCan } from '../lib/AuthContext.jsx'
 import { errorText } from '../lib/errors'
 import { fmtDate, todayISO } from '../lib/dates'
+import Modal from '../components/Modal.jsx'
 
 const SEVERITY_CLASS = {
   minor: 'badge-n', moderate: 'badge-b', major: 'badge-a', critical: 'badge-r',
@@ -97,72 +98,70 @@ function DefectModal({ defect, onClose, onSave, assets, sites, inspections }) {
   )
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
-      <form onSubmit={submit} style={{ position: 'relative', width: 580, maxHeight: '90vh', background: 'var(--n0)', borderRadius: 10, boxShadow: 'var(--sh-lg)', zIndex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '18px 24px', borderBottom: 'var(--bdr)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 18, fontWeight: 700, color: 'var(--n950)' }}>{defect ? `Edit ${defect.ref}` : 'Raise a defect'}</h3>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)' }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-          </button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <F label="What is wrong *" span={2}>
-            <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Earth bonding strap corroded" style={{ width: '100%' }} />
-          </F>
-          <F label="Detail" span={2}>
-            <textarea className="input" rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Where it is, what was observed, what it affects…" style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
-          </F>
-
-          <F label="Severity *" span={2} hint="Severity describes the finding. The work order raised from it gets a matching priority.">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {DEFECT_SEVERITIES.map(([v, l, hint]) => (
-                <button key={v} type="button" onClick={() => set('severity', v)}
-                  style={{ textAlign: 'left', padding: '9px 11px', borderRadius: 5, cursor: 'pointer', fontFamily: 'inherit',
-                    border: `1px solid ${form.severity === v ? 'var(--b400)' : 'var(--n200)'}`,
-                    background: form.severity === v ? 'var(--slb)' : 'var(--n0)' }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: form.severity === v ? 'var(--slt)' : 'var(--n800)' }}>{l}</div>
-                  <div style={{ fontSize: 11, color: 'var(--n500)' }}>{hint}</div>
-                </button>
-              ))}
-            </div>
-          </F>
-
-          <F label="Asset">
-            <select className="input" value={form.asset_id} onChange={(e) => set('asset_id', e.target.value)} style={{ width: '100%' }}>
-              <option value="">— Not asset-specific —</option>
-              {assets.map((a) => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
-            </select>
-          </F>
-          <F label="Site">
-            <select className="input" value={form.site_id} onChange={(e) => set('site_id', e.target.value)} style={{ width: '100%' }}>
-              <option value="">— Not site-specific —</option>
-              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </F>
-          <F label="Found during" span={2} hint="Linking the inspection is what lets a finding be traced from the walk-round to the job that cleared it.">
-            <select className="input" value={form.inspection_id} onChange={(e) => set('inspection_id', e.target.value)} style={{ width: '100%' }}>
-              <option value="">— Raised outside an inspection —</option>
-              {inspections.map((i) => <option key={i.id} value={i.id}>{i.title} ({fmtDate(i.completed_date || i.scheduled_date)})</option>)}
-            </select>
-          </F>
-          <F label="Identified on">
-            <input className="input" type="date" value={form.identified_date} onChange={(e) => set('identified_date', e.target.value)} style={{ width: '100%' }} />
-          </F>
-          <F label="Fix by">
-            <input className="input" type="date" value={form.due_date} onChange={(e) => set('due_date', e.target.value)} style={{ width: '100%' }} />
-          </F>
-          <F label="Category" span={2}>
-            <input className="input" value={form.category} onChange={(e) => set('category', e.target.value)} placeholder="electrical / mechanical / structural" style={{ width: '100%' }} />
-          </F>
-          {err && <p style={{ gridColumn: 'span 2', fontSize: 12, color: 'var(--srt)' }}>{err}</p>}
-        </div>
-        <div style={{ padding: '14px 24px', borderTop: 'var(--bdr)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+    <Modal
+      title={defect ? `Edit ${defect.ref}` : 'Raise a defect'}
+      width={580}
+      as="form"
+      onSubmit={submit}
+      onClose={onClose}
+      bodyStyle={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
+      footer={(
+        <>
           <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
           <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13, opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving…' : defect ? 'Save changes' : 'Raise defect'}</button>
-        </div>
-      </form>
-    </div>
+        </>
+      )}
+    >
+        <F label="What is wrong *" span={2}>
+          <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Earth bonding strap corroded" style={{ width: '100%' }} />
+        </F>
+        <F label="Detail" span={2}>
+          <textarea className="input" rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Where it is, what was observed, what it affects…" style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} />
+        </F>
+
+        <F label="Severity *" span={2} hint="Severity describes the finding. The work order raised from it gets a matching priority.">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {DEFECT_SEVERITIES.map(([v, l, hint]) => (
+              <button key={v} type="button" onClick={() => set('severity', v)}
+                style={{ textAlign: 'left', padding: '9px 11px', borderRadius: 5, cursor: 'pointer', fontFamily: 'inherit',
+                  border: `1px solid ${form.severity === v ? 'var(--b400)' : 'var(--n200)'}`,
+                  background: form.severity === v ? 'var(--slb)' : 'var(--n0)' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: form.severity === v ? 'var(--slt)' : 'var(--n800)' }}>{l}</div>
+                <div style={{ fontSize: 11, color: 'var(--n500)' }}>{hint}</div>
+              </button>
+            ))}
+          </div>
+        </F>
+
+        <F label="Asset">
+          <select className="input" value={form.asset_id} onChange={(e) => set('asset_id', e.target.value)} style={{ width: '100%' }}>
+            <option value="">— Not asset-specific —</option>
+            {assets.map((a) => <option key={a.id} value={a.id}>{a.ain} — {a.name}</option>)}
+          </select>
+        </F>
+        <F label="Site">
+          <select className="input" value={form.site_id} onChange={(e) => set('site_id', e.target.value)} style={{ width: '100%' }}>
+            <option value="">— Not site-specific —</option>
+            {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </F>
+        <F label="Found during" span={2} hint="Linking the inspection is what lets a finding be traced from the walk-round to the job that cleared it.">
+          <select className="input" value={form.inspection_id} onChange={(e) => set('inspection_id', e.target.value)} style={{ width: '100%' }}>
+            <option value="">— Raised outside an inspection —</option>
+            {inspections.map((i) => <option key={i.id} value={i.id}>{i.title} ({fmtDate(i.completed_date || i.scheduled_date)})</option>)}
+          </select>
+        </F>
+        <F label="Identified on">
+          <input className="input" type="date" value={form.identified_date} onChange={(e) => set('identified_date', e.target.value)} style={{ width: '100%' }} />
+        </F>
+        <F label="Fix by">
+          <input className="input" type="date" value={form.due_date} onChange={(e) => set('due_date', e.target.value)} style={{ width: '100%' }} />
+        </F>
+        <F label="Category" span={2}>
+          <input className="input" value={form.category} onChange={(e) => set('category', e.target.value)} placeholder="electrical / mechanical / structural" style={{ width: '100%' }} />
+        </F>
+        {err && <p style={{ gridColumn: 'span 2', fontSize: 12, color: 'var(--srt)' }}>{err}</p>}
+    </Modal>
   )
 }
 
@@ -190,28 +189,33 @@ function RaiseModal({ defect, onClose, onRaised }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
-      <form onSubmit={submit} style={{ position: 'relative', width: 460, background: 'var(--n0)', borderRadius: 10, boxShadow: 'var(--sh-lg)', zIndex: 1, padding: 24 }}>
-        <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)' }}>Raise a work order</h3>
-        <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 18, lineHeight: 1.55 }}>
-          The job inherits this defect&apos;s asset, site and a priority matched to its {defect.severity} severity.
-          Closing the job resolves the defect.
-        </p>
-
-        <label className="label" style={{ display: 'block', marginBottom: 5 }}>Job title</label>
-        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%', marginBottom: 14 }} />
-
-        <label className="label" style={{ display: 'block', marginBottom: 5 }}>SLA due</label>
-        <input className="input" type="date" value={slaDue} onChange={(e) => setSlaDue(e.target.value)} style={{ width: '100%' }} />
-
-        {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12 }}>{err}</p>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+    <Modal
+      title="Raise a work order"
+      width={460}
+      nested
+      as="form"
+      onSubmit={submit}
+      onClose={onClose}
+      footer={(
+        <>
           <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
           <button type="submit" disabled={busy} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{busy ? 'Raising…' : 'Raise job'}</button>
-        </div>
-      </form>
-    </div>
+        </>
+      )}
+    >
+      <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 18, lineHeight: 1.55 }}>
+        The job inherits this defect&apos;s asset, site and a priority matched to its {defect.severity} severity.
+        Closing the job resolves the defect.
+      </p>
+
+      <label className="label" style={{ display: 'block', marginBottom: 5 }}>Job title</label>
+      <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%', marginBottom: 14 }} />
+
+      <label className="label" style={{ display: 'block', marginBottom: 5 }}>SLA due</label>
+      <input className="input" type="date" value={slaDue} onChange={(e) => setSlaDue(e.target.value)} style={{ width: '100%' }} />
+
+      {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12 }}>{err}</p>}
+    </Modal>
   )
 }
 

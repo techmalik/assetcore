@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src --max-warnings=18",
+    "lint": "eslint src --max-warnings=2",
     "test": "vitest run"
   },
   "dependencies": {

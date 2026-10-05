@@ -28,6 +28,7 @@ import { useToast } from '../lib/ToastContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { errorText } from '../lib/errors'
 import { fmtDate, todayISO } from '../lib/dates'
+import { useConfirm } from '../lib/ConfirmContext'
 
 const STATUS_META = {
   active:   { label:'Active',        bg:'var(--sgb)', c:'var(--sgt)', br:'var(--sgbr)' },
@@ -575,6 +576,7 @@ function AuditModal({ audit, sites, users, assets, onClose, onSaved }) {
 }
 
 function AuditsPanel({ canCreate }) {
+  const ask = useConfirm()
   const toast = useToast()
   const [audits, setAudits] = useState([])
   const [sites, setSites] = useState([])
@@ -600,7 +602,7 @@ function AuditsPanel({ canCreate }) {
   useEffect(() => { load() }, [load])
 
   async function remove(id) {
-    if (!confirm('Archive this audit record?')) return
+    if (!(await ask('Archive this audit record?', { danger: true, confirmLabel: 'Archive' }))) return
     try { await softDeleteComplianceAudit(id); load(); toast.success('Audit archived.') } catch (e) { toast.error(errorText(e, 'Failed to archive audit.')) }
   }
   const yn = (v) => v === true ? <span style={{ color: 'var(--sgt)' }}>Yes</span> : v === false ? <span style={{ color: 'var(--srt)' }}>No</span> : <span style={{ color: 'var(--n400)' }}>—</span>

@@ -63,6 +63,13 @@
   --sh-sm: 0 1px 3px rgba(8,18,42,.07), 0 1px 2px rgba(8,18,42,.04);
   --sh-md: 0 4px 8px rgba(8,18,42,.08), 0 2px 4px rgba(8,18,42,.04);
   --sh-lg: 0 16px 48px rgba(8,18,42,.14), 0 4px 12px rgba(8,18,42,.06);
+
+  /* Stacking: side panels, then modals, then toasts on top of everything. */
+  --z-panel: 200;
+  --z-modal: 1000;
+  --z-toast: 2000;
+  /* The dimmed layer behind a modal. */
+  --backdrop: rgba(0, 0, 0, .4);
 }
 
 html, body {
@@ -449,22 +456,47 @@ a { text-decoration: none; color: inherit; }
   .input, .select { min-height: 38px; }
 }
 
-/* Modal overlay/card — width caps at 92vw so no modal can overflow a phone screen */
+/* Modal (components/Modal.jsx). Width caps at 92vw so no modal can overflow a
+   phone screen; the body scrolls, the header and footer stay put. */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
 }
+.modal-overlay.is-nested { z-index: calc(var(--z-modal) + 100); }
+.modal-backdrop { position: absolute; inset: 0; background: var(--backdrop); }
 .modal-card {
+  position: relative;
   width: min(var(--modal-w, 520px), 92vw);
   max-height: 92vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   background: var(--n0);
   border-radius: 10px;
+  box-shadow: var(--sh-lg);
+}
+.modal-head {
+  padding: 18px 24px;
+  border-bottom: var(--bdr);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.modal-title { font-family: var(--ff-d); font-size: 18px; font-weight: 700; color: var(--n950); }
+.modal-close { background: none; border: none; cursor: pointer; color: var(--n400); padding: 4px; line-height: 0; }
+.modal-close:hover { color: var(--n700); }
+.modal-body { flex: 1; overflow-y: auto; padding: 24px; }
+.modal-foot {
+  padding: 14px 24px;
+  border-top: var(--bdr);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* A grid of read-only facts (schedule basis, asset summary). Auto-fits rather
