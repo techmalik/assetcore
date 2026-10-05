@@ -40,9 +40,7 @@ const OPEN_TO_ANY_MEMBER: Record<string, string> = {
   'GET /profile': "the caller's own profile",
   'PATCH /profile': "the caller's own profile",
   'GET /licence': 'the licence banner every member sees',
-  'GET /approvals/approvers': 'inline either-of-two-caps check; becomes requireAnyCap in TASK-2.3',
   'GET /analytics/calendar': 'mixes work orders, PM, inspections and licences, each RLS-scoped',
-  'GET /integrity/overview': 'the UI needs any of three read caps; becomes requireAnyCap in TASK-2.3',
   'GET /files/*filePath': 'streams only a file referenced by a row the caller can see',
 }
 

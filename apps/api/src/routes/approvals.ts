@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
-import { claimsFromReq } from '../claims.js'
-import { requireCap, ROLE_KEYS, can } from '../middleware/rbac.js'
+import { claimsFromReq, effectiveRole, isOwner } from '../claims.js'
+import { requireCap, requireAnyCap, ROLE_KEYS, can } from '../middleware/rbac.js'
 import { ROLE_RANK } from '@assetcore/rbac'
 import { writeAuditLog } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
@@ -220,16 +220,6 @@ async function eventsFor(c: import('pg').PoolClient, approvalId: string) {
   return approvalEvents(c, approvalId)
 }
 
-/** Same resolution as requireCap/hasCap (fresh membership over JWT claims),
- * inline for the one route gated on either of two capabilities. */
-function callerCan(req: import('express').Request, capability: string): boolean {
-  return can(
-    req.membership?.roleKey ?? req.claims?.role_key,
-    capability,
-    req.membership?.extraCaps ?? req.claims?.extra_caps ?? []
-  )
-}
-
 approvalsRouter.get('/approvals', requireCap('approval:read'), async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [SELECT, 'where 1=1']
@@ -241,7 +231,7 @@ approvalsRouter.get('/approvals', requireCap('approval:read'), async (req, res) 
       // their role, and not something they submitted themselves. For a direct
       // request: sent to them by name. Holding the role it would otherwise go
       // to is not enough.
-      values.push(req.membership?.roleKey ?? req.claims!.role_key)
+      values.push(effectiveRole(req))
       values.push(req.claims!.sub)
       clauses.push(`and ap.status = 'pending' and (
         (ap.route = 'rule' and ap.current_role_key = $1 and ap.requester_id is distinct from $2)
@@ -279,7 +269,7 @@ approvalsRouter.get('/approvals/stats', requireCap('approval:read'), async (req,
          count(*) filter (where status = 'approved')::int as approved,
          count(*) filter (where status = 'rejected')::int as rejected
        from public.approvals`,
-      [req.membership?.roleKey ?? req.claims!.role_key, req.claims!.sub]
+      [effectiveRole(req), req.claims!.sub]
     ).then((r) => r.rows[0])
   )
   res.json(row)
@@ -294,10 +284,7 @@ approvalsRouter.get('/approvals/stats', requireCap('approval:read'), async (req,
  * routes will let decide. The caller's own line manager is flagged so pickers
  * can preselect them. Sorted most senior first: "send it up" usually means up.
  */
-approvalsRouter.get('/approvals/approvers', (req, res, next) => {
-  if (callerCan(req, 'approval:create') || callerCan(req, 'approval:read')) return next()
-  return res.status(403).json({ error: 'forbidden', capability: 'approval:create' })
-}, async (req, res) => {
+approvalsRouter.get('/approvals/approvers', requireAnyCap('approval:create', 'approval:read'), async (req, res) => {
   const { members, lineManagerId } = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows: me } = await c.query(
       'select manager_id from public.memberships where org_id = current_org_id() and user_id = $1',
@@ -379,7 +366,7 @@ approvalsRouter.post('/approvals', requireCap('approval:create'), async (req, re
       if (!assignee) return { error: 'invalid_assignee' as const }
       const approval = await insertDirectApproval(c, { ...d, assignee_id: d.assignee_id }, {
         userId: req.claims!.sub,
-        roleKey: req.membership?.roleKey ?? req.claims!.role_key ?? null,
+        roleKey: effectiveRole(req),
         assigneeName: assignee.full_name,
       })
       return { data: await loadApproval(c, approval.id) }
@@ -413,7 +400,7 @@ approvalsRouter.post('/approvals', requireCap('approval:create'), async (req, re
     await c.query(
       `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes)
        values (current_org_id(), $1, 1, 'submitted', current_user_id(), $2, $3)`,
-      [approval.id, req.claims!.role_key, d.notes ?? null]
+      [approval.id, effectiveRole(req), d.notes ?? null]
     )
     await notifyRole(c, first.role_key, {
       kind: 'approval_pending',
@@ -482,7 +469,7 @@ approvalsRouter.post('/approvals/:id/approve', requireCap('approval:decide'), as
       await c.query(
         `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes)
          values (current_org_id(), $1, $2, 'approved', current_user_id(), $3, $4)`,
-        [ap.id, ap.level, req.membership?.roleKey ?? req.claims!.role_key, notes]
+        [ap.id, ap.level, effectiveRole(req), notes]
       )
       await notifyUser(c, ap.requester_id, {
         kind: 'approval_decided',
@@ -499,15 +486,15 @@ approvalsRouter.post('/approvals/:id/approve', requireCap('approval:decide'), as
       return { data: await loadApproval(c, ap.id) }
     }
 
-    const isOwner = req.claims!.role_key === 'owner'
-    if (!isOwner && ap.current_role_key !== req.claims!.role_key) {
+    const callerIsOwner = isOwner(req)
+    if (!callerIsOwner && ap.current_role_key !== effectiveRole(req)) {
       return { error: 'wrong_approver' as const, expected: ap.current_role_key }
     }
 
     await c.query(
       `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes)
        values (current_org_id(), $1, $2, 'approved', current_user_id(), $3, $4)`,
-      [ap.id, ap.level, req.claims!.role_key, notes]
+      [ap.id, ap.level, effectiveRole(req), notes]
     )
 
     const finalStep = ap.level >= ap.max_levels
@@ -598,7 +585,7 @@ approvalsRouter.post('/approvals/:id/reject', requireCap('approval:decide'), asy
     // on record, not accepted). Rejection is the matrix's word for it, and
     // allowing it here would also let a role holder end someone else's request.
     if (ap.route === 'direct') return { error: 'wrong_route' as const }
-    if (req.claims!.role_key !== 'owner' && ap.current_role_key !== req.claims!.role_key) {
+    if (!isOwner(req) && ap.current_role_key !== effectiveRole(req)) {
       return { error: 'wrong_approver' as const, expected: ap.current_role_key }
     }
 
@@ -611,7 +598,7 @@ approvalsRouter.post('/approvals/:id/reject', requireCap('approval:decide'), asy
     await c.query(
       `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes)
        values (current_org_id(), $1, $2, 'rejected', current_user_id(), $3, $4)`,
-      [ap.id, ap.level, req.claims!.role_key, notes]
+      [ap.id, ap.level, effectiveRole(req), notes]
     )
     await notifyUser(c, ap.requester_id, {
       kind: 'approval_decided',
@@ -659,7 +646,7 @@ approvalsRouter.post('/approvals/:id/recall', requireCap('approval:create'), asy
     await c.query(
       `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes)
        values (current_org_id(), $1, $2, 'recalled', current_user_id(), $3, $4)`,
-      [ap.id, ap.level, req.claims!.role_key, notes]
+      [ap.id, ap.level, effectiveRole(req), notes]
     )
     await writeAuditLog(c, {
       orgId: ap.org_id, actorId: req.claims!.sub, action: 'approval.recall',
@@ -721,8 +708,6 @@ function sendDirect(res: import('express').Response, result: DirectResult) {
   return res.json(result.data)
 }
 
-const roleOf = (req: import('express').Request) => req.membership?.roleKey ?? req.claims?.role_key ?? null
-
 /** Lock a direct request that is waiting on the caller, or say why it isn't.
  * The requester is refused before the assignee check. Nobody can ever act on
  * their own request, even if it was somehow forwarded back to them. */
@@ -774,7 +759,7 @@ approvalsRouter.post('/approvals/:id/forward', requireCap('approval:decide'), as
     if (!target) return { error: 'invalid_assignee' }
 
     await c.query('update public.approvals set assignee_id = $2 where id = $1', [ap.id, toUserId])
-    await recordDirectEvent(c, ap, 'forwarded', roleOf(req), notes, toUserId)
+    await recordDirectEvent(c, ap, 'forwarded', effectiveRole(req), notes, toUserId)
     await notifyApprovalUser(c, toUserId, {
       kind: 'approval_pending',
       title: `Forwarded to you for approval: ${ap.title || ap.kind}`,
@@ -817,7 +802,7 @@ approvalsRouter.post('/approvals/:id/return', requireCap('approval:decide'), asy
     const { ap } = locked
 
     await c.query("update public.approvals set status = 'returned', assignee_id = null where id = $1", [ap.id])
-    await recordDirectEvent(c, ap, 'returned', roleOf(req), notes)
+    await recordDirectEvent(c, ap, 'returned', effectiveRole(req), notes)
     await notifyApprovalUser(c, ap.requester_id, {
       kind: 'approval_decided',
       title: `Returned to you: ${ap.title || ap.kind}`,
@@ -859,7 +844,7 @@ approvalsRouter.post('/approvals/:id/discard', requireCap('approval:decide'), as
         where id = $1`,
       [ap.id]
     )
-    await recordDirectEvent(c, ap, 'discarded', roleOf(req), notes)
+    await recordDirectEvent(c, ap, 'discarded', effectiveRole(req), notes)
     await notifyApprovalUser(c, ap.requester_id, {
       kind: 'approval_decided',
       title: `Discarded: ${ap.title || ap.kind}`,
@@ -915,7 +900,7 @@ approvalsRouter.post('/approvals/:id/resubmit', requireCap('approval:create'), a
         where id = $1`,
       [ap.id, assigneeId]
     )
-    await recordDirectEvent(c, ap, 'resubmitted', roleOf(req), notes, assigneeId)
+    await recordDirectEvent(c, ap, 'resubmitted', effectiveRole(req), notes, assigneeId)
     await notifyApprovalUser(c, assigneeId, {
       kind: 'approval_pending',
       title: `Sent to you for approval: ${ap.title || ap.kind}`,

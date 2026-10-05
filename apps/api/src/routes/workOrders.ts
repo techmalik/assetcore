@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { withOrgContext } from '../db.js'
-import { claimsFromReq } from '../claims.js'
+import { claimsFromReq, effectiveRole } from '../claims.js'
 import { requireCap, hasCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
@@ -305,7 +305,7 @@ async function createForApproval(
       assignee_id: approverId,
     }, {
       userId: req.claims!.sub,
-      roleKey: req.membership?.roleKey ?? req.claims!.role_key ?? null,
+      roleKey: effectiveRole(req),
       assigneeName: approver.full_name,
     })
     await c.query(

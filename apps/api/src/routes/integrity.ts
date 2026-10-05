@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
-import { hasCap } from '../middleware/rbac.js'
+import { hasCap, requireAnyCap } from '../middleware/rbac.js'
 
 export const integrityRouter = Router()
 
@@ -72,7 +72,7 @@ function integrityStatusOf(a: AssetRow, opts: { risks: boolean; inspections: boo
   return { status: 'sound', reasons: [] }
 }
 
-integrityRouter.get('/integrity/overview', async (req, res) => {
+integrityRouter.get('/integrity/overview', requireAnyCap('inspection:read', 'defect:read', 'risk:read'), async (req, res) => {
   const canInspections = hasCap(req, 'inspection:read')
   const canRisks = hasCap(req, 'risk:read')
   const canDefects = hasCap(req, 'defect:read')

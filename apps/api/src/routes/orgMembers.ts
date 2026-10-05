@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { ownerPool, withOrgContext } from '../db.js'
-import { claimsFromReq } from '../claims.js'
+import { claimsFromReq, isOwner } from '../claims.js'
 import { config } from '../config.js'
 import { requireCap, GRANTABLE_CAPS, ROLE_KEYS } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
@@ -36,15 +36,12 @@ async function countActiveOwners(orgId: string): Promise<number> {
 }
 
 // user:manage is held by `admin` as well as `owner` (System Admin). Without
-// this line an admin could promote themselves to owner, or demote/disable an
-// owner, or mint a reset link for an owner's account and sign in as them —
+// the isOwner() checks below an admin could promote themselves to owner, or
+// demote/disable an owner, or mint a reset link for an owner's account and sign in as them —
 // each a way past the integration/depreciation rights kept owner-only in
 // @assetcore/rbac. So: only an owner may grant the owner role, or touch a
 // membership that is currently an owner's. The last-owner checks below still
 // apply on top, to owners acting on each other.
-function callerIsOwner(req: import('express').Request): boolean {
-  return (req.membership?.roleKey ?? req.claims?.role_key) === 'owner'
-}
 
 async function getOrgMembership(orgId: string, membershipId: string) {
   const { rows } = await ownerPool.query(
@@ -86,7 +83,7 @@ orgMembersRouter.post('/org/members/invite', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { email, full_name, role_key, site_scope, location_scope, extra_caps } = parsed.data
   const orgId = req.claims!.org_id!
-  if (role_key === 'owner' && !callerIsOwner(req)) return res.status(403).json({ error: 'owner_only' })
+  if (role_key === 'owner' && !isOwner(req)) return res.status(403).json({ error: 'owner_only' })
 
   const client = await ownerPool.connect()
   try {
@@ -168,7 +165,7 @@ orgMembersRouter.patch('/org/members/:id/role', async (req, res) => {
     const before = await getOrgMembership(orgId, req.params.id)
     if (!before) { await client.query('rollback'); return res.status(404).json({ error: 'not_found' }) }
 
-    if ((before.role_key === 'owner' || parsed.data.role_key === 'owner') && !callerIsOwner(req)) {
+    if ((before.role_key === 'owner' || parsed.data.role_key === 'owner') && !isOwner(req)) {
       await client.query('rollback'); return res.status(403).json({ error: 'owner_only' })
     }
 
@@ -222,7 +219,7 @@ orgMembersRouter.patch('/org/members/:id/access', async (req, res) => {
     await client.query('begin')
     const before = await getOrgMembership(orgId, req.params.id)
     if (!before) { await client.query('rollback'); return res.status(404).json({ error: 'not_found' }) }
-    if (before.role_key === 'owner' && !callerIsOwner(req)) { await client.query('rollback'); return res.status(403).json({ error: 'owner_only' }) }
+    if (before.role_key === 'owner' && !isOwner(req)) { await client.query('rollback'); return res.status(403).json({ error: 'owner_only' }) }
     const managerId = parsed.data.manager_id
     if (managerId) {
       // Managed by someone who is actually here: an active member of this org,
@@ -266,7 +263,7 @@ function setStatus(status: 'disabled' | 'active', action: string) {
       await client.query('begin')
       const before = await getOrgMembership(orgId, membershipId)
       if (!before) { await client.query('rollback'); return res.status(404).json({ error: 'not_found' }) }
-      if (before.role_key === 'owner' && !callerIsOwner(req)) { await client.query('rollback'); return res.status(403).json({ error: 'owner_only' }) }
+      if (before.role_key === 'owner' && !isOwner(req)) { await client.query('rollback'); return res.status(403).json({ error: 'owner_only' }) }
 
       if (status === 'disabled') {
         if (before.user_id === req.claims!.sub) { await client.query('rollback'); return res.status(400).json({ error: 'cannot_disable_self' }) }
@@ -302,7 +299,7 @@ orgMembersRouter.post('/org/members/:id/reset-password', async (req, res) => {
     if (!membership) return res.status(404).json({ error: 'not_found' })
     // The link comes back in the response, so resetting an owner is a way to
     // sign in as one.
-    if (membership.role_key === 'owner' && !callerIsOwner(req)) return res.status(403).json({ error: 'owner_only' })
+    if (membership.role_key === 'owner' && !isOwner(req)) return res.status(403).json({ error: 'owner_only' })
 
     const token = await issueToken(client, membership.user_id, 'reset')
     const link = `${config.APP_ORIGIN}/reset-password?token=${token}`
