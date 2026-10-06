@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import {
   listApprovals, getApproval, getApprovalStats, listApprovalRules,
   createApprovalRule, updateApprovalRule, retireApprovalRule,
@@ -17,6 +15,7 @@ import { useMoney, Money } from '../lib/money'
 import { errorText } from '../lib/errors'
 import { fmtDateTime } from '../lib/dates'
 import Stat from '../components/Stat.jsx'
+import PageShell from '../components/PageShell.jsx'
 
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS).filter(([k]) => k !== 'viewer')
 
@@ -402,7 +401,7 @@ function MatrixTab({ canManage }) {
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function Approvals({ dark, toggleDark }) {
+export default function Approvals() {
   const can = useCan()
   const { roleKey, user } = useAuth()
   const userId = user?.id
@@ -463,10 +462,7 @@ export default function Approvals({ dark, toggleDark }) {
   ]
 
   return (
-    <div className="app-shell">
-      <Sidebar active="approvals" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Approvals" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="approvals" breadcrumb="Approvals">
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px 0', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
@@ -724,7 +720,7 @@ export default function Approvals({ dark, toggleDark }) {
             </div>
           )}
         </div>
-      </div>
+      
 
       {deciding && (
         <DecisionModal
@@ -734,6 +730,6 @@ export default function Approvals({ dark, toggleDark }) {
           onDone={() => { setDeciding(null); load(); if (detail?.id) openDetail(detail.id) }}
         />
       )}
-    </div>
+</PageShell>
   )
 }

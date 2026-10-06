@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth, useCan } from '../lib/AuthContext'
 import { ROLE_LABELS, ADMIN_ENTRY_CAPS } from '../lib/rbac'
+import { ROUTES, canOpen } from '../routes'
 import { useSidebar } from '../lib/SidebarContext'
 import { useNotifications } from '../lib/NotificationsContext'
 import { getDashboardStats } from '../lib/db/dashboard'
@@ -34,31 +35,11 @@ const icons = {
   settings: <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2"/><path d="M6.8 2.1l-.5 1.5A4.6 4.6 0 005 4.4L3.5 4l-1.2 2 1.1 1.1a4.5 4.5 0 000 1.8L2.3 10l1.2 2 1.5-.4A4.6 4.6 0 006.3 12.4l.5 1.5h2.4l.5-1.5A4.6 4.6 0 0011 11.6l1.5.4 1.2-2-1.1-1.1a4.5 4.5 0 000-1.8l1.1-1.1-1.2-2-1.5.4A4.6 4.6 0 009.7 3.6L9.2 2.1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>,
 }
 
-const OPERATIONS = [
-  { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: icons.dashboard },
-  { key: 'assets', label: 'Assets', path: '/assets', icon: icons.assets },
-  // The map and the scanner are both ways into the asset register, and both
-  // were unreachable without knowing the URL — the scanner especially, which
-  // is the one a technician standing at the plant actually wants.
-  { key: 'asset-map', label: 'Asset Map', path: '/asset-map', icon: icons.map },
-  { key: 'scan', label: 'Scan Tag', path: '/scan', icon: icons.scan },
-  { key: 'work-orders', label: 'Work Orders', path: '/work-orders', icon: icons.workorders },
-  { key: 'maintenance', label: 'Maintenance', path: '/maintenance', icon: icons.maintenance },
-  { key: 'calendar', label: 'Calendar', path: '/calendar', icon: icons.calendar },
-  { key: 'integrity', label: 'Integrity', path: '/integrity', icon: icons.integrity, anyCap: ['inspection:read', 'defect:read', 'risk:read'] },
-  { key: 'approvals', label: 'Approvals', path: '/approvals', icon: icons.approvals, cap: 'approval:read' },
-  { key: 'devices', label: 'Devices', path: '/devices', icon: icons.devices },
-  // Spare parts is being reworked into warehouse inventory. Listed so people
-  // know it is coming; `soon` makes the entry inert.
-  { key: 'spare-parts', label: 'Warehouse Inventory', path: '/spare-parts', icon: icons.spareParts, soon: true },
-]
-
-const REPORT = [
-  { key: 'compliance', label: 'Compliance', path: '/compliance', icon: icons.compliance },
-  { key: 'depreciation', label: 'Depreciation', path: '/depreciation', icon: icons.depreciation, cap: 'depreciation:read' },
-  { key: 'analytics', label: 'Analytics', path: '/analytics', icon: icons.analytics, cap: 'report:read' },
-  { key: 'export', label: 'Export', path: '/export', icon: icons.reports, cap: 'report:read' },
-]
+// Menu entries come from routes.js, with their icons drawn here.
+const itemsIn = (section) => ROUTES.filter((r) => r.section === section).map((r) => ({ ...r, icon: icons[r.icon] }))
+const OPERATIONS = itemsIn('operations')
+const REPORT = itemsIn('report')
+const ACCOUNT = itemsIn('account')
 
 function NavItem({ item, count, countColor, active, onGo }) {
   return item.soon ? (
@@ -116,9 +97,7 @@ export default function Sidebar({ active }) {
   const go = (path) => { nav(path); close() }
   const goMenu = (path) => { setOrgMenu(false); go(path) }
 
-  const visible = (item) =>
-    (!item.cap || can(item.cap)) &&
-    (!item.anyCap || item.anyCap.some((c) => can(c)))
+  const visible = (item) => canOpen(item, can)
   const reportItems = REPORT.filter(visible)
   const sectionStyle = {padding:'12px 16px 4px',fontSize:10,fontWeight:600,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--n400)',fontFamily:'var(--ff-m)'}
 
@@ -179,10 +158,10 @@ export default function Sidebar({ active }) {
 
         <div style={{height:1,background:'var(--n200)',margin:'8px 16px'}}/>
 
-        <NavItem active={active} onGo={go} item={{ key: 'notifications', label: 'Notifications', path: '/notifications', icon: icons.notifications }} count={unreadCount} countColor="red" />
-        {canAdmin && <NavItem active={active} onGo={go} item={{ key: 'admin', label: 'Admin', path: '/admin', icon: icons.users }} />}
-        <NavItem active={active} onGo={go} item={{ key: 'integrations', label: 'Integrations', path: '/integrations', icon: icons.integrations }} />
-        <NavItem active={active} onGo={go} item={{ key: 'settings', label: 'Settings', path: '/settings', icon: icons.settings }} />
+        {ACCOUNT.filter(visible).map((item) => (
+          <NavItem active={active} onGo={go} key={item.key} item={item}
+            count={item.key === 'notifications' ? unreadCount : undefined} countColor="red" />
+        ))}
       </nav>
 
       <button className="sidebar-collapse-btn" onClick={toggleCollapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>

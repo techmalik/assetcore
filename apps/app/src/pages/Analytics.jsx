@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import AssetMap from '../components/AssetMap.jsx'
 import { BarChart, LineChart, Donut, StackedBar, SERIES_COLORS } from '../components/Charts.jsx'
 import {
@@ -11,6 +9,7 @@ import { useMoney } from '../lib/money'
 import { errorText } from '../lib/errors'
 import { WO_STATUS, PRIORITY, WO_TYPE, toneOf, labelOf } from '../lib/domain'
 import { todayISO, addDaysISO } from '../lib/dates'
+import PageShell from '../components/PageShell.jsx'
 
 const MONTH_LABEL = (iso) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })
@@ -65,7 +64,7 @@ function Panel({ title, subtitle, children, action }) {
   )
 }
 
-export default function Analytics({ dark, toggleDark }) {
+export default function Analytics() {
   const nav = useNavigate()
   const { money } = useMoney()
 
@@ -105,10 +104,7 @@ export default function Analytics({ dark, toggleDark }) {
   const oldest = (kpis?.backlog || []).filter((b) => b.count > 0).pop()
 
   return (
-    <div className="app-shell">
-      <Sidebar active="analytics" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Analytics" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="analytics" breadcrumb="Analytics">
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px 0', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
@@ -288,7 +284,6 @@ export default function Analytics({ dark, toggleDark }) {
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }

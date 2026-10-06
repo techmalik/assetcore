@@ -13,11 +13,11 @@ import { ROLE_KEYS } from '@assetcore/rbac'
 const PASSWORD = 'Password123!'
 const emailFor = (role) => (role === 'owner' ? 'a.okeke@ngml.example' : `${role}@ngml.example`)
 
-// Every signed-in route in App.jsx, read from the file so a new page is
-// covered without editing this test. A role that may not open a page is
-// redirected to the dashboard, which is checked the same way.
-const ROUTES = [...readFileSync(new URL('../apps/app/src/App.jsx', import.meta.url), 'utf8')
-  .matchAll(/<Route path="(\/[a-z-]+)" element=\{gate\(/g)].map((m) => m[1])
+// Every signed-in route, read from the route table (apps/app/src/routes.js)
+// so a new page is covered without editing this test. A role that may not
+// open a page is redirected to the dashboard, which is checked the same way.
+const ROUTES = [...readFileSync(new URL('../apps/app/src/routes.js', import.meta.url), 'utf8')
+  .matchAll(/path: '(\/[a-z-]+)'/g)].map((m) => m[1])
 
 /** Collects what counts as a failure while the page is used. */
 function watch(page) {
@@ -97,7 +97,7 @@ async function openDetailAndNew(page, w, where, newButton) {
 
 for (const role of ROLE_KEYS) {
   test(`${role}: every page renders`, async ({ page }) => {
-    expect(ROUTES.length, 'routes read from App.jsx').toBeGreaterThan(15)
+    expect(ROUTES.length, 'routes read from routes.js').toBeGreaterThan(15)
     const w = watch(page)
     await signIn(page, role)
     await w.settle()

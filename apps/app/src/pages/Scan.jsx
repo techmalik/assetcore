@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import jsQR from 'jsqr'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import { getAssetByAin } from '../lib/db/assets'
 import { errorText } from '../lib/errors'
 import { useToast } from '../lib/ToastContext'
 import AssetMap from '../components/AssetMap.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { ASSET_STATUS, CRITICALITY, toneOf, labelOf } from '../lib/domain'
+import PageShell from '../components/PageShell.jsx'
 
 
 // A label encodes {origin}/scan?ain=XXX, but a generic barcode scanner may emit
@@ -32,7 +31,7 @@ function InfoRow({ label, value, mono }) {
   )
 }
 
-export default function Scan({ dark, toggleDark }) {
+export default function Scan() {
   const nav = useNavigate()
   const toast = useToast()
   const [params] = useSearchParams()
@@ -139,10 +138,7 @@ export default function Scan({ dark, toggleDark }) {
   useEffect(() => stopCamera, [stopCamera])
 
   return (
-    <div className="app-shell">
-      <Sidebar active="scan" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Scan Asset" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="scan" breadcrumb="Scan Asset">
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', justifyContent: 'center' }}>
           <div style={{ width: '100%', maxWidth: 520, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -266,7 +262,6 @@ export default function Scan({ dark, toggleDark }) {
             </form>
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }

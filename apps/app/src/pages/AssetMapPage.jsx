@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import AssetMap, { MAP_COLOUR_MODES } from '../components/AssetMap.jsx'
 import { getAssetMap } from '../lib/db/analytics'
 import { errorText } from '../lib/errors'
 import { ASSET_STATUSES, ASSET_STATUS, CRITICALITIES, CRITICALITY, labelOf } from '../lib/domain'
+import PageShell from '../components/PageShell.jsx'
 
 const ALL = 'all'
 
@@ -19,7 +18,7 @@ function optionsFrom(assets, pick) {
   return [...seen.entries()]
 }
 
-export default function AssetMapPage({ dark, toggleDark }) {
+export default function AssetMapPage() {
   const nav = useNavigate()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -65,10 +64,7 @@ export default function AssetMapPage({ dark, toggleDark }) {
   const sel = { height: 30, fontSize: 12, padding: '0 8px', border: '1px solid var(--n200)', borderRadius: 4, background: 'var(--n0)', color: 'var(--n700)', fontFamily: 'var(--ff-u)', maxWidth: 190 }
 
   return (
-    <div className="app-shell">
-      <Sidebar active="asset-map" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Asset Map" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="asset-map" breadcrumb="Asset Map">
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <div style={{ padding: '16px 24px', borderBottom: 'var(--bdr)', background: 'var(--n0)' }}>
@@ -143,7 +139,6 @@ export default function AssetMapPage({ dark, toggleDark }) {
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }

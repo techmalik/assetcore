@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import { listExports, downloadExport } from '../lib/db/exports'
 import { listMyLocations } from '../lib/db/locations'
 import { listSites } from '../lib/db/sites'
 import { errorText } from '../lib/errors'
+import PageShell from '../components/PageShell.jsx'
 
 const humanise = (s) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
 
@@ -13,7 +12,7 @@ const EMPTY = { location_id: '', site_id: '', from: '', to: '', status: '', q: '
 const fieldLabel = { display: 'block', marginBottom: 4 }
 const control = { width: '100%', height: 34, fontSize: 13 }
 
-export default function Export({ dark, toggleDark }) {
+export default function Export() {
   const [datasets, setDatasets] = useState(null)
   const [err, setErr] = useState('')
   const [locations, setLocations] = useState([])
@@ -28,10 +27,7 @@ export default function Export({ dark, toggleDark }) {
   }, [])
 
   return (
-    <div className="app-shell">
-      <Sidebar active="export" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Export" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="export" breadcrumb="Export">
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <div style={{ padding: '16px 24px', borderBottom: 'var(--bdr)', background: 'var(--n0)' }}>
@@ -57,8 +53,7 @@ export default function Export({ dark, toggleDark }) {
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }
 

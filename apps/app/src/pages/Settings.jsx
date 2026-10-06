@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import { useAuth, useCan } from '../lib/AuthContext'
 import { getProfile, updateProfile } from '../lib/db/profile'
 import { changePassword } from '../lib/auth'
@@ -10,6 +8,7 @@ import { getLicence, licenceDaysRemaining } from '../lib/db/licence'
 import { CURRENCY_CODE, currencySymbol, fmtMoneyExact } from '../lib/money.jsx'
 import { errorText } from '../lib/errors'
 import { fmtDateLong } from '../lib/dates'
+import PageShell from '../components/PageShell.jsx'
 
 function SuccessBanner({ msg }) {
   if (!msg) return null
@@ -401,14 +400,11 @@ function OrgTab() {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function Settings({ dark, toggleDark }) {
+export default function Settings() {
   const [tab, setTab] = useState('profile')
 
   return (
-    <div className="app-shell">
-      <Sidebar active="settings" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Settings" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="settings" breadcrumb="Settings">
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '14px 24px 0', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
             <div style={{ marginBottom: 12 }}>
@@ -425,7 +421,6 @@ export default function Settings({ dark, toggleDark }) {
             {tab === 'org' && <OrgTab />}
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }

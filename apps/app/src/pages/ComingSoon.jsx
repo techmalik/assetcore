@@ -1,19 +1,15 @@
 import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
+import PageShell from '../components/PageShell.jsx'
 
 /**
  * Stands in for a module that is announced but not open. The sidebar entry is
  * already inert; this covers a bookmark or a typed URL, so the old page is
  * never reachable half-finished.
  */
-export default function ComingSoon({ dark, toggleDark, active, title, description }) {
+export default function ComingSoon({ active, title, description }) {
   const nav = useNavigate()
   return (
-    <div className="app-shell">
-      <Sidebar active={active} />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb={title} dark={dark} toggleDark={toggleDark} />
+    <PageShell active={active} breadcrumb={title}>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ maxWidth: 440, textAlign: 'center' }}>
             <div style={{ width: 52, height: 52, borderRadius: 12, margin: '0 auto 16px', background: 'var(--b50)', color: 'var(--b600)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -27,7 +23,6 @@ export default function ComingSoon({ dark, toggleDark, active, title, descriptio
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }

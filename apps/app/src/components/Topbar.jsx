@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useNotifications } from '../lib/NotificationsContext'
 import { useSidebar } from '../lib/SidebarContext'
+import { useTheme } from '../lib/ThemeContext'
 import { useLocationFilter } from '../lib/LocationFilterContext'
 import { ROLE_LABELS } from '../lib/rbac'
 import { listAssets } from '../lib/db/assets'
@@ -148,7 +149,8 @@ function LocationSwitcher() {
   )
 }
 
-export default function Topbar({ breadcrumb, dark, toggleDark, children }) {
+export default function Topbar({ breadcrumb, children }) {
+  const { dark, toggleDark } = useTheme()
   const nav = useNavigate()
   // Subscribing to location re-evaluates history depth on every navigation.
   // idx survives the auth flow's replace-redirects, so idx > 0 means there is

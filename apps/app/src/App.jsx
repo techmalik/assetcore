@@ -1,12 +1,12 @@
 import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
-import { useState, useEffect } from 'react'
 import { AuthProvider, useAuth, useCan } from './lib/AuthContext'
 import { NotificationsProvider } from './lib/NotificationsContext'
 import { SidebarProvider } from './lib/SidebarContext'
 import { ToastProvider } from './lib/ToastContext'
 import { ConfirmProvider } from './lib/ConfirmContext'
 import { LocationFilterProvider } from './lib/LocationFilterContext'
-import { ADMIN_ENTRY_CAPS } from './lib/rbac'
+import { ThemeProvider } from './lib/ThemeContext'
+import { ROUTES, canOpen } from './routes'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import OfflineBanner from './components/OfflineBanner.jsx'
 import LicenceBanner from './components/LicenceBanner.jsx'
@@ -64,43 +64,36 @@ function ResetPasswordRoute({ authed, to }) {
   return <ResetPassword />
 }
 
-// A theme is a preference, not a session: it has to survive a reload, and the
-// first visit should follow the operating system rather than assume light.
-// Stored per browser, not per account — the same person on a bright control
-// room screen and a dark cab wants different answers.
-const THEME_KEY = 'assetcore:theme'
-
-function preferredTheme() {
-  try {
-    const saved = localStorage.getItem(THEME_KEY)
-    if (saved === 'dark' || saved === 'light') return saved === 'dark'
-  } catch { /* private window, or storage disabled */ }
-  return typeof window !== 'undefined' && window.matchMedia
-    ? window.matchMedia('(prefers-color-scheme: dark)').matches
-    : false
-}
-
-function applyTheme(dark) {
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : '')
+// What each route in routes.js renders.
+const PAGES = {
+  dashboard: <Dashboard />,
+  assets: <Assets />,
+  'work-orders': <WorkOrders />,
+  maintenance: <Maintenance />,
+  scan: <Scan />,
+  'asset-map': <AssetMapPage />,
+  calendar: <Calendar />,
+  'spare-parts': <ComingSoon active="spare-parts" title="Warehouse Inventory"
+    description="Stock levels, bin locations and issues to work orders across your warehouses. This module is being prepared and will open here." />,
+  integrity: <Integrity />,
+  defects: <Defects />,
+  risks: <Risks />,
+  approvals: <Approvals />,
+  depreciation: <Depreciation />,
+  analytics: <Analytics />,
+  compliance: <Compliance />,
+  inspections: <Inspections />,
+  devices: <Devices />,
+  integrations: <Integrations />,
+  notifications: <Notifications />,
+  settings: <Settings />,
+  export: <Export />,
+  admin: <Admin />,
 }
 
 function Routed() {
   const can = useCan()
   const { loading, authed, orgId, needsOnboarding, mustChangePassword } = useAuth()
-  const [dark, setDark] = useState(preferredTheme)
-
-  // The attribute lives on <html>, which React does not own, so it has to be
-  // written on mount as well as on toggle — otherwise a remembered preference
-  // is in state and invisible.
-  useEffect(() => { applyTheme(dark) }, [dark])
-
-  const toggleDark = () => {
-    const next = !dark
-    setDark(next)
-    applyTheme(next)
-    try { localStorage.setItem(THEME_KEY, next ? 'dark' : 'light') } catch { /* private window */ }
-  }
-
   if (loading) return <Splash />
 
   // Where an authenticated user lands: forced password change first, then
@@ -123,7 +116,6 @@ function Routed() {
     if (needsOnboarding) return <Navigate to="/onboarding" replace />
     return el
   }
-  const props = { dark, toggleDark }
 
   return (
     <Routes>
@@ -141,31 +133,11 @@ function Routed() {
         : mustChangePassword ? <Navigate to="/force-password-change" replace />
         : <Onboarding />
       } />
-      <Route path="/dashboard" element={gate(<Dashboard {...props} />)} />
-      <Route path="/assets" element={gate(<Assets {...props} />)} />
-      <Route path="/work-orders" element={gate(<WorkOrders {...props} />)} />
-      <Route path="/maintenance" element={gate(<Maintenance {...props} />)} />
-      <Route path="/scan" element={gate(<Scan {...props} />)} />
-      <Route path="/asset-map" element={gate(<AssetMapPage {...props} />)} />
-      <Route path="/calendar" element={gate(<Calendar {...props} />)} />
-      <Route path="/spare-parts" element={gate(<ComingSoon {...props} active="spare-parts" title="Warehouse Inventory"
-        description="Stock levels, bin locations and issues to work orders across your warehouses. This module is being prepared and will open here." />)} />
-      <Route path="/integrity" element={gate(['inspection:read', 'defect:read', 'risk:read'].some((c) => can(c)) ? <Integrity {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/defects" element={gate(can('defect:read') ? <Defects {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/risks" element={gate(can('risk:read') ? <Risks {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/approvals" element={gate(can('approval:read') ? <Approvals {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/depreciation" element={gate(can('depreciation:read') ? <Depreciation {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/analytics" element={gate(can('report:read') ? <Analytics {...props} /> : <Navigate to="/dashboard" replace />)} />
-      <Route path="/compliance" element={gate(<Compliance {...props} />)} />
-      <Route path="/inspections" element={gate(<Inspections {...props} />)} />
-      <Route path="/devices" element={gate(<Devices {...props} />)} />
-      <Route path="/integrations" element={gate(<Integrations {...props} />)} />
-      <Route path="/notifications" element={gate(<Notifications {...props} />)} />
-      <Route path="/settings" element={gate(<Settings {...props} />)} />
-      <Route path="/export" element={gate(can('report:read') ? <Export {...props} /> : <Navigate to="/dashboard" replace />)} />
+      {ROUTES.map((r) => (
+        <Route key={r.key} path={r.path} element={gate(canOpen(r, can) ? PAGES[r.key] : <Navigate to="/dashboard" replace />)} />
+      ))}
       {/* Reports became Export; old bookmarks still land somewhere real. */}
       <Route path="/reports" element={<Navigate to="/export" replace />} />
-      <Route path="/admin" element={gate(ADMIN_ENTRY_CAPS.some((c) => can(c)) ? <Admin {...props} /> : <Navigate to="/dashboard" replace />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
@@ -177,6 +149,7 @@ export default function App() {
       {/* Outermost, so every provider below can report a failure as a toast. */}
       <ToastProvider>
         <ConfirmProvider>
+        <ThemeProvider>
         <AuthProvider>
           <NotificationsProvider>
             <SidebarProvider>
@@ -188,6 +161,7 @@ export default function App() {
             </SidebarProvider>
           </NotificationsProvider>
         </AuthProvider>
+        </ThemeProvider>
         </ConfirmProvider>
       </ToastProvider>
     </ErrorBoundary>

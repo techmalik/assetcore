@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import Sidebar from '../../components/Sidebar.jsx'
-import Topbar from '../../components/Topbar.jsx'
 import { PrintQrSheet } from '../../components/AssetQr.jsx'
 import { listAssets, softDeleteAsset, restoreAsset } from '../../lib/db/assets'
 import TransferAssetsModal from '../../components/TransferAssetsModal.jsx'
@@ -25,9 +23,10 @@ import { AssetModal } from './AssetModal.jsx'
 import { WorkOrderForm } from '../work-orders/WorkOrderForm.jsx'
 import { CompleteMaintenanceModal } from './assetModals.jsx'
 import { ImportModal } from './ImportModal.jsx'
+import PageShell from '../../components/PageShell.jsx'
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-export default function Assets({ dark, toggleDark }) {
+export default function Assets() {
   const ask = useConfirm()
   const can = useCan()
   const toast = useToast()
@@ -146,10 +145,7 @@ export default function Assets({ dark, toggleDark }) {
   const toggleAllVisible = () => setSelectedIds(allVisibleSelected ? new Set() : new Set(visibleAssets.map((a) => a.id)))
 
   return (
-    <div className="app-shell">
-      <Sidebar active="assets" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Assets" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="assets" breadcrumb="Assets">
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {/* Toolbar */}
@@ -356,7 +352,7 @@ export default function Assets({ dark, toggleDark }) {
             )}
           </div>
         </div>
-      </div>
+      
 
       {modal && (
         <AssetModal
@@ -412,6 +408,6 @@ export default function Assets({ dark, toggleDark }) {
           onClose={() => setLabelling(false)}
         />
       )}
-    </div>
+</PageShell>
   )
 }

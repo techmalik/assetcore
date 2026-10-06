@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import Sidebar from '../../components/Sidebar.jsx'
-import Topbar from '../../components/Topbar.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
 import { listWorkOrders, transitionWorkOrder, WO_STATUS_LABEL, woStatusStyle } from '../../lib/db/workOrders'
 import { listSites } from '../../lib/db/sites'
@@ -17,9 +15,10 @@ import { WorkOrderBoard } from './WorkOrderBoard.jsx'
 import { useResource } from '../../lib/useResource'
 import TableState from '../../components/TableState.jsx'
 import { WODetail } from './WorkOrderDetail.jsx'
+import PageShell from '../../components/PageShell.jsx'
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-export default function WorkOrders({ dark, toggleDark }) {
+export default function WorkOrders() {
   const can = useCan()
   const { user } = useAuth()
   const toast = useToast()
@@ -105,10 +104,7 @@ export default function WorkOrders({ dark, toggleDark }) {
   const visibleWos = mineOnly ? wos.filter(w => w.assignee_id === user?.id) : wos
 
   return (
-    <div className="app-shell">
-      <Sidebar active="work-orders" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Work Orders" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="work-orders" breadcrumb="Work Orders">
 
         <div style={{ padding: '14px 24px', borderBottom: 'var(--bdr)', background: 'var(--n0)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
           <div>
@@ -223,11 +219,11 @@ export default function WorkOrders({ dark, toggleDark }) {
             <WODetail woId={selectedId} onClose={() => setSelectedId(null)} onUpdate={load} canTransition={canTransition} canEdit={canEdit} canAssign={canAssign} users={users} />
           )}
         </div>
-      </div>
+      
 
       {showNew && (
         <WorkOrderForm sites={sites} assets={assets} users={users} canAssign={canAssign} onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />
       )}
-    </div>
+</PageShell>
   )
 }

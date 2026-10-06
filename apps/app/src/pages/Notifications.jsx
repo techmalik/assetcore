@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import { useNotifications } from '../lib/NotificationsContext'
 import { getPreferences, upsertPreference } from '../lib/db/notifications'
 import { notificationHref, notificationLinkLabel } from '../lib/notificationLink'
 import { useToast } from '../lib/ToastContext'
 import { errorText } from '../lib/errors'
+import PageShell from '../components/PageShell.jsx'
 
 const KIND_META = {
   wo_transition: { label:'Work Order', dot:'var(--sl)', bg:'var(--slb)', c:'var(--slt)' },
@@ -74,7 +73,7 @@ const PREF_KINDS = [
   // that does nothing. (pm_due kept — 0016 gives it a real producer.)
 ]
 
-export default function Notifications({ dark, toggleDark }) {
+export default function Notifications() {
   const nav = useNavigate()
   const toast = useToast()
   const { notifications, unreadCount, markRead, markUnread, markAllRead } = useNotifications()
@@ -143,10 +142,7 @@ export default function Notifications({ dark, toggleDark }) {
   }
 
   return (
-    <div className="app-shell">
-      <Sidebar active="notifications"/>
-      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <Topbar breadcrumb="Notifications" dark={dark} toggleDark={toggleDark}/>
+    <PageShell active="notifications" breadcrumb="Notifications">
 
         <div className={`notif-row${mobileView === 'content' ? ' notif-row--content' : ''}`} style={{flex:1,overflow:'hidden',display:'flex'}}>
           {/* List */}
@@ -297,8 +293,7 @@ export default function Notifications({ dark, toggleDark }) {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }
 

@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import { useCan } from '../lib/AuthContext'
 import { listIntegrations, upsertIntegration } from '../lib/db/integrations'
 import { useToast } from '../lib/ToastContext'
 import { errorText } from '../lib/errors'
+import PageShell from '../components/PageShell.jsx'
 
 // ── Integration card configs ──────────────────────────────────────────────────
 const INTEGRATION_DEFS = [
@@ -203,7 +202,7 @@ function IntegrationCard({ def, row, canEdit, onSaved }) {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function Integrations({ dark, toggleDark }) {
+export default function Integrations() {
   const can = useCan()
   const canEdit = can('integration:manage')
   const toast = useToast()
@@ -224,10 +223,7 @@ export default function Integrations({ dark, toggleDark }) {
   const rowByKind = Object.fromEntries(rows.map(r => [r.kind, r]))
 
   return (
-    <div className="app-shell">
-      <Sidebar active="integrations" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Integrations" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="integrations" breadcrumb="Integrations">
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <div style={{ padding: '20px 24px', maxWidth: 860 }}>
@@ -261,7 +257,6 @@ export default function Integrations({ dark, toggleDark }) {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }

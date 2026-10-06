@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import {
   listSchedules, getDepreciationStats, getForecast, getAssetSchedule,
   previewSchedule, createSchedule, postSchedule, postAllSchedules, retireSchedule,
@@ -15,6 +13,7 @@ import { useResource } from '../lib/useResource'
 import { useConfirm } from '../lib/ConfirmContext'
 import { useToast } from '../lib/ToastContext'
 import Stat from '../components/Stat.jsx'
+import PageShell from '../components/PageShell.jsx'
 
 const THIS_YEAR = new Date().getFullYear()
 
@@ -334,7 +333,7 @@ function ScheduleDetail({ detail, canManage, busy, onPost, onRetire, onClose }) 
   )
 }
 
-export default function Depreciation({ dark, toggleDark }) {
+export default function Depreciation() {
   const toast = useToast()
   const ask = useConfirm()
   const can = useCan()
@@ -389,10 +388,7 @@ export default function Depreciation({ dark, toggleDark }) {
   const eligible = assets.filter((a) => !schedules.some((s) => s.asset_id === a.id))
 
   return (
-    <div className="app-shell">
-      <Sidebar active="depreciation" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Depreciation" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="depreciation" breadcrumb="Depreciation">
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px 0', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
@@ -516,7 +512,7 @@ export default function Depreciation({ dark, toggleDark }) {
 
           </div>
         </div>
-      </div>
+      
 
       {detail && !detail.loading && (
         <ScheduleDetail
@@ -536,6 +532,6 @@ export default function Depreciation({ dark, toggleDark }) {
           onCreated={() => { setCreating(false); load() }}
         />
       )}
-    </div>
+</PageShell>
   )
 }

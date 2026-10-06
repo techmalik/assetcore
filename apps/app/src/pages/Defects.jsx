@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import IntegrityTabs from '../components/IntegrityTabs.jsx'
 import {
   listDefects, getDefect, getDefectStats, createDefect, updateDefect,
@@ -20,6 +18,7 @@ import Stat from '../components/Stat.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import TableState from '../components/TableState.jsx'
 import { Field, FormError, useForm } from '../components/form.jsx'
+import PageShell from '../components/PageShell.jsx'
 
 const SEVERITY_CLASS = {
   minor: 'badge-n', moderate: 'badge-b', major: 'badge-a', critical: 'badge-r',
@@ -286,7 +285,7 @@ function DeferralSection({ defect, canSubmit, canRead }) {
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function Defects({ dark, toggleDark }) {
+export default function Defects() {
   const can = useCan()
   const nav = useNavigate()
   const canCreate = can('defect:create')
@@ -349,10 +348,7 @@ export default function Defects({ dark, toggleDark }) {
   const setFilter = (k, v) => setFilters((p) => ({ ...p, [k]: v }))
 
   return (
-    <div className="app-shell">
-      <Sidebar active="integrity" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Integrity / Defects" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="integrity" breadcrumb="Integrity / Defects">
         <IntegrityTabs active="defects" />
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -558,7 +554,7 @@ export default function Defects({ dark, toggleDark }) {
             )}
           </div>
         </div>
-      </div>
+      
 
       {modal && (
         <DefectModal
@@ -575,6 +571,6 @@ export default function Defects({ dark, toggleDark }) {
           onRaised={() => { setRaising(null); load(); if (detail?.id) openDetail(detail.id) }}
         />
       )}
-    </div>
+</PageShell>
   )
 }

@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 import { useAuth, initialsOf } from '../lib/AuthContext.jsx'
 import { useLocationFilter } from '../lib/LocationFilterContext'
@@ -12,6 +10,7 @@ import { WO_STATUS_LABEL, WO_PRIORITY_LABEL, woStatusStyle, WO_PRIORITY_STYLE } 
 import { errorText } from '../lib/errors'
 import { useMoney } from '../lib/money'
 import { todayISO, addDaysISO } from '../lib/dates'
+import PageShell from '../components/PageShell.jsx'
 
 const ALERT_SEVERITY_STYLE = {
   critical: { c: 'var(--srt)', bg: 'var(--srb)' },
@@ -90,7 +89,7 @@ function StatCard({ label, value, sub, pill, tone, href, nav }) {
   )
 }
 
-export default function Dashboard({ dark, toggleDark }) {
+export default function Dashboard() {
   const { org, fullName } = useAuth()
   const { money } = useMoney()
   const now = new Date()
@@ -132,10 +131,7 @@ export default function Dashboard({ dark, toggleDark }) {
   const critArc = hb && a.total ? (hb.critical / a.total) * C : 0
 
   return (
-    <div className="app-shell">
-      <Sidebar active="dashboard"/>
-      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <Topbar breadcrumb="Dashboard" dark={dark} toggleDark={toggleDark}/>
+    <PageShell active="dashboard" breadcrumb="Dashboard">
 
         <div style={{flex:1,overflowY:'auto',padding:24}}>
           {/* Page header */}
@@ -413,7 +409,6 @@ export default function Dashboard({ dark, toggleDark }) {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }

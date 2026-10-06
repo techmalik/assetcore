@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import IntegrityTabs from '../components/IntegrityTabs.jsx'
 import {
   listRisks, getRisk, getRiskMatrix, getRiskStats, createRisk, updateRisk, archiveRisk,
@@ -18,6 +16,7 @@ import Stat from '../components/Stat.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import TableState from '../components/TableState.jsx'
 import { Field, FormError, useForm } from '../components/form.jsx'
+import PageShell from '../components/PageShell.jsx'
 
 const STATUS_CLASS = {
   open: 'badge-r', mitigating: 'badge-a', accepted: 'badge-b', closed: 'badge-n',
@@ -313,7 +312,7 @@ function RiskModal({ risk, onClose, onSave, assets, sites, members }) {
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function Risks({ dark, toggleDark }) {
+export default function Risks() {
   const can = useCan()
   const canCreate = can('risk:create')
   const canEdit = can('risk:update')
@@ -372,10 +371,7 @@ export default function Risks({ dark, toggleDark }) {
   const setFilter = (k, v) => setFilters((p) => ({ ...p, [k]: v }))
 
   return (
-    <div className="app-shell">
-      <Sidebar active="integrity" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Integrity / Risk" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="integrity" breadcrumb="Integrity / Risk">
         <IntegrityTabs active="risks" />
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -638,7 +634,7 @@ export default function Risks({ dark, toggleDark }) {
             )}
           </div>
         </div>
-      </div>
+      
 
       {modal && (
         <RiskModal
@@ -648,6 +644,6 @@ export default function Risks({ dark, toggleDark }) {
           onSave={() => { setModal(null); load(); if (detail?.id) openDetail(detail.id) }}
         />
       )}
-    </div>
+</PageShell>
   )
 }

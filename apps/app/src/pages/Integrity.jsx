@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import IntegrityTabs from '../components/IntegrityTabs.jsx'
 import { useCan } from '../lib/AuthContext.jsx'
 import { useLocationFilter } from '../lib/LocationFilterContext'
@@ -10,6 +8,7 @@ import { BAND_META, bandOf } from '../lib/db/risks'
 import { RATING_LABEL } from '../lib/db/inspections'
 import { fmtDate } from '../lib/dates'
 import { useResource } from '../lib/useResource'
+import PageShell from '../components/PageShell.jsx'
 
 function Pill({ meta, children }) {
   return (
@@ -41,7 +40,7 @@ function Figure({ label, value, color }) {
   )
 }
 
-export default function Integrity({ dark, toggleDark }) {
+export default function Integrity() {
   const can = useCan()
   const nav = useNavigate()
   const canInspections = can('inspection:read')
@@ -73,10 +72,7 @@ export default function Integrity({ dark, toggleDark }) {
   const total = data?.assets.length ?? 0
 
   return (
-    <div className="app-shell">
-      <Sidebar active="integrity" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Integrity" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="integrity" breadcrumb="Integrity">
         <IntegrityTabs active="overview" />
         <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           <div className="page-header" style={{ marginBottom: 18, flexWrap: 'wrap' }}>
@@ -214,7 +210,6 @@ export default function Integrity({ dark, toggleDark }) {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }

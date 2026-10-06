@@ -1,7 +1,5 @@
 import { useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import AssignModal, { assignmentSummary } from '../components/AssignModal.jsx'
 import InspectionsPanel from '../components/InspectionsPanel.jsx'
 import CompliancePanel from '../components/CompliancePanel.jsx'
@@ -23,8 +21,9 @@ import { ScheduleModal } from './maintenance/ScheduleModal.jsx'
 import { CompleteTaskModal, ReportModal } from './maintenance/taskModals.jsx'
 import { TasksTable } from './maintenance/TasksTable.jsx'
 import { SchedulesView, EmptyPM } from './maintenance/schedules.jsx'
+import PageShell from '../components/PageShell.jsx'
 
-export default function Maintenance({ dark, toggleDark }) {
+export default function Maintenance() {
   const ask = useConfirm()
   const can = useCan()
   const toast = useToast()
@@ -136,10 +135,7 @@ export default function Maintenance({ dark, toggleDark }) {
   const visibleTasks = overdueOnly ? mineFiltered.filter(t => t.status === 'overdue') : mineFiltered
 
   return (
-    <div className="app-shell">
-      <Sidebar active="maintenance"/>
-      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <Topbar breadcrumb="Maintenance" dark={dark} toggleDark={toggleDark}/>
+    <PageShell active="maintenance" breadcrumb="Maintenance">
 
         <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
           <div style={{padding:'14px 24px 0',borderBottom:'var(--bdr)',background:'var(--n0)',flexShrink:0}}>
@@ -241,7 +237,7 @@ export default function Maintenance({ dark, toggleDark }) {
 
           </div>
         </div>
-      </div>
+      
 
       {showModal && <ScheduleModal users={users} assets={assets} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); load() }}/>}
       {completing && <CompleteTaskModal task={completing} onClose={() => setCompleting(null)} onDone={onTaskCompleted}/>}
@@ -251,6 +247,6 @@ export default function Maintenance({ dark, toggleDark }) {
           current={assignmentSummary({ assignee: assigning.assignee, assigner: assigning.assigner, assignedAt: assigning.assigned_at })}
           onClose={() => setAssigning(null)} onSave={(userId) => saveAssignment(assigning.id, userId)}/>
       )}
-    </div>
+</PageShell>
   )
 }

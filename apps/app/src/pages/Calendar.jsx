@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import { getCalendar } from '../lib/db/analytics'
 import { errorText } from '../lib/errors'
 import { todayISO } from '../lib/dates'
+import PageShell from '../components/PageShell.jsx'
 
 /**
  * One month, with everything that has a date on it.
@@ -84,7 +83,7 @@ function EventChip({ event, onOpen }) {
   )
 }
 
-export default function Calendar({ dark, toggleDark }) {
+export default function Calendar() {
   const nav = useNavigate()
   const today = new Date()
   const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() })
@@ -134,10 +133,7 @@ export default function Calendar({ dark, toggleDark }) {
   const counts = events.reduce((acc, e) => { acc[e.entity] = (acc[e.entity] || 0) + 1; return acc }, {})
 
   return (
-    <div className="app-shell">
-      <Sidebar active="calendar" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Calendar" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="calendar" breadcrumb="Calendar">
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px 12px', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
@@ -256,7 +252,6 @@ export default function Calendar({ dark, toggleDark }) {
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }

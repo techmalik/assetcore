@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import {
   listSpareParts, getSparePart, getPartStats, listPartCategories,
   createSparePart, updateSparePart, archiveSparePart, adjustStock,
@@ -12,6 +10,7 @@ import { useMoney, Money } from '../lib/money'
 import { errorText } from '../lib/errors'
 import { useConfirm } from '../lib/ConfirmContext'
 import { useToast } from '../lib/ToastContext'
+import PageShell from '../components/PageShell.jsx'
 
 
 // Stock is numeric so consumables can be issued in litres — but 13.00 reads
@@ -234,7 +233,7 @@ function AdjustModal({ part, onClose, onSaved }) {
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function SpareParts({ dark, toggleDark }) {
+export default function SpareParts() {
   const toast = useToast()
   const ask = useConfirm()
   const can = useCan()
@@ -298,10 +297,7 @@ export default function SpareParts({ dark, toggleDark }) {
   const setFilter = (k, v) => setFilters((p) => ({ ...p, [k]: v }))
 
   return (
-    <div className="app-shell">
-      <Sidebar active="spare-parts" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Spare Parts" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="spare-parts" breadcrumb="Spare Parts">
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px 12px', borderBottom: 'var(--bdr)', background: 'var(--n0)', flexShrink: 0 }}>
@@ -491,7 +487,7 @@ export default function SpareParts({ dark, toggleDark }) {
             )}
           </div>
         </div>
-      </div>
+      
 
       {modal && (
         <PartModal
@@ -507,6 +503,6 @@ export default function SpareParts({ dark, toggleDark }) {
           onSaved={() => { setAdjusting(null); load(); if (detail?.id) openDetail(detail.id) }}
         />
       )}
-    </div>
+</PageShell>
   )
 }

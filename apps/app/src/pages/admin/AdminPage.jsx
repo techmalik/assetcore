@@ -1,7 +1,6 @@
 import { lazy, Suspense, useState, useEffect } from 'react'
-import Sidebar from '../../components/Sidebar.jsx'
-import Topbar from '../../components/Topbar.jsx'
 import { useAuth, useCan } from '../../lib/AuthContext.jsx'
+import PageShell from '../../components/PageShell.jsx'
 
 // Each tab is loaded when it is first opened: most visits use one of the
 // seven, and a viewer who can open only the audit log never downloads the
@@ -26,7 +25,7 @@ const TABS = [
   { k: 'audit', label: 'Audit Log', cap: 'audit:read' },
 ]
 
-export default function Admin({ dark, toggleDark }) {
+export default function Admin() {
   const can = useCan()
   const { roleKey } = useAuth()
   const visibleTabs = TABS.filter((t) => can(t.cap))
@@ -37,10 +36,7 @@ export default function Admin({ dark, toggleDark }) {
   }, [roleKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="app-shell">
-      <Sidebar active="admin"/>
-      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <Topbar breadcrumb="Admin" dark={dark} toggleDark={toggleDark}/>
+    <PageShell active="admin" breadcrumb="Admin">
         <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
           <div style={{padding:'14px 24px 0',borderBottom:'var(--bdr)',background:'var(--n0)',flexShrink:0}}>
             <div style={{marginBottom:12}}>
@@ -66,7 +62,6 @@ export default function Admin({ dark, toggleDark }) {
             </Suspense>
           </div>
         </div>
-      </div>
-    </div>
+      </PageShell>
   )
 }

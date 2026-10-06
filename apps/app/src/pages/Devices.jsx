@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import Sidebar from '../components/Sidebar.jsx'
-import Topbar from '../components/Topbar.jsx'
 import { useCan } from '../lib/AuthContext'
 import { listDevices, createDevice, updateDevice } from '../lib/db/devices'
 import { listSites } from '../lib/db/sites'
 import { listAssets } from '../lib/db/assets'
 import { errorText } from '../lib/errors'
 import EmptyState from '../components/EmptyState.jsx'
+import PageShell from '../components/PageShell.jsx'
 
 const STATUS_META = {
   online:          { label: 'Online',         dot: 'var(--sg)',    c: 'var(--sgt)', bg: 'var(--sgb)', br: 'var(--sgbr)' },
@@ -144,7 +143,7 @@ function SummaryChip({ label, count, active, onClick, color }) {
   )
 }
 
-export default function Devices({ dark, toggleDark }) {
+export default function Devices() {
   const can = useCan()
   // Was 'wo:create'. Device writes are gated on asset:update server-side
   // (routes/devices.ts) — before that gate existed they were gated on
@@ -175,10 +174,7 @@ export default function Devices({ dark, toggleDark }) {
   const shown = filter === 'all' ? devices : devices.filter(d => d.status === filter)
 
   return (
-    <div className="app-shell">
-      <Sidebar active="devices" />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar breadcrumb="Devices" dark={dark} toggleDark={toggleDark} />
+    <PageShell active="devices" breadcrumb="Devices">
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {/* Header */}
@@ -269,7 +265,7 @@ export default function Devices({ dark, toggleDark }) {
             )}
           </div>
         </div>
-      </div>
+      
 
       {modal && (
         <DeviceModal
@@ -280,7 +276,7 @@ export default function Devices({ dark, toggleDark }) {
           onSaved={() => { setModal(null); load() }}
         />
       )}
-    </div>
+</PageShell>
   )
 }
 
