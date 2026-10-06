@@ -5,6 +5,14 @@ import { ROLE_KEYS, ROLE_LABELS } from '../../lib/rbac.js'
 import { useToast } from '../../lib/ToastContext'
 import { errorText } from '../../lib/errors'
 import { useConfirm } from '../../lib/ConfirmContext'
+import { useResource } from '../../lib/useResource'
+import { fmtDate, fmtDateTime } from '../../lib/dates'
+import { PRIORITIES, PRIORITY, labelOf } from '../../lib/domain'
+import { DEFECT_SEVERITIES } from '../../lib/db/defects'
+import Modal from '../../components/Modal.jsx'
+import { Field, FormError, useForm } from '../../components/form.jsx'
+import TableState from '../../components/TableState.jsx'
+import EmptyState from '../../components/EmptyState.jsx'
 
 // ── Escalations Tab ───────────────────────────────────────────────────────────
 /**
@@ -21,7 +29,7 @@ import { useConfirm } from '../../lib/ConfirmContext'
  */
 function RuleModal({ rule, onClose, onSaved }) {
   const toast = useToast()
-  const [form, setForm] = useState({
+  const { form, set } = useForm({
     name: rule?.name || '',
     entity_type: rule?.entity_type || 'work_order',
     trigger: rule?.trigger || 'overdue',
@@ -33,7 +41,6 @@ function RuleModal({ rule, onClose, onSaved }) {
   })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   // Changing the entity can strand the trigger on a pair the evaluator has no
   // query for, which the API rejects. Move to the first valid one instead of
@@ -68,83 +75,77 @@ function RuleModal({ rule, onClose, onSaved }) {
     }
   }
 
-  const lbl = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--n600)' }
-  const sel = { height: 36, border: '1px solid var(--n200)', borderRadius: 4, padding: '0 8px', fontSize: 13, background: 'var(--n0)', color: 'var(--n900)', width: '100%' }
-
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
-        <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:18}}>{rule ? 'Edit Escalation Rule' : 'New Escalation Rule'}</div>
-        <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
-          <label style={lbl}>Rule name
-            <input value={form.name} onChange={e => set('name', e.target.value)} className="input"
-              placeholder="e.g. Critical work orders unresolved after 2 days" />
-          </label>
+    <Modal
+      title={rule ? 'Edit Escalation Rule' : 'New Escalation Rule'}
+      width={460}
+      as="form"
+      onSubmit={submit}
+      onClose={onClose}
+      bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+      footer={(
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save Rule'}</button>
+        </>
+      )}
+    >
+      <Field label="Rule name" required>
+        <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)}
+          placeholder="e.g. Critical work orders unresolved after 2 days" />
+      </Field>
 
-          <div className="form-grid" style={{gap:10}}>
-            <label style={lbl}>Applies to
-              <select value={form.entity_type} onChange={e => set('entity_type', e.target.value)} style={sel}>
-                {ESCALATION_ENTITY_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </label>
-            <label style={lbl}>When it has been
-              <select value={form.trigger} onChange={e => set('trigger', e.target.value)} style={sel}>
-                {triggers.map(t => <option key={t} value={t}>{TRIGGER_LABEL[t]}</option>)}
-              </select>
-            </label>
-          </div>
-
-          <label style={lbl}>For at least
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <input type="number" min={0} max={365} value={form.threshold_days}
-                onChange={e => set('threshold_days', e.target.value)}
-                style={{...sel, width: 90}} />
-              <span style={{fontSize:13,color:'var(--n600)'}}>days</span>
-            </div>
-            <span style={{fontSize:11,color:'var(--n400)'}}>
-              Zero means the moment it qualifies — the rules are evaluated once a night.
-            </span>
-          </label>
-
-          {form.entity_type === 'work_order' && (
-            <label style={lbl}>Only when priority is
-              <select value={form.priority} onChange={e => set('priority', e.target.value)} style={sel}>
-                <option value="">— Any priority —</option>
-                {['low','medium','high','critical'].map(p => <option key={p} value={p}>{p[0].toUpperCase() + p.slice(1)}</option>)}
-              </select>
-            </label>
-          )}
-          {form.entity_type === 'defect' && (
-            <label style={lbl}>Only when severity is
-              <select value={form.severity} onChange={e => set('severity', e.target.value)} style={sel}>
-                <option value="">— Any severity —</option>
-                {['minor','moderate','major','critical'].map(sv => <option key={sv} value={sv}>{sv[0].toUpperCase() + sv.slice(1)}</option>)}
-              </select>
-            </label>
-          )}
-
-          <label style={lbl}>Notify
-            <select value={form.notify_role_key} onChange={e => set('notify_role_key', e.target.value)} style={sel}>
-              {ROLE_KEYS.map(k => <option key={k} value={k}>{ROLE_LABELS[k] || k}</option>)}
-            </select>
-            <span style={{fontSize:11,color:'var(--n400)'}}>
-              Everyone holding that role, subject to their own notification preferences.
-            </span>
-          </label>
-
-          <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:'var(--n700)'}}>
-            <input type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)} />
-            Active — evaluated nightly
-          </label>
-
-          {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
-          <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:6}}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save Rule'}</button>
-          </div>
-        </form>
+      <div className="form-grid" style={{ gap: 10 }}>
+        <Field label="Applies to">
+          <select className="input" value={form.entity_type} onChange={(e) => set('entity_type', e.target.value)}>
+            {ESCALATION_ENTITY_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </Field>
+        <Field label="When it has been">
+          <select className="input" value={form.trigger} onChange={(e) => set('trigger', e.target.value)}>
+            {triggers.map((t) => <option key={t} value={t}>{TRIGGER_LABEL[t]}</option>)}
+          </select>
+        </Field>
       </div>
-    </div>
+
+      <Field label="For at least" hint="Zero means the moment it qualifies — the rules are evaluated once a night.">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input className="input" type="number" min={0} max={365} value={form.threshold_days}
+            onChange={(e) => set('threshold_days', e.target.value)} style={{ width: 90 }} />
+          <span style={{ fontSize: 13, color: 'var(--n600)' }}>days</span>
+        </div>
+      </Field>
+
+      {form.entity_type === 'work_order' && (
+        <Field label="Only when priority is">
+          <select className="input" value={form.priority} onChange={(e) => set('priority', e.target.value)}>
+            <option value="">— Any priority —</option>
+            {PRIORITIES.map((p) => <option key={p} value={p}>{labelOf(PRIORITY, p)}</option>)}
+          </select>
+        </Field>
+      )}
+      {form.entity_type === 'defect' && (
+        <Field label="Only when severity is">
+          <select className="input" value={form.severity} onChange={(e) => set('severity', e.target.value)}>
+            <option value="">— Any severity —</option>
+            {DEFECT_SEVERITIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </Field>
+      )}
+
+      <Field label="Notify" hint="Everyone holding that role, subject to their own notification preferences.">
+        <select className="input" value={form.notify_role_key} onChange={(e) => set('notify_role_key', e.target.value)}>
+          {ROLE_KEYS.map((k) => <option key={k} value={k}>{ROLE_LABELS[k] || k}</option>)}
+        </select>
+      </Field>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--n700)' }}>
+        <input type="checkbox" checked={form.active} onChange={(e) => set('active', e.target.checked)} />
+        Active — evaluated nightly
+      </label>
+
+      <FormError>{err}</FormError>
+    </Modal>
   )
 }
 
@@ -153,20 +154,13 @@ export default function EscalationsTab() {
   const can = useCan()
   const toast = useToast()
   const canManage = can('escalation:manage')
-  const [rules, setRules] = useState([])
-  const [events, setEvents] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState('')
+  const { data, loading, error, reload: load } = useResource(
+    () => Promise.all([listEscalationRules(), listEscalationEvents(15)]).then(([rules, events]) => ({ rules, events })),
+    [], { initial: { rules: [], events: [] }, keepPrevious: true },
+  )
+  const { rules, events } = data
   const [modal, setModal] = useState(null)
   const [running, setRunning] = useState(false)
-
-  function load() {
-    setLoading(true)
-    Promise.all([listEscalationRules(), listEscalationEvents(15)])
-      .then(([r, e]) => { setRules(r); setEvents(e); setLoading(false) })
-      .catch(e => { setErr(errorText(e)); setLoading(false) })
-  }
-  useEffect(() => { load() }, [])
 
   async function retire(rule) {
     if (!(await ask(`Retire “${rule.name}”? It stops being evaluated; the escalations it already raised are kept.`, { danger: true, confirmLabel: 'Retire' }))) return
@@ -205,15 +199,11 @@ export default function EscalationsTab() {
         catches anything without waiting until morning.
       </div>
 
-      {loading ? (
-        <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
-      ) : err ? (
-        <div style={{padding:12,background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:6,fontSize:13,color:'var(--srt)'}}>{err}</div>
-      ) : rules.length === 0 ? (
-        <div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>
-          No escalation rules yet — nothing is chased automatically.
-        </div>
-      ) : (
+      <TableState
+        loading={loading} error={error} onRetry={load}
+        isEmpty={rules.length === 0}
+        empty={<EmptyState title="No escalation rules yet" body="Nothing is chased automatically." />}
+      >
         <div className="table-scroll" style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:6,overflow:'hidden'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
             <thead>
@@ -241,7 +231,7 @@ export default function EscalationsTab() {
                   <td style={{padding:'10px 12px',color:r.fired_count ? 'var(--n700)' : 'var(--n400)',whiteSpace:'nowrap'}}>
                     {r.fired_count || 'never'}
                     {r.last_fired_at && (
-                      <div style={{fontSize:11,color:'var(--n500)'}}>{new Date(r.last_fired_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>
+                      <div style={{fontSize:11,color:'var(--n500)'}}>{fmtDate(r.last_fired_at)}</div>
                     )}
                   </td>
                   <td style={{padding:'10px 12px'}}>
@@ -260,7 +250,7 @@ export default function EscalationsTab() {
             </tbody>
           </table>
         </div>
-      )}
+      </TableState>
 
       {!loading && events.length > 0 && (
         <div style={{marginTop:24,maxWidth:720}}>
@@ -271,7 +261,7 @@ export default function EscalationsTab() {
                 <span style={{flex:1,color:'var(--n800)'}}>{e.rule_name}</span>
                 <span style={{color:'var(--n500)'}}>{ROLE_LABELS[e.notify_role_key] || e.notify_role_key}</span>
                 <span style={{color:'var(--n400)',fontFamily:'var(--ff-m)',fontSize:11}}>
-                  {new Date(e.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+                  {fmtDateTime(e.created_at)}
                 </span>
               </div>
             ))}
