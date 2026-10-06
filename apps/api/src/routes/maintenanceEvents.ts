@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { uploadRoute, optionalUploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyRoleHolders } from '../notify.js'
@@ -89,7 +89,7 @@ maintenanceEventsRouter.post(
         const { rows: woRows } = await c.query('select status from public.work_orders where id = $1 and deleted_at is null', [work_order_id])
         if (woRows[0] && woRows[0].status !== 'closed') {
           const closed = await transitionWorkOrder(c, work_order_id, 'closed', {
-            actorId: req.claims!.sub, comment: 'Closed via maintenance completion.',
+            actorId: req.claims!.sub, ip: req.ip ?? null, comment: 'Closed via maintenance completion.',
           })
           if ('error' in closed) return closed
         }
@@ -127,10 +127,9 @@ maintenanceEventsRouter.post(
         [asset.id, activityBody, JSON.stringify(file ? [{ url: file.url, name: file.name }] : [])]
       )
 
-      await writeAuditLog(c, {
-        orgId: asset.org_id, actorId: req.claims!.sub, action: 'maintenance.complete',
-        entityType: 'asset', entityId: asset.id, after: event,
-      })
+      await auditFromReq(c, req, {
+      action: 'maintenance.complete',
+        entityType: 'asset', entityId: asset.id, after: event})
 
       await notifyRoleHolders(c, {
         orgId: asset.org_id, siteId: asset.site_id, roles: ['owner', 'admin', 'manager'],
@@ -171,7 +170,7 @@ maintenanceEventsRouter.post(
         [rows[0].asset_id, JSON.stringify([{ url, name: file.name }])]
       )
       const { rows: full } = await c.query('select * from public.maintenance_events where id = $1', [req.params.id])
-      await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'maintenance_event.attachment.add', entityType: 'maintenance_event', entityId: rows[0].id, after: { url, name: file.name } })
+      await auditFromReq(c, req, { action: 'maintenance_event.attachment.add', entityType: 'maintenance_event', entityId: rows[0].id, after: { url, name: file.name } })
       await notifyRoleHolders(c, {
         orgId: rows[0].org_id, siteId: rows[0].site_id, roles: ['owner', 'admin', 'manager'],
         actorId: req.claims!.sub, kind: 'report_uploaded',

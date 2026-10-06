@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
 import { buildSet } from '../../sqlUtil.js'
 import { parseOr400 } from '../../http/validate.js'
 

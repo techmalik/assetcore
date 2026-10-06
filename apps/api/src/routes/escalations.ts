@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext, ownerPool } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 import { ROLE_KEYS } from '../middleware/rbac.js'
 import { ESCALATION_ENTITY_TYPES, ESCALATION_TRIGGERS, VALID_TRIGGERS, PRIORITIES, DEFECT_SEVERITIES } from '@assetcore/domain'
@@ -88,10 +88,9 @@ escalationsRouter.post('/escalation-rules', requireCap('escalation:manage'), asy
       [d.name, d.entity_type, d.trigger, d.threshold_days, d.priority ?? null, d.severity ?? null,
        d.notify_role_key, d.active ?? true]
     )
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'escalation.rule.create',
-      entityType: 'escalation_rule', entityId: rows[0].id, after: d,
-    })
+    await auditFromReq(c, req, {
+      action: 'escalation.rule.create',
+      entityType: 'escalation_rule', entityId: rows[0].id, after: d})
     const { rows: full } = await c.query(`${SELECT} where r.id = $1`, [rows[0].id])
     return full[0]
   })
@@ -122,10 +121,9 @@ escalationsRouter.patch('/escalation-rules/:id', requireCap('escalation:manage')
     const { setSql, values } = buildSet(patch, ALLOWED)
     if (!setSql) return { error: 'empty_patch' as const }
     await c.query(`update public.escalation_rules set ${setSql} where id = $1`, [req.params.id, ...values])
-    await writeAuditLog(c, {
-      orgId: cur[0].org_id, actorId: req.claims!.sub, action: 'escalation.rule.update',
-      entityType: 'escalation_rule', entityId: String(req.params.id), after: patch,
-    })
+    await auditFromReq(c, req, {
+      action: 'escalation.rule.update',
+      entityType: 'escalation_rule', entityId: String(req.params.id), after: patch})
     const { rows: full } = await c.query(`${SELECT} where r.id = $1`, [req.params.id])
     return { data: full[0] }
   })
@@ -145,10 +143,9 @@ escalationsRouter.delete('/escalation-rules/:id', requireCap('escalation:manage'
       [req.params.id]
     )
     if (rows[0]) {
-      await writeAuditLog(c, {
-        orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'escalation.rule.retire',
-        entityType: 'escalation_rule', entityId: rows[0].id,
-      })
+      await auditFromReq(c, req, {
+      action: 'escalation.rule.retire',
+        entityType: 'escalation_rule', entityId: rows[0].id})
     }
     return rows[0]
   })

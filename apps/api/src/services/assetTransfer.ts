@@ -21,7 +21,8 @@ import { writeAuditLog } from '../audit.js'
 export async function transferAssets(
   c: PoolClient,
   { assetIds, toSiteId, reason, transferredAt }: { assetIds: string[]; toSiteId: string; reason?: string; transferredAt?: string },
-  actorId: string
+  actorId: string,
+  ip: string | null = null,
 ) {
   // sites RLS is org-only, but the assets being moved are site-scoped: a
   // scoped caller moving equipment somewhere they cannot see would fail the
@@ -96,7 +97,7 @@ export async function transferAssets(
       [id, a.site_id, toSiteId, reason || null, transferredAt ?? null]
     )
     await writeAuditLog(c, {
-      orgId: a.org_id, actorId: actorId, action: 'asset.transfer', entityType: 'asset', entityId: id,
+      orgId: a.org_id, actorId, ip, action: 'asset.transfer', entityType: 'asset', entityId: id,
       before: { site_id: a.site_id, site_name: a.from_site_name, status: a.status },
       after: { site_id: toSiteId, site_name: dest[0].name, status: upd[0].status, reason: reason || null, transferred_at: transferredAt ?? null },
     })

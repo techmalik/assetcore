@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
 import { notifyUsers, notifyRoleHolders } from '../notify.js'
@@ -130,7 +130,7 @@ inspectionsRouter.post('/inspections', requireCap('inspection:create'), async (r
     }
     const { rows: full } = await c.query(`${SELECT} where i.id = $1`, [rows[0].id])
     const inspection = full[0]
-    await writeAuditLog(c, { orgId: inspection.org_id, actorId: req.claims!.sub, action: 'inspection.create', entityType: 'inspection', entityId: inspection.id, after: inspection })
+    await auditFromReq(c, req, { action: 'inspection.create', entityType: 'inspection', entityId: inspection.id, after: inspection })
     if (inspection.inspector_id) {
       const assignerName = inspection.assigner?.full_name
       await notifyUsers(c, {
@@ -191,13 +191,12 @@ inspectionsRouter.patch('/inspections/:id', requireCap('inspection:update'), asy
     // as a generic `inspection.update` with no before, so the audit log could
     // not even be read as "this was an assignment", let alone say from whom.
     if (inspectorChanged) {
-      await writeAuditLog(c, {
-        orgId: inspection.org_id, actorId: req.claims!.sub, action: 'inspection.assign',
+      await auditFromReq(c, req, {
+      action: 'inspection.assign',
         entityType: 'inspection', entityId: inspection.id,
-        before: { inspector_id: before[0].inspector_id }, after: { inspector_id: parsed.data.inspector_id ?? null },
-      })
+        before: { inspector_id: before[0].inspector_id }, after: { inspector_id: parsed.data.inspector_id ?? null }})
     } else {
-      await writeAuditLog(c, { orgId: inspection.org_id, actorId: req.claims!.sub, action: 'inspection.update', entityType: 'inspection', entityId: inspection.id, after: inspection })
+      await auditFromReq(c, req, { action: 'inspection.update', entityType: 'inspection', entityId: inspection.id, after: inspection })
     }
 
     if (inspectorChanged && parsed.data.inspector_id) {
@@ -253,7 +252,7 @@ inspectionsRouter.post('/inspections/:id/report', requireCap('inspection:update'
     }
     const { rows: full } = await c.query(`${SELECT} where i.id = $1`, [req.params.id])
     const inspection = full[0]
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'inspection.attachment.add', entityType: 'inspection', entityId: rows[0].id, after: { url, name: file.name } })
+    await auditFromReq(c, req, { action: 'inspection.attachment.add', entityType: 'inspection', entityId: rows[0].id, after: { url, name: file.name } })
     await notifyRoleHolders(c, {
       orgId: inspection.org_id, siteId: inspection.site_id, roles: ['owner', 'admin', 'manager', 'hse_officer'],
       actorId: req.claims!.sub, kind: 'report_uploaded',
@@ -304,10 +303,9 @@ inspectionsRouter.post('/inspection-templates', requireCap('inspection:update'),
       [parsed.data.name, parsed.data.kind ?? 'condition', parsed.data.description ?? null,
        JSON.stringify(parsed.data.items), parsed.data.active ?? true]
     )
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'inspection.template.create',
-      entityType: 'inspection_template', entityId: rows[0].id, after: parsed.data,
-    })
+    await auditFromReq(c, req, {
+      action: 'inspection.template.create',
+      entityType: 'inspection_template', entityId: rows[0].id, after: parsed.data})
     return rows[0]
   }).catch((err: unknown) => {
     if (err instanceof Error && err.message.includes('inspection_templates_org_id_name_key')) return 'duplicate' as const

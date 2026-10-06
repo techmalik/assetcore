@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { hasCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { localDateStamp, renderCsv, renderXlsx } from '../reportBuilders.js'
 import { DATASETS, schemaFlags, filtersFor, parseCommon } from '../exports/index.js'
 import { ROW_LIMIT } from '../exports/common.js'
@@ -66,15 +66,12 @@ exportsRouter.get('/exports/:dataset', async (req, res) => {
     // the log claiming a download that never happened.
     const body = format === 'xlsx' ? await renderXlsx(data, ds.label) : Buffer.from(renderCsv(data), 'utf8')
 
-    await writeAuditLog(c, {
-      orgId: req.claims!.org_id!,
-      actorId: req.claims!.sub,
+    await auditFromReq(c, req, {
       action: 'export.download',
       entityType: 'export',
       // `title` is what resolve_audit_label reads for a row with no entity_id,
       // so the log's Entity column says which register left the building.
       after: { title: ds.label, dataset: ds.key, format, filters: ds.parse ? raw : f, row_count: data.rows.length, truncated },
-      ip: req.ip ?? null,
     })
     return { body, rowCount: data.rows.length, truncated }
   })

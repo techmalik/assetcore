@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
+import { auditFromReq } from '../../audit.js'
 import { buildSet, buildInsert } from '../../sqlUtil.js'
 import { uploadRoute, DOCUMENT_MIME_TYPES } from '../../files.js'
 import { nextRef } from '../../refs.js'
@@ -142,10 +142,9 @@ auditsRouter.post('/compliance-audits', requireCap('compliance:create'), async (
        returning id, org_id`,
       [ref, ...values]
     )
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_audit.create',
-      entityType: 'compliance_audit', entityId: rows[0].id, after: { ref, ...input },
-    })
+    await auditFromReq(c, req, {
+      action: 'compliance_audit.create',
+      entityType: 'compliance_audit', entityId: rows[0].id, after: { ref, ...input }})
     const { rows: full } = await c.query(`${AUDIT_SELECT} where ca.id = $1`, [rows[0].id])
     return full[0]
   })
@@ -182,11 +181,10 @@ auditsRouter.patch('/compliance-audits/:id', requireCap('compliance:update'), as
     const { setSql, values } = buildSet(patch, AUDIT_ALLOWED)
     if (!setSql) return { error: 'empty_patch' as const }
     await c.query(`update public.compliance_audits set ${setSql} where id = $1`, [req.params.id, ...values])
-    await writeAuditLog(c, {
-      orgId: cur[0].org_id, actorId: req.claims!.sub, action: 'compliance_audit.update',
+    await auditFromReq(c, req, {
+      action: 'compliance_audit.update',
       entityType: 'compliance_audit', entityId: String(req.params.id),
-      before: { status: cur[0].status, outcome: cur[0].outcome }, after: patch,
-    })
+      before: { status: cur[0].status, outcome: cur[0].outcome }, after: patch})
     const { rows: full } = await c.query(`${AUDIT_SELECT} where ca.id = $1`, [req.params.id])
     return { data: full[0] }
   })
@@ -206,10 +204,9 @@ auditsRouter.delete('/compliance-audits/:id', requireCap('compliance:update'), a
       [req.params.id]
     )
     if (rows[0]) {
-      await writeAuditLog(c, {
-        orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_audit.archive',
-        entityType: 'compliance_audit', entityId: rows[0].id,
-      })
+      await auditFromReq(c, req, {
+      action: 'compliance_audit.archive',
+        entityType: 'compliance_audit', entityId: rows[0].id})
     }
     return rows[0]
   })
@@ -226,7 +223,7 @@ auditsRouter.post('/compliance-audits/:id/document', requireCap('compliance:upda
     const { rows } = await c.query('update public.compliance_audits set document_url = $2 where id = $1 returning id, org_id', [req.params.id, url])
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${AUDIT_SELECT} where ca.id = $1`, [req.params.id])
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_audit.attachment.add', entityType: 'compliance_audit', entityId: rows[0].id, after: { url, name: file.name } })
+    await auditFromReq(c, req, { action: 'compliance_audit.attachment.add', entityType: 'compliance_audit', entityId: rows[0].id, after: { url, name: file.name } })
     return full[0]
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

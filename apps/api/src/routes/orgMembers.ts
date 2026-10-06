@@ -6,7 +6,7 @@ import { withOrgContext, withOwnerTx } from '../db.js'
 import { claimsFromReq, isOwner } from '../claims.js'
 import { config } from '../config.js'
 import { requireCap, GRANTABLE_CAPS, ROLE_KEYS } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 import { hashPassword } from '../auth/passwords.js'
 import { issueToken } from '../auth/tokens.js'
@@ -131,8 +131,8 @@ orgMembersRouter.post('/org/members/invite', async (req, res) => {
     )
     const token = sendInvite ? await issueToken(c, userId, 'invite') : null
 
-    await writeAuditLog(c, {
-      orgId, actorId: req.claims!.sub, action: 'user.invite', entityType: 'membership', entityId: membership[0].id,
+    await auditFromReq(c, req, {
+      action: 'user.invite', entityType: 'membership', entityId: membership[0].id,
       after: { email, full_name, role_key },
     })
     return { userId, token }
@@ -180,8 +180,8 @@ orgMembersRouter.patch('/org/members/:id/role', async (req, res) => {
       'update public.memberships set role_key = $2 where id = $1 returning *',
       [membershipId, parsed.data.role_key]
     )
-    await writeAuditLog(c, {
-      orgId, actorId: req.claims!.sub, action: 'user.role', entityType: 'membership', entityId: membershipId,
+    await auditFromReq(c, req, {
+      action: 'user.role', entityType: 'membership', entityId: membershipId,
       before: { role_key: before.role_key }, after: { role_key: parsed.data.role_key },
     })
     return { row: rows[0] }
@@ -235,8 +235,8 @@ orgMembersRouter.patch('/org/members/:id/access', async (req, res) => {
       `update public.memberships set ${setSql} where id = $1 and org_id = $2 returning *`,
       [membershipId, orgId, ...values]
     )
-    await writeAuditLog(c, {
-      orgId, actorId: req.claims!.sub, action: 'user.access', entityType: 'membership', entityId: membershipId,
+    await auditFromReq(c, req, {
+      action: 'user.access', entityType: 'membership', entityId: membershipId,
       before: { site_scope: before.site_scope, location_scope: before.location_scope, extra_caps: before.extra_caps },
       after: parsed.data,
     })
@@ -265,8 +265,8 @@ function setStatus(status: 'disabled' | 'active', action: string) {
       }
 
       const { rows } = await c.query('update public.memberships set status = $2 where id = $1 returning *', [membershipId, status])
-      await writeAuditLog(c, {
-        orgId, actorId: req.claims!.sub, action, entityType: 'membership', entityId: membershipId,
+      await auditFromReq(c, req, {
+        action, entityType: 'membership', entityId: membershipId,
         before: { status: before.status }, after: { status },
       })
       return { row: rows[0] }
@@ -290,7 +290,7 @@ orgMembersRouter.post('/org/members/:id/reset-password', async (req, res) => {
     if (membership.role_key === 'owner' && !isOwner(req)) return fail(403, 'owner_only')
 
     const token = await issueToken(c, membership.user_id, 'reset')
-    await writeAuditLog(c, { orgId, actorId: req.claims!.sub, action: 'user.reset_password', entityType: 'membership', entityId: membershipId })
+    await auditFromReq(c, req, { action: 'user.reset_password', entityType: 'membership', entityId: membershipId })
     return { token, email: membership.email as string }
   })
   if (isFail(out)) return res.status(out.status).json({ error: out.error })

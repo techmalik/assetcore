@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { buildSet } from '../sqlUtil.js'
 import { uploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
@@ -106,11 +106,10 @@ pmTasksRouter.patch('/pm-tasks/:id', requireCap('pm:update'), async (req, res) =
     const task = full[0]
 
     if (assigneeChanged) {
-      await writeAuditLog(c, {
-        orgId: task.org_id, actorId: req.claims!.sub, action: 'pm_task.assign',
+      await auditFromReq(c, req, {
+      action: 'pm_task.assign',
         entityType: 'pm_task', entityId: task.id,
-        before: { assignee_id: before[0].assignee_id }, after: { assignee_id: patch.assignee_id ?? null },
-      })
+        before: { assignee_id: before[0].assignee_id }, after: { assignee_id: patch.assignee_id ?? null }})
     }
 
     if (assigneeChanged && patch.assignee_id) {
@@ -157,7 +156,7 @@ pmTasksRouter.patch('/pm-tasks/:id', requireCap('pm:update'), async (req, res) =
           [task.asset_id, `Maintenance completed (${task.title}).`]
         )
       }
-      await writeAuditLog(c, { orgId: task.org_id, actorId: req.claims!.sub, action: 'pm_task.complete', entityType: 'pm_task', entityId: task.id, after: task })
+      await auditFromReq(c, req, { action: 'pm_task.complete', entityType: 'pm_task', entityId: task.id, after: task })
 
       // PM tasks are system-generated (no human "creator" to notify) — tell
       // the supervisors who'd otherwise only find out via the asset's
@@ -193,7 +192,7 @@ pmTasksRouter.post('/pm-tasks/:id/report', requireCap('pm:update'), ...uploadRou
     }
     const { rows: full } = await c.query(`${SELECT} where t.id = $1`, [req.params.id])
     const task = full[0]
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'pm_task.attachment.add', entityType: 'pm_task', entityId: rows[0].id, after: { url, name: file.name } })
+    await auditFromReq(c, req, { action: 'pm_task.attachment.add', entityType: 'pm_task', entityId: rows[0].id, after: { url, name: file.name } })
     await notifyRoleHolders(c, {
       orgId: task.org_id, siteId: task.site_id, roles: ['owner', 'admin', 'manager'],
       actorId: req.claims!.sub, kind: 'report_uploaded',

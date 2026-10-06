@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { STOCK_MOVEMENT_KINDS } from '@assetcore/domain'
 import { lockPart, moveStock } from '../services/stock.js'
@@ -140,10 +140,9 @@ sparePartsRouter.post('/spare-parts', requireCap('parts:create'), async (req, re
       await moveStock(c, locked!, { quantity: opening_stock, kind: 'receipt', reason: 'Opening stock', unitCostCents: fields.unit_cost_cents ?? null })
     }
 
-    await writeAuditLog(c, {
-      orgId: part.org_id, actorId: req.claims!.sub, action: 'part.create',
-      entityType: 'spare_part', entityId: part.id, after: { ...fields, opening_stock: opening_stock ?? 0 },
-    })
+    await auditFromReq(c, req, {
+      action: 'part.create',
+      entityType: 'spare_part', entityId: part.id, after: { ...fields, opening_stock: opening_stock ?? 0 }})
     const { rows: full } = await c.query(`${SELECT} where p.id = $1`, [part.id])
     return full[0]
   }).catch((err: unknown) => {
@@ -167,10 +166,9 @@ sparePartsRouter.patch('/spare-parts/:id', requireCap('parts:update'), async (re
       [req.params.id, ...values]
     )
     if (!rows[0]) return null
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'part.update',
-      entityType: 'spare_part', entityId: rows[0].id, after: parsed.data,
-    })
+    await auditFromReq(c, req, {
+      action: 'part.update',
+      entityType: 'spare_part', entityId: rows[0].id, after: parsed.data})
     const { rows: full } = await c.query(`${SELECT} where p.id = $1`, [req.params.id])
     return full[0]
   })
@@ -185,10 +183,9 @@ sparePartsRouter.delete('/spare-parts/:id', requireCap('parts:update'), async (r
       [req.params.id]
     )
     if (rows[0]) {
-      await writeAuditLog(c, {
-        orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'part.archive',
-        entityType: 'spare_part', entityId: rows[0].id,
-      })
+      await auditFromReq(c, req, {
+      action: 'part.archive',
+        entityType: 'spare_part', entityId: rows[0].id})
     }
     return rows[0]
   })
@@ -228,12 +225,11 @@ sparePartsRouter.post('/spare-parts/:id/adjust', requireCap('parts:adjust'), asy
       await c.query('update public.spare_parts set unit_cost_cents = $2 where id = $1', [req.params.id, unit_cost_cents])
     }
 
-    await writeAuditLog(c, {
-      orgId: part.org_id, actorId: req.claims!.sub, action: `part.${kind}`,
+    await auditFromReq(c, req, {
+      action: `part.${kind}`,
       entityType: 'spare_part', entityId: partId,
       before: { quantity_in_stock: before },
-      after: { quantity_in_stock: balanceAfter, quantity: delta, reason },
-    })
+      after: { quantity_in_stock: balanceAfter, quantity: delta, reason }})
 
     const { rows: full } = await c.query(`${SELECT} where p.id = $1`, [req.params.id])
     return { data: full[0] }

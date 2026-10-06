@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { nextWoRef } from '../refs.js'
@@ -130,7 +130,7 @@ defectsRouter.post('/defects', requireCap('defect:create'), async (req, res) => 
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const created = await createDefect(c, parsed.data, req.claims!.sub)
+    const created = await createDefect(c, parsed.data, req.claims!.sub, req.ip ?? null)
     const { rows: full } = await c.query(`${SELECT} where d.id = $1`, [created.id])
     return full[0]
   })
@@ -162,10 +162,9 @@ defectsRouter.patch('/defects/:id', requireCap('defect:update'), async (req, res
     // The asset may have moved with the patch — rescore both ends.
     await refreshAssetHealth(c, before[0].asset_id)
     if (rows[0].asset_id !== before[0].asset_id) await refreshAssetHealth(c, rows[0].asset_id)
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'defect.update',
-      entityType: 'defect', entityId: rows[0].id, before: { status: before[0].status }, after: patch,
-    })
+    await auditFromReq(c, req, {
+      action: 'defect.update',
+      entityType: 'defect', entityId: rows[0].id, before: { status: before[0].status }, after: patch})
     const { rows: full } = await c.query(`${SELECT} where d.id = $1`, [req.params.id])
     return full[0]
   })
@@ -238,10 +237,9 @@ defectsRouter.post('/defects/:id/work-order', requireCap('wo:create'), async (re
        values (current_org_id(), $1, current_user_id(), 'comment', $2)`,
       [wo.id, `Raised from defect ${defect.ref} (${defect.severity}).`]
     )
-    await writeAuditLog(c, {
-      orgId: wo.org_id, actorId: req.claims!.sub, action: 'defect.raise_work_order',
-      entityType: 'defect', entityId: defect.id, after: { work_order_id: wo.id, ref: wo.ref },
-    })
+    await auditFromReq(c, req, {
+      action: 'defect.raise_work_order',
+      entityType: 'defect', entityId: defect.id, after: { work_order_id: wo.id, ref: wo.ref }})
 
     const { rows: full } = await c.query(`${SELECT} where d.id = $1`, [req.params.id])
     return { data: full[0] }
@@ -262,10 +260,9 @@ defectsRouter.delete('/defects/:id', requireCap('defect:update'), async (req, re
     )
     if (!rows[0]) return null
     await refreshAssetHealth(c, rows[0].asset_id)
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'defect.archive',
-      entityType: 'defect', entityId: rows[0].id,
-    })
+    await auditFromReq(c, req, {
+      action: 'defect.archive',
+      entityType: 'defect', entityId: rows[0].id})
     return rows[0]
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

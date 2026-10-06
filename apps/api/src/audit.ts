@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg'
+import type { Request } from 'express'
 import { ownerPool } from './db.js'
 
 type OrgAuditEntry = {
@@ -35,6 +36,23 @@ export async function writeAuditLog(client: PoolClient, entry: OrgAuditEntry): P
       entry.ip ?? null,
     ]
   )
+}
+
+type AuditFact = Pick<OrgAuditEntry, 'action' | 'entityType' | 'entityId' | 'before' | 'after'>
+
+/**
+ * An audit row for something the caller did: the org, the actor and the IP
+ * come from the request, so a route states only what happened. 105 calls
+ * used to repeat orgId and actorId by hand (and add org_id to a RETURNING
+ * just to feed them), and all but one left the IP out.
+ */
+export async function auditFromReq(client: PoolClient, req: Request, fact: AuditFact): Promise<void> {
+  await writeAuditLog(client, {
+    orgId: req.claims!.org_id!,
+    actorId: req.claims!.sub,
+    ip: req.ip ?? null,
+    ...fact,
+  })
 }
 
 type PlatformAuditEntry = {

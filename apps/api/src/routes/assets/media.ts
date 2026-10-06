@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
+import { auditFromReq } from '../../audit.js'
 import { uploadRoute, deleteUploadedFile, IMAGE_MIME_TYPES, DOCUMENT_MIME_TYPES } from '../../files.js'
 import { ASSET_SELECT } from '../../services/assets.js'
 
@@ -23,7 +23,7 @@ mediaRouter.post('/assets/:id/photos', requireCap('asset:update'), ...uploadRout
     await c.query(`update public.assets set photos = photos || $2::jsonb where id = $1`, [req.params.id, JSON.stringify([url])])
     const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
-    await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.attachment.add', entityType: 'asset', entityId: asset.id, after: { kind: 'photo', url } })
+    await auditFromReq(c, req, { action: 'asset.attachment.add', entityType: 'asset', entityId: asset.id, after: { kind: 'photo', url } })
     return { data: asset }
   })
   if ('error' in result) {
@@ -46,7 +46,7 @@ mediaRouter.delete('/assets/:id/photos', requireCap('asset:update'), async (req,
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.attachment.remove', entityType: 'asset', entityId: rows[0].id, before: { kind: 'photo', url } })
+    await auditFromReq(c, req, { action: 'asset.attachment.remove', entityType: 'asset', entityId: rows[0].id, before: { kind: 'photo', url } })
     return asset
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -62,7 +62,7 @@ mediaRouter.post('/assets/:id/documents', requireCap('asset:update'), ...uploadR
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.attachment.add', entityType: 'asset', entityId: rows[0].id, after: { kind: 'document', ...doc } })
+    await auditFromReq(c, req, { action: 'asset.attachment.add', entityType: 'asset', entityId: rows[0].id, after: { kind: 'document', ...doc } })
     return asset
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -82,7 +82,7 @@ mediaRouter.delete('/assets/:id/documents', requireCap('asset:update'), async (r
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.attachment.remove', entityType: 'asset', entityId: rows[0].id, before: { kind: 'document', url } })
+    await auditFromReq(c, req, { action: 'asset.attachment.remove', entityType: 'asset', entityId: rows[0].id, before: { kind: 'document', url } })
     return asset
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

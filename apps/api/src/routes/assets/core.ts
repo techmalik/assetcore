@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
+import { auditFromReq } from '../../audit.js'
 import { refreshAssetHealth, previewAssetHealth } from '../../healthService.js'
 import { buildSet, buildInsert } from '../../sqlUtil.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../../siteShutdown.js'
@@ -287,7 +287,7 @@ coreRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
     await recomputeDerived(c, assetId, req.claims!.sub)
     const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [assetId])
     const asset = full[0]
-    await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.create', entityType: 'asset', entityId: asset.id, after: asset })
+    await auditFromReq(c, req, { action: 'asset.create', entityType: 'asset', entityId: asset.id, after: asset })
     return asset
   })
   res.status(201).json(row)
@@ -299,7 +299,7 @@ coreRouter.post('/assets/import', requireCap('asset:create'), async (req, res) =
   if (rows.length > 1000) return res.status(400).json({ error: 'too_many_rows', max: 1000 })
 
   const results = await withOrgContext(claimsFromReq(req), (c) =>
-    importAssets(c, rows, { userId: req.claims!.sub, orgId: req.claims!.org_id! })
+    importAssets(c, rows, { userId: req.claims!.sub, orgId: req.claims!.org_id!, ip: req.ip ?? null })
   )
   res.json({ summary: importSummary(results), results })
 })
@@ -350,7 +350,7 @@ coreRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) => 
     }
     const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
-    await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.update', entityType: 'asset', entityId: asset.id, after: input })
+    await auditFromReq(c, req, { action: 'asset.update', entityType: 'asset', entityId: asset.id, after: input })
     return { data: asset }
   })
   if (!result) return res.status(404).json({ error: 'not_found' })
@@ -373,7 +373,7 @@ coreRouter.post('/assets/transfer', requireCap('asset:update'), async (req, res)
   const assetIds = [...new Set(input.asset_ids)]
 
   const result = await withOrgContext(claimsFromReq(req), (c) =>
-    transferAssets(c, { assetIds, toSiteId, reason, transferredAt }, req.claims!.sub)
+    transferAssets(c, { assetIds, toSiteId, reason, transferredAt }, req.claims!.sub, req.ip ?? null)
   )
 
   if ('error' in result) {
@@ -392,7 +392,7 @@ coreRouter.delete('/assets/:id', requireCap('asset:update'), async (req, res) =>
       [req.params.id]
     )
     const asset = rows[0]
-    if (asset) await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.archive', entityType: 'asset', entityId: asset.id })
+    if (asset) await auditFromReq(c, req, { action: 'asset.archive', entityType: 'asset', entityId: asset.id })
     return asset
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -407,7 +407,7 @@ coreRouter.post('/assets/:id/restore', requireCap('asset:update'), async (req, r
       [req.params.id]
     )
     if (!rows[0]) return null
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.restore', entityType: 'asset', entityId: rows[0].id })
+    await auditFromReq(c, req, { action: 'asset.restore', entityType: 'asset', entityId: rows[0].id })
     const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [req.params.id])
     return full[0]
   })

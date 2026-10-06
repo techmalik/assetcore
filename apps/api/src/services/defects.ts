@@ -19,7 +19,7 @@ export const DEFECT_ALLOWED = [
  * without the rescore or the audit row.
  */
 export async function createDefect(
-  c: PoolClient, input: Record<string, unknown>, actorId: string
+  c: PoolClient, input: Record<string, unknown>, actorId: string, ip: string | null = null
 ): Promise<{ id: string; org_id: string; asset_id: string | null; ref: string }> {
   const { columns, placeholders, values } = buildInsert(input, DEFECT_ALLOWED, 1)
   const ref = await nextRef(c, 'DEF')
@@ -32,7 +32,7 @@ export async function createDefect(
   const created = rows[0]
   await refreshAssetHealth(c, created.asset_id)
   await writeAuditLog(c, {
-    orgId: created.org_id, actorId, action: 'defect.create',
+    orgId: created.org_id, actorId, ip, action: 'defect.create',
     entityType: 'defect', entityId: created.id, after: { ref, ...input },
   })
   return created

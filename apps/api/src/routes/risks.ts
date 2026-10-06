@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { nextRef } from '../refs.js'
@@ -199,10 +199,9 @@ risksRouter.post('/risks', requireCap('risk:create'), async (req, res) => {
     // The health engine reads the asset's worst live risk, so a new assessment
     // moves its condition score straight away.
     await refreshAssetHealth(c, rows[0].asset_id)
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'risk.create',
-      entityType: 'risk_assessment', entityId: rows[0].id, after: { ref, ...parsed.data },
-    })
+    await auditFromReq(c, req, {
+      action: 'risk.create',
+      entityType: 'risk_assessment', entityId: rows[0].id, after: { ref, ...parsed.data }})
     const { rows: full } = await c.query(`${SELECT} where r.id = $1`, [rows[0].id])
     return full[0]
   })
@@ -230,11 +229,10 @@ risksRouter.patch('/risks/:id', requireCap('risk:update'), async (req, res) => {
     )
     await refreshAssetHealth(c, cur[0].asset_id)
     if (rows[0].asset_id !== cur[0].asset_id) await refreshAssetHealth(c, rows[0].asset_id)
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'risk.update',
+    await auditFromReq(c, req, {
+      action: 'risk.update',
       entityType: 'risk_assessment', entityId: rows[0].id,
-      before: { status: cur[0].status, residual_score: cur[0].residual_score }, after: parsed.data,
-    })
+      before: { status: cur[0].status, residual_score: cur[0].residual_score }, after: parsed.data})
     const { rows: full } = await c.query(`${SELECT} where r.id = $1`, [req.params.id])
     return { data: full[0] }
   })
@@ -255,10 +253,9 @@ risksRouter.delete('/risks/:id', requireCap('risk:update'), async (req, res) => 
     )
     if (!rows[0]) return null
     await refreshAssetHealth(c, rows[0].asset_id)
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'risk.archive',
-      entityType: 'risk_assessment', entityId: rows[0].id,
-    })
+    await auditFromReq(c, req, {
+      action: 'risk.archive',
+      entityType: 'risk_assessment', entityId: rows[0].id})
     return rows[0]
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

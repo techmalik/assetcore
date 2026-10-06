@@ -286,3 +286,37 @@ describe('audit log filters', () => {
     expect(res.body.rows.length).toBeGreaterThan(0)
   })
 })
+
+describe('audit rows record who, where from', () => {
+  // auditFromReq fills the org, the actor and the IP from the request. Before
+  // it, all but one tenant audit row left the IP out.
+  it('a tenant mutation records the caller, the org and an IP', async () => {
+    const name = `Audited Category ${uniqueSuffix()}`
+    const created = await owner.post('/api/categories').send({ name, code: 'AUD' })
+    expect(created.status).toBe(201)
+    await withClient(async (c) => {
+      const { rows } = await c.query(
+        `select org_id, actor_id, ip from public.audit_log
+         where entity_type = 'asset_category' and entity_id = $1 and action = 'category.create'`,
+        [created.body.id]
+      )
+      expect(rows).toHaveLength(1)
+      expect(rows[0].org_id).toBe(ORG_A)
+      expect(rows[0].actor_id).toBe(USERS.ownerA.id)
+      expect(rows[0].ip).toBeTruthy()
+    })
+  })
+
+  it('so does one written inside a service (a work order moved by /transition)', async () => {
+    const wo = await owner.post('/api/work-orders').send({ title: `Audited move ${uniqueSuffix()}` })
+    expect(wo.status).toBe(201)
+    expect((await owner.post(`/api/work-orders/${wo.body.id}/transition`).send({ status: 'in_progress' })).status).toBe(200)
+    await withClient(async (c) => {
+      const { rows } = await c.query(
+        `select ip from public.audit_log where entity_id = $1 and action = 'wo.transition'`, [wo.body.id]
+      )
+      expect(rows).toHaveLength(1)
+      expect(rows[0].ip).toBeTruthy()
+    })
+  })
+})

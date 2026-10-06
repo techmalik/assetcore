@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 
 export const sitesRouter = Router()
@@ -72,11 +72,10 @@ sitesRouter.post('/sites/:id/shutdown', requireCap('org:manage'), async (req, re
       [req.params.id]
     )
     const affected = rowCount ?? 0
-    await writeAuditLog(c, {
-      orgId: site.org_id, actorId: req.claims!.sub, action: 'site.shutdown', entityType: 'site', entityId: site.id,
+    await auditFromReq(c, req, {
+      action: 'site.shutdown', entityType: 'site', entityId: site.id,
       before: { status: 'active' },
-      after: { status: 'shutdown', reason: parsed.data.reason, assets_inactivated: affected },
-    })
+      after: { status: 'shutdown', reason: parsed.data.reason, assets_inactivated: affected }})
     return { data: { ...site, assets_affected: affected } }
   })
   if ('error' in result) {
@@ -111,11 +110,10 @@ sitesRouter.post('/sites/:id/reopen', requireCap('org:manage'), async (req, res)
     )
     const site = rows[0]
     const affected = rowCount ?? 0
-    await writeAuditLog(c, {
-      orgId: site.org_id, actorId: req.claims!.sub, action: 'site.reopen', entityType: 'site', entityId: site.id,
+    await auditFromReq(c, req, {
+      action: 'site.reopen', entityType: 'site', entityId: site.id,
       before: { status: 'shutdown', shutdown_at: cur[0].shutdown_at, reason: cur[0].shutdown_reason },
-      after: { status: 'active', assets_restored: affected },
-    })
+      after: { status: 'active', assets_restored: affected }})
     return { data: { ...site, assets_affected: affected } }
   })
   if ('error' in result) {
@@ -150,7 +148,7 @@ sitesRouter.post('/sites', requireCap('org:manage'), async (req, res) => {
       [name, code ?? null, region ?? null, lat ?? null, lng ?? null, locId]
     )
     const site = rows[0]
-    await writeAuditLog(c, { orgId: site.org_id, actorId: req.claims!.sub, action: 'site.create', entityType: 'site', entityId: site.id, after: site })
+    await auditFromReq(c, req, { action: 'site.create', entityType: 'site', entityId: site.id, after: site })
     return site
   })
   res.status(201).json(row)
@@ -168,7 +166,7 @@ sitesRouter.patch('/sites/:id', requireCap('org:manage'), async (req, res) => {
       [req.params.id, ...values]
     )
     const site = rows[0]
-    if (site) await writeAuditLog(c, { orgId: site.org_id, actorId: req.claims!.sub, action: 'site.update', entityType: 'site', entityId: site.id, after: parsed.data })
+    if (site) await auditFromReq(c, req, { action: 'site.update', entityType: 'site', entityId: site.id, after: parsed.data })
     return site
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -182,7 +180,7 @@ sitesRouter.delete('/sites/:id', requireCap('org:manage'), async (req, res) => {
       [req.params.id]
     )
     const site = rows[0]
-    if (site) await writeAuditLog(c, { orgId: site.org_id, actorId: req.claims!.sub, action: 'site.delete', entityType: 'site', entityId: site.id })
+    if (site) await auditFromReq(c, req, { action: 'site.delete', entityType: 'site', entityId: site.id })
     return site
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

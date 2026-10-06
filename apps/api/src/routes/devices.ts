@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { listQuery } from '../http/query.js'
 import { parseOr400 } from '../http/validate.js'
@@ -70,7 +70,7 @@ devicesRouter.post('/devices', requireCap(DEVICE_WRITE_CAP), async (req, res) =>
     )
     const { rows: full } = await c.query(`${SELECT} where d.id = $1`, [rows[0].id])
     const device = full[0]
-    await writeAuditLog(c, { orgId: device.org_id, actorId: req.claims!.sub, action: 'device.create', entityType: 'device', entityId: device.id, after: device })
+    await auditFromReq(c, req, { action: 'device.create', entityType: 'device', entityId: device.id, after: device })
     return device
   })
   res.status(201).json(row)
@@ -87,7 +87,7 @@ devicesRouter.patch('/devices/:id', requireCap(DEVICE_WRITE_CAP), async (req, re
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${SELECT} where d.id = $1`, [req.params.id])
     const device = full[0]
-    await writeAuditLog(c, { orgId: device.org_id, actorId: req.claims!.sub, action: 'device.update', entityType: 'device', entityId: device.id, after: device })
+    await auditFromReq(c, req, { action: 'device.update', entityType: 'device', entityId: device.id, after: device })
     return device
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -101,7 +101,7 @@ devicesRouter.delete('/devices/:id', requireCap(DEVICE_WRITE_CAP), async (req, r
       [req.params.id]
     )
     const device = rows[0]
-    if (device) await writeAuditLog(c, { orgId: device.org_id, actorId: req.claims!.sub, action: 'device.delete', entityType: 'device', entityId: device.id })
+    if (device) await auditFromReq(c, req, { action: 'device.delete', entityType: 'device', entityId: device.id })
     return device
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

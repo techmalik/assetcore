@@ -177,7 +177,7 @@ export async function transitionWorkOrder(
   c: PoolClient,
   woId: string,
   to: string,
-  { actorId, comment, report }: { actorId: string; comment?: string; report?: Record<string, unknown> }
+  { actorId, comment, report, ip = null }: { actorId: string; comment?: string; report?: Record<string, unknown>; ip?: string | null }
 ): Promise<TransitionResult> {
   const { rows: cur } = await c.query(
     'select status, actual_start, asset_id from public.work_orders where id = $1 for update',
@@ -235,7 +235,7 @@ export async function transitionWorkOrder(
   )
 
   await writeAuditLog(c, {
-    orgId: wo.org_id, actorId, action: 'wo.transition', entityType: 'work_order', entityId: wo.id,
+    orgId: wo.org_id, actorId, ip, action: 'wo.transition', entityType: 'work_order', entityId: wo.id,
     before: { status: cur[0].status }, after: { status: to },
   })
 

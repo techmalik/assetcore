@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 
 export const locationsRouter = Router()
@@ -61,7 +61,7 @@ locationsRouter.post('/locations', requireCap('org:manage'), async (req, res) =>
       [name, code ?? null]
     )
     const loc = rows[0]
-    await writeAuditLog(c, { orgId: loc.org_id, actorId: req.claims!.sub, action: 'location.create', entityType: 'location', entityId: loc.id, after: loc })
+    await auditFromReq(c, req, { action: 'location.create', entityType: 'location', entityId: loc.id, after: loc })
     return loc
   })
   res.status(201).json(row)
@@ -75,7 +75,7 @@ locationsRouter.patch('/locations/:id', requireCap('org:manage'), async (req, re
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(`update public.locations set ${setSql} where id = $1 returning *`, [req.params.id, ...values])
     const loc = rows[0]
-    if (loc) await writeAuditLog(c, { orgId: loc.org_id, actorId: req.claims!.sub, action: 'location.update', entityType: 'location', entityId: loc.id, after: parsed.data })
+    if (loc) await auditFromReq(c, req, { action: 'location.update', entityType: 'location', entityId: loc.id, after: parsed.data })
     return loc
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -86,7 +86,7 @@ locationsRouter.delete('/locations/:id', requireCap('org:manage'), async (req, r
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query('update public.locations set deleted_at = now() where id = $1 returning id, org_id', [req.params.id])
     const loc = rows[0]
-    if (loc) await writeAuditLog(c, { orgId: loc.org_id, actorId: req.claims!.sub, action: 'location.archive', entityType: 'location', entityId: loc.id })
+    if (loc) await auditFromReq(c, req, { action: 'location.archive', entityType: 'location', entityId: loc.id })
     return loc
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

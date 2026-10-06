@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet } from '../sqlUtil.js'
 
 export const categoriesRouter = Router()
@@ -33,7 +33,7 @@ categoriesRouter.post('/categories', requireCap('org:manage'), async (req, res) 
       [name, code ?? null]
     )
     const cat = rows[0]
-    await writeAuditLog(c, { orgId: cat.org_id, actorId: req.claims!.sub, action: 'category.create', entityType: 'asset_category', entityId: cat.id, after: cat })
+    await auditFromReq(c, req, { action: 'category.create', entityType: 'asset_category', entityId: cat.id, after: cat })
     return cat
   })
   res.status(201).json(row)
@@ -51,7 +51,7 @@ categoriesRouter.patch('/categories/:id', requireCap('org:manage'), async (req, 
       [req.params.id, ...values]
     )
     const cat = rows[0]
-    if (cat) await writeAuditLog(c, { orgId: cat.org_id, actorId: req.claims!.sub, action: 'category.update', entityType: 'asset_category', entityId: cat.id, after: parsed.data })
+    if (cat) await auditFromReq(c, req, { action: 'category.update', entityType: 'asset_category', entityId: cat.id, after: parsed.data })
     return cat
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -68,7 +68,7 @@ categoriesRouter.delete('/categories/:id', requireCap('org:manage'), async (req,
     // exact case this is meant to prevent.
     const { rows } = await c.query('delete from public.asset_categories where id = $1 returning id, org_id, name, code', [req.params.id])
     const cat = rows[0]
-    if (cat) await writeAuditLog(c, { orgId: cat.org_id, actorId: req.claims!.sub, action: 'category.delete', entityType: 'asset_category', entityId: cat.id, before: { name: cat.name, code: cat.code } })
+    if (cat) await auditFromReq(c, req, { action: 'category.delete', entityType: 'asset_category', entityId: cat.id, before: { name: cat.name, code: cat.code } })
     return cat
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

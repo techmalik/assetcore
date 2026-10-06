@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq, effectiveRole } from '../../claims.js'
 import { requireCap, hasCap } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
+import { auditFromReq } from '../../audit.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../../siteShutdown.js'
 import { buildSet, buildInsert } from '../../sqlUtil.js'
 import { eligibleAssignee, insertDirectApproval, loadApproval } from '../../approvalRouting.js'
@@ -180,7 +180,7 @@ async function createForApproval(
     }
     const { rows: full } = await c.query(`${WO_SELECT} where w.id = $1`, [woId])
     const wo = full[0]
-    await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.create', entityType: 'work_order', entityId: wo.id, after: wo })
+    await auditFromReq(c, req, { action: 'wo.create', entityType: 'work_order', entityId: wo.id, after: wo })
 
     const estimate = wo.estimated_cost_cents ?? wo.cost_cents
     const ap = await insertDirectApproval(c, {
@@ -190,6 +190,7 @@ async function createForApproval(
       assignee_id: approverId,
     }, {
       userId: req.claims!.sub,
+      ip: req.ip ?? null,
       roleKey: effectiveRole(req),
       assigneeName: approver.full_name,
     })
@@ -258,7 +259,7 @@ coreRouter.post('/work-orders', requireCap('wo:create'), async (req, res) => {
     }
     const { rows: full } = await c.query(`${WO_SELECT} where w.id = $1`, [woId])
     const wo = full[0]
-    await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.create', entityType: 'work_order', entityId: wo.id, after: wo })
+    await auditFromReq(c, req, { action: 'wo.create', entityType: 'work_order', entityId: wo.id, after: wo })
     return wo
   })
   res.status(201).json(row)
@@ -299,7 +300,7 @@ coreRouter.patch('/work-orders/:id', requireCap('wo:update'), async (req, res) =
     }
     const { rows: full } = await c.query(`${WO_SELECT} where w.id = $1`, [req.params.id])
     const wo = full[0]
-    await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.update', entityType: 'work_order', entityId: wo.id, after: input })
+    await auditFromReq(c, req, { action: 'wo.update', entityType: 'work_order', entityId: wo.id, after: input })
     return { data: wo }
   })
   send(res, result, { not_found: 404, forbidden: 403 })
@@ -318,7 +319,7 @@ coreRouter.post('/work-orders/:id/transition', requireCap('wo:transition'), asyn
   const { status: newStatus, comment, report } = input
 
   const result = await withOrgContext(claimsFromReq(req), (c) =>
-    transitionWorkOrder(c, String(req.params.id), newStatus, { actorId: req.claims!.sub, comment, report })
+    transitionWorkOrder(c, String(req.params.id), newStatus, { actorId: req.claims!.sub, ip: req.ip ?? null, comment, report })
   )
 
   send(res, result, { not_found: 404, insufficient_stock: 409, invalid_transition: 409 })
@@ -331,7 +332,7 @@ coreRouter.delete('/work-orders/:id', requireCap('wo:update'), async (req, res) 
       [req.params.id]
     )
     const wo = rows[0]
-    if (wo) await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.delete', entityType: 'work_order', entityId: wo.id })
+    if (wo) await auditFromReq(c, req, { action: 'wo.delete', entityType: 'work_order', entityId: wo.id })
     return wo
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

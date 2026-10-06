@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 import { PM_FREQUENCIES } from '@assetcore/domain'
@@ -64,7 +64,7 @@ pmSchedulesRouter.post('/pm-schedules', requireCap('pm:create'), async (req, res
     )
     const { rows: full } = await c.query(`${SELECT} where p.id = $1`, [rows[0].id])
     const schedule = full[0]
-    await writeAuditLog(c, { orgId: schedule.org_id, actorId: req.claims!.sub, action: 'pm_schedule.create', entityType: 'pm_schedule', entityId: schedule.id, after: schedule })
+    await auditFromReq(c, req, { action: 'pm_schedule.create', entityType: 'pm_schedule', entityId: schedule.id, after: schedule })
     return schedule
   })
   res.status(201).json(row)
@@ -81,7 +81,7 @@ pmSchedulesRouter.patch('/pm-schedules/:id', requireCap('pm:update'), async (req
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${SELECT} where p.id = $1`, [req.params.id])
     const schedule = full[0]
-    await writeAuditLog(c, { orgId: schedule.org_id, actorId: req.claims!.sub, action: 'pm_schedule.update', entityType: 'pm_schedule', entityId: schedule.id, after: parsed.data })
+    await auditFromReq(c, req, { action: 'pm_schedule.update', entityType: 'pm_schedule', entityId: schedule.id, after: parsed.data })
     return schedule
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -95,7 +95,7 @@ pmSchedulesRouter.delete('/pm-schedules/:id', requireCap('pm:update'), async (re
       [req.params.id]
     )
     const schedule = rows[0]
-    if (schedule) await writeAuditLog(c, { orgId: schedule.org_id, actorId: req.claims!.sub, action: 'pm_schedule.archive', entityType: 'pm_schedule', entityId: schedule.id })
+    if (schedule) await auditFromReq(c, req, { action: 'pm_schedule.archive', entityType: 'pm_schedule', entityId: schedule.id })
     return schedule
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

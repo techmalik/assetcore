@@ -139,7 +139,7 @@ type DirectSubmit = {
 export async function insertDirectApproval(
   c: PoolClient,
   d: DirectSubmit,
-  actor: { userId: string; roleKey: string | null; assigneeName: string | null }
+  actor: { userId: string; roleKey: string | null; assigneeName: string | null; ip?: string | null }
 ): Promise<{ id: string; org_id: string }> {
   const { rows } = await c.query(
     `insert into public.approvals
@@ -165,7 +165,7 @@ export async function insertDirectApproval(
     entityId: approval.id,
   })
   await writeAuditLog(c, {
-    orgId: approval.org_id, actorId: actor.userId, action: 'approval.submit',
+    orgId: approval.org_id, actorId: actor.userId, ip: actor.ip ?? null, action: 'approval.submit',
     entityType: 'approval', entityId: approval.id,
     after: { ...d, route: 'direct', assignee_name: actor.assigneeName },
   })
@@ -190,7 +190,8 @@ export async function applyDirectOutcome(
   ap: { id: string; org_id: string; entity_type: string; entity_id: string; kind: string },
   outcome: 'approved' | 'discarded' | 'returned',
   actorId: string,
-  notes: string | null
+  notes: string | null,
+  ip: string | null = null,
 ): Promise<void> {
   if (ap.kind !== 'wo_approval' || ap.entity_type !== 'work_order') return
 
@@ -210,7 +211,7 @@ export async function applyDirectOutcome(
         : `Approval accepted${notes ? `: ${notes}` : ''}. The job had already left Draft, so its status was not changed.`]
     )
     await writeAuditLog(c, {
-      orgId: ap.org_id, actorId, action: 'work_order.approved', entityType: 'work_order', entityId: ap.entity_id,
+      orgId: ap.org_id, actorId, ip, action: 'work_order.approved', entityType: 'work_order', entityId: ap.entity_id,
       before: { status: 'draft' }, after: { status: moved ? 'new' : 'unchanged', approval_id: ap.id },
     })
     return
@@ -224,7 +225,7 @@ export async function applyDirectOutcome(
       : `Returned for changes${notes ? `: ${notes}` : ''}. Edit the job and resubmit it.`]
   )
   await writeAuditLog(c, {
-    orgId: ap.org_id, actorId,
+    orgId: ap.org_id, actorId, ip,
     action: outcome === 'discarded' ? 'work_order.approval_discarded' : 'work_order.approval_returned',
     entityType: 'work_order', entityId: ap.entity_id, after: { approval_id: ap.id, notes },
   })

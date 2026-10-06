@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq } from '../../claims.js'
 import { requireCap, ROLE_KEYS } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
+import { auditFromReq } from '../../audit.js'
 import { buildSet } from '../../sqlUtil.js'
 import { APPROVAL_ENTITY_TYPES, APPROVAL_KINDS } from '@assetcore/domain'
 import { RULE_SELECT } from './shared.js'
@@ -72,10 +72,9 @@ rulesRouter.post('/approval-rules', requireCap('approval:manage'), async (req, r
        fields.max_amount_cents ?? null, fields.active ?? true]
     )
     await replaceLevels(c, rows[0].id, levels)
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'approval.rule.create',
-      entityType: 'approval_rule', entityId: rows[0].id, after: body,
-    })
+    await auditFromReq(c, req, {
+      action: 'approval.rule.create',
+      entityType: 'approval_rule', entityId: rows[0].id, after: body})
     const { rows: full } = await c.query(`${RULE_SELECT} where r.id = $1`, [rows[0].id])
     return full[0]
   })
@@ -118,10 +117,9 @@ rulesRouter.patch('/approval-rules/:id', requireCap('approval:manage'), async (r
     if (levels) await replaceLevels(c, String(req.params.id), levels)
     const { rows: full } = await c.query(`${RULE_SELECT} where r.id = $1 and r.deleted_at is null`, [req.params.id])
     if (!full[0]) return null
-    await writeAuditLog(c, {
-      orgId: full[0].org_id, actorId: req.claims!.sub, action: 'approval.rule.update',
-      entityType: 'approval_rule', entityId: String(req.params.id), after: body,
-    })
+    await auditFromReq(c, req, {
+      action: 'approval.rule.update',
+      entityType: 'approval_rule', entityId: String(req.params.id), after: body})
     return full[0]
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -138,10 +136,9 @@ rulesRouter.delete('/approval-rules/:id', requireCap('approval:manage'), async (
       [req.params.id]
     )
     if (rows[0]) {
-      await writeAuditLog(c, {
-        orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'approval.rule.retire',
-        entityType: 'approval_rule', entityId: rows[0].id,
-      })
+      await auditFromReq(c, req, {
+      action: 'approval.rule.retire',
+        entityType: 'approval_rule', entityId: rows[0].id})
     }
     return rows[0]
   })

@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
+import { auditFromReq } from '../../audit.js'
 import { uploadRoute, DOCUMENT_MIME_TYPES } from '../../files.js'
 import { notifyUsers } from '../../notify.js'
 import { parseOr400 } from '../../http/validate.js'
@@ -21,7 +21,7 @@ attachmentsRouter.post('/work-orders/:id/attachments', requireCap('wo:update'), 
       [req.params.id, file.name, JSON.stringify([{ url, name: file.name, size: file.size }])]
     )
     const activity = rows[0]
-    await writeAuditLog(c, { orgId: activity.org_id, actorId: req.claims!.sub, action: 'work_order.attachment.add', entityType: 'work_order', entityId: activity.work_order_id, after: { url, name: file.name, size: file.size } })
+    await auditFromReq(c, req, { action: 'work_order.attachment.add', entityType: 'work_order', entityId: activity.work_order_id, after: { url, name: file.name, size: file.size } })
 
     // PM tasks, inspections and maintenance completions all announce a
     // report upload; work orders were the one attachment path that silently

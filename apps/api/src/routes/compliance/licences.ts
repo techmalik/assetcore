@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
+import { auditFromReq } from '../../audit.js'
 import { buildSet, buildInsert } from '../../sqlUtil.js'
 import { uploadRoute, deleteUploadedFile, DOCUMENT_MIME_TYPES } from '../../files.js'
 import { LICENCE_KINDS } from '@assetcore/domain'
@@ -78,7 +78,7 @@ licencesRouter.post('/compliance-licences', requireCap('compliance:create'), asy
     )
     const { rows: full } = await c.query(`${SELECT} where cl.id = $1`, [rows[0].id])
     const licence = full[0]
-    await writeAuditLog(c, { orgId: licence.org_id, actorId: req.claims!.sub, action: 'compliance_licence.create', entityType: 'compliance_licence', entityId: licence.id, after: licence })
+    await auditFromReq(c, req, { action: 'compliance_licence.create', entityType: 'compliance_licence', entityId: licence.id, after: licence })
     return licence
   })
   res.status(201).json(row)
@@ -95,7 +95,7 @@ licencesRouter.patch('/compliance-licences/:id', requireCap('compliance:update')
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${SELECT} where cl.id = $1`, [req.params.id])
     const licence = full[0]
-    await writeAuditLog(c, { orgId: licence.org_id, actorId: req.claims!.sub, action: 'compliance_licence.update', entityType: 'compliance_licence', entityId: licence.id, after: licence })
+    await auditFromReq(c, req, { action: 'compliance_licence.update', entityType: 'compliance_licence', entityId: licence.id, after: licence })
     return licence
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -113,7 +113,7 @@ licencesRouter.post('/compliance-licences/:id/document', requireCap('compliance:
     )
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${SELECT} where cl.id = $1`, [req.params.id])
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_licence.attachment.add', entityType: 'compliance_licence', entityId: rows[0].id, after: doc })
+    await auditFromReq(c, req, { action: 'compliance_licence.attachment.add', entityType: 'compliance_licence', entityId: rows[0].id, after: doc })
     return full[0]
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -132,7 +132,7 @@ licencesRouter.delete('/compliance-licences/:id/documents', requireCap('complian
     )
     if (!rows[0]) return null
     const { rows: full } = await c.query(`${SELECT} where cl.id = $1`, [req.params.id])
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_licence.attachment.remove', entityType: 'compliance_licence', entityId: rows[0].id, before: { url } })
+    await auditFromReq(c, req, { action: 'compliance_licence.attachment.remove', entityType: 'compliance_licence', entityId: rows[0].id, before: { url } })
     return full[0]
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -147,7 +147,7 @@ licencesRouter.delete('/compliance-licences/:id', requireCap('compliance:update'
       [req.params.id]
     )
     const licence = rows[0]
-    if (licence) await writeAuditLog(c, { orgId: licence.org_id, actorId: req.claims!.sub, action: 'compliance_licence.archive', entityType: 'compliance_licence', entityId: licence.id })
+    if (licence) await auditFromReq(c, req, { action: 'compliance_licence.archive', entityType: 'compliance_licence', entityId: licence.id })
     return licence
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

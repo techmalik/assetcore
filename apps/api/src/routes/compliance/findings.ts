@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
+import { auditFromReq } from '../../audit.js'
 import { createDefect } from '../../services/defects.js'
 import { FINDING_SEVERITIES, FINDING_STATUSES, DEFECT_SEVERITIES } from '@assetcore/domain'
 import { auditDate } from './audits.js'
@@ -103,14 +103,13 @@ findingsRouter.post('/compliance-audits/:id/findings/:findingId/defect', require
       asset_id: input.asset_id ?? null,
       site_id: finding.site_id,
       due_date: finding.due_date,
-    }, req.claims!.sub)
+    }, req.claims!.sub, req.ip ?? null)
     await c.query('update public.compliance_audit_findings set defect_id = $2 where id = $1',
       [req.params.findingId, created.id])
-    await writeAuditLog(c, {
-      orgId: req.claims!.org_id!, actorId: req.claims!.sub, action: 'compliance_audit.finding.raise_defect',
+    await auditFromReq(c, req, {
+      action: 'compliance_audit.finding.raise_defect',
       entityType: 'compliance_audit', entityId: String(req.params.id),
-      after: { finding_id: req.params.findingId, defect_ref: created.ref },
-    })
+      after: { finding_id: req.params.findingId, defect_ref: created.ref }})
     return { data: { id: created.id, ref: created.ref } }
   })
 

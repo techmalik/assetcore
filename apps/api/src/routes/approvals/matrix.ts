@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq, effectiveRole, isOwner } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
+import { auditFromReq } from '../../audit.js'
 import {
   loadApproval, notifyApprovalUser, notifyApprovalRole, eligibleAssignee, insertDirectApproval, applyDirectOutcome,
   recordApprovalEvent,
@@ -59,6 +59,7 @@ matrixRouter.post('/approvals', requireCap('approval:create'), async (req, res) 
       if (!assignee) return { error: 'invalid_assignee' as const }
       const approval = await insertDirectApproval(c, { ...d, assignee_id: d.assignee_id }, {
         userId: req.claims!.sub,
+        ip: req.ip ?? null,
         roleKey: effectiveRole(req),
         assigneeName: assignee.full_name,
       })
@@ -97,10 +98,9 @@ matrixRouter.post('/approvals', requireCap('approval:create'), async (req, res) 
       body: `Step 1 of ${rule.levels.length} under "${rule.name}".`,
       entityId: approval.id,
     })
-    await writeAuditLog(c, {
-      orgId: approval.org_id, actorId: req.claims!.sub, action: 'approval.submit',
-      entityType: 'approval', entityId: approval.id, after: { ...d, rule: rule.name, levels: rule.levels.length },
-    })
+    await auditFromReq(c, req, {
+      action: 'approval.submit',
+      entityType: 'approval', entityId: approval.id, after: { ...d, rule: rule.name, levels: rule.levels.length }})
 
     return { data: await loadApproval(c, approval.id) }
   })
@@ -161,12 +161,11 @@ matrixRouter.post('/approvals/:id/approve', requireCap('approval:decide'), async
         body: notes || 'Accepted and kept on record.',
         entityId: ap.id,
       })
-      await applyDirectOutcome(c, ap, 'approved', req.claims!.sub, notes)
-      await writeAuditLog(c, {
-        orgId: ap.org_id, actorId: req.claims!.sub, action: 'approval.approve',
+      await applyDirectOutcome(c, ap, 'approved', req.claims!.sub, notes, req.ip ?? null)
+      await auditFromReq(c, req, {
+      action: 'approval.approve',
         entityType: 'approval', entityId: ap.id,
-        before: { status: 'pending', assignee_id: ap.assignee_id }, after: { notes, route: 'direct', final: true },
-      })
+        before: { status: 'pending', assignee_id: ap.assignee_id }, after: { notes, route: 'direct', final: true }})
       return { data: await loadApproval(c, ap.id) }
     }
 
@@ -227,11 +226,10 @@ matrixRouter.post('/approvals/:id/approve', requireCap('approval:decide'), async
       }
     }
 
-    await writeAuditLog(c, {
-      orgId: ap.org_id, actorId: req.claims!.sub, action: 'approval.approve',
+    await auditFromReq(c, req, {
+      action: 'approval.approve',
       entityType: 'approval', entityId: ap.id,
-      before: { level: ap.level, status: 'pending' }, after: { notes, final: finalStep },
-    })
+      before: { level: ap.level, status: 'pending' }, after: { notes, final: finalStep }})
 
     return { data: await loadApproval(c, ap.id) }
   })
@@ -281,10 +279,9 @@ matrixRouter.post('/approvals/:id/reject', requireCap('approval:decide'), async 
       body: notes || `Rejected at step ${ap.level} of ${ap.max_levels}.`,
       entityId: ap.id,
     })
-    await writeAuditLog(c, {
-      orgId: ap.org_id, actorId: req.claims!.sub, action: 'approval.reject',
-      entityType: 'approval', entityId: ap.id, before: { level: ap.level }, after: { notes },
-    })
+    await auditFromReq(c, req, {
+      action: 'approval.reject',
+      entityType: 'approval', entityId: ap.id, before: { level: ap.level }, after: { notes }})
 
     return { data: await loadApproval(c, ap.id) }
   })
@@ -318,10 +315,9 @@ matrixRouter.post('/approvals/:id/recall', requireCap('approval:create'), async 
       [ap.id]
     )
     await recordApprovalEvent(c, ap, 'recalled', effectiveRole(req), notes)
-    await writeAuditLog(c, {
-      orgId: ap.org_id, actorId: req.claims!.sub, action: 'approval.recall',
-      entityType: 'approval', entityId: ap.id, after: { notes },
-    })
+    await auditFromReq(c, req, {
+      action: 'approval.recall',
+      entityType: 'approval', entityId: ap.id, after: { notes }})
 
     return { data: await loadApproval(c, ap.id) }
   })

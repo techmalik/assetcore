@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
+import { auditFromReq } from '../audit.js'
 import { buildSchedule, UnsupportedMethodError } from '../depreciation.js'
 import { SCHEDULE_DEPRECIATION_METHODS } from '@assetcore/domain'
 
@@ -225,11 +225,10 @@ depreciationRouter.post('/depreciation/schedules', requireCap('depreciation:mana
       )
     }
 
-    await writeAuditLog(c, {
-      orgId: schedule.org_id, actorId: req.claims!.sub, action: 'depreciation.schedule.create',
+    await auditFromReq(c, req, {
+      action: 'depreciation.schedule.create',
       entityType: 'depreciation_schedule', entityId: schedule.id,
-      after: { ...basis, periods: entries.length },
-    })
+      after: { ...basis, periods: entries.length }})
 
     const { rows: full } = await c.query(`${SELECT} where d.id = $1`, [schedule.id])
     const { rows: saved } = await c.query(
@@ -297,11 +296,10 @@ depreciationRouter.post('/depreciation/schedules/:id/post', requireCap('deprecia
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
     const outcome = await postThrough(c, scheduleId, throughYear, req.claims!.sub)
     if (!outcome) return null
-    await writeAuditLog(c, {
-      orgId: req.claims!.org_id!, actorId: req.claims!.sub, action: 'depreciation.post',
+    await auditFromReq(c, req, {
+      action: 'depreciation.post',
       entityType: 'depreciation_schedule', entityId: scheduleId,
-      after: { through_year: throughYear, entries_posted: outcome.posted, nbv_cents: outcome.nbv },
-    })
+      after: { through_year: throughYear, entries_posted: outcome.posted, nbv_cents: outcome.nbv }})
     const { rows: full } = await c.query(`${SELECT} where d.id = $1`, [req.params.id])
     const { rows: entries } = await c.query(
       'select * from public.depreciation_entries where schedule_id = $1 order by period_year',
@@ -326,11 +324,10 @@ depreciationRouter.post('/depreciation/post-all', requireCap('depreciation:manag
       const outcome = await postThrough(c, s.id, throughYear, req.claims!.sub)
       entriesPosted += outcome?.posted ?? 0
     }
-    await writeAuditLog(c, {
-      orgId: req.claims!.org_id!, actorId: req.claims!.sub, action: 'depreciation.post_all',
+    await auditFromReq(c, req, {
+      action: 'depreciation.post_all',
       entityType: 'depreciation_schedule',
-      after: { through_year: throughYear, schedules: schedules.length, entries_posted: entriesPosted },
-    })
+      after: { through_year: throughYear, schedules: schedules.length, entries_posted: entriesPosted }})
     return { schedules: schedules.length, entries_posted: entriesPosted, through_year: throughYear }
   })
   res.json(summary)
@@ -345,10 +342,9 @@ depreciationRouter.delete('/depreciation/schedules/:id', requireCap('depreciatio
     if (!rows[0]) return null
     // Hand net book value back to manual entry — nothing owns it now.
     await c.query("update public.assets set nbv_source = 'manual' where id = $1", [rows[0].asset_id])
-    await writeAuditLog(c, {
-      orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'depreciation.schedule.retire',
-      entityType: 'depreciation_schedule', entityId: rows[0].id,
-    })
+    await auditFromReq(c, req, {
+      action: 'depreciation.schedule.retire',
+      entityType: 'depreciation_schedule', entityId: rows[0].id})
     return rows[0]
   })
   if (!row) return res.status(404).json({ error: 'not_found' })

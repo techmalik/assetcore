@@ -22,7 +22,7 @@ type ImportRowResult = { ain: string; status: 'created' | 'skipped' | 'error'; m
 /** Imports the rows in the caller's transaction and says what happened to
  * each. Categories, locations and sites are matched by name or code. */
 export async function importAssets(
-  c: PoolClient, rows: Array<Record<string, unknown>>, actor: { userId: string; orgId: string }
+  c: PoolClient, rows: Array<Record<string, unknown>>, actor: { userId: string; orgId: string; ip?: string | null }
 ): Promise<ImportRowResult[]> {
   const { rows: cats } = await c.query('select id, name, code from public.asset_categories where org_id = current_org_id()')
   const { rows: sites } = await c.query('select id, name, code, location_id from public.sites where deleted_at is null')
@@ -107,7 +107,7 @@ export async function importAssets(
         // and no auto-WO until the next nightly run. Both derived figures
         // now go through the same path as a UI-created asset.
         await recomputeDerived(c, ins[0].id, actor.userId)
-        await writeAuditLog(c, { orgId: actor.orgId, actorId: actor.userId, action: 'asset.import', entityType: 'asset', entityId: ins[0].id })
+        await writeAuditLog(c, { orgId: actor.orgId, actorId: actor.userId, ip: actor.ip ?? null, action: 'asset.import', entityType: 'asset', entityId: ins[0].id })
         out.push({ ain: r.ain, status: 'created' })
       } else {
         out.push({ ain: r.ain, status: 'skipped', message: 'AIN already exists' })

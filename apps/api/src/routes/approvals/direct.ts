@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { withOrgContext } from '../../db.js'
 import { claimsFromReq, effectiveRole } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
-import { writeAuditLog } from '../../audit.js'
+import { auditFromReq } from '../../audit.js'
 import {
   loadApproval, notifyApprovalUser, eligibleAssignee, applyDirectOutcome, lockForAssignee, recordApprovalEvent, type DirectRow,
 } from '../../approvalRouting.js'
@@ -79,11 +79,10 @@ directRouter.post('/approvals/:id/forward', requireCap('approval:decide'), async
       body: `Now with ${target.full_name || 'another reviewer'}.`,
       entityId: ap.id,
     })
-    await writeAuditLog(c, {
-      orgId: ap.org_id, actorId: req.claims!.sub, action: 'approval.forward',
+    await auditFromReq(c, req, {
+      action: 'approval.forward',
       entityType: 'approval', entityId: ap.id,
-      before: { assignee_id: ap.assignee_id }, after: { assignee_id: toUserId, notes },
-    })
+      before: { assignee_id: ap.assignee_id }, after: { assignee_id: toUserId, notes }})
     return { data: await loadApproval(c, ap.id) }
   })
   return send(res, result, DIRECT_HTTP_STATUS)
@@ -115,12 +114,11 @@ directRouter.post('/approvals/:id/return', requireCap('approval:decide'), async 
       body: notes,
       entityId: ap.id,
     })
-    await applyDirectOutcome(c, ap, 'returned', req.claims!.sub, notes)
-    await writeAuditLog(c, {
-      orgId: ap.org_id, actorId: req.claims!.sub, action: 'approval.return',
+    await applyDirectOutcome(c, ap, 'returned', req.claims!.sub, notes, req.ip ?? null)
+    await auditFromReq(c, req, {
+      action: 'approval.return',
       entityType: 'approval', entityId: ap.id,
-      before: { status: 'pending', assignee_id: ap.assignee_id }, after: { status: 'returned', notes },
-    })
+      before: { status: 'pending', assignee_id: ap.assignee_id }, after: { status: 'returned', notes }})
     return { data: await loadApproval(c, ap.id) }
   })
   return send(res, result, DIRECT_HTTP_STATUS)
@@ -157,12 +155,11 @@ directRouter.post('/approvals/:id/discard', requireCap('approval:decide'), async
       body: notes,
       entityId: ap.id,
     })
-    await applyDirectOutcome(c, ap, 'discarded', req.claims!.sub, notes)
-    await writeAuditLog(c, {
-      orgId: ap.org_id, actorId: req.claims!.sub, action: 'approval.discard',
+    await applyDirectOutcome(c, ap, 'discarded', req.claims!.sub, notes, req.ip ?? null)
+    await auditFromReq(c, req, {
+      action: 'approval.discard',
       entityType: 'approval', entityId: ap.id,
-      before: { status: 'pending', assignee_id: ap.assignee_id }, after: { status: 'discarded', notes },
-    })
+      before: { status: 'pending', assignee_id: ap.assignee_id }, after: { status: 'discarded', notes }})
     return { data: await loadApproval(c, ap.id) }
   })
   return send(res, result, DIRECT_HTTP_STATUS)
@@ -213,11 +210,10 @@ directRouter.post('/approvals/:id/resubmit', requireCap('approval:create'), asyn
       body: notes || 'Resubmitted after changes. Accept it, forward it, return it or discard it.',
       entityId: ap.id,
     })
-    await writeAuditLog(c, {
-      orgId: ap.org_id, actorId: req.claims!.sub, action: 'approval.resubmit',
+    await auditFromReq(c, req, {
+      action: 'approval.resubmit',
       entityType: 'approval', entityId: ap.id,
-      before: { status: 'returned' }, after: { status: 'pending', assignee_id: assigneeId, notes },
-    })
+      before: { status: 'returned' }, after: { status: 'pending', assignee_id: assigneeId, notes }})
     return { data: await loadApproval(c, ap.id) }
   })
   return send(res, result, DIRECT_HTTP_STATUS)
