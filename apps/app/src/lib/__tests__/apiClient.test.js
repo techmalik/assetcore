@@ -44,3 +44,38 @@ describe('file fetches', () => {
     await expect(api.raw('/files/org/missing.pdf')).rejects.toMatchObject({ status: 404, code: 'not_found' })
   })
 })
+
+describe('every call shape', () => {
+  afterEach(() => { vi.unstubAllGlobals(); setAccessToken(null) })
+
+  /** A server where 'stale' is expired, 'fresh' works, and every call is logged. */
+  function server(handler) {
+    const seen = []
+    vi.stubGlobal('fetch', vi.fn(async (url, init = {}) => {
+      seen.push(`${init.method ?? 'GET'} ${url} ${init.headers?.Authorization ?? ''}`)
+      if (url.endsWith('/auth/refresh')) return new Response(JSON.stringify({ accessToken: 'fresh' }), { status: 200 })
+      if (init.headers?.Authorization === 'Bearer stale') return new Response(null, { status: 401 })
+      return handler(url, init)
+    }))
+    return seen
+  }
+
+  it('a JSON request refreshes once on a 401', async () => {
+    setAccessToken('stale')
+    const seen = server(() => new Response(JSON.stringify({ ok: 1 }), { status: 200 }))
+    await expect(api.post('/things', { a: 1 })).resolves.toEqual({ ok: 1 })
+    expect(seen).toEqual(['POST /api/things Bearer stale', 'POST /api/auth/refresh ', 'POST /api/things Bearer fresh'])
+  })
+
+  it('an upload refreshes once and keeps the shortfalls of a refusal', async () => {
+    setAccessToken('stale')
+    server(() => new Response(JSON.stringify({ error: 'insufficient_stock', shortfalls: [{ part_number: 'X' }] }), { status: 409 }))
+    const err = await api.upload('/assets/1/maintenance-completions', new FormData()).catch((e) => e)
+    expect(err).toMatchObject({ status: 409, code: 'insufficient_stock', shortfalls: [{ part_number: 'X' }] })
+  })
+
+  it('a 204 answers null', async () => {
+    server(() => new Response(null, { status: 204 }))
+    await expect(api.del('/things/1')).resolves.toBeNull()
+  })
+})

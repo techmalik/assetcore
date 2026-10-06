@@ -50,41 +50,46 @@ function refresh() {
   return refreshPromise
 }
 
-async function request(method, path, body, { retry = true } = {}) {
+/**
+ * The one fetch every API call goes through. It sends the access token,
+ * refreshes it once on a 401 and tries again (never for /auth/refresh
+ * itself), and turns a failure into an Error carrying the API's code plus
+ * any detail it sent. Returns the Response for the caller to read.
+ *
+ * There used to be four copies of this. They disagreed: uploads dropped the
+ * shortfall detail, and photos and downloads neither refreshed the token nor
+ * kept the code, so after an hour they failed with "Download failed (401)".
+ */
+async function send(method, path, { body, formData } = {}, retry = true) {
+  const headers = { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: 'include',
-    headers: {
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers,
+    body: formData ?? (body !== undefined ? JSON.stringify(body) : undefined),
   })
 
-  // Transparent refresh-and-retry: a request made with a stale/expired access
-  // token gets one silent retry after a successful cookie-backed refresh.
   if (res.status === 401 && retry && path !== '/auth/refresh') {
     const refreshed = await refresh()
-    if (refreshed) return request(method, path, body, { retry: false })
+    if (refreshed) return send(method, path, { body, formData }, false)
   }
 
-  if (res.status === 204) return null
-  let payload = null
-  try { payload = await res.json() } catch { /* no body */ }
   if (!res.ok) {
+    let payload = null
+    try { payload = await res.json() } catch { /* no body */ }
     const err = new Error(payload?.error || `Request failed (${res.status})`)
     err.status = res.status
     // The machine code, kept separate from the message so screens can look
     // up a sentence for it (lib/errors.js) instead of printing the code.
     err.code = payload?.error ?? fallbackCode(res.status)
+    // Detail some refusals carry: which fields are missing, which parts fell
+    // short and by how much. Kept so a screen can name them.
     if (payload?.missing) err.missing = payload.missing
-    // Some refusals carry detail worth showing — which parts fell short, and
-    // by how much. Kept on the error so a screen can name them instead of
-    // printing the generic sentence for the code.
     if (payload?.shortfalls) err.shortfalls = payload.shortfalls
     throw err
   }
-  return payload
+  return res
 }
 
 // A failure with no error body (a proxy with no server behind it, a crash
@@ -96,62 +101,18 @@ function fallbackCode(status) {
   return null
 }
 
-async function upload(path, formData, { retry = true } = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-    body: formData,
-  })
-
-  if (res.status === 401 && retry) {
-    const refreshed = await refresh()
-    if (refreshed) return upload(path, formData, { retry: false })
-  }
-
-  let payload = null
-  try { payload = await res.json() } catch { /* no body */ }
-  if (!res.ok) {
-    const err = new Error(payload?.error || `Upload failed (${res.status})`)
-    err.status = res.status
-    // The machine code, kept separate from the message so screens can look
-    // up a sentence for it (lib/errors.js) instead of printing the code.
-    err.code = payload?.error ?? fallbackCode(res.status)
-    if (payload?.missing) err.missing = payload.missing
-    // A maintenance completion that closes a job is an upload, and is refused
-    // with the same parts list as any other close.
-    if (payload?.shortfalls) err.shortfalls = payload.shortfalls
-    throw err
-  }
-  return payload
+async function json(res) {
+  if (res.status === 204) return null
+  try { return await res.json() } catch { return null }
 }
 
-/**
- * An authenticated GET that returns the raw Response, for files: an <img src>
- * or <a href> cannot carry the Authorization header. Like request(), it
- * refreshes the token once on a 401 and throws an error with a code; the file
- * helpers used to do neither, so a photo or download failed once the access
- * token expired, and said only "Download failed (401)".
- */
-async function raw(path, { retry = true } = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    credentials: 'include',
-    headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-  })
-  if (res.status === 401 && retry) {
-    const refreshed = await refresh()
-    if (refreshed) return raw(path, { retry: false })
-  }
-  if (!res.ok) {
-    let payload = null
-    try { payload = await res.json() } catch { /* not JSON */ }
-    const err = new Error(payload?.error || `Download failed (${res.status})`)
-    err.status = res.status
-    err.code = payload?.error ?? fallbackCode(res.status)
-    throw err
-  }
-  return res
-}
+const request = async (method, path, body) => json(await send(method, path, { body }))
+
+const upload = async (path, formData) => json(await send('POST', path, { formData }))
+
+/** An authenticated GET that returns the Response, for files: an <img src>
+ * or <a href> cannot carry the Authorization header. */
+const raw = (path) => send('GET', path)
 
 /** Saves a blob through a throwaway link. The object URL is revoked a little
  * later: revoking it in the same tick can cancel the save in Firefox and
