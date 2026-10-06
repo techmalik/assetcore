@@ -58,6 +58,10 @@ exportsRouter.get('/exports/:dataset', async (req, res) => {
     const f = ds.parse ? {} : parseCommon(ds, schema, req.query)
     const raw = ds.parse ? ds.parse(req.query) : {}
     const data = await ds.build({ c, req, f, schema, raw })
+    // Money columns name the org's own currency. They said (NGN) whatever
+    // the base currency was.
+    const { rows: [org] } = await c.query('select base_currency from public.organizations where id = current_org_id()')
+    data.columns = data.columns.map((col) => (col.type === 'money' ? { ...col, header: `${col.header} (${org?.base_currency ?? 'NGN'})` } : col))
 
     const truncated = data.rows.length > ROW_LIMIT
     if (truncated) data.rows = data.rows.slice(0, ROW_LIMIT)

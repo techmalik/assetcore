@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import ExcelJS from 'exceljs'
-import { USERS, SITE_A1 } from './fixtures.js'
-import { apiAs, type Api } from './helpers.js'
+import { USERS, SITE_A1, ORG_A } from './fixtures.js'
+import { apiAs, withClient, type Api } from './helpers.js'
 
 // Supertest buffers text but not binary bodies; collect the raw bytes so the
 // CSV BOM and the xlsx zip survive intact.
@@ -71,6 +71,21 @@ describe('assets export', () => {
     }
     expect(await header(owner)).toContain('Book Value (NGN)')
     expect(await header(hse)).not.toContain('Book Value (NGN)')
+  })
+
+  // The money columns said (NGN) whatever the org's base currency was.
+  it('names the org\'s base currency on its money columns', async () => {
+    await withClient((c) => c.query("update public.organizations set base_currency = 'USD' where id = $1", [ORG_A]))
+    try {
+      const res = await owner.get('/api/exports/assets?format=csv').buffer(true).parse(binary)
+      expect(res.status).toBe(200)
+      const header = parseCsv((res.body as Buffer).toString('utf8').slice(1))[0]
+      expect(header).toContain('Purchase Value (USD)')
+      expect(header).toContain('Book Value (USD)')
+      expect(header.join(',')).not.toContain('NGN')
+    } finally {
+      await withClient((c) => c.query("update public.organizations set base_currency = 'NGN' where id = $1", [ORG_A]))
+    }
   })
 
   it('downloads a CSV attachment with a BOM, scoped to the org', async () => {

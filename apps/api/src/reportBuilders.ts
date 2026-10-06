@@ -1,8 +1,9 @@
 import ExcelJS from 'exceljs'
 import { config } from './config.js'
 
-/** How a cell is written. `money` values are CENTS (as stored) and come out as
- * NGN units; `date` is a pg `date` (a 'YYYY-MM-DD' string — db.ts disables the
+/** How a cell is written. `money` values are CENTS (as stored) and come out
+ * in whole units of the org's base currency, which the route adds to the
+ * column header; `date` is a pg `date` (a 'YYYY-MM-DD' string — db.ts disables the
  * Date parser for it); `datetime` is a timestamptz. Untyped columns are
  * written as-is. */
 export type ColumnType = 'text' | 'number' | 'money' | 'date' | 'datetime'

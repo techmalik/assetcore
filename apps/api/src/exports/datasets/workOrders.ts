@@ -41,7 +41,7 @@ export const workOrders: Dataset = {
         col('Actual Start', 'actual_start', 'datetime', 17), col('Actual End', 'actual_end', 'datetime', 17),
         col('Estimated Hours', 'estimated_hours', 'number', 15), col('Actual Hours', 'actual_hours', 'number', 13),
         col('Downtime Hours', 'downtime_hours', 'number', 15),
-        col('Estimated Cost (NGN)', 'estimated_cost_cents', 'money', 20), col('Cost (NGN)', 'cost_cents', 'money', 16),
+        col('Estimated Cost', 'estimated_cost_cents', 'money', 20), col('Cost', 'cost_cents', 'money', 16),
         col('Failure Mode', 'failure_mode', 'text', 20), col('Root Cause', 'root_cause', 'text', 24),
         col('Corrective Actions', 'corrective_actions', 'text', 28), col('Completion Notes', 'completion_notes', 'text', 28),
         col('Created', 'created_at', 'datetime', 17), col('Updated', 'updated_at', 'datetime', 17),
