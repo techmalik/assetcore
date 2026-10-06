@@ -254,8 +254,16 @@ describe('audit log filters', () => {
     expect(res.body.rows.every((r: { action: string }) => r.action === 'wo.create')).toBe(true)
     expect(res.body.rows.every((r: { actor_id: string }) => r.actor_id === USERS.opsManagerA.id)).toBe(true)
     // total must describe the filtered set, or the pager offers pages that
-    // cannot be reached.
-    expect(res.body.total).toBe(res.body.rows.length)
+    // cannot be reached. Compared with the database's own count rather than
+    // with this page's length: on a long-lived database the set outgrows one
+    // 200-row page, and that is not a bug (OOS-23).
+    const count = await withClient(async (c) => Number((await c.query(
+      `select count(*) from public.audit_log
+       where org_id = $1 and actor_id = $2 and action = 'wo.create' and entity_type = 'work_order'`,
+      [ORG_A, USERS.opsManagerA.id]
+    )).rows[0].count))
+    expect(res.body.total).toBe(count)
+    expect(res.body.rows.length).toBe(Math.min(count, 200))
     expect(res.body.rows.some((r: { entity_id: string }) => r.entity_id === woId)).toBe(true)
   })
 
