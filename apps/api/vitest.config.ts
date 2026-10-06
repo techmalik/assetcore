@@ -19,6 +19,7 @@ export default defineConfig({
     // the same rows. Sequential is fine at this suite's size.
     fileParallelism: false,
     globalSetup: ['./test/globalSetup.ts'],
+    setupFiles: ['./test/setup.ts'],
     env: {
       NODE_ENV: 'test',
       DATABASE_URL,

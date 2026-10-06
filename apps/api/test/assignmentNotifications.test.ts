@@ -1,37 +1,29 @@
-import { randomBytes } from 'node:crypto'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { apiAs } from './helpers.js'
-import { seedFixtures, ownerClient, USERS, ORG_A, ORG_B, SITE_A1, SITE_A2 } from './fixtures.js'
+import { ownerClient, USERS, ORG_A, ORG_B, SITE_A1, SITE_A2 } from './fixtures.js'
+import { apiAs, uniqueSuffix, type Api } from './helpers.js'
 
 // One login per user for the whole file (not per test/per it()) — the login
 // route is rate-limited to 10 requests/15min per IP (apps/api/src/auth/routes.ts),
 // and every supertest call in this process shares one IP. This file exercises
 // 4 distinct actors across a dozen scenarios, so each is logged in exactly
 // once here and every test below reuses the same client.
-let ownerApi: Awaited<ReturnType<typeof apiAs>>
-let opsApi: Awaited<ReturnType<typeof apiAs>>
-let techApi: Awaited<ReturnType<typeof apiAs>>
-let hseApi: Awaited<ReturnType<typeof apiAs>>
+let ownerApi: Api
+let opsApi: Api
+let techApi: Api
+let hseApi: Api
 
 beforeAll(async () => {
-  await seedFixtures()
   ownerApi = await apiAs(USERS.ownerA.email)
   opsApi = await apiAs(USERS.opsManagerA.email)
   techApi = await apiAs(USERS.fieldTechA1.email)
   hseApi = await apiAs(USERS.hseOfficerA1.email)
 })
 
-// Same convention health.test.ts uses for unique-enough titles without
-// Date.now()/Math.random().
-function suffix(): string {
-  return randomBytes(4).toString('hex')
-}
-
 const today = () => new Date().toISOString().slice(0, 10)
 
 async function createPendingTask(extra: Record<string, unknown> = {}) {
   const sched = await ownerApi.post('/api/pm-schedules').send({
-    title: `Test PM schedule ${suffix()}`, frequency: 'monthly', next_due: today(), ...extra,
+    title: `Test PM schedule ${uniqueSuffix()}`, frequency: 'monthly', next_due: today(), ...extra,
   })
   expect(sched.status).toBe(201)
   await ownerApi.post('/api/pm/generate')
@@ -43,7 +35,7 @@ async function createPendingTask(extra: Record<string, unknown> = {}) {
 
 describe('wo_assigned notification + assignment activity', () => {
   it('assigning a WO notifies the new assignee and records an assignment activity row', async () => {
-    const created = await opsApi.post('/api/work-orders').send({ title: `Test WO assign ${suffix()}`, type: 'corrective' })
+    const created = await opsApi.post('/api/work-orders').send({ title: `Test WO assign ${uniqueSuffix()}`, type: 'corrective' })
     expect(created.status).toBe(201)
     const woId = created.body.id
 
@@ -59,7 +51,7 @@ describe('wo_assigned notification + assignment activity', () => {
 
   it('self-assigning a WO does not notify the actor', async () => {
     const created = await ownerApi.post('/api/work-orders')
-      .send({ title: `Test WO self-assign ${suffix()}`, type: 'corrective', assignee_id: USERS.ownerA.id })
+      .send({ title: `Test WO self-assign ${uniqueSuffix()}`, type: 'corrective', assignee_id: USERS.ownerA.id })
     expect(created.status).toBe(201)
     const woId = created.body.id
 
@@ -72,7 +64,7 @@ describe('wo_assigned notification + assignment activity', () => {
     // from site-scoped callers (0004_locations_rbac.sql) — fieldTechA1 is
     // scoped to SITE_A1, so the WO must live there for them to see it at all.
     const created = await opsApi.post('/api/work-orders')
-      .send({ title: `Test WO reassign-forbidden ${suffix()}`, type: 'corrective', site_id: SITE_A1 })
+      .send({ title: `Test WO reassign-forbidden ${uniqueSuffix()}`, type: 'corrective', site_id: SITE_A1 })
     expect(created.status).toBe(201)
     const woId = created.body.id
 
@@ -86,7 +78,7 @@ describe('closing a work order notifies its creator', () => {
     // site_id: SITE_A1 so fieldTechA1 (site-scoped) can see/transition it — see
     // the note above on work_orders' RLS hiding site_id-null rows from them.
     const created = await opsApi.post('/api/work-orders') // creates and assigns
-      .send({ title: `Test WO close ${suffix()}`, type: 'corrective', site_id: SITE_A1, assignee_id: USERS.fieldTechA1.id })
+      .send({ title: `Test WO close ${uniqueSuffix()}`, type: 'corrective', site_id: SITE_A1, assignee_id: USERS.fieldTechA1.id })
     expect(created.status).toBe(201)
     const woId = created.body.id
 
@@ -161,7 +153,7 @@ describe('report_uploaded notification', () => {
 describe('inspection_assigned + work_completed (site-scoped)', () => {
   it('creating an inspection with an inspector notifies them', async () => {
     const created = await ownerApi.post('/api/inspections').send({
-      title: `Test inspection assign ${suffix()}`, kind: 'safety', scheduled_date: today(),
+      title: `Test inspection assign ${uniqueSuffix()}`, kind: 'safety', scheduled_date: today(),
       site_id: SITE_A1, inspector_id: USERS.hseOfficerA1.id,
     })
     expect(created.status).toBe(201)
@@ -172,7 +164,7 @@ describe('inspection_assigned + work_completed (site-scoped)', () => {
 
   it('completing a SITE_A1 inspection notifies owner/manager/hse_officer but not the actor', async () => {
     const created = await hseApi.post('/api/inspections').send({
-      title: `Test inspection complete A1 ${suffix()}`, kind: 'safety', scheduled_date: today(), site_id: SITE_A1,
+      title: `Test inspection complete A1 ${uniqueSuffix()}`, kind: 'safety', scheduled_date: today(), site_id: SITE_A1,
     })
     expect(created.status).toBe(201)
     const inspId = created.body.id
@@ -193,7 +185,7 @@ describe('inspection_assigned + work_completed (site-scoped)', () => {
 
   it('completing a SITE_A2 inspection does not notify the SITE_A1-scoped hse officer', async () => {
     const created = await ownerApi.post('/api/inspections').send({
-      title: `Test inspection complete A2 ${suffix()}`, kind: 'safety', scheduled_date: today(), site_id: SITE_A2,
+      title: `Test inspection complete A2 ${uniqueSuffix()}`, kind: 'safety', scheduled_date: today(), site_id: SITE_A2,
     })
     expect(created.status).toBe(201)
     const inspId = created.body.id

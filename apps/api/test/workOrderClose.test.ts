@@ -1,7 +1,7 @@
 import { beforeAll, afterAll, describe, expect, it } from 'vitest'
 import type pg from 'pg'
-import { seedFixtures, ownerClient, USERS, ASSET_A1 } from './fixtures.js'
-import { apiAs } from './helpers.js'
+import { ownerClient, USERS, ASSET_A1 } from './fixtures.js'
+import { apiAs, type Api } from './helpers.js'
 
 // A work order can be closed three ways: the board or detail panel
 // (/transition), completing maintenance against it, and (until TASK-5.1) a
@@ -9,14 +9,11 @@ import { apiAs } from './helpers.js'
 // happens: draw the reserved parts out of stock, resolve the defect the job
 // was raised for, stamp actual_end, and tell the person who raised it.
 
-type Api = Awaited<ReturnType<typeof apiAs>>
-
 let owner: Api
 let manager: Api
 let db: pg.Client
 
 beforeAll(async () => {
-  await seedFixtures()
   owner = await apiAs(USERS.ownerA.email)
   manager = await apiAs(USERS.opsManagerA.email)
   db = ownerClient()

@@ -2,13 +2,12 @@ import request from 'supertest'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { app } from '../src/app.js'
 import { ownerPool } from '../src/db.js'
-import { apiAs } from './helpers.js'
-import { seedFixtures, ownerClient, USERS, ORG_A } from './fixtures.js'
+import { ownerClient, USERS, ORG_A } from './fixtures.js'
+import { apiAs, type Api } from './helpers.js'
 
-let owner: Awaited<ReturnType<typeof apiAs>>
+let owner: Api
 
 beforeAll(async () => {
-  await seedFixtures()
   owner = await apiAs(USERS.ownerA.email)
 })
 

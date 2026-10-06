@@ -1,26 +1,6 @@
-import { randomBytes } from 'node:crypto'
-import { beforeAll, afterAll, describe, expect, it } from 'vitest'
-import { apiAs } from './helpers.js'
-import { seedFixtures, ownerClient, USERS, ORG_A, SITE_A1 } from './fixtures.js'
-
-beforeAll(async () => {
-  await seedFixtures()
-})
-
-// Same convention as health.test.ts — no Date.now()/Math.random() for identity.
-function uniqueSuffix(): string {
-  return randomBytes(4).toString('hex')
-}
-
-async function withClient<T>(fn: (client: Awaited<ReturnType<typeof ownerClient>>) => Promise<T>): Promise<T> {
-  const client = ownerClient()
-  await client.connect()
-  try {
-    return await fn(client)
-  } finally {
-    await client.end()
-  }
-}
+import { afterAll, describe, expect, it } from 'vitest'
+import { USERS, ORG_A, SITE_A1, ASSET_A1 } from './fixtures.js'
+import { apiAs, uniqueSuffix, withClient } from './helpers.js'
 
 /** An asset with a known purchase value and in-service age, created straight
  * through the owner pool so the test controls every depreciation input. */
@@ -203,5 +183,58 @@ describe('API surface', () => {
       return Number(rows[0].nbv_cents)
     })
     expect(after).toBe(3_276_800)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// F10 — the preview 500'd because the basis SELECT named commission_date, a
+// column migration 0021 settled as install_date.
+// ---------------------------------------------------------------------------
+describe('UAT round 2, F10: depreciation preview reads a column that exists', () => {
+  it('never answers 500 for a real asset', async () => {
+    const api = await apiAs(USERS.ownerA.email)
+    const res = await api.post('/api/depreciation/preview').send({ asset_id: ASSET_A1 })
+    // 200 with a schedule, or a typed 422 saying what the asset is missing —
+    // but never the unhandled 500 a bad column name produced.
+    expect(res.status).not.toBe(500)
+    expect([200, 422]).toContain(res.status)
+  })
+
+  it('computes a schedule when the basis is supplied', async () => {
+    const api = await apiAs(USERS.ownerA.email)
+    const res = await api.post('/api/depreciation/preview').send({
+      asset_id: ASSET_A1,
+      method: 'straight_line',
+      cost_cents: 450_000_000,
+      salvage_value_cents: 45_000_000,
+      useful_life_years: 15,
+      start_date: '2022-01-01',
+    })
+    expect(res.status).toBe(200)
+    expect(res.body.entries).toHaveLength(15)
+    // (450,000,000 - 45,000,000) / 15 = 27,000,000 minor units a year.
+    expect(Number(res.body.entries[0].charge_cents)).toBe(27_000_000)
+  })
+
+  it('falls back to the asset install_date when no start_date is given', async () => {
+    // A dedicated asset — the shared fixtures must keep their identity for
+    // the other suites (see test/README.md).
+    const assetId = await withClient(async (c) => {
+      const { rows } = await c.query(
+        `insert into public.assets
+           (org_id, site_id, ain, name, install_date, purchase_date,
+            purchase_value_cents, useful_life_years, depreciation_method)
+         values ($1, $2, $3, 'UAT R2 install-date basis', '2021-03-04', null,
+                 100000000, 10, 'straight_line')
+         returning id`,
+        [ORG_A, SITE_A1, `UAT-R2-INSTALL-${uniqueSuffix()}`]
+      )
+      return rows[0].id as string
+    })
+
+    const api = await apiAs(USERS.ownerA.email)
+    const res = await api.post('/api/depreciation/preview').send({ asset_id: assetId })
+    expect(res.status).toBe(200)
+    expect(String(res.body.basis.start_date)).toContain('2021-03-04')
   })
 })

@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import ExcelJS from 'exceljs'
-import { apiAs } from './helpers.js'
-import { seedFixtures, USERS, SITE_A1 } from './fixtures.js'
+import { USERS, SITE_A1 } from './fixtures.js'
+import { apiAs, type Api } from './helpers.js'
 
 // Supertest buffers text but not binary bodies; collect the raw bytes so the
 // CSV BOM and the xlsx zip survive intact.
@@ -34,11 +34,10 @@ function parseCsv(text: string): string[][] {
   return out
 }
 
-let owner: Awaited<ReturnType<typeof apiAs>>
-let viewer: Awaited<ReturnType<typeof apiAs>>
+let owner: Api
+let viewer: Api
 
 beforeAll(async () => {
-  await seedFixtures()
   owner = await apiAs(USERS.ownerA.email)
   viewer = await apiAs(USERS.viewerA.email)
 })

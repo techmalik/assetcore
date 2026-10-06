@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import type pg from 'pg'
-import { seedFixtures, ownerClient, ORG_A, SITE_A1 } from './fixtures.js'
+import { ownerClient, ORG_A, SITE_A1 } from './fixtures.js'
 import { buildSchedule } from '../src/depreciation.js'
 
 // Book value is computed by two engines: buildSchedule (depreciation.ts) for
@@ -16,7 +16,6 @@ import { buildSchedule } from '../src/depreciation.js'
 let db: pg.Client
 
 beforeAll(async () => {
-  await seedFixtures()
   db = ownerClient()
   await db.connect()
 })

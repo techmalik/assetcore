@@ -55,9 +55,17 @@ npm test
 - `fixtures.ts` — fixed-UUID fixture rows (2 orgs, 3 sites, 3 assets, one
   membership per role) seeded idempotently via the owner pool. Import the
   exported IDs/emails rather than querying for them.
+- `setup.ts` — runs in every file (`setupFiles`) and seeds the fixtures, so a
+  suite does not call `seedFixtures()` itself.
 - `helpers.ts` — `apiAs(email)` logs in as a fixture user through the real
-  `/auth/login` route and returns a small authenticated request builder.
-- `*.test.ts` — the suites themselves. Tests share the same fixture rows
+  `/auth/login` route and returns a small authenticated request builder
+  (`type Api`); `withClient(fn)` runs `fn` with an owner-pool client and
+  closes it; `uniqueSuffix()` keeps names and codes unique.
+- `factories.ts` — `makeSite` and `makeAsset` create fresh records through
+  the API when a test must not touch a shared fixture.
+- `*.test.ts` — the suites themselves, named for the feature they cover. A
+  regression found in a UAT round keeps the round and finding in its
+  `describe` name ("UAT round 2, F10: ..."), not in the file name. Tests share the same fixture rows
   across files (`fileParallelism: false` in `vitest.config.ts`), so avoid
   mutating a shared fixture's identity (role, scope) in a test other suites
   rely on — add a dedicated fixture user instead (see `USERS.revocable`).

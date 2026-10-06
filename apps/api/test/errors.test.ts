@@ -2,13 +2,12 @@ import request from 'supertest'
 import { randomUUID } from 'node:crypto'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { app } from '../src/app.js'
-import { apiAs } from './helpers.js'
-import { seedFixtures, USERS } from './fixtures.js'
+import { USERS } from './fixtures.js'
+import { apiAs, type Api } from './helpers.js'
 
-let owner: Awaited<ReturnType<typeof apiAs>>
+let owner: Api
 
 beforeAll(async () => {
-  await seedFixtures()
   owner = await apiAs(USERS.ownerA.email)
 })
 

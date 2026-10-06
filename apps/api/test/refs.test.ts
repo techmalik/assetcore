@@ -1,11 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { apiAs } from './helpers.js'
-import { seedFixtures, USERS, SITE_A1, SITE_A2 } from './fixtures.js'
+import { USERS, SITE_A1, SITE_A2 } from './fixtures.js'
+import { apiAs, type Api } from './helpers.js'
 
-let owner: Awaited<ReturnType<typeof apiAs>>
+let owner: Api
 
 beforeAll(async () => {
-  await seedFixtures()
   owner = await apiAs(USERS.ownerA.email)
 })
 

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { apiAs } from './helpers.js'
-import { seedFixtures, ownerClient, USERS, ORG_A, SITE_A1 } from './fixtures.js'
+import { ownerClient, USERS, ORG_A, SITE_A1 } from './fixtures.js'
+import { apiAs, type Api } from './helpers.js'
 
 // Every upload route goes through uploadRoute() in files.ts. Six of them used
 // to accept anything, under any name, at any size the default allowed, and
@@ -10,7 +10,6 @@ const PDF = Buffer.from('%PDF-1.4\n%test\n1 0 obj << >> endobj\ntrailer << >>\n%
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52])
 const NOT_A_PDF = Buffer.from('<html><script>alert(1)</script></html>')
 
-type Api = Awaited<ReturnType<typeof apiAs>>
 type Target = { name: string; url: () => string; field: string; good: [Buffer, string]; extra?: Record<string, string>; limitMb: number }
 
 let owner: Api
@@ -27,7 +26,6 @@ async function sql<T = Record<string, string>>(text: string, params: unknown[]):
 }
 
 beforeAll(async () => {
-  await seedFixtures()
   owner = await apiAs(USERS.ownerA.email)
   const tag = randomUUID().slice(0, 8)
   ids.asset = (await sql(

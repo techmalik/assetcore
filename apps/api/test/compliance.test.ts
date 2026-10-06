@@ -1,10 +1,6 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { ownerClient, USERS, ASSET_A1, SITE_A1 } from './fixtures.js'
 import { apiAs } from './helpers.js'
-import { seedFixtures, ownerClient, USERS, ASSET_A1, SITE_A1 } from './fixtures.js'
-
-beforeAll(async () => {
-  await seedFixtures()
-})
 
 describe('archiving a compliance audit', () => {
   // DELETE /compliance-audits/:id used to be registered twice. Express ran the

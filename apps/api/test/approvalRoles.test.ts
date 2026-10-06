@@ -1,11 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { ownerClient, USERS, ORG_A } from './fixtures.js'
 import { apiAs } from './helpers.js'
-import { seedFixtures, ownerClient, USERS, ORG_A } from './fixtures.js'
-
-beforeAll(async () => {
-  await seedFixtures()
-})
 
 describe('matrix approvals decide on the live role, not the token', () => {
   // A token carries the role it was issued with for up to an hour. Approve

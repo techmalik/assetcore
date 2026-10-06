@@ -1,10 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { apiAs } from './helpers.js'
-import { seedFixtures, ownerClient, USERS, ORG_A, SITE_A1, SITE_A2, ASSET_A1, ASSET_A2, ASSET_B1 } from './fixtures.js'
-
-beforeAll(async () => {
-  await seedFixtures()
-})
+import { can } from '@assetcore/rbac'
+import { ownerClient, USERS, ORG_A, SITE_A1, SITE_A2, ASSET_A1, ASSET_A2, ASSET_B1 } from './fixtures.js'
+import { apiAs, type Api } from './helpers.js'
 
 describe('tenant isolation', () => {
   it('org A cannot read org B assets by id', async () => {
@@ -62,8 +59,8 @@ describe('TASK-1.1: org:manage gate on sites/locations/categories', () => {
 describe('device writes require a capability', () => {
   // Two logins for the whole block, not one per assertion — /auth/login is
   // rate-limited and this suite shares one app instance.
-  let viewer: Awaited<ReturnType<typeof apiAs>>
-  let ops: Awaited<ReturnType<typeof apiAs>>
+  let viewer: Api
+  let ops: Api
   beforeAll(async () => {
     viewer = await apiAs(USERS.viewerA.email)
     ops = await apiAs(USERS.opsManagerA.email)
@@ -146,5 +143,38 @@ describe('TASK-2.6: revocation takes effect on the very next request, not at tok
     // 'viewer', which lacks org:manage.
     const after = await api.post('/api/sites').send({ name: 'Post-Revocation Site (should fail)' })
     expect(after.status).toBe(403)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// F4 — '*:read' silently satisfied audit:read, so viewers reached the Admin
+// audit log and the auditor's explicit grant was dead code.
+// ---------------------------------------------------------------------------
+describe('UAT round 2, F4: audit:read is not covered by the *:read wildcard', () => {
+  it('a viewer does not hold audit:read', () => {
+    expect(can('viewer', 'audit:read')).toBe(false)
+  })
+
+  it('a viewer still holds ordinary read capabilities', () => {
+    expect(can('viewer', 'asset:read')).toBe(true)
+    expect(can('viewer', 'wo:read')).toBe(true)
+    expect(can('viewer', 'compliance:read')).toBe(true)
+  })
+
+  it("an auditor's explicit audit:read grant is live", () => {
+    expect(can('auditor', 'audit:read')).toBe(true)
+  })
+
+  it('an owner is unaffected by the carve-out', () => {
+    expect(can('owner', 'audit:read')).toBe(true)
+  })
+
+  it('a per-user grant can still restore it', () => {
+    expect(can('viewer', 'audit:read', ['audit:read'])).toBe(true)
+  })
+
+  it('the viewer is refused the audit log over HTTP', async () => {
+    const api = await apiAs(USERS.viewerA.email)
+    expect((await api.get('/api/audit-log')).status).toBe(403)
   })
 })

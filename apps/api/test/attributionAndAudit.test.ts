@@ -1,30 +1,11 @@
-import { randomBytes } from 'node:crypto'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { apiAs } from './helpers.js'
-import { seedFixtures, ownerClient, USERS, ORG_A, SITE_A1, ASSET_A1 } from './fixtures.js'
-
-beforeAll(async () => {
-  await seedFixtures()
-})
-
-function uniqueSuffix(): string {
-  return randomBytes(4).toString('hex')
-}
-
-async function withClient<T>(fn: (client: Awaited<ReturnType<typeof ownerClient>>) => Promise<T>): Promise<T> {
-  const client = ownerClient()
-  await client.connect()
-  try {
-    return await fn(client)
-  } finally {
-    await client.end()
-  }
-}
+import { USERS, ORG_A, SITE_A1, ASSET_A1 } from './fixtures.js'
+import { apiAs, uniqueSuffix, withClient, type Api } from './helpers.js'
 
 // One login per user for the whole file — /auth/login is rate limited and the
 // suite shares a single app instance.
-let owner: Awaited<ReturnType<typeof apiAs>>
-let ops: Awaited<ReturnType<typeof apiAs>>
+let owner: Api
+let ops: Api
 beforeAll(async () => {
   owner = await apiAs(USERS.ownerA.email)
   ops = await apiAs(USERS.opsManagerA.email)

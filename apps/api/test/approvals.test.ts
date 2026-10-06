@@ -1,23 +1,13 @@
-/**
- * Regression cover for the round-3 UAT fixes.
- *
- * The browser proved each of these as a user sees it; these hold the
- * server-side half. See docs/uat/round-3-results.md for what each card was.
- */
-import { randomBytes } from 'node:crypto'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { apiAs } from './helpers.js'
-import { seedFixtures, USERS } from './fixtures.js'
+import { describe, expect, it } from 'vitest'
+import { USERS } from './fixtures.js'
+import { apiAs, uniqueSuffix, type Api } from './helpers.js'
 
-beforeAll(async () => {
-  await seedFixtures()
-})
+// The approval matrix: rules, bands and levels. Requests sent to a named
+// person are in directApprovals.test.ts.
 
-const suffix = () => randomBytes(4).toString('hex')
-
-async function makeRule(api: Awaited<ReturnType<typeof apiAs>>, min: number, max: number | null) {
+async function makeRule(api: Api, min: number, max: number | null) {
   const res = await api.post('/api/approval-rules').send({
-    name: `UAT R3 band ${suffix()}`,
+    name: `UAT R3 band ${uniqueSuffix()}`,
     entity_type: 'work_order',
     kind: 'wo_cost',
     min_amount_cents: min,
@@ -32,7 +22,7 @@ async function makeRule(api: Awaited<ReturnType<typeof apiAs>>, min: number, max
 // Card 09 — editing a rule into an impossible band answered 500, because only
 // the create path validated it and the DB check constraint raised instead.
 // ---------------------------------------------------------------------------
-describe('approval rule bands are validated on update, not just on create', () => {
+describe('UAT round 3, approval rule bands are validated on update, not just on create', () => {
   it('refuses a ceiling at or below the floor with 422 invalid_band', async () => {
     const api = await apiAs(USERS.ownerA.email)
     const id = await makeRule(api, 100_000, 5_000_000)
@@ -80,9 +70,8 @@ describe('approval rule bands are validated on update, not just on create', () =
     const api = await apiAs(USERS.ownerA.email)
     const id = await makeRule(api, 100_000, 5_000_000)
 
-    const res = await api.patch(`/api/approval-rules/${id}`).send({ name: `renamed ${suffix()}` })
+    const res = await api.patch(`/api/approval-rules/${id}`).send({ name: `renamed ${uniqueSuffix()}` })
 
     expect(res.status).toBe(200)
   })
 })
-

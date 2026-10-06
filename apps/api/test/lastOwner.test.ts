@@ -1,12 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import argon2 from 'argon2'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { ownerClient, FIXTURE_PASSWORD } from './fixtures.js'
 import { apiAs } from './helpers.js'
-import { seedFixtures, ownerClient, FIXTURE_PASSWORD } from './fixtures.js'
-
-beforeAll(async () => {
-  await seedFixtures()
-})
 
 /** A fresh org with exactly two active owners, so the last-owner rule bites. */
 async function orgWithTwoOwners() {

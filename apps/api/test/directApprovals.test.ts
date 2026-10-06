@@ -7,15 +7,10 @@
  * work order raised "for approval" only leaves Draft when it is accepted.
  */
 import { randomUUID } from 'node:crypto'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { apiAs } from './helpers.js'
-import { seedFixtures, USERS } from './fixtures.js'
+import { describe, expect, it } from 'vitest'
+import { USERS } from './fixtures.js'
+import { apiAs, type Api } from './helpers.js'
 
-beforeAll(async () => {
-  await seedFixtures()
-})
-
-type Api = Awaited<ReturnType<typeof apiAs>>
 type Row = { id: string; status: string; kind: string }
 
 // An inspection report keyed to a fresh id: approvals carry no foreign key to

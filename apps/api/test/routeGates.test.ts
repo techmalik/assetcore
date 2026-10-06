@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { apiRouter } from '../src/routes/index.js'
-import { apiAs } from './helpers.js'
-import { seedFixtures, USERS } from './fixtures.js'
+import { USERS } from './fixtures.js'
+import { apiAs, type Api } from './helpers.js'
 
 // Every tenant route states the capability it needs. Routes that are open to
 // any active member on purpose are listed here with the reason; anything else
@@ -86,10 +86,9 @@ describe('every tenant route is gated', () => {
 })
 
 describe('integration settings', () => {
-  let owner: Awaited<ReturnType<typeof apiAs>>
-  let viewer: Awaited<ReturnType<typeof apiAs>>
+  let owner: Api
+  let viewer: Api
   beforeAll(async () => {
-    await seedFixtures()
     owner = await apiAs(USERS.ownerA.email)
     viewer = await apiAs(USERS.viewerA.email)
   })

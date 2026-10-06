@@ -1,20 +1,8 @@
-import { randomBytes } from 'node:crypto'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { apiAs } from './helpers.js'
-import { seedFixtures, ownerClient, USERS, ORG_A, SITE_A1 } from './fixtures.js'
+import { describe, expect, it } from 'vitest'
+import { ownerClient, USERS, ORG_A, SITE_A1 } from './fixtures.js'
+import { apiAs, uniqueSuffix, withClient } from './helpers.js'
 import { ownerPool } from '../src/db.js'
 import { previewAssetHealth, recomputeAllHealthScores } from '../src/healthService.js'
-
-beforeAll(async () => {
-  await seedFixtures()
-})
-
-// Deterministic-enough uniqueness without Date.now()/Math.random() (avoided
-// per repo convention for anything that could run inside a replayed
-// workflow) — a few random hex bytes per test asset's `ain`.
-function uniqueSuffix(): string {
-  return randomBytes(4).toString('hex')
-}
 
 async function createHealthTestAsset(overrides: { healthScore?: number | null } = {}): Promise<string> {
   const client = ownerClient()
@@ -27,16 +15,6 @@ async function createHealthTestAsset(overrides: { healthScore?: number | null } 
       [ORG_A, SITE_A1, `HEALTH-TEST-${uniqueSuffix()}`, overrides.healthScore ?? 100]
     )
     return rows[0].id
-  } finally {
-    await client.end()
-  }
-}
-
-async function withClient<T>(fn: (client: Awaited<ReturnType<typeof ownerClient>>) => Promise<T>): Promise<T> {
-  const client = ownerClient()
-  await client.connect()
-  try {
-    return await fn(client)
   } finally {
     await client.end()
   }
