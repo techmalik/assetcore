@@ -1,9 +1,10 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { withOrgContext, ownerPool } from '../db.js'
+import { withOrgContext, withOwnerTx } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
 import { buildSet } from '../sqlUtil.js'
+import { auditFromReq } from '../audit.js'
 
 export const orgRouter = Router()
 
@@ -74,13 +75,22 @@ orgRouter.patch('/org', async (req, res) => {
   const { setSql, values } = buildSet(patch, ALLOWED, 0)
   if (!setSql) return res.status(400).json({ error: 'empty_patch' })
 
-  const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows: before } = await c.query('select * from public.organizations where id = current_org_id()')
+    const { rows } = await c.query(
       `update public.organizations set ${setSql} where id = current_org_id()
        returning id, name, short_name, region, plan, settings, ${CURRENCY_COLUMNS}`,
       values
-    ).then((r) => r.rows[0])
-  )
+    )
+    if (!rows[0]) return null
+    // Only the fields this patch touched, so the entry says what changed.
+    const was = Object.fromEntries(Object.keys(patch).map((k) => [k, before[0]?.[k] ?? null]))
+    await auditFromReq(c, req, {
+      action: 'org.update', entityType: 'organization', entityId: rows[0].id,
+      before: was, after: { ...patch, title: rows[0].name },
+    })
+    return rows[0]
+  })
   if (!row) return res.status(403).json({ error: 'forbidden' })
   res.json(row)
 })
@@ -103,25 +113,36 @@ orgRouter.patch('/org/settings', requireCap('org:manage'), async (req, res) => {
   const parsed = settingsPatch.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const orgId = req.claims!.org_id!
-  const { rows: before } = await ownerPool.query(
-    'select settings from public.organizations where id = $1',
-    [orgId]
-  )
-  const { rows } = await ownerPool.query(
-    `update public.organizations set settings = $2::jsonb where id = $1
-     returning id, name, short_name, region, plan, settings`,
-    [orgId, JSON.stringify(parsed.data.settings)]
-  )
-  if (!rows[0]) return res.status(404).json({ error: 'not_found' })
+  // One transaction: the change, the recompute it can cause and its audit row
+  // stand or fall together. The settings hold the depreciation policy, which
+  // revalues every asset, and changing it used to leave no trace.
+  const row = await withOwnerTx(async (c) => {
+    const { rows: before } = await c.query(
+      'select settings from public.organizations where id = $1 for update',
+      [orgId]
+    )
+    const { rows } = await c.query(
+      `update public.organizations set settings = $2::jsonb where id = $1
+       returning id, name, short_name, region, plan, settings`,
+      [orgId, JSON.stringify(parsed.data.settings)]
+    )
+    if (!rows[0]) return null
 
-  // The depreciation policy is org-wide, so changing it changes every asset's
-  // book value. Recompute now rather than leaving the register stale until the
-  // 02:00 cron — an admin who switches method and sees nothing move reasonably
-  // concludes the setting doesn't work.
-  const prevDep = JSON.stringify(before[0]?.settings?.depreciation ?? null)
-  const nextDep = JSON.stringify(rows[0].settings?.depreciation ?? null)
-  if (prevDep !== nextDep) {
-    await ownerPool.query('select public.recompute_asset_depreciation($1)', [orgId])
-  }
-  res.json(rows[0])
+    // The depreciation policy is org-wide, so changing it changes every
+    // asset's book value. Recompute now rather than leaving the register
+    // stale until the 02:00 cron — an admin who switches method and sees
+    // nothing move reasonably concludes the setting doesn't work.
+    const prevDep = JSON.stringify(before[0]?.settings?.depreciation ?? null)
+    const nextDep = JSON.stringify(rows[0].settings?.depreciation ?? null)
+    if (prevDep !== nextDep) {
+      await c.query('select public.recompute_asset_depreciation($1)', [orgId])
+    }
+    await auditFromReq(c, req, {
+      action: 'org.settings', entityType: 'organization', entityId: orgId,
+      before: before[0]?.settings ?? null, after: { ...rows[0].settings, title: rows[0].name },
+    })
+    return rows[0]
+  })
+  if (!row) return res.status(404).json({ error: 'not_found' })
+  res.json(row)
 })

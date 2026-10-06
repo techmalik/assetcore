@@ -6,6 +6,7 @@ import { requireCap } from '../../middleware/rbac.js'
 import { buildSet } from '../../sqlUtil.js'
 import { parseOr400 } from '../../http/validate.js'
 import { send } from '../../http/result.js'
+import { auditFromReq } from '../../audit.js'
 
 export const partsRouter = Router()
 
@@ -49,6 +50,10 @@ partsRouter.post('/work-orders/:id/parts', requireCap('wo:update'), async (req, 
        left join public.spare_parts sp on sp.id = wp.part_id where wp.id = $1`,
       [rows[0].id]
     )
+    await auditFromReq(c, req, {
+      action: 'wo.part.add', entityType: 'work_order', entityId: String(req.params.id),
+      after: { line_id: rows[0].id, part_id: d.part_id ?? null, part: full[0].part?.part_number ?? null, description: d.description ?? null, quantity_required: d.quantity_required },
+    })
     return full[0]
   })
   res.status(201).json(row)
@@ -67,7 +72,7 @@ partsRouter.patch('/work-orders/:id/parts/:lineId', requireCap('wo:update'), asy
     // Once stock has moved for a line, editing it would put the ledger and the
     // balance out of step. Reverse it with a stock adjustment instead.
     const { rows: cur } = await c.query(
-      'select consumed_at from public.work_order_parts where id = $1 and work_order_id = $2',
+      'select consumed_at, quantity_required, quantity_used, unit_cost_cents, description from public.work_order_parts where id = $1 and work_order_id = $2',
       [req.params.lineId, req.params.id]
     )
     if (!cur[0]) return { error: 'not_found' as const }
@@ -79,6 +84,11 @@ partsRouter.patch('/work-orders/:id/parts/:lineId', requireCap('wo:update'), asy
       `update public.work_order_parts set ${setSql} where id = $1 returning *`,
       [req.params.lineId, ...values]
     )
+    const { consumed_at: _consumed, ...before } = cur[0]
+    await auditFromReq(c, req, {
+      action: 'wo.part.update', entityType: 'work_order', entityId: String(req.params.id),
+      before: { line_id: req.params.lineId, ...before }, after: { line_id: req.params.lineId, ...input },
+    })
     return { data: rows[0] }
   })
 
@@ -88,10 +98,17 @@ partsRouter.patch('/work-orders/:id/parts/:lineId', requireCap('wo:update'), asy
 partsRouter.delete('/work-orders/:id/parts/:lineId', requireCap('wo:update'), async (req, res) => {
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
-      'delete from public.work_order_parts where id = $1 and work_order_id = $2 and consumed_at is null returning id',
+      'delete from public.work_order_parts where id = $1 and work_order_id = $2 and consumed_at is null returning id, part_id, description, quantity_required',
       [req.params.lineId, req.params.id]
     )
-    if (rows[0]) return { ok: true }
+    if (rows[0]) {
+      const { id, ...line } = rows[0]
+      await auditFromReq(c, req, {
+        action: 'wo.part.delete', entityType: 'work_order', entityId: String(req.params.id),
+        before: { line_id: id, ...line },
+      })
+      return { ok: true }
+    }
     const { rows: exists } = await c.query(
       'select consumed_at from public.work_order_parts where id = $1 and work_order_id = $2',
       [req.params.lineId, req.params.id]

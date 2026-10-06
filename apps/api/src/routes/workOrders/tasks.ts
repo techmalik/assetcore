@@ -5,6 +5,7 @@ import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
 import { buildSet } from '../../sqlUtil.js'
 import { parseOr400 } from '../../http/validate.js'
+import { auditFromReq } from '../../audit.js'
 
 export const tasksRouter = Router()
 
@@ -33,6 +34,10 @@ tasksRouter.post('/work-orders/:id/tasks', requireCap('wo:update'), async (req, 
        values (current_org_id(), $1, $2, $3, $4) returning *`,
       [req.params.id, sequence, input.description, input.notes ?? null]
     )
+    await auditFromReq(c, req, {
+      action: 'wo.task.add', entityType: 'work_order', entityId: String(req.params.id),
+      after: { task_id: rows[0].id, description: rows[0].description },
+    })
     return rows[0]
   })
   res.status(201).json(row)
@@ -48,6 +53,10 @@ tasksRouter.patch('/work-orders/:id/tasks/:taskId', requireCap('wo:update'), asy
   if (!input) return
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows: before } = await c.query(
+      'select description, notes, sequence, done from public.work_order_tasks where id = $1 and work_order_id = $2',
+      [req.params.taskId, req.params.id]
+    )
     // Ticking a step records who and when; un-ticking clears both, so the
     // record never claims someone completed a step that is now open.
     const { rows } = await c.query(
@@ -63,6 +72,12 @@ tasksRouter.patch('/work-orders/:id/tasks/:taskId', requireCap('wo:update'), asy
       [req.params.taskId, req.params.id, input.description ?? null, input.notes ?? null,
        input.sequence ?? null, input.done ?? null]
     )
+    if (rows[0]) {
+      await auditFromReq(c, req, {
+        action: 'wo.task.update', entityType: 'work_order', entityId: String(req.params.id),
+        before: { task_id: rows[0].id, ...before[0] }, after: { task_id: rows[0].id, ...input },
+      })
+    }
     return rows[0] ?? null
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -70,10 +85,19 @@ tasksRouter.patch('/work-orders/:id/tasks/:taskId', requireCap('wo:update'), asy
 })
 
 tasksRouter.delete('/work-orders/:id/tasks/:taskId', requireCap('wo:update'), async (req, res) => {
-  const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query('delete from public.work_order_tasks where id = $1 and work_order_id = $2 returning id',
-      [req.params.taskId, req.params.id]).then((r) => r.rows[0])
-  )
+  const row = await withOrgContext(claimsFromReq(req), async (c) => {
+    const { rows } = await c.query(
+      'delete from public.work_order_tasks where id = $1 and work_order_id = $2 returning id, description',
+      [req.params.taskId, req.params.id]
+    )
+    if (rows[0]) {
+      await auditFromReq(c, req, {
+        action: 'wo.task.delete', entityType: 'work_order', entityId: String(req.params.id),
+        before: { task_id: rows[0].id, description: rows[0].description },
+      })
+    }
+    return rows[0]
+  })
   if (!row) return res.status(404).json({ error: 'not_found' })
   res.status(204).end()
 })

@@ -328,3 +328,54 @@ describe('audit rows record who, where from', () => {
     })
   })
 })
+
+describe('changes that used to leave no audit row (OOS-20)', () => {
+  async function auditRows(action: string, entityId: string) {
+    return withClient(async (c) => (await c.query(
+      'select before, after, actor_id from public.audit_log where action = $1 and entity_id = $2 order by created_at',
+      [action, entityId]
+    )).rows)
+  }
+
+  it('organisation details and settings', async () => {
+    const org = (await owner.get('/api/org')).body
+    const region = `Audit probe ${uniqueSuffix()}`
+    expect((await owner.patch('/api/org').send({ region })).status).toBe(200)
+    expect((await owner.patch('/api/org').send({ region: org.region ?? null })).status).toBe(200)
+    const details = await auditRows('org.update', ORG_A)
+    expect(details.some((r) => r.after.region === region)).toBe(true)
+
+    const probe = uniqueSuffix()
+    expect((await owner.patch('/api/org/settings').send({ settings: { ...org.settings, audit_probe: probe } })).status).toBe(200)
+    expect((await owner.patch('/api/org/settings').send({ settings: org.settings })).status).toBe(200)
+    const settings = await auditRows('org.settings', ORG_A)
+    expect(settings.some((r) => r.after.audit_probe === probe && r.actor_id === USERS.ownerA.id)).toBe(true)
+  })
+
+  it('integration settings, naming what changed but never its value', async () => {
+    const secret = `s3cret-${uniqueSuffix()}`
+    const res = await owner.put('/api/integrations/sms').send({ label: 'SMS', enabled: false, config: { sender_id: 'NGML', api_key: secret } })
+    expect(res.status).toBe(200)
+    const rows = await auditRows('integration.update', res.body.id)
+    const last = rows[rows.length - 1]
+    expect(last.after.changed_keys).toContain('api_key')
+    expect(JSON.stringify(rows)).not.toContain(secret)
+  })
+
+  it('checklist steps and part lines on a work order', async () => {
+    const wo = (await owner.post('/api/work-orders').send({ title: `Audited lines ${uniqueSuffix()}` })).body
+    const task = (await owner.post(`/api/work-orders/${wo.id}/tasks`).send({ description: 'Isolate the line' })).body
+    expect((await owner.patch(`/api/work-orders/${wo.id}/tasks/${task.id}`).send({ done: true })).status).toBe(200)
+    expect((await owner.delete(`/api/work-orders/${wo.id}/tasks/${task.id}`)).status).toBe(204)
+    const line = (await owner.post(`/api/work-orders/${wo.id}/parts`).send({ description: 'Gasket', quantity_required: 2 })).body
+    expect((await owner.patch(`/api/work-orders/${wo.id}/parts/${line.id}`).send({ quantity_required: 3 })).status).toBe(200)
+    expect((await owner.delete(`/api/work-orders/${wo.id}/parts/${line.id}`)).status).toBe(204)
+
+    for (const action of ['wo.task.add', 'wo.task.update', 'wo.task.delete', 'wo.part.add', 'wo.part.update', 'wo.part.delete']) {
+      expect(await auditRows(action, wo.id), action).toHaveLength(1)
+    }
+    const [partUpdate] = await auditRows('wo.part.update', wo.id)
+    expect(Number(partUpdate.before.quantity_required)).toBe(2)
+    expect(partUpdate.after.quantity_required).toBe(3)
+  })
+})

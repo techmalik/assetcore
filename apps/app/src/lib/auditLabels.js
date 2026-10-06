@@ -19,6 +19,12 @@ const ACTION_LABEL = {
   'wo.transition': 'Changed work order status',
   'wo.delete': 'Deleted work order',
   'work_order.attachment.add': 'Attached a file to work order',
+  'wo.task.add': 'Added a checklist step to work order',
+  'wo.task.update': 'Updated a checklist step on work order',
+  'wo.task.delete': 'Removed a checklist step from work order',
+  'wo.part.add': 'Added a part to work order',
+  'wo.part.update': 'Changed a part on work order',
+  'wo.part.delete': 'Removed a part from work order',
 
   // Assets
   'asset.create': 'Registered asset',
@@ -56,6 +62,11 @@ const ACTION_LABEL = {
   'compliance_audit.update': 'Updated compliance audit',
   'compliance_audit.archive': 'Archived compliance audit',
   'compliance_audit.attachment.add': 'Attached a document to compliance audit',
+
+  // Organisation
+  'org.update': 'Updated the organisation details',
+  'org.settings': 'Changed the organisation settings',
+  'integration.update': 'Changed integration settings',
 
   // Structure
   'export.download': 'Downloaded an export',
