@@ -11,6 +11,7 @@ import { errorText } from '../lib/errors'
 import { useConfirm } from '../lib/ConfirmContext'
 import { useToast } from '../lib/ToastContext'
 import PageShell from '../components/PageShell.jsx'
+import { Field } from '../components/form.jsx'
 
 
 // Stock is numeric so consumables can be issued in litres — but 13.00 reads
@@ -96,13 +97,6 @@ function PartModal({ part, onClose, onSave }) {
     }
   }
 
-  const F = ({ label, children, span }) => (
-    <div style={span ? { gridColumn: `span ${span}` } : undefined}>
-      <label className="label" style={{ display: 'block', marginBottom: 5 }}>{label}</label>
-      {children}
-    </div>
-  )
-
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
@@ -114,23 +108,23 @@ function PartModal({ part, onClose, onSave }) {
           </button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <F label="Part number *"><input className="input" value={form.part_number} onChange={(e) => set('part_number', e.target.value)} placeholder="SP-BRG-6205" style={{ width: '100%', fontFamily: 'var(--ff-m)' }} /></F>
-          <F label="Category"><input className="input" value={form.category} onChange={(e) => set('category', e.target.value)} placeholder="Bearings" style={{ width: '100%' }} /></F>
-          <F label="Name *" span={2}><input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Bearing 6205-2RS" style={{ width: '100%' }} /></F>
-          <F label="Description" span={2}><input className="input" value={form.description} onChange={(e) => set('description', e.target.value)} style={{ width: '100%' }} /></F>
-          <F label="Unit of issue"><input className="input" value={form.unit} onChange={(e) => set('unit', e.target.value)} placeholder="each / litre / metre" style={{ width: '100%' }} /></F>
-          <F label="Unit cost (₦)"><input className="input" type="number" min={0} step="0.01" value={form.unit_cost_naira} onChange={(e) => set('unit_cost_naira', e.target.value)} style={{ width: '100%', fontFamily: 'var(--ff-m)' }} /></F>
-          <F label="Reorder level"><input className="input" type="number" min={0} step="0.01" value={form.reorder_level} onChange={(e) => set('reorder_level', e.target.value)} placeholder="0 = never warn" style={{ width: '100%' }} /></F>
-          <F label="Reorder quantity"><input className="input" type="number" min={0} step="0.01" value={form.reorder_quantity} onChange={(e) => set('reorder_quantity', e.target.value)} style={{ width: '100%' }} /></F>
-          <F label="Supplier"><input className="input" value={form.supplier} onChange={(e) => set('supplier', e.target.value)} style={{ width: '100%' }} /></F>
-          <F label="Storage location"><input className="input" value={form.storage_location} onChange={(e) => set('storage_location', e.target.value)} placeholder="Store A / Bin 12" style={{ width: '100%' }} /></F>
+          <Field label="Part number" required><input className="input" value={form.part_number} onChange={(e) => set('part_number', e.target.value)} placeholder="SP-BRG-6205" style={{ width: '100%', fontFamily: 'var(--ff-m)' }} /></Field>
+          <Field label="Category"><input className="input" value={form.category} onChange={(e) => set('category', e.target.value)} placeholder="Bearings" style={{ width: '100%' }} /></Field>
+          <Field label="Name" required span={2}><input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Bearing 6205-2RS" style={{ width: '100%' }} /></Field>
+          <Field label="Description" span={2}><input className="input" value={form.description} onChange={(e) => set('description', e.target.value)} style={{ width: '100%' }} /></Field>
+          <Field label="Unit of issue"><input className="input" value={form.unit} onChange={(e) => set('unit', e.target.value)} placeholder="each / litre / metre" style={{ width: '100%' }} /></Field>
+          <Field label="Unit cost (₦)"><input className="input" type="number" min={0} step="0.01" value={form.unit_cost_naira} onChange={(e) => set('unit_cost_naira', e.target.value)} style={{ width: '100%', fontFamily: 'var(--ff-m)' }} /></Field>
+          <Field label="Reorder level"><input className="input" type="number" min={0} step="0.01" value={form.reorder_level} onChange={(e) => set('reorder_level', e.target.value)} placeholder="0 = never warn" style={{ width: '100%' }} /></Field>
+          <Field label="Reorder quantity"><input className="input" type="number" min={0} step="0.01" value={form.reorder_quantity} onChange={(e) => set('reorder_quantity', e.target.value)} style={{ width: '100%' }} /></Field>
+          <Field label="Supplier"><input className="input" value={form.supplier} onChange={(e) => set('supplier', e.target.value)} style={{ width: '100%' }} /></Field>
+          <Field label="Storage location"><input className="input" value={form.storage_location} onChange={(e) => set('storage_location', e.target.value)} placeholder="Store A / Bin 12" style={{ width: '100%' }} /></Field>
           {!part && (
-            <F label="Opening stock" span={2}>
+            <Field label="Opening stock" span={2}>
               <input className="input" type="number" min={0} step="0.01" value={form.opening_stock} onChange={(e) => set('opening_stock', e.target.value)} style={{ width: '100%' }} />
               <p style={{ fontSize: 11.5, color: 'var(--n500)', marginTop: 5 }}>Recorded as a receipt, so the first balance has a movement behind it like every later one. After this, stock only changes through Adjust stock.</p>
-            </F>
+            </Field>
           )}
-          <F label="Notes" span={2}><textarea className="input" rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} /></F>
+          <Field label="Notes" span={2}><textarea className="input" rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} style={{ width: '100%', resize: 'vertical', paddingTop: 8 }} /></Field>
           {err && <p style={{ gridColumn: 'span 2', fontSize: 12, color: 'var(--srt)' }}>{err}</p>}
         </div>
         <div style={{ padding: '14px 24px', borderTop: 'var(--bdr)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>

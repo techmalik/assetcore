@@ -51,10 +51,4 @@ export default [
     files: ['src/lib/AuthContext.jsx', 'src/lib/rbac.js', 'src/pages/admin/UsersTab.jsx'],
     rules: { 'no-restricted-imports': 'off' },
   },
-  {
-    // Spare Parts is parked (owner decision Q1). Its PartModal has the same
-    // nested field component (OUT-OF-SCOPE.md OOS-25).
-    files: ['src/pages/SpareParts.jsx'],
-    rules: { 'react/no-unstable-nested-components': 'off' },
-  },
 ]
