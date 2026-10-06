@@ -9,6 +9,8 @@ import { buildSet, buildInsert } from '../../sqlUtil.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../../siteShutdown.js'
 import { ASSET_STATUSES, ASSET_DEPRECIATION_METHODS, LIFECYCLE_STATUSES, CRITICALITIES } from '@assetcore/domain'
 import { ASSET_SELECT, recomputeDerived, maintenanceDatesOrdered } from '../../services/assets.js'
+import { importAssets, importSummary } from '../../services/assetImport.js'
+import { transferAssets } from '../../services/assetTransfer.js'
 
 export const coreRouter = Router()
 
@@ -290,127 +292,15 @@ coreRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
   res.status(201).json(row)
 })
 
-// Bulk CSV import. Body: { rows: [{ ain, name, category, site, status, ... }] }.
-// Create-only (dedupe by AIN), per-row result, one row's failure never aborts
-// the rest (savepoint per row). Maintenance dates are required per row, same
-// as the create endpoint — an imported asset must decay like any other.
-const importRowSchema = z.object({
-  ain: z.string().min(1),
-  name: z.string().min(1),
-  last_maintenance_date: z.string().min(1),
-  next_maintenance_date: z.string().min(1),
-}).passthrough()
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-
 coreRouter.post('/assets/import', requireCap('asset:create'), async (req, res) => {
   const rows = Array.isArray(req.body?.rows) ? req.body.rows : null
   if (!rows) return res.status(400).json({ error: 'invalid_request' })
   if (rows.length > 1000) return res.status(400).json({ error: 'too_many_rows', max: 1000 })
 
-  const results = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows: cats } = await c.query('select id, name, code from public.asset_categories where org_id = current_org_id()')
-    const { rows: sites } = await c.query('select id, name, code, location_id from public.sites where deleted_at is null')
-    const { rows: locs } = await c.query('select id, name, code from public.locations where deleted_at is null')
-    const catByKey = new Map<string, string>()
-    for (const cat of cats) { if (cat.name) catByKey.set(String(cat.name).toLowerCase(), cat.id); if (cat.code) catByKey.set(String(cat.code).toLowerCase(), cat.id) }
-    const locByKey = new Map<string, string>()
-    for (const l of locs) { if (l.name) locByKey.set(String(l.name).toLowerCase(), l.id); if (l.code) locByKey.set(String(l.code).toLowerCase(), l.id) }
-    // name/code -> a site id; and (locationId::name/code) -> site id, so a
-    // `location` column disambiguates sites that share a name across locations.
-    const siteByKey = new Map<string, string>()
-    const siteByLocKey = new Map<string, string>()
-    for (const s of sites) {
-      for (const k of [s.name, s.code].filter(Boolean).map((v: string) => String(v).toLowerCase())) {
-        if (!siteByKey.has(k)) siteByKey.set(k, s.id)
-        if (s.location_id) siteByLocKey.set(`${s.location_id}::${k}`, s.id)
-      }
-    }
-
-    const out: Array<{ ain: string; status: 'created' | 'skipped' | 'error'; message?: string }> = []
-    for (const raw of rows) {
-      const parsed = importRowSchema.safeParse(raw)
-      if (!parsed.success) { out.push({ ain: String(raw?.ain ?? '(missing)'), status: 'error', message: 'ain, name, last_maintenance_date and next_maintenance_date are required' }); continue }
-      const r = parsed.data as Record<string, any>
-      if (!ISO_DATE.test(r.last_maintenance_date) || !ISO_DATE.test(r.next_maintenance_date)) {
-        out.push({ ain: r.ain, status: 'error', message: 'maintenance dates must be YYYY-MM-DD' })
-        continue
-      }
-      if (r.next_maintenance_date <= r.last_maintenance_date) {
-        out.push({ ain: r.ain, status: 'error', message: 'next_maintenance_date must be after last_maintenance_date' })
-        continue
-      }
-      const categoryId = r.category ? catByKey.get(String(r.category).toLowerCase()) ?? null : null
-      const locationId = r.location ? locByKey.get(String(r.location).toLowerCase()) ?? null : null
-      const siteKey = r.site ? String(r.site).toLowerCase() : null
-      const siteId = siteKey
-        ? (locationId && siteByLocKey.get(`${locationId}::${siteKey}`)) || siteByKey.get(siteKey) || null
-        : null
-      // install_date/purchase_date are real date columns as of 0015 — they
-      // used to land in `specs` as unvalidated free text, which is why the
-      // format check below exists now.
-      for (const key of ['install_date', 'purchase_date']) {
-        if (r[key] && !ISO_DATE.test(String(r[key]))) {
-          r[key] = null
-        }
-      }
-      const specs: Record<string, unknown> = {}
-      if (r.manufacturer) specs.manufacturer = r.manufacturer
-      if (r.model) specs.model = r.model
-      if (r.serial_number) specs.serial_number = r.serial_number
-      if (r.runtime_hours != null && r.runtime_hours !== '' && !isNaN(Number(r.runtime_hours))) {
-        specs.runtime_hours = Math.max(0, Math.round(Number(r.runtime_hours)))
-      }
-      if (r.tags) specs.tags = String(r.tags).split(',').map((t: string) => t.trim()).filter(Boolean)
-      const rawStatus = r.status != null ? String(r.status).trim() : ''
-      if (rawStatus && !ASSET_STATUSES.includes(rawStatus as typeof ASSET_STATUSES[number])) {
-        out.push({ ain: r.ain, status: 'error', message: `unrecognized status "${rawStatus}"` })
-        continue
-      }
-      const status = rawStatus || 'operational'
-      const num = (v: any) => (v != null && v !== '' && !isNaN(Number(v)) ? Number(v) : null)
-      const value = num(r.value) != null ? Math.round(num(r.value)! * 100) : null
-
-      await c.query('savepoint import_row')
-      try {
-        const { rows: ins } = await c.query(
-          // Same rule as the create endpoint: a row landing on a shut-down
-          // site arrives inactive, remembering the status the file gave it.
-          `insert into public.assets (org_id, ain, name, category_id, site_id, status, status_before_shutdown, purchase_value_cents, specs, lat, lng, last_maintenance_at, next_maintenance_at, install_date, purchase_date)
-           select current_org_id(), $1, $2, $3, $4,
-                  case when shut then 'inactive' else $5 end,
-                  case when shut then nullif($5, 'inactive') end,
-                  $6, $7::jsonb, $8, $9, $10, $11, $12, $13
-           from (select exists (select 1 from public.sites where id = $4 and status = 'shutdown') as shut) s
-           on conflict (org_id, ain) do nothing
-           returning id`,
-          [r.ain, r.name, categoryId, siteId, status, value, JSON.stringify(specs), num(r.lat), num(r.lng), r.last_maintenance_date, r.next_maintenance_date, r.install_date || null, r.purchase_date || null]
-        )
-        if (ins[0]) {
-          // Previously the import wrote health_score straight into the INSERT,
-          // so an imported asset already below threshold raised no inspection
-          // and no auto-WO until the next nightly run. Both derived figures
-          // now go through the same path as a UI-created asset.
-          await recomputeDerived(c, ins[0].id, req.claims!.sub)
-          await writeAuditLog(c, { orgId: req.claims!.org_id!, actorId: req.claims!.sub, action: 'asset.import', entityType: 'asset', entityId: ins[0].id })
-          out.push({ ain: r.ain, status: 'created' })
-        } else {
-          out.push({ ain: r.ain, status: 'skipped', message: 'AIN already exists' })
-        }
-        await c.query('release savepoint import_row')
-      } catch (e: any) {
-        await c.query('rollback to savepoint import_row')
-        out.push({ ain: r.ain, status: 'error', message: e?.message || 'insert failed' })
-      }
-    }
-    return out
-  })
-  const summary = {
-    created: results.filter((r) => r.status === 'created').length,
-    skipped: results.filter((r) => r.status === 'skipped').length,
-    errors: results.filter((r) => r.status === 'error').length,
-  }
-  res.json({ summary, results })
+  const results = await withOrgContext(claimsFromReq(req), (c) =>
+    importAssets(c, rows, { userId: req.claims!.sub, orgId: req.claims!.org_id! })
+  )
+  res.json({ summary: importSummary(results), results })
 })
 
 coreRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) => {
@@ -474,111 +364,16 @@ const transferInput = z.object({
   transferred_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 
-/**
- * Move one or many assets to another site.
- *
- * One transaction for the batch, but a per-asset outcome: an asset already at
- * the destination, or one the caller cannot see, is reported as skipped rather
- * than failing the rest. A bad destination fails the whole request, because
- * nothing in the batch could succeed.
- *
- * What moves with the asset is the work still to be done — open work orders,
- * PM tasks and inspections, and its live PM schedules — so a job does not stay
- * pinned to a site the equipment has left (and, if that site is shut down,
- * become work nobody is allowed to do). Closed and completed records keep the
- * site they happened at: that is where the work was done.
- *
- * Health and book value are not recomputed. Neither reads the site, so a move
- * cannot change them.
- */
+// What a transfer moves with the asset: services/assetTransfer.ts.
 coreRouter.post('/assets/transfer', requireCap('asset:update'), async (req, res) => {
   const parsed = transferInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { to_site_id: toSiteId, reason, transferred_at: transferredAt } = parsed.data
   const assetIds = [...new Set(parsed.data.asset_ids)]
 
-  const result = await withOrgContext(claimsFromReq(req), async (c) => {
-    // sites RLS is org-only, but the assets being moved are site-scoped: a
-    // scoped caller moving equipment somewhere they cannot see would fail the
-    // assets policy's WITH CHECK mid-batch. Refuse it up front instead.
-    const { rows: dest } = await c.query(
-      `select id, name, status, (current_site_ids() is null or id = any(current_site_ids())) as in_scope
-       from public.sites where id = $1 and deleted_at is null`,
-      [toSiteId]
-    )
-    if (!dest[0]) return { error: 'not_found' as const }
-    if (dest[0].status === 'shutdown') return { error: 'site_shutdown' as const }
-    if (!dest[0].in_scope) return { error: 'forbidden' as const }
-
-    const { rows: found } = await c.query(
-      `select a.id, a.org_id, a.site_id, a.status, a.status_before_shutdown,
-              s.name as from_site_name, s.status as from_site_status
-       from public.assets a
-       left join public.sites s on s.id = a.site_id
-       where a.id = any($1::uuid[]) and a.deleted_at is null
-       for update of a`,
-      [assetIds]
-    )
-    const byId = new Map(found.map((r) => [r.id as string, r]))
-
-    const skipped: Array<{ asset_id: string; reason: 'same_site' | 'not_found' }> = []
-    let transferred = 0
-    for (const id of assetIds) {
-      const a = byId.get(id)
-      if (!a) { skipped.push({ asset_id: id, reason: 'not_found' }); continue }
-      if (a.site_id === toSiteId) { skipped.push({ asset_id: id, reason: 'same_site' }); continue }
-
-      // Inactive only because of where it was: leaving the shut-down site
-      // gives it back the status it had. An asset someone set inactive for
-      // another reason, with nothing remembered, stays as it is.
-      const revive = a.status === 'inactive' && (a.status_before_shutdown != null || a.from_site_status === 'shutdown')
-      const { rows: upd } = await c.query(
-        `update public.assets
-         set site_id = $2,
-             status = case when $3 then coalesce(status_before_shutdown, 'operational') else status end,
-             status_before_shutdown = case when $3 then null else status_before_shutdown end
-         where id = $1
-         returning status`,
-        [id, toSiteId, revive]
-      )
-
-      await c.query(
-        `update public.work_orders set site_id = $2, updated_at = now()
-         where asset_id = $1 and deleted_at is null and status <> 'closed'`,
-        [id, toSiteId]
-      )
-      await c.query(
-        `update public.pm_tasks set site_id = $2
-         where asset_id = $1 and status not in ('completed', 'skipped')`,
-        [id, toSiteId]
-      )
-      await c.query(
-        `update public.inspections set site_id = $2
-         where asset_id = $1 and status <> 'completed'`,
-        [id, toSiteId]
-      )
-      // Schedules too, or the next generated task would be stamped with the
-      // old site again.
-      await c.query(
-        `update public.pm_schedules set site_id = $2
-         where asset_id = $1 and deleted_at is null`,
-        [id, toSiteId]
-      )
-
-      await c.query(
-        `insert into public.asset_transfers (org_id, asset_id, from_site_id, to_site_id, reason, transferred_at, transferred_by)
-         values (current_org_id(), $1, $2, $3, $4, coalesce($5::date, current_date), current_user_id())`,
-        [id, a.site_id, toSiteId, reason || null, transferredAt ?? null]
-      )
-      await writeAuditLog(c, {
-        orgId: a.org_id, actorId: req.claims!.sub, action: 'asset.transfer', entityType: 'asset', entityId: id,
-        before: { site_id: a.site_id, site_name: a.from_site_name, status: a.status },
-        after: { site_id: toSiteId, site_name: dest[0].name, status: upd[0].status, reason: reason || null, transferred_at: transferredAt ?? null },
-      })
-      transferred++
-    }
-    return { data: { transferred, skipped } }
-  })
+  const result = await withOrgContext(claimsFromReq(req), (c) =>
+    transferAssets(c, { assetIds, toSiteId, reason, transferredAt }, req.claims!.sub)
+  )
 
   if ('error' in result) {
     if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' })
