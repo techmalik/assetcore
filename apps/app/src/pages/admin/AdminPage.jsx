@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import Sidebar from '../../components/Sidebar.jsx'
 import Topbar from '../../components/Topbar.jsx'
 import { useAuth, useCan } from '../../lib/AuthContext.jsx'
-import SitesTab from './SitesTab.jsx'
-import LocationsTab from './LocationsTab.jsx'
-import CategoriesTab from './CategoriesTab.jsx'
-import UsersTab from './UsersTab.jsx'
-import AuditTab from './AuditTab.jsx'
-import ConfigTab from './ConfigTab.jsx'
-import EscalationsTab from './EscalationsTab.jsx'
+
+// Each tab is loaded when it is first opened: most visits use one of the
+// seven, and a viewer who can open only the audit log never downloads the
+// user management screens.
+const SitesTab = lazy(() => import('./SitesTab.jsx'))
+const LocationsTab = lazy(() => import('./LocationsTab.jsx'))
+const CategoriesTab = lazy(() => import('./CategoriesTab.jsx'))
+const UsersTab = lazy(() => import('./UsersTab.jsx'))
+const AuditTab = lazy(() => import('./AuditTab.jsx'))
+const ConfigTab = lazy(() => import('./ConfigTab.jsx'))
+const EscalationsTab = lazy(() => import('./EscalationsTab.jsx'))
 
 // ── Main Admin page ───────────────────────────────────────────────────────────
 
@@ -50,6 +54,7 @@ export default function Admin({ dark, toggleDark }) {
             </div>
           </div>
           <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+            <Suspense fallback={<div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>}>
             {tab === 'locations' && <LocationsTab />}
             {tab === 'sites' && <SitesTab />}
             {tab === 'categories' && <CategoriesTab />}
@@ -58,6 +63,7 @@ export default function Admin({ dark, toggleDark }) {
             {tab === 'escalations' && <EscalationsTab />}
             {tab === 'audit' && <AuditTab />}
             {!tab && <div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>You don't have access to any Admin section.</div>}
+            </Suspense>
           </div>
         </div>
       </div>
