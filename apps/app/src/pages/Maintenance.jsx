@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Topbar from '../components/Topbar.jsx'
@@ -17,6 +17,8 @@ import { todayISO, addDaysISO } from '../lib/dates'
 import { useConfirm } from '../lib/ConfirmContext'
 import { TASK_STATUS } from './maintenance/shared.jsx'
 import WeekStrip from '../components/WeekStrip.jsx'
+import TableState from '../components/TableState.jsx'
+import { useResource } from '../lib/useResource'
 import { ScheduleModal } from './maintenance/ScheduleModal.jsx'
 import { CompleteTaskModal, ReportModal } from './maintenance/taskModals.jsx'
 import { TasksTable } from './maintenance/TasksTable.jsx'
@@ -49,12 +51,6 @@ export default function Maintenance({ dark, toggleDark }) {
   const [complianceCounts, setComplianceCounts] = useState(null)
   const onInspectionCounts = useCallback((c) => setInspectionCounts(c), [])
   const onComplianceCounts = useCallback((c) => setComplianceCounts(c), [])
-  const [tasks, setTasks] = useState([])
-  const [schedules, setSchedules] = useState([])
-  const [users, setUsers] = useState([])
-  const [assets, setAssets] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [err, setErr] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [assigning, setAssigning] = useState(null) // task being (re)assigned
@@ -66,28 +62,29 @@ export default function Maintenance({ dark, toggleDark }) {
   const [reporting, setReporting] = useState(null) // task whose report is being sent
   const today = todayISO()
 
-  const load = useCallback(async () => {
-    if (tab !== 'pm') return
-    setLoading(true); setErr(null)
-    try {
-      const [t, s, u, a] = await Promise.all([
-        listPMTasks(showCompleted
-          ? { statuses:['completed'], dueAfter: addDaysISO(today,-60), locationId: globalLocationId }
-          : { statuses:['pending','in_progress','overdue'], dueBefore: addDaysISO(today,30), locationId: globalLocationId }),
-        listPMSchedules(),
-        listOrgUsers().catch(() => []),
-        listAssets().catch(() => []),
-      ])
-      setTasks(t)
-      setSchedules(s)
-      setUsers(u)
-      setAssets(a)
-    } catch(e) {
-      setErr(errorText(e))
-    } finally { setLoading(false) }
-  }, [tab, today, globalLocationId, showCompleted])
-
-  useEffect(() => { load() }, [load])
+  // The task list follows the filters; the schedules, people and assets do
+  // not, so they load once (and after an action that changes them) rather
+  // than again on every filter. Neither loads until the PM tab is open.
+  const onPM = tab === 'pm'
+  const list = useResource(
+    () => (!onPM ? Promise.resolve([]) : listPMTasks(showCompleted
+      ? { statuses:['completed'], dueAfter: addDaysISO(today,-60), locationId: globalLocationId }
+      : { statuses:['pending','in_progress','overdue'], dueBefore: addDaysISO(today,30), locationId: globalLocationId })),
+    [onPM, today, globalLocationId, showCompleted],
+    { initial: [], keepPrevious: true, errorFallback: 'Could not load the PM tasks.' },
+  )
+  const lookups = useResource(
+    () => (!onPM ? Promise.resolve(null) : Promise.all([listPMSchedules(), listOrgUsers().catch(() => []), listAssets().catch(() => [])])
+      .then(([schedules, users, assets]) => ({ schedules, users, assets }))),
+    [onPM],
+    { initial: null, keepPrevious: true, errorFallback: 'Could not load the PM schedules.' },
+  )
+  const tasks = list.data
+  const setTasks = list.setData
+  const { schedules = [], users = [], assets = [] } = lookups.data || {}
+  const loading = (list.loading && tasks.length === 0) || (lookups.loading && !lookups.data)
+  const err = list.error || lookups.error
+  const load = () => Promise.all([list.reload(), lookups.reload()])
 
   async function saveAssignment(taskId, assigneeId) {
     await updatePMTask(taskId, { assignee_id: assigneeId })
@@ -203,14 +200,7 @@ export default function Maintenance({ dark, toggleDark }) {
                   {loading ? (
                     <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
                   ) : err ? (
-                    <div style={{padding:24}}>
-                      <div style={{background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:4,padding:'10px 14px',fontSize:12,color:'var(--srt)'}}>
-                        {err.includes('does not exist') ? 'PM tables not yet created. Run `node scripts/migrate.mjs` against the database.' : err}
-                      </div>
-                      {schedules.length === 0 && tasks.length === 0 && !err && (
-                        <EmptyPM onSchedule={() => setShowModal(true)} canCreate={canCreate} locationName={globalLocation?.name} onShowAll={() => setGlobalLocationId(null)} />
-                      )}
-                    </div>
+                    <TableState error={err} onRetry={load} />
                   ) : showCompleted && visibleTasks.length === 0 ? (
                     <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>
                       No maintenance completed in the last 60 days{mineOnly ? ' on tasks assigned to you' : ''}.
