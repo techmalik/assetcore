@@ -2,15 +2,14 @@ import { useState, useEffect } from 'react'
 import { listAuditLog, auditFacets } from '../../lib/db/audit.js'
 import { actionLabel, actionColor, entityTypeLabel } from '../../lib/auditLabels.js'
 import { errorText } from '../../lib/errors'
+import { useResource } from '../../lib/useResource'
+import TableState from '../../components/TableState.jsx'
+import EmptyState from '../../components/EmptyState.jsx'
 
 // ── Audit Log Tab ─────────────────────────────────────────────────────────────
 
 
 export default function AuditTab() {
-  const [rows, setRows] = useState([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState('')
   const [offset, setOffset] = useState(0)
   // Facets come from the log itself, so the dropdowns only ever offer a value
   // that has at least one row behind it — a list of every action the app could
@@ -38,18 +37,19 @@ export default function AuditTab() {
     }
   }
 
-  function load(off, f) {
-    setLoading(true)
-    listAuditLog({ limit: PAGE, offset: off, filters: f })
-      .then(({ rows: r, total: t }) => { setRows(r); setTotal(t); setLoading(false) })
-      .catch(e => { setErr(errorText(e)); setLoading(false) })
-  }
+  // Only the latest page or filter's answer is applied: typing a search and
+  // changing a dropdown quickly used to let an older answer land last.
+  const { data, loading, error, reload } = useResource(
+    () => listAuditLog({ limit: PAGE, offset, filters }), [offset, filters],
+    { initial: { rows: [], total: 0 }, keepPrevious: true, errorFallback: 'Could not load the audit log.' },
+  )
+  const { rows, total } = data
 
   useEffect(() => { auditFacets().then(setFacets).catch(() => {}) }, [])
 
   // Every filter change restarts at page 1 — staying on page 3 of a narrower
   // result set shows an empty table and looks like the filter found nothing.
-  useEffect(() => { setOffset(0); load(0, filters) }, [filters])
+  useEffect(() => { setOffset(0) }, [filters])
 
   // Typing shouldn't fire a request per keystroke.
   useEffect(() => {
@@ -58,9 +58,7 @@ export default function AuditTab() {
   }, [qInput])
 
   function page(dir) {
-    const next = offset + dir * PAGE
-    setOffset(next)
-    load(next, filters)
+    setOffset(offset + dir * PAGE)
   }
 
   function set(key, value) { setFilters(f => ({ ...f, [key]: value })) }
@@ -122,15 +120,11 @@ export default function AuditTab() {
       </div>
 
       <div style={{flex:1,overflowY:'auto'}}>
-        {loading ? (
-          <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
-        ) : err ? (
-          <div style={{padding:16,color:'var(--srt)',fontSize:13}}>{err}</div>
-        ) : rows.length === 0 ? (
-          <div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>
-            {active ? 'No events match these filters.' : 'No audit events yet.'}
-          </div>
-        ) : (
+        <TableState
+          loading={loading && rows.length === 0} error={error} onRetry={reload}
+          isEmpty={rows.length === 0}
+          empty={<EmptyState title={active ? 'No events match these filters.' : 'No audit events yet.'} />}
+        >
           <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead style={{position:'sticky',top:0,zIndex:10}}>
               <tr style={{background:'var(--n50)'}}>
@@ -171,7 +165,7 @@ export default function AuditTab() {
               ))}
             </tbody>
           </table></div>
-        )}
+        </TableState>
       </div>
     </div>
   )
