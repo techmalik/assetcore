@@ -35,7 +35,7 @@ const scheduleInput = z.object({
   active: z.boolean().optional(),
 })
 
-pmSchedulesRouter.get('/pm-schedules', async (req, res) => {
+pmSchedulesRouter.get('/pm-schedules', requireCap('pm:read'), async (req, res) => {
   const activeOnly = req.query.activeOnly !== 'false'
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [SELECT, 'where p.deleted_at is null']

@@ -38,7 +38,7 @@ const licenceInput = z.object({
   documents: z.array(z.unknown()).optional(),
 })
 
-licencesRouter.get('/compliance-licences', async (req, res) => {
+licencesRouter.get('/compliance-licences', requireCap('compliance:read'), async (req, res) => {
   const locationId = typeof req.query.location_id === 'string' ? req.query.location_id : null
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const values: unknown[] = []
@@ -57,7 +57,7 @@ licencesRouter.get('/compliance-licences', async (req, res) => {
   res.json(rows)
 })
 
-licencesRouter.get('/regulatory-authorities', async (req, res) => {
+licencesRouter.get('/regulatory-authorities', requireCap('compliance:read'), async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) =>
     c.query('select id, name, code from public.regulatory_authorities order by code').then((r) => r.rows)
   )

@@ -21,7 +21,7 @@ export const ROUTES = [
   { key: 'asset-map', path: '/asset-map', label: 'Asset Map', icon: 'map', section: 'operations' },
   { key: 'scan', path: '/scan', label: 'Scan Tag', icon: 'scan', section: 'operations' },
   { key: 'work-orders', path: '/work-orders', label: 'Work Orders', icon: 'workorders', section: 'operations' },
-  { key: 'maintenance', path: '/maintenance', label: 'Maintenance', icon: 'maintenance', section: 'operations' },
+  { key: 'maintenance', path: '/maintenance', label: 'Maintenance', icon: 'maintenance', section: 'operations', cap: 'pm:read' },
   { key: 'calendar', path: '/calendar', label: 'Calendar', icon: 'calendar', section: 'operations' },
   { key: 'integrity', path: '/integrity', label: 'Integrity', icon: 'integrity', section: 'operations', anyCap: ['inspection:read', 'defect:read', 'risk:read'] },
   { key: 'approvals', path: '/approvals', label: 'Approvals', icon: 'approvals', section: 'operations', cap: 'approval:read' },
@@ -30,7 +30,7 @@ export const ROUTES = [
   // know it is coming.
   { key: 'spare-parts', path: '/spare-parts', label: 'Warehouse Inventory', icon: 'spareParts', section: 'operations', soon: true },
 
-  { key: 'compliance', path: '/compliance', label: 'Compliance', icon: 'compliance', section: 'report' },
+  { key: 'compliance', path: '/compliance', label: 'Compliance', icon: 'compliance', section: 'report', cap: 'compliance:read' },
   { key: 'depreciation', path: '/depreciation', label: 'Depreciation', icon: 'depreciation', section: 'report', cap: 'depreciation:read' },
   { key: 'analytics', path: '/analytics', label: 'Analytics', icon: 'analytics', section: 'report', cap: 'report:read' },
   { key: 'export', path: '/export', label: 'Export', icon: 'reports', section: 'report', cap: 'report:read' },

@@ -102,6 +102,9 @@ export const ROLE_CAPABILITIES = {
     'risk:read',
     'approval:read', 'approval:create', 'approval:decide',
     'report:read',
+    // Supervisors and officers work the sites whose licences and audits these
+    // are; the Compliance page was always open to them (OOS-21).
+    'compliance:read',
   ],
   officer: [
     'asset:read',
@@ -111,10 +114,14 @@ export const ROLE_CAPABILITIES = {
     'defect:read', 'defect:create',
     'risk:read',
     'approval:read', 'approval:create',
+    'compliance:read',
   ],
   hse_officer: [
     'asset:read',
     'wo:read',
+    // Planned maintenance is part of the safety picture, and the Maintenance
+    // page was always open to HSE officers (OOS-21).
+    'pm:read',
     'inspection:read', 'inspection:create', 'inspection:update',
     'compliance:read', 'compliance:create', 'compliance:update',
     'parts:read',

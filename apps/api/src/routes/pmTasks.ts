@@ -41,7 +41,7 @@ const taskListInput = listQuery({
   dueAfter: isoDate.optional(),
 })
 
-pmTasksRouter.get('/pm-tasks', async (req, res) => {
+pmTasksRouter.get('/pm-tasks', requireCap('pm:read'), async (req, res) => {
   const q = parseOr400(taskListInput, req.query, res)
   if (!q) return
   const rows = await withOrgContext(claimsFromReq(req), (c) => {

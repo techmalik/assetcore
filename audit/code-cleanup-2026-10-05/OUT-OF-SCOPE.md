@@ -22,7 +22,7 @@
 | OOS-18 | LOW | Both version endpoints report the API package version 1.0.0 while the product is 1.1.0. | `routes/health.ts:21`, `routes/admin/version.ts:15`, `apps/api/package.json` | fixed `a71f3a7` |
 | OOS-19 | LOW | Money column headers in exports say "(NGN)" whatever the base currency. | `reportBuilders.ts:41-43`, `exports.ts:137-141,188` | fixed in the follow-ups |
 | OOS-20 | LOW | `/org/settings` changes the depreciation policy (recomputing every book value) with no audit row; `PATCH /org`, `PUT /integrations`, WO task and part-line edits are also unaudited. | 05d RF-API-08, RF-API-16 | fixed in the follow-ups |
-| OOS-21 | LOW | Neither the Compliance page nor `GET /compliance-licences` checks `compliance:read`, which supervisor and officer roles lack. | `Sidebar.jsx:50`, `App.jsx:150`, `compliance.ts:45` | needs owner decision on what `compliance:read` means; TASK-2.2 lists it |
+| OOS-21 | LOW | Neither the Compliance page nor `GET /compliance-licences` checks `compliance:read`, which supervisor and officer roles lack. | `Sidebar.jsx:50`, `App.jsx:150`, `compliance.ts:45` | decided (owner, follow-ups): supervisor and officer hold compliance:read, HSE officer holds pm:read, and the reads are gated |
 | OOS-22 | LOW | The mail fallback prints invite and reset links with live tokens to stdout in production when SMTP is unset. | `auth/mailer.ts:26-27` | fixed in the follow-ups: printed only outside production |
 
 Full detail for every row is in 05b/05c/05d under "Bugs seen in passing".

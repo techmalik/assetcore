@@ -38,7 +38,7 @@ function todayLocal(): string {
 }
 
 // GET /assets/:id/maintenance-completions — feeds the asset detail timeline.
-maintenanceEventsRouter.get('/assets/:id/maintenance-completions', async (req, res) => {
+maintenanceEventsRouter.get('/assets/:id/maintenance-completions', requireCap('pm:read'), async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(
       `select e.*,

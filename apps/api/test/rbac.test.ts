@@ -178,3 +178,28 @@ describe('UAT round 2, F4: audit:read is not covered by the *:read wildcard', ()
     expect((await api.get('/api/audit-log')).status).toBe(403)
   })
 })
+
+describe('read access settled by OOS-21', () => {
+  // The Compliance and Maintenance pages were always open to these roles, but
+  // the capabilities behind them were not granted, so their reads could not be
+  // gated. They are granted now, and the reads are gated.
+  it('an officer reads licences and the regulators list', async () => {
+    const api = await apiAs(USERS.fieldTechA1.email)
+    expect((await api.get('/api/compliance-licences')).status).toBe(200)
+    expect((await api.get('/api/regulatory-authorities')).status).toBe(200)
+  })
+
+  it('an HSE officer reads PM schedules, tasks and maintenance completions', async () => {
+    const api = await apiAs(USERS.hseOfficerA1.email)
+    expect((await api.get('/api/pm-schedules')).status).toBe(200)
+    expect((await api.get('/api/pm-tasks')).status).toBe(200)
+    expect((await api.get(`/api/assets/${ASSET_A1}/maintenance-completions`)).status).toBe(200)
+  })
+
+  it('every role holds pm:read and compliance:read', () => {
+    for (const role of ['owner', 'admin', 'managing_director', 'executive_director', 'manager', 'supervisor', 'officer', 'hse_officer', 'auditor', 'viewer']) {
+      expect(can(role, 'pm:read'), role).toBe(true)
+      expect(can(role, 'compliance:read'), role).toBe(true)
+    }
+  })
+})
