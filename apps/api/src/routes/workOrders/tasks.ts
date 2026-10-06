@@ -5,6 +5,7 @@ import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
 import { writeAuditLog } from '../../audit.js'
 import { buildSet } from '../../sqlUtil.js'
+import { parseOr400 } from '../../http/validate.js'
 
 export const tasksRouter = Router()
 
@@ -19,19 +20,19 @@ const taskInput = z.object({
 })
 
 tasksRouter.post('/work-orders/:id/tasks', requireCap('wo:update'), async (req, res) => {
-  const parsed = taskInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const input = parseOr400(taskInput, req.body, res)
+  if (!input) return
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     // Append to the end unless the caller places it explicitly.
-    const sequence = parsed.data.sequence ?? (await c.query(
+    const sequence = input.sequence ?? (await c.query(
       'select coalesce(max(sequence), -1) + 1 as next from public.work_order_tasks where work_order_id = $1',
       [req.params.id]
     )).rows[0].next
     const { rows } = await c.query(
       `insert into public.work_order_tasks (org_id, work_order_id, sequence, description, notes)
        values (current_org_id(), $1, $2, $3, $4) returning *`,
-      [req.params.id, sequence, parsed.data.description, parsed.data.notes ?? null]
+      [req.params.id, sequence, input.description, input.notes ?? null]
     )
     return rows[0]
   })
@@ -39,13 +40,13 @@ tasksRouter.post('/work-orders/:id/tasks', requireCap('wo:update'), async (req, 
 })
 
 tasksRouter.patch('/work-orders/:id/tasks/:taskId', requireCap('wo:update'), async (req, res) => {
-  const parsed = z.object({
+  const input = parseOr400(z.object({
     done: z.boolean().optional(),
     description: z.string().min(1).max(500).optional(),
     notes: z.string().max(500).nullable().optional(),
     sequence: z.number().int().nonnegative().optional(),
-  }).safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  }), req.body, res)
+  if (!input) return
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     // Ticking a step records who and when; un-ticking clears both, so the
@@ -60,8 +61,8 @@ tasksRouter.patch('/work-orders/:id/tasks/:taskId', requireCap('wo:update'), asy
               done_at     = case when $6 is null then done_at  when $6 then now()             else null end
         where id = $1 and work_order_id = $2
         returning *`,
-      [req.params.taskId, req.params.id, parsed.data.description ?? null, parsed.data.notes ?? null,
-       parsed.data.sequence ?? null, parsed.data.done ?? null]
+      [req.params.taskId, req.params.id, input.description ?? null, input.notes ?? null,
+       input.sequence ?? null, input.done ?? null]
     )
     return rows[0] ?? null
   })

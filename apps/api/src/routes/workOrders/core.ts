@@ -10,6 +10,9 @@ import { eligibleAssignee, insertDirectApproval, loadApproval } from '../../appr
 import { nextWoRef } from '../../refs.js'
 import { WO_SELECT, recordAssignment, transitionWorkOrder } from '../../services/workOrders.js'
 import { WO_TYPES, WO_STATUSES, PRIORITIES } from '@assetcore/domain'
+import { parseOr400 } from '../../http/validate.js'
+import { send } from '../../http/result.js'
+import { Where } from '../../http/query.js'
 
 export const coreRouter = Router()
 
@@ -71,16 +74,17 @@ const woInput = z.object({
 
 coreRouter.get('/work-orders', requireCap('wo:read'), async (req, res) => {
   const { status, priority, asset_id, location_id } = req.query
-  const rows = await withOrgContext(claimsFromReq(req), (c) => {
-    const clauses = [WO_SELECT, 'where w.deleted_at is null']
-    const values: unknown[] = []
-    if (typeof status === 'string') { values.push(status); clauses.push(`and w.status = $${values.length}`) }
-    if (typeof priority === 'string') { values.push(priority); clauses.push(`and w.priority = $${values.length}`) }
-    if (typeof asset_id === 'string' && asset_id) { values.push(asset_id); clauses.push(`and w.asset_id = $${values.length}`) }
-    if (typeof location_id === 'string' && location_id) { values.push(location_id); clauses.push(`and w.site_id in (select id from public.sites where location_id = $${values.length})`) }
-    clauses.push('order by w.created_at desc')
-    return c.query(clauses.join(' '), values).then((r) => r.rows)
-  })
+  // Unpaged on purpose: the board and the list show every open job, and a
+  // default page size would quietly drop the rest.
+  const where = new Where()
+  where.add('w.deleted_at is null')
+  if (typeof status === 'string') where.add('w.status = $?', status)
+  if (typeof priority === 'string') where.add('w.priority = $?', priority)
+  if (typeof asset_id === 'string' && asset_id) where.add('w.asset_id = $?', asset_id)
+  if (typeof location_id === 'string' && location_id) where.add('w.site_id in (select id from public.sites where location_id = $?)', location_id)
+  const rows = await withOrgContext(claimsFromReq(req), (c) =>
+    c.query(`${WO_SELECT} ${where.sql} order by w.created_at desc`, where.params).then((r) => r.rows)
+  )
   res.json(rows)
 })
 
@@ -197,8 +201,7 @@ async function createForApproval(
     return { data: { ...wo, approval: await loadApproval(c, ap.id) } }
   })
 
-  if ('error' in result) return res.status(422).json({ error: result.error })
-  return res.status(201).json(result.data)
+  return send(res, result, { invalid_assignee: 422 }, 201)
 }
 
 const INITIAL_STATUSES: readonly string[] = ['new', 'assigned', 'draft']
@@ -211,33 +214,34 @@ const woApprovalInput = z.object({
 })
 
 coreRouter.post('/work-orders', requireCap('wo:create'), async (req, res) => {
-  const parsed = woInput.safeParse(req.body)
-  const approvalParsed = woApprovalInput.safeParse(req.body ?? {})
-  if (!parsed.success || !approvalParsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const input = parseOr400(woInput, req.body, res)
+  if (!input) return
+  const approval = parseOr400(woApprovalInput, req.body ?? {}, res)
+  if (!approval) return
   // A job starts new, assigned (handed to someone as it is raised) or draft
   // (waiting on approval). Any later status is reached through /transition.
-  if (parsed.data.status && !INITIAL_STATUSES.includes(parsed.data.status)) {
+  if (input.status && !INITIAL_STATUSES.includes(input.status)) {
     return res.status(400).json({ error: 'invalid_initial_status' })
   }
-  const approverId = approvalParsed.data.approver_id
+  const approverId = approval.approver_id
   // It raises an approval request as well as a job, so it needs the
   // capability POST /approvals asks for.
   if (approverId && !hasCap(req, 'approval:create')) {
     return res.status(403).json({ error: 'forbidden', capability: 'approval:create' })
   }
-  if (approverId) return createForApproval(req, res, parsed.data, approverId, approvalParsed.data.approval_notes ?? null)
+  if (approverId) return createForApproval(req, res, input, approverId, approval.approval_notes ?? null)
   // No work is raised at a shut-down site — by a person here, or by the health
   // crossings in SQL (is_work_suspended, 0027).
-  if (await withOrgContext(claimsFromReq(req), (c) => isSiteShutdown(c, parsed.data.site_id, parsed.data.asset_id))) {
+  if (await withOrgContext(claimsFromReq(req), (c) => isSiteShutdown(c, input.site_id, input.asset_id))) {
     return res.status(422).json(SITE_SHUTDOWN_ERROR)
   }
   // Any wo:create holder may create a WO, but only wo:assign holders may hand
   // it to someone at the same time — otherwise wo:create alone would let a
   // caller route work to a colleague without the assignment capability.
-  if (parsed.data.assignee_id && !hasCap(req, 'wo:assign')) {
+  if (input.assignee_id && !hasCap(req, 'wo:assign')) {
     return res.status(403).json({ error: 'forbidden', capability: 'wo:assign' })
   }
-  const { ref: providedRef, ...rest } = parsed.data
+  const { ref: providedRef, ...rest } = input
   const { columns, placeholders, values } = buildInsert(rest, ALLOWED.filter((c) => c !== 'ref'), 1)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
@@ -249,8 +253,8 @@ coreRouter.post('/work-orders', requireCap('wo:create'), async (req, res) => {
       [ref, ...values]
     )
     const woId = rows[0].id
-    if (parsed.data.assignee_id) {
-      await recordAssignment(c, req.claims!.org_id!, woId, req.claims!.sub, parsed.data.assignee_id)
+    if (input.assignee_id) {
+      await recordAssignment(c, req.claims!.org_id!, woId, req.claims!.sub, input.assignee_id)
     }
     const { rows: full } = await c.query(`${WO_SELECT} where w.id = $1`, [woId])
     const wo = full[0]
@@ -267,15 +271,15 @@ coreRouter.patch('/work-orders/:id', requireCap('wo:update'), async (req, res) =
   if (req.body && typeof req.body === 'object' && 'status' in req.body) {
     return res.status(400).json({ error: 'use_transition' })
   }
-  const parsed = woInput.partial().safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { setSql, values } = buildSet(parsed.data, ALLOWED)
+  const input = parseOr400(woInput.partial(), req.body, res)
+  if (!input) return
+  const { setSql, values } = buildSet(input, ALLOWED)
   if (!setSql) return res.status(400).json({ error: 'empty_patch' })
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows: cur } = await c.query('select assignee_id from public.work_orders where id = $1', [req.params.id])
     if (!cur[0]) return { error: 'not_found' as const }
-    const assigneeChanged = 'assignee_id' in parsed.data && parsed.data.assignee_id !== cur[0].assignee_id
+    const assigneeChanged = 'assignee_id' in input && input.assignee_id !== cur[0].assignee_id
     // Any wo:update holder may PATCH a work order, but reassigning it is
     // gated on wo:assign specifically — otherwise every wo:update holder
     // (e.g. a field tech) could reroute work without that capability.
@@ -291,18 +295,14 @@ coreRouter.patch('/work-orders/:id', requireCap('wo:update'), async (req, res) =
     // Update the row before recording the assignment — trg_notify_wo_activity
     // reads the WO's current assignee_id off the just-updated row.
     if (assigneeChanged) {
-      await recordAssignment(c, rows[0].org_id, String(req.params.id), req.claims!.sub, parsed.data.assignee_id ?? null)
+      await recordAssignment(c, rows[0].org_id, String(req.params.id), req.claims!.sub, input.assignee_id ?? null)
     }
     const { rows: full } = await c.query(`${WO_SELECT} where w.id = $1`, [req.params.id])
     const wo = full[0]
-    await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.update', entityType: 'work_order', entityId: wo.id, after: parsed.data })
+    await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.update', entityType: 'work_order', entityId: wo.id, after: input })
     return { data: wo }
   })
-  if ('error' in result) {
-    if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' })
-    return res.status(403).json({ error: 'forbidden', capability: result.capability })
-  }
-  res.json(result.data)
+  send(res, result, { not_found: 404, forbidden: 403 })
 })
 
 const transitionInput = z.object({
@@ -313,22 +313,15 @@ const transitionInput = z.object({
 })
 
 coreRouter.post('/work-orders/:id/transition', requireCap('wo:transition'), async (req, res) => {
-  const parsed = transitionInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { status: newStatus, comment, report } = parsed.data
+  const input = parseOr400(transitionInput, req.body, res)
+  if (!input) return
+  const { status: newStatus, comment, report } = input
 
   const result = await withOrgContext(claimsFromReq(req), (c) =>
     transitionWorkOrder(c, String(req.params.id), newStatus, { actorId: req.claims!.sub, comment, report })
   )
 
-  if ('error' in result) {
-    if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' })
-    if (result.error === 'insufficient_stock') {
-      return res.status(409).json({ error: 'insufficient_stock', shortfalls: result.shortfalls })
-    }
-    return res.status(409).json({ error: 'invalid_transition', from: result.from, to: newStatus })
-  }
-  res.json(result.data)
+  send(res, result, { not_found: 404, insufficient_stock: 409, invalid_transition: 409 })
 })
 
 coreRouter.delete('/work-orders/:id', requireCap('wo:update'), async (req, res) => {

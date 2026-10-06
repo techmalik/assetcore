@@ -158,7 +158,7 @@ async function consumeParts(c: PoolClient, workOrderId: string): Promise<{ short
 type TransitionResult =
   | { data: Record<string, unknown> }
   | { error: 'not_found' }
-  | { error: 'invalid_transition'; from: string }
+  | { error: 'invalid_transition'; from: string; to: string }
   | { error: 'insufficient_stock'; shortfalls: Shortfall[] }
 
 /**
@@ -185,7 +185,7 @@ export async function transitionWorkOrder(
   )
   if (!cur[0]) return { error: 'not_found' }
   const allowed: readonly string[] = WO_TRANSITIONS[cur[0].status as keyof typeof WO_TRANSITIONS] ?? []
-  if (!allowed.includes(to)) return { error: 'invalid_transition', from: cur[0].status }
+  if (!allowed.includes(to)) return { error: 'invalid_transition', from: cur[0].status, to }
 
   // Before the status write, so a shortfall refuses the close with nothing
   // changed.

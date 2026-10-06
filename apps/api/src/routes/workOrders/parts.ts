@@ -5,6 +5,8 @@ import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
 import { writeAuditLog } from '../../audit.js'
 import { buildSet } from '../../sqlUtil.js'
+import { parseOr400 } from '../../http/validate.js'
+import { send } from '../../http/result.js'
 
 export const partsRouter = Router()
 
@@ -20,9 +22,9 @@ const woPartInput = z.object({
 }).refine((v) => v.part_id || v.description, { message: 'part_id or description required' })
 
 partsRouter.post('/work-orders/:id/parts', requireCap('wo:update'), async (req, res) => {
-  const parsed = woPartInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const d = parsed.data
+  const input = parseOr400(woPartInput, req.body, res)
+  if (!input) return
+  const d = input
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     // Snapshot the price now: what it cost on the day is what the job cost,
@@ -54,13 +56,13 @@ partsRouter.post('/work-orders/:id/parts', requireCap('wo:update'), async (req, 
 })
 
 partsRouter.patch('/work-orders/:id/parts/:lineId', requireCap('wo:update'), async (req, res) => {
-  const parsed = z.object({
+  const input = parseOr400(z.object({
     quantity_required: z.number().positive().optional(),
     quantity_used: z.number().nonnegative().optional(),
     unit_cost_cents: z.number().int().nonnegative().nullable().optional(),
     description: z.string().max(300).nullable().optional(),
-  }).safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  }), req.body, res)
+  if (!input) return
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
     // Once stock has moved for a line, editing it would put the ledger and the
@@ -72,7 +74,7 @@ partsRouter.patch('/work-orders/:id/parts/:lineId', requireCap('wo:update'), asy
     if (!cur[0]) return { error: 'not_found' as const }
     if (cur[0].consumed_at) return { error: 'already_consumed' as const }
 
-    const { setSql, values } = buildSet(parsed.data, ['quantity_required', 'quantity_used', 'unit_cost_cents', 'description'])
+    const { setSql, values } = buildSet(input, ['quantity_required', 'quantity_used', 'unit_cost_cents', 'description'])
     if (!setSql) return { error: 'empty_patch' as const }
     const { rows } = await c.query(
       `update public.work_order_parts set ${setSql} where id = $1 returning *`,
@@ -81,12 +83,7 @@ partsRouter.patch('/work-orders/:id/parts/:lineId', requireCap('wo:update'), asy
     return { data: rows[0] }
   })
 
-  if ('error' in result) {
-    if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' })
-    if (result.error === 'already_consumed') return res.status(409).json({ error: 'already_consumed' })
-    return res.status(400).json({ error: 'empty_patch' })
-  }
-  res.json(result.data)
+  send(res, result, { not_found: 404, already_consumed: 409, empty_patch: 400 })
 })
 
 partsRouter.delete('/work-orders/:id/parts/:lineId', requireCap('wo:update'), async (req, res) => {

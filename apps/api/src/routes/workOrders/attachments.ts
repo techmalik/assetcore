@@ -6,6 +6,7 @@ import { requireCap } from '../../middleware/rbac.js'
 import { writeAuditLog } from '../../audit.js'
 import { uploadRoute, DOCUMENT_MIME_TYPES } from '../../files.js'
 import { notifyUsers } from '../../notify.js'
+import { parseOr400 } from '../../http/validate.js'
 
 export const attachmentsRouter = Router()
 
@@ -51,15 +52,15 @@ attachmentsRouter.post('/work-orders/:id/attachments', requireCap('wo:update'), 
 const commentInput = z.object({ body: z.string().min(1) })
 
 attachmentsRouter.post('/work-orders/:id/comments', requireCap('wo:update'), async (req, res) => {
-  const parsed = commentInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const input = parseOr400(commentInput, req.body, res)
+  if (!input) return
 
   const row = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(
       `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body)
        values (current_org_id(), $1, current_user_id(), 'comment', $2)
        returning *`,
-      [req.params.id, parsed.data.body]
+      [req.params.id, input.body]
     ).then((r) => r.rows[0])
   )
   res.status(201).json(row)
