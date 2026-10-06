@@ -11,6 +11,8 @@
 //
 // DEMO OWNER LOGIN  → email: a.okeke@ngml.example   password: Password123!
 // DEMO ADMIN LOGIN  → email: admin@assetcore.io      password: Password123!
+// ONE USER PER ROLE → email: <role>@ngml.example     password: Password123!
+//                     (admin@ngml.example, viewer@ngml.example, …; the e2e smoke test signs in as each)
 // ============================================================================
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
@@ -18,6 +20,7 @@ import path from 'node:path'
 import pg from 'pg'
 import argon2 from 'argon2'
 import dotenv from 'dotenv'
+import { ROLE_KEYS, ROLE_LABELS } from '@assetcore/rbac'
 
 console.log('='.repeat(78))
 console.log('DEV SEED — demo data only. Never run this against a client instance.')
@@ -73,6 +76,25 @@ async function main() {
      on conflict (org_id, user_id) do nothing`,
     [ORG, OWNER]
   )
+
+  // One active member per tenant role, so every role can be signed in as and
+  // checked (e2e/smoke.spec.js does). The owner is the demo owner above.
+  const roleUsers = ROLE_KEYS.filter((r) => r !== 'owner')
+  for (const [i, role] of roleUsers.entries()) {
+    const id = `44444444-0000-0000-0000-${String(i + 1).padStart(12, '0')}`
+    await client.query(
+      `insert into public.users (id, email, password_hash, full_name, status)
+       values ($1, $2, $3, $4, 'active')
+       on conflict (id) do nothing`,
+      [id, `${role}@ngml.example`, ownerHash, `Demo ${ROLE_LABELS[role] ?? role}`]
+    )
+    await client.query(
+      `insert into public.memberships (org_id, user_id, role_key, status)
+       values ($1, $2, $3, 'active')
+       on conflict (org_id, user_id) do nothing`,
+      [ORG, id, role]
+    )
+  }
 
   await client.query(
     `insert into public.platform_admins (user_id, role, full_name, status)
@@ -278,6 +300,7 @@ async function main() {
   console.log('Seed complete.')
   console.log(`  Owner login: a.okeke@ngml.example / Password123!`)
   console.log(`  Admin login: admin@assetcore.io / Password123!`)
+  console.log(`  One user per role: <role>@ngml.example / Password123! (${ROLE_KEYS.filter((r) => r !== 'owner').join(', ')})`)
 }
 
 main()

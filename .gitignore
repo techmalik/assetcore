@@ -12,3 +12,7 @@ deploy/instance.config.json
 dist-release/
 assetcore-v*.tar.gz
 assetcore-support-*.tar.gz
+
+# Playwright (npm run e2e)
+test-results/
+playwright-report/

@@ -1,6 +1,7 @@
 name: check
 
-# Lint, typecheck, build and test on every push and pull request.
+# Lint, typecheck, build and test on every push and pull request, and sign in
+# as each role in a browser.
 # deploy.yml waits for this workflow to pass on main before it ships.
 on:
   push:
@@ -35,3 +36,38 @@ jobs:
         env:
           PGPASSWORD: postgres
       - run: npm run check
+
+  # Signs in as each role and opens every page (e2e/smoke.spec.js). Runs next
+  # to `check`; the deploy waits for both.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Builds assetcore_e2e on this Postgres (the default in
+      # scripts/e2e-db.mjs), then runs the smoke test.
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

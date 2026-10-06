@@ -22,6 +22,7 @@
     "test": "npm run test -w @assetcore/api",
     "test:api": "npm test -w @assetcore/api",
     "test:app": "npm test -w @assetcore/app",
+    "e2e": "node scripts/e2e-db.mjs && playwright test",
     "check": "npm run lint && npm run typecheck && npm run deadcode && npm run build && npm run build:api && npm run test:app && npm run test:api",
     "migrate": "node scripts/migrate.mjs",
     "seed:dev": "node scripts/seed-dev.mjs",
@@ -35,6 +36,8 @@
     "pg": "^8.13.1"
   },
   "devDependencies": {
+    "@assetcore/rbac": "*",
+    "@playwright/test": "^1.63.0",
     "knip": "^5.88.1"
   }
 }
