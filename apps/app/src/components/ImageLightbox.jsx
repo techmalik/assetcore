@@ -16,14 +16,18 @@ export default function ImageLightbox({ images, index = 0, onClose }) {
   const prev = useCallback(() => setI((n) => (n - 1 + list.length) % list.length), [list.length])
   const next = useCallback(() => setI((n) => (n + 1) % list.length), [list.length])
 
+  // Caught on the way down and stopped there: the lightbox opens over the
+  // Edit Asset form, and an Escape that also reached the form's Modal closed
+  // the form and lost what had been typed.
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose()
-      else if (e.key === 'ArrowLeft') prev()
-      else if (e.key === 'ArrowRight') next()
+      const act = { Escape: onClose, ArrowLeft: prev, ArrowRight: next }[e.key]
+      if (!act) return
+      e.stopPropagation()
+      act()
     }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose, prev, next])
 
   const rel = list[i]

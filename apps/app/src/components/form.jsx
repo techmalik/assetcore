@@ -5,16 +5,19 @@ import { Children, cloneElement, isValidElement, useCallback, useId, useState } 
  * the field holds a single input, select or textarea the label is tied to it,
  * so clicking the label focuses the input and a screen reader names it.
  *
+ * `span` takes that many grid columns; `full` takes the whole row, however
+ * many columns the grid has at the current width.
+ *
  * Declare fields with this, not with a component defined inside another
  * component's body: a component declared there is a new type on every render,
  * so React rebuilds its input on each keystroke and the cursor drops out.
  */
-export function Field({ label, required, hint, span, style, children }) {
+export function Field({ label, required, hint, span, full, style, children }) {
   const id = useId()
   const only = Children.count(children) === 1 && isValidElement(children) && typeof children.type === 'string' ? children : null
   const inputId = only ? (only.props.id ?? id) : undefined
   return (
-    <div style={span ? { gridColumn: `span ${span}`, ...style } : style}>
+    <div style={full ? { gridColumn: '1 / -1', ...style } : span ? { gridColumn: `span ${span}`, ...style } : style}>
       <label className="label" htmlFor={inputId}>{label}{required && ' *'}</label>
       {only ? cloneElement(only, { id: inputId }) : children}
       {hint && <p style={{ fontSize: 11.5, color: 'var(--n500)', marginTop: 5 }}>{hint}</p>}

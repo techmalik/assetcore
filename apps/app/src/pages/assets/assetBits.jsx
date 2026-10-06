@@ -42,14 +42,3 @@ export function nextMaintColor(d) {
   if (days < 14) return 'var(--sat)'
   return 'var(--n700)'
 }
-
-// Stable module-scope field wrapper — defining it inside the modal would remount
-// inputs on every keystroke and drop focus.
-export function Field({ label, required, full, children }) {
-  return (
-    <div style={full ? { gridColumn: '1 / -1' } : undefined}>
-      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--n700)', display: 'block', marginBottom: 5 }}>{label}{required && ' *'}</label>
-      {children}
-    </div>
-  )
-}

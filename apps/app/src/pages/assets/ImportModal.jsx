@@ -3,6 +3,8 @@ import { importAssets } from '../../lib/db/assets'
 import { useToast } from '../../lib/ToastContext'
 import { errorText } from '../../lib/errors'
 import { downloadTemplate, parseCSV } from '../../lib/csv'
+import Modal from '../../components/Modal.jsx'
+import { FormError } from '../../components/form.jsx'
 
 // ── CSV Import Modal ───────────────────────────────────────────────────────────
 export function ImportModal({ onClose, onDone }) {
@@ -29,10 +31,12 @@ export function ImportModal({ onClose, onDone }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
-      <div style={{ position: 'relative', width: 460, maxWidth: '92vw', maxHeight: '88vh', overflowY: 'auto', background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 24, zIndex: 1 }}>
-        <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)', marginBottom: 6 }}>Import assets from CSV</h3>
+    <Modal
+      title="Import assets from CSV" width={460} onClose={onClose}
+      footer={(
+        <button type="button" onClick={() => { if (result) onDone(); onClose() }} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{result ? 'Done' : 'Close'}</button>
+      )}
+    >
         <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 14, lineHeight: 1.6 }}>
           Download the template, fill it in, then upload it. Assets are matched by AIN — existing AINs are skipped. Category, Location and Site are matched by name or code; the Location column disambiguates sites that share a name across locations. Last and next maintenance dates are required per row (they drive the health decay schedule).
         </p>
@@ -41,7 +45,7 @@ export function ImportModal({ onClose, onDone }) {
           <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} disabled={busy} style={{ fontSize: 12 }} />
           {busy && <span style={{ fontSize: 12, color: 'var(--n500)', marginLeft: 8 }}>Importing…</span>}
         </div>
-        {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12 }}>{err}</p>}
+        <FormError style={{ marginTop: 12 }}>{err}</FormError>
         {result && (
           <div style={{ marginTop: 16 }}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
@@ -60,10 +64,6 @@ export function ImportModal({ onClose, onDone }) {
             </div>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
-          <button onClick={() => { if (result) onDone(); onClose() }} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{result ? 'Done' : 'Close'}</button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

@@ -32,3 +32,18 @@ describe('Modal', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Title'))
   })
 })
+
+describe('an image lightbox over a modal', () => {
+  it('Escape closes the lightbox and leaves the modal open', async () => {
+    const { default: ImageLightbox } = await import('../../components/ImageLightbox.jsx')
+    const modalClose = vi.fn()
+    const lightboxClose = vi.fn()
+    render(<>
+      <Modal title="Edit Asset" onClose={modalClose}><span /></Modal>
+      <ImageLightbox images={['org/a.png']} index={0} onClose={lightboxClose} />
+    </>)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(lightboxClose).toHaveBeenCalledTimes(1)
+    expect(modalClose).not.toHaveBeenCalled()
+  })
+})

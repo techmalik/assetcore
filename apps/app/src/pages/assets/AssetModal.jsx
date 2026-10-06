@@ -6,7 +6,9 @@ import { useMoney } from '../../lib/money'
 import { ASSET_STATUS, ASSET_DEPRECIATION_METHOD, labelOf } from '../../lib/domain'
 import { useToast } from '../../lib/ToastContext'
 import { errorText } from '../../lib/errors'
-import { STATUS_PICKER_KEYS, MAX_PHOTOS, Field } from './assetBits.jsx'
+import { STATUS_PICKER_KEYS, MAX_PHOTOS } from './assetBits.jsx'
+import { Field, FormError } from '../../components/form.jsx'
+import Modal from '../../components/Modal.jsx'
 
 // ── Add / Edit Asset Modal ────────────────────────────────────────────────────
 // Picker order: the methods, then opting out.
@@ -184,15 +186,18 @@ export function AssetModal({ asset, sites, locations, categories, operators, all
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
-      <form onSubmit={submit} style={{ position: 'relative', width: 620, maxWidth: '94vw', maxHeight: '92vh', overflowY: 'auto', background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 28, zIndex: 1 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 18, fontWeight: 700, color: 'var(--n950)' }}>{editing ? 'Edit Asset' : 'Register New Asset'}</h3>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n400)' }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+    <>
+    <Modal
+      title={editing ? 'Edit Asset' : 'Register New Asset'} width={620} as="form" onSubmit={submit} onClose={onClose}
+      footer={(
+        <>
+          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
+          <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>
+            {saving ? 'Saving…' : editing ? 'Save changes' : 'Register asset'}
           </button>
-        </div>
+        </>
+      )}
+    >
 
         <div className="form-grid" style={{ gap: 12 }}>
           <Field label="Asset name" required full>
@@ -340,16 +345,9 @@ export function AssetModal({ asset, sites, locations, categories, operators, all
           <input ref={docRef} type="file" onChange={pickDoc} disabled={busyFile} style={{ fontSize: 12 }} />
         </div>
 
-        {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 14 }}>{err}</p>}
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
-          <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13, opacity: saving ? .7 : 1 }}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : 'Register asset'}
-          </button>
-        </div>
-      </form>
-      {lightbox && <ImageLightbox images={lightbox.images} index={lightbox.index} onClose={() => setLightbox(null)} />}
-    </div>
+        <FormError style={{ marginTop: 14 }}>{err}</FormError>
+    </Modal>
+    {lightbox && <ImageLightbox images={lightbox.images} index={lightbox.index} onClose={() => setLightbox(null)} />}
+    </>
   )
 }

@@ -5,7 +5,8 @@ import { completeMaintenance } from '../../lib/db/maintenanceEvents'
 import { useToast } from '../../lib/ToastContext'
 import { errorText } from '../../lib/errors'
 import { todayISO, addDaysISO } from '../../lib/dates'
-import { Field } from './assetBits.jsx'
+import { Field, FormError } from '../../components/form.jsx'
+import Modal from '../../components/Modal.jsx'
 
 // ── Complete Maintenance Modal ───────────────────────────────────────────────────
 export function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
@@ -52,10 +53,15 @@ export function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
-      <form onSubmit={submit} style={{ position: 'relative', width: 460, maxWidth: '92vw', background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 24, zIndex: 1 }}>
-        <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)', marginBottom: 4 }}>Complete Maintenance</h3>
+    <Modal
+      title="Complete Maintenance" width={460} as="form" onSubmit={submit} onClose={onClose} nested
+      footer={(
+        <>
+          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
+          <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{saving ? 'Saving…' : 'Complete maintenance'}</button>
+        </>
+      )}
+    >
         <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16 }}>{asset.ain} · {asset.name} — resets health to 100% and schedules the next maintenance date.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {(pmTasks.length > 0 || workOrders.length > 0) && (
@@ -82,13 +88,8 @@ export function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
             <input type="file" onChange={(e) => setReport(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
           </Field>
         </div>
-        {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12 }}>{err}</p>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
-          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
-          <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{saving ? 'Saving…' : 'Complete maintenance'}</button>
-        </div>
-      </form>
-    </div>
+        <FormError style={{ marginTop: 12 }}>{err}</FormError>
+    </Modal>
   )
 }
 
@@ -117,10 +118,15 @@ export function PMTaskCompleteModal({ task, onClose, onCompleted }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} />
-      <form onSubmit={submit} style={{ position: 'relative', width: 420, maxWidth: '92vw', background: 'var(--n0)', borderRadius: 10, boxShadow: '0 24px 64px rgba(0,0,0,.2)', padding: 24, zIndex: 1 }}>
-        <h3 style={{ fontFamily: 'var(--ff-d)', fontSize: 17, fontWeight: 700, color: 'var(--n950)', marginBottom: 4 }}>Complete PM Task</h3>
+    <Modal
+      title="Complete PM Task" width={420} as="form" onSubmit={submit} onClose={onClose} nested
+      footer={(
+        <>
+          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
+          <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{saving ? 'Saving…' : 'Complete task'}</button>
+        </>
+      )}
+    >
         <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16 }}>{task.title} — resets the asset's health to 100% and advances the maintenance schedule.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Field label="Completed on" required>
@@ -133,12 +139,7 @@ export function PMTaskCompleteModal({ task, onClose, onCompleted }) {
             <input type="file" onChange={(e) => setReport(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
           </Field>
         </div>
-        {err && <p style={{ fontSize: 12, color: 'var(--srt)', marginTop: 12 }}>{err}</p>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
-          <button type="button" onClick={onClose} className="btn btn-secondary" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>Cancel</button>
-          <button type="submit" disabled={saving} className="btn btn-primary" style={{ height: 36, padding: '0 18px', fontSize: 13 }}>{saving ? 'Saving…' : 'Complete task'}</button>
-        </div>
-      </form>
-    </div>
+        <FormError style={{ marginTop: 12 }}>{err}</FormError>
+    </Modal>
   )
 }
