@@ -6,9 +6,10 @@ import { requireCap } from '../../middleware/rbac.js'
 import { writeAuditLog } from '../../audit.js'
 import {
   loadApproval, notifyApprovalUser, notifyApprovalRole, eligibleAssignee, insertDirectApproval, applyDirectOutcome,
+  recordApprovalEvent,
 } from '../../approvalRouting.js'
 import { APPROVAL_ENTITY_TYPES, APPROVAL_KINDS } from '@assetcore/domain'
-import { RULE_SELECT, SELECT, noticeCtx, eventsFor } from './shared.js'
+import { RULE_SELECT, noticeCtx } from './shared.js'
 
 export const matrixRouter = Router()
 
@@ -88,11 +89,7 @@ matrixRouter.post('/approvals', requireCap('approval:create'), async (req, res) 
     )
     const approval = rows[0]
 
-    await c.query(
-      `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes)
-       values (current_org_id(), $1, 1, 'submitted', current_user_id(), $2, $3)`,
-      [approval.id, effectiveRole(req), d.notes ?? null]
-    )
+    await recordApprovalEvent(c, { id: approval.id, level: 1 }, 'submitted', effectiveRole(req), d.notes ?? null)
     await notifyApprovalRole(c, noticeCtx(req), first.role_key, {
       kind: 'approval_pending',
       title: `Approval needed: ${d.title || d.kind}`,
@@ -104,8 +101,7 @@ matrixRouter.post('/approvals', requireCap('approval:create'), async (req, res) 
       entityType: 'approval', entityId: approval.id, after: { ...d, rule: rule.name, levels: rule.levels.length },
     })
 
-    const { rows: full } = await c.query(`${SELECT} where ap.id = $1`, [approval.id])
-    return { data: { ...full[0], events: await eventsFor(c, approval.id) } }
+    return { data: await loadApproval(c, approval.id) }
   })
 
   if ('error' in result) {
@@ -157,11 +153,7 @@ matrixRouter.post('/approvals/:id/approve', requireCap('approval:decide'), async
           where id = $1`,
         [ap.id]
       )
-      await c.query(
-        `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes)
-         values (current_org_id(), $1, $2, 'approved', current_user_id(), $3, $4)`,
-        [ap.id, ap.level, effectiveRole(req), notes]
-      )
+      await recordApprovalEvent(c, ap, 'approved', effectiveRole(req), notes)
       await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
         kind: 'approval_decided',
         title: `Accepted: ${ap.title || ap.kind}`,
@@ -182,11 +174,7 @@ matrixRouter.post('/approvals/:id/approve', requireCap('approval:decide'), async
       return { error: 'wrong_approver' as const, expected: ap.current_role_key }
     }
 
-    await c.query(
-      `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes)
-       values (current_org_id(), $1, $2, 'approved', current_user_id(), $3, $4)`,
-      [ap.id, ap.level, effectiveRole(req), notes]
-    )
+    await recordApprovalEvent(c, ap, 'approved', effectiveRole(req), notes)
 
     const finalStep = ap.level >= ap.max_levels
     if (finalStep) {
@@ -244,8 +232,7 @@ matrixRouter.post('/approvals/:id/approve', requireCap('approval:decide'), async
       before: { level: ap.level, status: 'pending' }, after: { notes, final: finalStep },
     })
 
-    const { rows: full } = await c.query(`${SELECT} where ap.id = $1`, [ap.id])
-    return { data: { ...full[0], events: await eventsFor(c, ap.id) } }
+    return { data: await loadApproval(c, ap.id) }
   })
 
   if ('error' in result) {
@@ -286,11 +273,7 @@ matrixRouter.post('/approvals/:id/reject', requireCap('approval:decide'), async 
         where id = $1`,
       [ap.id]
     )
-    await c.query(
-      `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes)
-       values (current_org_id(), $1, $2, 'rejected', current_user_id(), $3, $4)`,
-      [ap.id, ap.level, effectiveRole(req), notes]
-    )
+    await recordApprovalEvent(c, ap, 'rejected', effectiveRole(req), notes)
     await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
       kind: 'approval_decided',
       title: `Rejected: ${ap.title || ap.kind}`,
@@ -302,8 +285,7 @@ matrixRouter.post('/approvals/:id/reject', requireCap('approval:decide'), async 
       entityType: 'approval', entityId: ap.id, before: { level: ap.level }, after: { notes },
     })
 
-    const { rows: full } = await c.query(`${SELECT} where ap.id = $1`, [ap.id])
-    return { data: { ...full[0], events: await eventsFor(c, ap.id) } }
+    return { data: await loadApproval(c, ap.id) }
   })
 
   if ('error' in result) {
@@ -334,18 +316,13 @@ matrixRouter.post('/approvals/:id/recall', requireCap('approval:create'), async 
       "update public.approvals set status = 'recalled', decided_at = now(), current_role_key = null where id = $1",
       [ap.id]
     )
-    await c.query(
-      `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes)
-       values (current_org_id(), $1, $2, 'recalled', current_user_id(), $3, $4)`,
-      [ap.id, ap.level, effectiveRole(req), notes]
-    )
+    await recordApprovalEvent(c, ap, 'recalled', effectiveRole(req), notes)
     await writeAuditLog(c, {
       orgId: ap.org_id, actorId: req.claims!.sub, action: 'approval.recall',
       entityType: 'approval', entityId: ap.id, after: { notes },
     })
 
-    const { rows: full } = await c.query(`${SELECT} where ap.id = $1`, [ap.id])
-    return { data: { ...full[0], events: await eventsFor(c, ap.id) } }
+    return { data: await loadApproval(c, ap.id) }
   })
 
   if ('error' in result) {

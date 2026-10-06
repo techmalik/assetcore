@@ -1,9 +1,7 @@
 import type { Request } from 'express'
-import type { PoolClient } from 'pg'
-import { APPROVAL_SELECT, approvalEvents, type NoticeCtx } from '../../approvalRouting.js'
+import { APPROVAL_SELECT, type NoticeCtx } from '../../approvalRouting.js'
 
-// What can be sent for approval, and for what. 0001 shipped the table with
-
+// A rule with its levels in signing order.
 export const RULE_SELECT = `
   select r.*,
     coalesce((
@@ -21,9 +19,3 @@ export const noticeCtx = (req: Request): NoticeCtx => ({
   orgId: req.claims!.org_id as string,
   actorId: req.claims!.sub,
 })
-
-// Events now carry `to_user` as well as `actor`: a forward is only legible if
-// it says who it went to.
-export async function eventsFor(c: PoolClient, approvalId: string) {
-  return approvalEvents(c, approvalId)
-}

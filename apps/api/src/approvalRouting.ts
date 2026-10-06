@@ -33,7 +33,7 @@ export const APPROVAL_SELECT = `
   left join public.roles cr on cr.key = ap.current_role_key
 `
 
-export async function approvalEvents(c: PoolClient, approvalId: string) {
+async function approvalEvents(c: PoolClient, approvalId: string) {
   const { rows } = await c.query(
     `select e.*,
        case when u.id is null then null else jsonb_build_object('id', u.id, 'full_name', u.full_name) end as actor,
@@ -228,4 +228,40 @@ export async function applyDirectOutcome(
     action: outcome === 'discarded' ? 'work_order.approval_discarded' : 'work_order.approval_returned',
     entityType: 'work_order', entityId: ap.entity_id, after: { approval_id: ap.id, notes },
   })
+}
+
+/** The columns of a request the direct-route actions read. */
+export type DirectRow = {
+  id: string; org_id: string; entity_type: string; entity_id: string; kind: string
+  title: string | null; level: number; status: string; route: string
+  requester_id: string | null; assignee_id: string | null
+}
+
+/** Lock a direct request that is waiting on the caller, or say why it isn't.
+ * The requester is refused before the assignee check. Nobody can ever act on
+ * their own request, even if it was somehow forwarded back to them. */
+export async function lockForAssignee(
+  c: PoolClient, approvalId: string, userId: string
+): Promise<{ ap: DirectRow } | { error: 'not_found' | 'not_direct' | 'not_pending' | 'self_approval' | 'not_assignee'; status?: string }> {
+  const { rows } = await c.query('select * from public.approvals where id = $1 for update', [approvalId])
+  const ap = rows[0] as DirectRow | undefined
+  if (!ap) return { error: 'not_found' }
+  if (ap.route !== 'direct') return { error: 'not_direct' }
+  if (ap.status !== 'pending') return { error: 'not_pending', status: ap.status }
+  if (ap.requester_id === userId) return { error: 'self_approval' }
+  if (ap.assignee_id !== userId) return { error: 'not_assignee' }
+  return { ap }
+}
+
+/** One step in a request's history, by the caller, at the request's current
+ * level. `toUserId` is who it went to, for a forward or a resubmit. */
+export async function recordApprovalEvent(
+  c: PoolClient, ap: { id: string; level: number }, action: string,
+  roleKey: string | null, notes: string | null, toUserId: string | null = null
+) {
+  await c.query(
+    `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes, to_user_id)
+     values (current_org_id(), $1, $2, $3, current_user_id(), $4, $5, $6)`,
+    [ap.id, ap.level, action, roleKey, notes, toUserId]
+  )
 }

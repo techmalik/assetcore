@@ -3,7 +3,8 @@ import { withOrgContext } from '../../db.js'
 import { claimsFromReq, effectiveRole } from '../../claims.js'
 import { requireCap, requireAnyCap, can } from '../../middleware/rbac.js'
 import { ROLE_RANK } from '@assetcore/rbac'
-import { SELECT, eventsFor } from './shared.js'
+import { loadApproval } from '../../approvalRouting.js'
+import { SELECT } from './shared.js'
 
 export const readRouter = Router()
 
@@ -99,11 +100,7 @@ readRouter.get('/approvals/approvers', requireAnyCap('approval:create', 'approva
 })
 
 readRouter.get('/approvals/:id', requireCap('approval:read'), async (req, res) => {
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(`${SELECT} where ap.id = $1`, [req.params.id])
-    if (!rows[0]) return null
-    return { ...rows[0], events: await eventsFor(c, String(req.params.id)) }
-  })
+  const row = await withOrgContext(claimsFromReq(req), (c) => loadApproval(c, String(req.params.id)))
   if (!row) return res.status(404).json({ error: 'not_found' })
   res.json(row)
 })

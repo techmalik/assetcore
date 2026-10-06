@@ -4,7 +4,9 @@ import { withOrgContext } from '../../db.js'
 import { claimsFromReq, effectiveRole } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
 import { writeAuditLog } from '../../audit.js'
-import { loadApproval, notifyApprovalUser, eligibleAssignee, applyDirectOutcome } from '../../approvalRouting.js'
+import {
+  loadApproval, notifyApprovalUser, eligibleAssignee, applyDirectOutcome, lockForAssignee, recordApprovalEvent, type DirectRow,
+} from '../../approvalRouting.js'
 import { send, type Result } from '../../http/result.js'
 import { noticeCtx } from './shared.js'
 
@@ -25,12 +27,6 @@ const resubmitInput = z.object({
   notes: z.string().max(2000).nullable().optional(),
 })
 
-type DirectRow = {
-  id: string; org_id: string; entity_type: string; entity_id: string; kind: string
-  title: string | null; level: number; status: string; route: string
-  requester_id: string | null; assignee_id: string | null
-}
-
 type DirectErrorCode =
   | 'not_found' | 'not_direct' | 'not_pending' | 'not_returned' | 'already_pending'
   | 'self_approval' | 'not_assignee' | 'not_requester'
@@ -42,33 +38,6 @@ const DIRECT_HTTP_STATUS: Record<DirectErrorCode, number> = {
   not_direct: 409, not_pending: 409, not_returned: 409, already_pending: 409,
   self_approval: 403, not_assignee: 403, not_requester: 403,
   invalid_assignee: 422, cannot_forward_to_self: 422, cannot_forward_to_requester: 422,
-}
-
-/** Lock a direct request that is waiting on the caller, or say why it isn't.
- * The requester is refused before the assignee check. Nobody can ever act on
- * their own request, even if it was somehow forwarded back to them. */
-async function lockForAssignee(
-  c: import('pg').PoolClient, approvalId: string, userId: string
-): Promise<{ ap: DirectRow } | { error: DirectErrorCode; status?: string }> {
-  const { rows } = await c.query('select * from public.approvals where id = $1 for update', [approvalId])
-  const ap = rows[0] as DirectRow | undefined
-  if (!ap) return { error: 'not_found' }
-  if (ap.route !== 'direct') return { error: 'not_direct' }
-  if (ap.status !== 'pending') return { error: 'not_pending', status: ap.status }
-  if (ap.requester_id === userId) return { error: 'self_approval' }
-  if (ap.assignee_id !== userId) return { error: 'not_assignee' }
-  return { ap }
-}
-
-async function recordDirectEvent(
-  c: import('pg').PoolClient, ap: DirectRow, action: string,
-  roleKey: string | null, notes: string | null, toUserId: string | null = null
-) {
-  await c.query(
-    `insert into public.approval_events (org_id, approval_id, level, action, actor_id, role_key, notes, to_user_id)
-     values (current_org_id(), $1, $2, $3, current_user_id(), $4, $5, $6)`,
-    [ap.id, ap.level, action, roleKey, notes, toUserId]
-  )
 }
 
 /**
@@ -95,7 +64,7 @@ directRouter.post('/approvals/:id/forward', requireCap('approval:decide'), async
     if (!target) return { error: 'invalid_assignee' }
 
     await c.query('update public.approvals set assignee_id = $2 where id = $1', [ap.id, toUserId])
-    await recordDirectEvent(c, ap, 'forwarded', effectiveRole(req), notes, toUserId)
+    await recordApprovalEvent(c, ap, 'forwarded', effectiveRole(req), notes, toUserId)
     await notifyApprovalUser(c, noticeCtx(req), toUserId, {
       kind: 'approval_pending',
       title: `Forwarded to you for approval: ${ap.title || ap.kind}`,
@@ -138,7 +107,7 @@ directRouter.post('/approvals/:id/return', requireCap('approval:decide'), async 
     const { ap } = locked
 
     await c.query("update public.approvals set status = 'returned', assignee_id = null where id = $1", [ap.id])
-    await recordDirectEvent(c, ap, 'returned', effectiveRole(req), notes)
+    await recordApprovalEvent(c, ap, 'returned', effectiveRole(req), notes)
     await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
       kind: 'approval_decided',
       title: `Returned to you: ${ap.title || ap.kind}`,
@@ -180,7 +149,7 @@ directRouter.post('/approvals/:id/discard', requireCap('approval:decide'), async
         where id = $1`,
       [ap.id]
     )
-    await recordDirectEvent(c, ap, 'discarded', effectiveRole(req), notes)
+    await recordApprovalEvent(c, ap, 'discarded', effectiveRole(req), notes)
     await notifyApprovalUser(c, noticeCtx(req), ap.requester_id, {
       kind: 'approval_decided',
       title: `Discarded: ${ap.title || ap.kind}`,
@@ -236,7 +205,7 @@ directRouter.post('/approvals/:id/resubmit', requireCap('approval:create'), asyn
         where id = $1`,
       [ap.id, assigneeId]
     )
-    await recordDirectEvent(c, ap, 'resubmitted', effectiveRole(req), notes, assigneeId)
+    await recordApprovalEvent(c, ap, 'resubmitted', effectiveRole(req), notes, assigneeId)
     await notifyApprovalUser(c, noticeCtx(req), assigneeId, {
       kind: 'approval_pending',
       title: `Sent to you for approval: ${ap.title || ap.kind}`,
