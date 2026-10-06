@@ -103,10 +103,10 @@ Baseline: 14 files, 236 tests, all pass (2026-10-05). The app is checked with `n
 | 5.9 | Split `WorkOrders.jsx` | 5 | M | Done `e803e87`..`f8195e7` (one WorkOrderForm for New, Edit and raise-from-asset) |
 | 5.10 | Split `Assets.jsx` | 5 | L | Done `a6cfc9b`..`53a3523` (lib/csv.js tested; Escape in a photo no longer closes Edit Asset) |
 | 5.11 | Extract the Maintenance week strip and modals | 5 | S | Done `1a5aae8`, `738fbe1` |
-| 6.1 | Shared test helpers; name test files by feature | 6 | S | Open |
-| 6.2 | Test that TS and SQL depreciation agree | 6 | S | Open |
-| 6.3 | Page shell, theme context and one route table | 6 | M | Open |
-| 6.4 | `auditFromReq` so every audit row carries actor, org and IP | 6 | M | Open |
+| 6.1 | Shared test helpers; name test files by feature | 6 | S | Done `f4ca945` (325 tests before and after) |
+| 6.2 | Test that TS and SQL depreciation agree | 6 | S | Done `fa078bc` (the engines agree within a cent in all six cases) |
+| 6.3 | Page shell, theme context and one route table | 6 | M | Done `7f76cba` (route table without page components, to avoid an import cycle) |
+| 6.4 | `auditFromReq` so every audit row carries actor, org and IP | 6 | M | Done `e80ccae` (92 calls; one recorded an IP before) |
 
 ### Wave order and parallelism
 
