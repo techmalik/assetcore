@@ -1,20 +1,17 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { withOrgContext } from '../db.js'
-import { claimsFromReq, effectiveRole } from '../claims.js'
-import { requireCap, hasCap } from '../middleware/rbac.js'
-import { writeAuditLog } from '../audit.js'
-import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
-import { buildSet, buildInsert } from '../sqlUtil.js'
-import { uploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
-import { notifyUsers } from '../notify.js'
-import { eligibleAssignee, insertDirectApproval, loadApproval } from '../approvalRouting.js'
-import { nextWoRef } from '../refs.js'
-import { WO_SELECT, recordAssignment, transitionWorkOrder } from '../services/workOrders.js'
+import { withOrgContext } from '../../db.js'
+import { claimsFromReq, effectiveRole } from '../../claims.js'
+import { requireCap, hasCap } from '../../middleware/rbac.js'
+import { writeAuditLog } from '../../audit.js'
+import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../../siteShutdown.js'
+import { buildSet, buildInsert } from '../../sqlUtil.js'
+import { eligibleAssignee, insertDirectApproval, loadApproval } from '../../approvalRouting.js'
+import { nextWoRef } from '../../refs.js'
+import { WO_SELECT, recordAssignment, transitionWorkOrder } from '../../services/workOrders.js'
 import { WO_TYPES, WO_STATUSES, PRIORITIES } from '@assetcore/domain'
 
-export const workOrdersRouter = Router()
-
+export const coreRouter = Router()
 
 // assigned_by/assigned_at are deliberately absent: they are stamped from the
 // authenticated caller whenever assignee_id moves, never accepted from a body.
@@ -72,7 +69,7 @@ const woInput = z.object({
   cost_cents: z.number().int().nullable().optional(),
 })
 
-workOrdersRouter.get('/work-orders', requireCap('wo:read'), async (req, res) => {
+coreRouter.get('/work-orders', requireCap('wo:read'), async (req, res) => {
   const { status, priority, asset_id, location_id } = req.query
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
     const clauses = [WO_SELECT, 'where w.deleted_at is null']
@@ -87,7 +84,7 @@ workOrdersRouter.get('/work-orders', requireCap('wo:read'), async (req, res) => 
   res.json(rows)
 })
 
-workOrdersRouter.get('/work-orders/:id', requireCap('wo:read'), async (req, res) => {
+coreRouter.get('/work-orders/:id', requireCap('wo:read'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(`${WO_SELECT} where w.id = $1`, [req.params.id])
     const wo = rows[0]
@@ -213,7 +210,7 @@ const woApprovalInput = z.object({
   approval_notes: z.string().max(2000).nullable().optional(),
 })
 
-workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) => {
+coreRouter.post('/work-orders', requireCap('wo:create'), async (req, res) => {
   const parsed = woInput.safeParse(req.body)
   const approvalParsed = woApprovalInput.safeParse(req.body ?? {})
   if (!parsed.success || !approvalParsed.success) return res.status(400).json({ error: 'invalid_request' })
@@ -263,7 +260,7 @@ workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) 
   res.status(201).json(row)
 })
 
-workOrdersRouter.patch('/work-orders/:id', requireCap('wo:update'), async (req, res) => {
+coreRouter.patch('/work-orders/:id', requireCap('wo:update'), async (req, res) => {
   // A status change goes through /transition, which applies the transition
   // rules and everything closing means (parts, defect, actual_end). A PATCH
   // used to set status directly and skip all of it.
@@ -315,7 +312,7 @@ const transitionInput = z.object({
   report: z.record(z.unknown()).optional(),
 })
 
-workOrdersRouter.post('/work-orders/:id/transition', requireCap('wo:transition'), async (req, res) => {
+coreRouter.post('/work-orders/:id/transition', requireCap('wo:transition'), async (req, res) => {
   const parsed = transitionInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { status: newStatus, comment, report } = parsed.data
@@ -334,63 +331,7 @@ workOrdersRouter.post('/work-orders/:id/transition', requireCap('wo:transition')
   res.json(result.data)
 })
 
-workOrdersRouter.post('/work-orders/:id/attachments', requireCap('wo:update'), ...uploadRoute({ subdir: 'attachments', field: 'file', mime: DOCUMENT_MIME_TYPES }, async (req, res, file) => {
-  const url = file.url
-
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(
-      `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body, attachments)
-       values (current_org_id(), $1, current_user_id(), 'attachment', $2, $3::jsonb)
-       returning *`,
-      [req.params.id, file.name, JSON.stringify([{ url, name: file.name, size: file.size }])]
-    )
-    const activity = rows[0]
-    await writeAuditLog(c, { orgId: activity.org_id, actorId: req.claims!.sub, action: 'work_order.attachment.add', entityType: 'work_order', entityId: activity.work_order_id, after: { url, name: file.name, size: file.size } })
-
-    // PM tasks, inspections and maintenance completions all announce a
-    // report upload; work orders were the one attachment path that silently
-    // did nothing. Goes to the assignee and the raiser — whoever isn't the
-    // uploader is the one waiting to see it.
-    const { rows: woRows } = await c.query(
-      'select id, org_id, ref, assignee_id, created_by from public.work_orders where id = $1',
-      [req.params.id]
-    )
-    const wo = woRows[0]
-    if (wo) {
-      await notifyUsers(c, {
-        orgId: wo.org_id,
-        userIds: [wo.assignee_id, wo.created_by],
-        actorId: req.claims!.sub,
-        kind: 'report_uploaded',
-        title: `File attached to ${wo.ref}`,
-        body: file.name,
-        entityType: 'work_order',
-        entityId: wo.id,
-      })
-    }
-    return activity
-  })
-  res.status(201).json(row)
-}))
-
-const commentInput = z.object({ body: z.string().min(1) })
-
-workOrdersRouter.post('/work-orders/:id/comments', requireCap('wo:update'), async (req, res) => {
-  const parsed = commentInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-
-  const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(
-      `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body)
-       values (current_org_id(), $1, current_user_id(), 'comment', $2)
-       returning *`,
-      [req.params.id, parsed.data.body]
-    ).then((r) => r.rows[0])
-  )
-  res.status(201).json(row)
-})
-
-workOrdersRouter.delete('/work-orders/:id', requireCap('wo:update'), async (req, res) => {
+coreRouter.delete('/work-orders/:id', requireCap('wo:update'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
       'update public.work_orders set deleted_at = now() where id = $1 returning id, org_id',
@@ -401,174 +342,5 @@ workOrdersRouter.delete('/work-orders/:id', requireCap('wo:update'), async (req,
     return wo
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
-  res.status(204).end()
-})
-// ── Task checklist ───────────────────────────────────────────────────────────
-// The steps a job is actually worked from. 0001 had only a free-text
-// description, so there was nothing to tick off and nothing to audit.
-
-const taskInput = z.object({
-  description: z.string().min(1).max(500),
-  sequence: z.number().int().nonnegative().optional(),
-  notes: z.string().max(500).nullable().optional(),
-})
-
-workOrdersRouter.post('/work-orders/:id/tasks', requireCap('wo:update'), async (req, res) => {
-  const parsed = taskInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    // Append to the end unless the caller places it explicitly.
-    const sequence = parsed.data.sequence ?? (await c.query(
-      'select coalesce(max(sequence), -1) + 1 as next from public.work_order_tasks where work_order_id = $1',
-      [req.params.id]
-    )).rows[0].next
-    const { rows } = await c.query(
-      `insert into public.work_order_tasks (org_id, work_order_id, sequence, description, notes)
-       values (current_org_id(), $1, $2, $3, $4) returning *`,
-      [req.params.id, sequence, parsed.data.description, parsed.data.notes ?? null]
-    )
-    return rows[0]
-  })
-  res.status(201).json(row)
-})
-
-workOrdersRouter.patch('/work-orders/:id/tasks/:taskId', requireCap('wo:update'), async (req, res) => {
-  const parsed = z.object({
-    done: z.boolean().optional(),
-    description: z.string().min(1).max(500).optional(),
-    notes: z.string().max(500).nullable().optional(),
-    sequence: z.number().int().nonnegative().optional(),
-  }).safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    // Ticking a step records who and when; un-ticking clears both, so the
-    // record never claims someone completed a step that is now open.
-    const { rows } = await c.query(
-      `update public.work_order_tasks
-          set description = coalesce($3, description),
-              notes       = coalesce($4, notes),
-              sequence    = coalesce($5, sequence),
-              done        = coalesce($6, done),
-              done_by     = case when $6 is null then done_by  when $6 then current_user_id() else null end,
-              done_at     = case when $6 is null then done_at  when $6 then now()             else null end
-        where id = $1 and work_order_id = $2
-        returning *`,
-      [req.params.taskId, req.params.id, parsed.data.description ?? null, parsed.data.notes ?? null,
-       parsed.data.sequence ?? null, parsed.data.done ?? null]
-    )
-    return rows[0] ?? null
-  })
-  if (!row) return res.status(404).json({ error: 'not_found' })
-  res.json(row)
-})
-
-workOrdersRouter.delete('/work-orders/:id/tasks/:taskId', requireCap('wo:update'), async (req, res) => {
-  const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query('delete from public.work_order_tasks where id = $1 and work_order_id = $2 returning id',
-      [req.params.taskId, req.params.id]).then((r) => r.rows[0])
-  )
-  if (!row) return res.status(404).json({ error: 'not_found' })
-  res.status(204).end()
-})
-
-// ── Parts on a work order ────────────────────────────────────────────────────
-// Replaces the free-text `parts` JSON blob with lines that point at real stock.
-
-const woPartInput = z.object({
-  part_id: z.string().uuid().nullable().optional(),
-  description: z.string().max(300).nullable().optional(),
-  quantity_required: z.number().positive(),
-  quantity_used: z.number().nonnegative().optional(),
-  unit_cost_cents: z.number().int().nonnegative().nullable().optional(),
-}).refine((v) => v.part_id || v.description, { message: 'part_id or description required' })
-
-workOrdersRouter.post('/work-orders/:id/parts', requireCap('wo:update'), async (req, res) => {
-  const parsed = woPartInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const d = parsed.data
-
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    // Snapshot the price now: what it cost on the day is what the job cost,
-    // even if the part is repriced later.
-    let unitCost = d.unit_cost_cents ?? null
-    if (unitCost == null && d.part_id) {
-      const { rows } = await c.query('select unit_cost_cents from public.spare_parts where id = $1', [d.part_id])
-      unitCost = rows[0] ? Number(rows[0].unit_cost_cents) : null
-    }
-    const { rows } = await c.query(
-      `insert into public.work_order_parts
-         (org_id, work_order_id, part_id, description, quantity_required, quantity_used, unit_cost_cents, added_by)
-       values (current_org_id(), $1, $2, $3, $4, $5, $6, current_user_id())
-       returning id`,
-      [req.params.id, d.part_id ?? null, d.description ?? null, d.quantity_required, d.quantity_used ?? 0, unitCost]
-    )
-    const { rows: full } = await c.query(
-      `select wp.*,
-         case when sp.id is null then null else jsonb_build_object(
-           'id', sp.id, 'part_number', sp.part_number, 'name', sp.name,
-           'unit', sp.unit, 'quantity_in_stock', sp.quantity_in_stock) end as part
-       from public.work_order_parts wp
-       left join public.spare_parts sp on sp.id = wp.part_id where wp.id = $1`,
-      [rows[0].id]
-    )
-    return full[0]
-  })
-  res.status(201).json(row)
-})
-
-workOrdersRouter.patch('/work-orders/:id/parts/:lineId', requireCap('wo:update'), async (req, res) => {
-  const parsed = z.object({
-    quantity_required: z.number().positive().optional(),
-    quantity_used: z.number().nonnegative().optional(),
-    unit_cost_cents: z.number().int().nonnegative().nullable().optional(),
-    description: z.string().max(300).nullable().optional(),
-  }).safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-
-  const result = await withOrgContext(claimsFromReq(req), async (c) => {
-    // Once stock has moved for a line, editing it would put the ledger and the
-    // balance out of step. Reverse it with a stock adjustment instead.
-    const { rows: cur } = await c.query(
-      'select consumed_at from public.work_order_parts where id = $1 and work_order_id = $2',
-      [req.params.lineId, req.params.id]
-    )
-    if (!cur[0]) return { error: 'not_found' as const }
-    if (cur[0].consumed_at) return { error: 'already_consumed' as const }
-
-    const { setSql, values } = buildSet(parsed.data, ['quantity_required', 'quantity_used', 'unit_cost_cents', 'description'])
-    if (!setSql) return { error: 'empty_patch' as const }
-    const { rows } = await c.query(
-      `update public.work_order_parts set ${setSql} where id = $1 returning *`,
-      [req.params.lineId, ...values]
-    )
-    return { data: rows[0] }
-  })
-
-  if ('error' in result) {
-    if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' })
-    if (result.error === 'already_consumed') return res.status(409).json({ error: 'already_consumed' })
-    return res.status(400).json({ error: 'empty_patch' })
-  }
-  res.json(result.data)
-})
-
-workOrdersRouter.delete('/work-orders/:id/parts/:lineId', requireCap('wo:update'), async (req, res) => {
-  const result = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(
-      'delete from public.work_order_parts where id = $1 and work_order_id = $2 and consumed_at is null returning id',
-      [req.params.lineId, req.params.id]
-    )
-    if (rows[0]) return { ok: true }
-    const { rows: exists } = await c.query(
-      'select consumed_at from public.work_order_parts where id = $1 and work_order_id = $2',
-      [req.params.lineId, req.params.id]
-    )
-    return exists[0] ? { error: 'already_consumed' as const } : { error: 'not_found' as const }
-  })
-  if ('error' in result) {
-    return res.status(result.error === 'already_consumed' ? 409 : 404).json({ error: result.error })
-  }
   res.status(204).end()
 })
