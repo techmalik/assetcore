@@ -1,14 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { listSites, createSite, updateSite, softDeleteSite, shutdownSite, reopenSite } from '../../lib/db/sites.js'
 import { listLocations } from '../../lib/db/locations.js'
 import { useToast } from '../../lib/ToastContext'
 import { errorText } from '../../lib/errors'
 import { useConfirm } from '../../lib/ConfirmContext'
+import { useResource } from '../../lib/useResource'
+import { fmtDateLong } from '../../lib/dates'
+import Modal from '../../components/Modal.jsx'
+import { Field, FormError, useForm } from '../../components/form.jsx'
+import TableState from '../../components/TableState.jsx'
+import EmptyState from '../../components/EmptyState.jsx'
 
 // ── Sites Tab ────────────────────────────────────────────────────────────────
 
 function SiteModal({ site, locations, onClose, onSave }) {
-  const [form, setForm] = useState({ name: site?.name || '', code: site?.code || '', region: site?.region || '', location_id: site?.location_id || '' })
+  const { form, set } = useForm({ name: site?.name || '', code: site?.code || '', region: site?.region || '', location_id: site?.location_id || '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -21,37 +27,41 @@ function SiteModal({ site, locations, onClose, onSave }) {
       if (site) await updateSite(site.id, payload)
       else await createSite(payload)
       onSave()
-    } catch (ex) { setErr(errorText(ex)) } finally { setSaving(false) }
+    } catch (ex) { setErr(errorText(ex)); setSaving(false) }
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:400,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
-        <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:18}}>{site ? 'Edit Site' : 'Add Site'}</div>
-        <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
-          {[['name','Site Name','e.g. Lagos DS-04'],['code','Site Code','e.g. LG-DS04'],['region','Region (optional)','e.g. South West']].map(([k,l,ph]) => (
-            <label key={k} style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
-              {l}
-              <input value={form[k]} onChange={e => setForm(f => ({...f,[k]:e.target.value}))} placeholder={ph}
-                className="input"/>
-            </label>
-          ))}
-          <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
-            Location
-            <select value={form.location_id} onChange={e => setForm(f => ({...f,location_id:e.target.value}))}
-              className="input">
-              <option value="">— Unassigned —</option>
-              {(locations||[]).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </label>
-          {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
-          <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:6}}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal
+      title={site ? 'Edit Site' : 'Add Site'}
+      width={400}
+      as="form"
+      onSubmit={submit}
+      onClose={onClose}
+      bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+      footer={(
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+        </>
+      )}
+    >
+      <Field label="Site Name" required>
+        <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Lagos DS-04" />
+      </Field>
+      <Field label="Site Code" required>
+        <input className="input" value={form.code} onChange={(e) => set('code', e.target.value)} placeholder="e.g. LG-DS04" />
+      </Field>
+      <Field label="Region">
+        <input className="input" value={form.region} onChange={(e) => set('region', e.target.value)} placeholder="e.g. South West" />
+      </Field>
+      <Field label="Location">
+        <select className="input" value={form.location_id} onChange={(e) => set('location_id', e.target.value)}>
+          <option value="">— Unassigned —</option>
+          {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+        </select>
+      </Field>
+      <FormError>{err}</FormError>
+    </Modal>
   )
 }
 
@@ -77,49 +87,45 @@ function ShutdownSiteModal({ site, onClose, onDone }) {
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:420,maxWidth:'92vw',padding:24,boxShadow:'var(--sh-lg)'}}>
-        <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:6}}>Shut down {site.name}</div>
-        <div style={{padding:'10px 12px',background:'var(--sab)',border:'1px solid var(--sabr)',borderRadius:6,fontSize:12,color:'var(--sat)',lineHeight:1.5,marginBottom:14}}>
-          {n} asset{n !== 1 ? 's' : ''} at this site will be marked Inactive and no new work can be raised there.
-          Reopening the site gives each asset back the status it has now.
-        </div>
-        <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
-          <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
-            Reason *
-            <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} maxLength={1000} className="input"
-              style={{height:'auto',padding:'8px 10px',resize:'vertical'}} placeholder="e.g. Field decommissioned pending sale" />
-          </label>
-          {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
-          <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:6}}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-danger-soft" disabled={saving}>{saving ? 'Shutting down…' : 'Shut down site'}</button>
-          </div>
-        </form>
+    <Modal
+      title={`Shut down ${site.name}`}
+      width={420}
+      as="form"
+      onSubmit={submit}
+      onClose={onClose}
+      bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+      footer={(
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-danger-soft" disabled={saving}>{saving ? 'Shutting down…' : 'Shut down site'}</button>
+        </>
+      )}
+    >
+      <div style={{ padding: '10px 12px', background: 'var(--sab)', border: '1px solid var(--sabr)', borderRadius: 6, fontSize: 12, color: 'var(--sat)', lineHeight: 1.5 }}>
+        {n} asset{n !== 1 ? 's' : ''} at this site will be marked Inactive and no new work can be raised there.
+        Reopening the site gives each asset back the status it has now.
       </div>
-    </div>
+      <Field label="Reason" required>
+        <textarea className="input" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={1000}
+          style={{ height: 'auto', padding: '8px 10px', resize: 'vertical' }} placeholder="e.g. Field decommissioned pending sale" />
+      </Field>
+      <FormError>{err}</FormError>
+    </Modal>
   )
 }
 
 export default function SitesTab() {
   const ask = useConfirm()
   const toast = useToast()
-  const [sites, setSites] = useState([])
-  const [locations, setLocations] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState('')
+  // Locations only label the cards, so the list still shows without them.
+  const { data, loading, error, reload: load } = useResource(
+    () => Promise.all([listSites(), listLocations().catch(() => [])]).then(([sites, locations]) => ({ sites, locations })),
+    [], { initial: { sites: [], locations: [] }, keepPrevious: true },
+  )
+  const { sites, locations } = data
   const [modal, setModal] = useState(null) // null | 'new' | site object
   const [shuttingDown, setShuttingDown] = useState(null) // site being shut down
   const locName = (id) => locations.find(l => l.id === id)?.name
-
-  function load() {
-    setLoading(true)
-    Promise.all([listSites(), listLocations().catch(() => [])])
-      .then(([s, l]) => { setSites(s); setLocations(l); setLoading(false) })
-      .catch(e => { setErr(errorText(e)); setLoading(false) })
-  }
-
-  useEffect(() => { load() }, [])
 
   async function archive(id) {
     if (!(await ask('Archive this site? It will no longer appear in lists.', { danger: true, confirmLabel: 'Archive' }))) return
@@ -141,13 +147,11 @@ export default function SitesTab() {
         <div style={{fontSize:14,fontWeight:600,color:'var(--n800)'}}>Sites ({sites.length})</div>
         <button className="btn btn-primary" style={{height:32,padding:'0 14px',fontSize:13}} onClick={() => setModal('new')}>+ Add Site</button>
       </div>
-      {loading ? (
-        <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
-      ) : err ? (
-        <div style={{padding:12,background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:6,fontSize:13,color:'var(--srt)'}}>{err}</div>
-      ) : sites.length === 0 ? (
-        <div style={{padding:48,textAlign:'center',color:'var(--n400)',fontSize:13}}>No sites yet. Add your first site to get started.</div>
-      ) : (
+      <TableState
+        loading={loading} error={error} onRetry={load}
+        isEmpty={sites.length === 0}
+        empty={<EmptyState title="No sites yet" body="Add your first site to get started." />}
+      >
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:10}}>
           {sites.map(s => {
             const shut = s.status === 'shutdown'
@@ -176,7 +180,7 @@ export default function SitesTab() {
               </div>
               {shut && (
                 <div style={{fontSize:11,color:'var(--n600)',lineHeight:1.5,borderTop:'var(--bdr)',paddingTop:6}}>
-                  Shut down {s.shutdown_at ? new Date(s.shutdown_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : ''}
+                  Shut down {s.shutdown_at ? fmtDateLong(s.shutdown_at) : ''}
                   {s.shutdown_reason && <> — {s.shutdown_reason}</>}
                 </div>
               )}
@@ -184,7 +188,7 @@ export default function SitesTab() {
             )
           })}
         </div>
-      )}
+      </TableState>
       {shuttingDown && (
         <ShutdownSiteModal
           site={shuttingDown}
