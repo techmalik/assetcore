@@ -8,7 +8,7 @@ import { useMoney } from '../../lib/money'
 import SendForApproval from '../../components/SendForApproval.jsx'
 import { errorText } from '../../lib/errors'
 import { PriorityBadge, TypeBadge, SlaDue } from './badges.jsx'
-import { EditWOModal } from './EditWOModal.jsx'
+import { WorkOrderForm } from './WorkOrderForm.jsx'
 import { Checklist, SpendApproval, PartsSection } from './detailSections.jsx'
 
 export function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canAssign, users }) {
@@ -250,7 +250,7 @@ export function WODetail({ woId, onClose, onUpdate, canTransition, canEdit, canA
       )}
 
       {editing && (
-        <EditWOModal wo={wo} users={users} canAssign={canAssign}
+        <WorkOrderForm wo={wo} users={users} canAssign={canAssign}
           onClose={() => setEditing(false)}
           onSaved={async () => {
             setEditing(false)

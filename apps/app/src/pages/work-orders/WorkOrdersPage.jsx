@@ -13,7 +13,7 @@ import { useMoney } from '../../lib/money'
 import { useLocationFilter } from '../../lib/LocationFilterContext'
 import { errorText } from '../../lib/errors'
 import { STATUS_COL_ORDER, PriorityBadge, TypeBadge, SlaDue } from './badges.jsx'
-import { NewWOModal } from './NewWOModal.jsx'
+import { WorkOrderForm } from './WorkOrderForm.jsx'
 import { WODetail } from './WorkOrderDetail.jsx'
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -288,7 +288,7 @@ export default function WorkOrders({ dark, toggleDark }) {
       </div>
 
       {showNew && (
-        <NewWOModal sites={sites} assets={assets} users={users} canAssign={canAssign} onClose={() => setShowNew(false)} onSave={() => { setShowNew(false); load() }} />
+        <WorkOrderForm sites={sites} assets={assets} users={users} canAssign={canAssign} onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />
       )}
     </div>
   )
