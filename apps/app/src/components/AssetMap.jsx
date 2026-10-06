@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { ASSET_STATUS, CRITICALITY, TONES, toneOf } from '../lib/domain'
+import { healthColor } from '../lib/health'
 
 /**
  * Where the assets are.
@@ -38,8 +39,11 @@ export const MAP_COLOUR_MODES = {
   },
   health: {
     label: 'Health score',
-    legend: [['70 and above', 'var(--sg)'], ['40–69', 'var(--sa)'], ['Below 40', 'var(--sr)'], ['Not scored', 'var(--n300)']],
-    of: (a) => (a.health_score == null ? 'var(--n300)' : a.health_score < 40 ? 'var(--sr)' : a.health_score < 70 ? 'var(--sa)' : 'var(--sg)'),
+    // The product's bands (lib/health.js), as everywhere else the score is
+    // coloured. The map used its own (70 and 40), so an asset could be green
+    // here and amber in its own panel.
+    legend: [['Above 50: healthy', healthColor(100)], ['31–50: needs attention', healthColor(50)], ['30 and below: critical', healthColor(0)], ['Not scored', 'var(--n300)']],
+    of: (a) => (a.health_score == null ? 'var(--n300)' : healthColor(a.health_score)),
   },
   criticality: {
     label: 'Criticality',
