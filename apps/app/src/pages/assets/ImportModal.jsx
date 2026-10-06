@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { importAssets } from '../../lib/db/assets'
 import { useToast } from '../../lib/ToastContext'
 import { errorText } from '../../lib/errors'
-import { downloadTemplate, parseCSV } from './csvHelpers.jsx'
+import { downloadTemplate, parseCSV } from '../../lib/csv'
 
 // ── CSV Import Modal ───────────────────────────────────────────────────────────
 export function ImportModal({ onClose, onDone }) {

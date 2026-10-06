@@ -1,13 +1,16 @@
+import { saveBlob } from './apiClient'
 
+// The asset import's CSV: the columns it reads, a template to start from, and
+// a parser for what comes back (quoted fields, doubled quotes, CRLF, blank
+// rows). Rows come back as objects keyed by the lower-cased header.
 
-// ── CSV helpers ────────────────────────────────────────────────────────────────
 // health_score is deliberately absent: it's derived from the two maintenance
 // dates by recompute_asset_health_for(), so an imported value would be
 // overwritten on the very next write. Importers who supplied one were being
 // quietly ignored.
-const CSV_HEADERS = ['ain', 'name', 'category', 'location', 'site', 'status', 'manufacturer', 'model', 'serial_number', 'install_date', 'purchase_date', 'runtime_hours', 'value', 'last_maintenance_date', 'next_maintenance_date', 'tags', 'lat', 'lng']
+export const CSV_HEADERS = ['ain', 'name', 'category', 'location', 'site', 'status', 'manufacturer', 'model', 'serial_number', 'install_date', 'purchase_date', 'runtime_hours', 'value', 'last_maintenance_date', 'next_maintenance_date', 'tags', 'lat', 'lng']
 
-function csvCell(v) {
+export function csvCell(v) {
   const s = String(v ?? '')
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
@@ -20,12 +23,7 @@ export function downloadTemplate() {
   const example = ['AST-001', 'Compressor Unit X-5', 'Compressor', 'Lagos', 'Lagos DS-04', 'operational', 'GE', 'GCF-700', 'SN-001', '2023-01-15', '2022-11-01', '18240', '5000000', '2025-06-01', '2025-12-01', 'critical,offshore', '6.45', '3.4']
   if (example.length !== CSV_HEADERS.length) throw new Error('asset import template: example row does not match its headers')
   const csv = CSV_HEADERS.join(',') + '\n' + example.map(csvCell).join(',') + '\n'
-  const blob = new Blob([csv], { type: 'text/csv' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url; a.download = 'asset-import-template.csv'
-  document.body.appendChild(a); a.click(); a.remove()
-  URL.revokeObjectURL(url)
+  saveBlob(new Blob([csv], { type: 'text/csv' }), 'asset-import-template.csv')
 }
 
 export function parseCSV(text) {
