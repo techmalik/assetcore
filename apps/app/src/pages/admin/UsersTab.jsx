@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { listSites } from '../../lib/db/sites.js'
 import { listLocations } from '../../lib/db/locations.js'
 import { listOrgMembers, inviteOrgMember, updateOrgMemberRole, updateOrgMemberAccess, setOrgMemberStatus, resetOrgMemberPassword } from '../../lib/db/orgMembers.js'
@@ -10,6 +10,10 @@ import { useToast } from '../../lib/ToastContext'
 import { errorText } from '../../lib/errors'
 import { useConfirm } from '../../lib/ConfirmContext'
 import { ScopeCapsFields } from './accessFields.jsx'
+import { useResource } from '../../lib/useResource'
+import Modal from '../../components/Modal.jsx'
+import { Field, FormError, useForm } from '../../components/form.jsx'
+import TableState from '../../components/TableState.jsx'
 
 // ── Users Tab ──────────────────────────────────────────────────────────────
 
@@ -81,9 +85,24 @@ function PermissionsMatrix() {
   )
 }
 
+/** A one-time link to show an admin: an invite or a password reset. */
+function LinkModal({ title, intro, url, buttonLabel, onClose }) {
+  return (
+    <Modal
+      title={title}
+      width={460}
+      onClose={onClose}
+      footer={<button type="button" className="btn btn-primary" onClick={onClose}>{buttonLabel}</button>}
+    >
+      <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>{intro}</p>
+      <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all'}}>{url}</code>
+    </Modal>
+  )
+}
+
 function InviteModal({ locations, sites, onClose, onInvited }) {
   const toast = useToast()
-  const [form, setForm] = useState({ email: '', full_name: '', role_key: 'officer' })
+  const { form, set } = useForm({ email: '', full_name: '', role_key: 'officer' })
   const [scope, setScope] = useState({ location_scope: [], site_scope: [], extra_caps: [] })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -106,58 +125,50 @@ function InviteModal({ locations, sites, onClose, onInvited }) {
   }
 
   if (link) {
+    // The server says whether the mail actually went out; this used to claim
+    // SMTP was unconfigured even on an instance that had just emailed the invite.
     return (
-      <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
-          {/* The server says whether the mail actually went out; this used to
-              claim SMTP was unconfigured even on an instance that had just
-              emailed the invite. */}
-          <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:10}}>{link.emailed ? 'Invite sent' : 'Invite created'}</div>
-          <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>
-            {link.emailed
-              ? <>We emailed the set-password link to {form.email}. If it doesn't arrive, share this link directly:</>
-              : <>Email delivery isn't available on this instance — share this set-password link with {form.email} directly:</>}
-          </p>
-          <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all',marginBottom:16}}>{link.url}</code>
-          <div style={{display:'flex',justifyContent:'flex-end'}}>
-            <button className="btn btn-primary" onClick={() => { onInvited(); onClose() }}>Done</button>
-          </div>
-        </div>
-      </div>
+      <LinkModal
+        title={link.emailed ? 'Invite sent' : 'Invite created'}
+        intro={link.emailed
+          ? <>We emailed the set-password link to {form.email}. If it doesn&apos;t arrive, share this link directly:</>
+          : <>Email delivery isn&apos;t available on this instance — share this set-password link with {form.email} directly:</>}
+        url={link.url}
+        buttonLabel="Done"
+        onClose={() => { onInvited(); onClose() }}
+      />
     )
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:480,maxWidth:'94vw',maxHeight:'92vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
-        <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:18}}>Invite a team member</div>
-        <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:12}}>
-          <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
-            Full name
-            <input value={form.full_name} onChange={e => setForm(f => ({...f,full_name:e.target.value}))} placeholder="e.g. Chidi Umeh"
-              className="input"/>
-          </label>
-          <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
-            Email address
-            <input type="email" value={form.email} onChange={e => setForm(f => ({...f,email:e.target.value}))} placeholder="name@company.com"
-              className="input"/>
-          </label>
-          <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)'}}>
-            Role
-            <select value={form.role_key} onChange={e => setForm(f => ({...f,role_key:e.target.value}))}
-              className="input">
-              {ROLES_LIST.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
-            </select>
-          </label>
-          <ScopeCapsFields locations={locations} sites={sites} value={scope} onChange={setScope} />
-          {err && <div style={{fontSize:12,color:'var(--srt)'}}>{err}</div>}
-          <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:6}}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Sending…' : 'Send Invite'}</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal
+      title="Invite a team member"
+      width={480}
+      as="form"
+      onSubmit={submit}
+      onClose={onClose}
+      bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+      footer={(
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Sending…' : 'Send Invite'}</button>
+        </>
+      )}
+    >
+      <Field label="Full name" required>
+        <input className="input" value={form.full_name} onChange={(e) => set('full_name', e.target.value)} placeholder="e.g. Chidi Umeh" />
+      </Field>
+      <Field label="Email address" required>
+        <input className="input" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="name@company.com" />
+      </Field>
+      <Field label="Role">
+        <select className="input" value={form.role_key} onChange={(e) => set('role_key', e.target.value)}>
+          {ROLES_LIST.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+        </select>
+      </Field>
+      <ScopeCapsFields locations={locations} sites={sites} value={scope} onChange={setScope} />
+      <FormError>{err}</FormError>
+    </Modal>
   )
 }
 
@@ -186,39 +197,39 @@ function AccessModal({ member, members = [], locations, sites, onClose, onSaved 
       toast.success('Access updated.')
       onSaved()
     } catch (e) {
-      const managerErrors = {
+      setErr(errorText(e, undefined, {
         invalid_manager: 'A line manager has to be another active member of this organisation.',
         manager_cycle: 'That person already has this member as their line manager. Two people cannot manage each other.',
-      }
-      setErr(managerErrors[e.code] || errorText(e)); setSaving(false)
+      }))
+      setSaving(false)
     }
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:480,maxWidth:'94vw',maxHeight:'92vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
-        <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:4}}>Access & permissions</div>
-        <div style={{fontSize:12,color:'var(--n500)',marginBottom:16}}>{member.full_name || member.email}</div>
-        <label style={{display:'flex',flexDirection:'column',gap:4,fontSize:12,color:'var(--n600)',marginBottom:14}}>
-          Line manager
-          <select className="input" value={managerId} onChange={e => setManagerId(e.target.value)}>
-            <option value="">No line manager</option>
-            {members.filter(m => m.user_id !== member.user_id && m.status === 'active').map(m => (
-              <option key={m.user_id} value={m.user_id}>{m.full_name || m.email}</option>
-            ))}
-          </select>
-          <span style={{fontSize:11,color:'var(--n400)',lineHeight:1.5}}>
-            Preselected when this member sends a work order or report for approval. It grants no access on its own.
-          </span>
-        </label>
-        <ScopeCapsFields locations={locations} sites={sites} value={scope} onChange={setScope} />
-        {err && <div style={{fontSize:12,color:'var(--srt)',marginTop:10}}>{err}</div>}
-        <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:18}}>
+    <Modal
+      title="Access & permissions"
+      width={480}
+      onClose={onClose}
+      footer={(
+        <>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button type="button" className="btn btn-primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save access'}</button>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    >
+      <div style={{fontSize:12,color:'var(--n500)',marginBottom:16}}>{member.full_name || member.email}</div>
+      <Field label="Line manager" style={{marginBottom:14}}
+        hint="Preselected when this member sends a work order or report for approval. It grants no access on its own.">
+        <select className="input" value={managerId} onChange={(e) => setManagerId(e.target.value)}>
+          <option value="">No line manager</option>
+          {members.filter((m) => m.user_id !== member.user_id && m.status === 'active').map((m) => (
+            <option key={m.user_id} value={m.user_id}>{m.full_name || m.email}</option>
+          ))}
+        </select>
+      </Field>
+      <ScopeCapsFields locations={locations} sites={sites} value={scope} onChange={setScope} />
+      <FormError style={{marginTop:10}}>{err}</FormError>
+    </Modal>
   )
 }
 
@@ -228,23 +239,18 @@ export default function UsersTab() {
   const toast = useToast()
   const [subtab, setSubtab] = useState('members')
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [members, setMembers] = useState([])
-  const [locations, setLocations] = useState([])
-  const [sites, setSites] = useState([])
   const [accessMember, setAccessMember] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState('')
   const [resetLink, setResetLink] = useState(null)
   const { user } = useAuth()
   const canManage = can('user:manage')
-
-  function load() {
-    setLoading(true)
-    Promise.all([listOrgMembers(), listLocations().catch(() => []), listSites().catch(() => [])])
-      .then(([m, l, s]) => { setMembers(m); setLocations(l); setSites(s); setLoading(false) })
-      .catch(e => { setErr(errorText(e)); setLoading(false) })
-  }
-  useEffect(() => { load() }, [])
+  // Locations and sites only feed the scope pickers, so the member list
+  // still shows without them.
+  const { data, loading, error, reload: load } = useResource(
+    () => Promise.all([listOrgMembers(), listLocations().catch(() => []), listSites().catch(() => [])])
+      .then(([members, locations, sites]) => ({ members, locations, sites })),
+    [], { initial: { members: [], locations: [], sites: [] }, keepPrevious: true },
+  )
+  const { members, locations, sites } = data
 
   async function changeRole(m, role_key) {
     try { await updateOrgMemberRole(m.id, role_key); load(); toast.success('Role updated.') }
@@ -284,11 +290,7 @@ export default function UsersTab() {
                 <span style={{fontSize:12,color:'var(--n400)',marginLeft:4}}>Invite team members by email</span>
               </div>
             )}
-            {loading ? (
-              <div style={{padding:32,textAlign:'center',color:'var(--n400)',fontSize:13}}>Loading…</div>
-            ) : err ? (
-              <div style={{padding:12,background:'var(--srb)',border:'1px solid var(--srbr)',borderRadius:6,fontSize:13,color:'var(--srt)'}}>{err}</div>
-            ) : (
+            <TableState loading={loading} error={error} onRetry={load}>
               <div className="table-scroll"><table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead>
                   <tr style={{background:'var(--n50)'}}>
@@ -336,7 +338,7 @@ export default function UsersTab() {
                   })}
                 </tbody>
               </table></div>
-            )}
+            </TableState>
           </div>
         )}
         {subtab === 'roles' && (
@@ -363,20 +365,15 @@ export default function UsersTab() {
       {inviteOpen && <InviteModal locations={locations} sites={sites} onClose={() => setInviteOpen(false)} onInvited={load} />}
       {accessMember && <AccessModal member={accessMember} members={members} locations={locations} sites={sites} onClose={() => setAccessMember(null)} onSaved={() => { setAccessMember(null); load() }} />}
       {resetLink && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:'var(--n0)',border:'var(--bdr)',borderRadius:8,width:460,maxWidth:'92vw',maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'var(--sh-lg)'}}>
-            <div style={{fontSize:15,fontWeight:600,color:'var(--n900)',marginBottom:10}}>Password reset link</div>
-            <p style={{fontSize:12,color:'var(--n500)',marginBottom:10}}>
-              {resetLink.emailed
-                ? 'We emailed this one-time link to the user. Share it directly only if it does not arrive:'
-                : 'Email delivery isn\'t available on this instance — share this one-time link with the user directly:'}
-            </p>
-            <code style={{display:'block',fontSize:11,background:'var(--n50)',border:'1px solid var(--n200)',borderRadius:4,padding:'8px 10px',wordBreak:'break-all',marginBottom:16}}>{resetLink.url}</code>
-            <div style={{display:'flex',justifyContent:'flex-end'}}>
-              <button className="btn btn-primary" onClick={() => setResetLink(null)}>Close</button>
-            </div>
-          </div>
-        </div>
+        <LinkModal
+          title="Password reset link"
+          intro={resetLink.emailed
+            ? 'We emailed this one-time link to the user. Share it directly only if it does not arrive:'
+            : 'Email delivery isn\'t available on this instance — share this one-time link with the user directly:'}
+          url={resetLink.url}
+          buttonLabel="Close"
+          onClose={() => setResetLink(null)}
+        />
       )}
     </div>
   )
