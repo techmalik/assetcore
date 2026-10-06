@@ -9,6 +9,7 @@ import {
 } from '../../approvalRouting.js'
 import { send, type Result } from '../../http/result.js'
 import { noticeCtx } from './shared.js'
+import { parseOr400 } from '../../http/validate.js'
 
 export const directRouter = Router()
 
@@ -49,10 +50,10 @@ const DIRECT_HTTP_STATUS: Record<DirectErrorCode, number> = {
  * request back to its author is a return, which says it needs changes.
  */
 directRouter.post('/approvals/:id/forward', requireCap('approval:decide'), async (req, res) => {
-  const parsed = forwardInput.safeParse(req.body ?? {})
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const toUserId = parsed.data.to_user_id
-  const notes = parsed.data.notes?.trim() || null
+  const body = parseOr400(forwardInput, req.body ?? {}, res)
+  if (!body) return
+  const toUserId = body.to_user_id
+  const notes = body.notes?.trim() || null
 
   const result = await withOrgContext(claimsFromReq(req), async (c): Promise<DirectResult> => {
     const locked = await lockForAssignee(c, String(req.params.id), req.claims!.sub)
@@ -96,9 +97,9 @@ directRouter.post('/approvals/:id/forward', requireCap('approval:decide'), async
  * the requester nothing they can act on.
  */
 directRouter.post('/approvals/:id/return', requireCap('approval:decide'), async (req, res) => {
-  const parsed = reasonInput.safeParse(req.body ?? {})
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const notes = parsed.data.notes?.trim() || null
+  const body = parseOr400(reasonInput, req.body ?? {}, res)
+  if (!body) return
+  const notes = body.notes?.trim() || null
   if (!notes) return res.status(422).json({ error: 'notes_required' })
 
   const result = await withOrgContext(claimsFromReq(req), async (c): Promise<DirectResult> => {
@@ -133,9 +134,9 @@ directRouter.post('/approvals/:id/return', requireCap('approval:decide'), async 
  * down. A reason is required for the same reason as a return.
  */
 directRouter.post('/approvals/:id/discard', requireCap('approval:decide'), async (req, res) => {
-  const parsed = reasonInput.safeParse(req.body ?? {})
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const notes = parsed.data.notes?.trim() || null
+  const body = parseOr400(reasonInput, req.body ?? {}, res)
+  if (!body) return
+  const notes = body.notes?.trim() || null
   if (!notes) return res.status(422).json({ error: 'notes_required' })
 
   const result = await withOrgContext(claimsFromReq(req), async (c): Promise<DirectResult> => {
@@ -175,10 +176,10 @@ directRouter.post('/approvals/:id/discard', requireCap('approval:decide'), async
  * than being orphaned on a dead request next to a new one.
  */
 directRouter.post('/approvals/:id/resubmit', requireCap('approval:create'), async (req, res) => {
-  const parsed = resubmitInput.safeParse(req.body ?? {})
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const assigneeId = parsed.data.assignee_id
-  const notes = parsed.data.notes?.trim() || null
+  const body = parseOr400(resubmitInput, req.body ?? {}, res)
+  if (!body) return
+  const assigneeId = body.assignee_id
+  const notes = body.notes?.trim() || null
 
   const result = await withOrgContext(claimsFromReq(req), async (c): Promise<DirectResult> => {
     const { rows } = await c.query('select * from public.approvals where id = $1 for update', [req.params.id])

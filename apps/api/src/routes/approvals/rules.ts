@@ -7,6 +7,7 @@ import { writeAuditLog } from '../../audit.js'
 import { buildSet } from '../../sqlUtil.js'
 import { APPROVAL_ENTITY_TYPES, APPROVAL_KINDS } from '@assetcore/domain'
 import { RULE_SELECT } from './shared.js'
+import { parseOr400 } from '../../http/validate.js'
 
 export const rulesRouter = Router()
 
@@ -54,9 +55,9 @@ async function replaceLevels(c: import('pg').PoolClient, ruleId: string, levels:
 }
 
 rulesRouter.post('/approval-rules', requireCap('approval:manage'), async (req, res) => {
-  const parsed = ruleInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { levels, ...fields } = parsed.data
+  const body = parseOr400(ruleInput, req.body, res)
+  if (!body) return
+  const { levels, ...fields } = body
   if (fields.max_amount_cents != null && fields.max_amount_cents <= (fields.min_amount_cents ?? 0)) {
     return res.status(422).json({ error: 'invalid_band' })
   }
@@ -73,7 +74,7 @@ rulesRouter.post('/approval-rules', requireCap('approval:manage'), async (req, r
     await replaceLevels(c, rows[0].id, levels)
     await writeAuditLog(c, {
       orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'approval.rule.create',
-      entityType: 'approval_rule', entityId: rows[0].id, after: parsed.data,
+      entityType: 'approval_rule', entityId: rows[0].id, after: body,
     })
     const { rows: full } = await c.query(`${RULE_SELECT} where r.id = $1`, [rows[0].id])
     return full[0]
@@ -82,9 +83,9 @@ rulesRouter.post('/approval-rules', requireCap('approval:manage'), async (req, r
 })
 
 rulesRouter.patch('/approval-rules/:id', requireCap('approval:manage'), async (req, res) => {
-  const parsed = ruleInput.partial().safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { levels, ...fields } = parsed.data
+  const body = parseOr400(ruleInput.partial(), req.body, res)
+  if (!body) return
+  const { levels, ...fields } = body
   const { setSql, values } = buildSet(fields, RULE_ALLOWED)
   if (!setSql && !levels) return res.status(400).json({ error: 'empty_patch' })
 
@@ -119,7 +120,7 @@ rulesRouter.patch('/approval-rules/:id', requireCap('approval:manage'), async (r
     if (!full[0]) return null
     await writeAuditLog(c, {
       orgId: full[0].org_id, actorId: req.claims!.sub, action: 'approval.rule.update',
-      entityType: 'approval_rule', entityId: String(req.params.id), after: parsed.data,
+      entityType: 'approval_rule', entityId: String(req.params.id), after: body,
     })
     return full[0]
   })

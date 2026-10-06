@@ -10,6 +10,7 @@ import {
 } from '../../approvalRouting.js'
 import { APPROVAL_ENTITY_TYPES, APPROVAL_KINDS } from '@assetcore/domain'
 import { RULE_SELECT, noticeCtx } from './shared.js'
+import { parseOr400 } from '../../http/validate.js'
 
 export const matrixRouter = Router()
 
@@ -38,9 +39,9 @@ const submitInput = z.object({
  * matrix, and saying so is more useful than inventing an approver.
  */
 matrixRouter.post('/approvals', requireCap('approval:create'), async (req, res) => {
-  const parsed = submitInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const d = parsed.data
+  const body = parseOr400(submitInput, req.body, res)
+  if (!body) return
+  const d = body
   const amount = d.amount_cents ?? 0
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
@@ -129,9 +130,9 @@ const decisionInput = z.object({ notes: z.string().max(2000).nullable().optional
  * request, which is the one rule an approval matrix exists to enforce.
  */
 matrixRouter.post('/approvals/:id/approve', requireCap('approval:decide'), async (req, res) => {
-  const parsed = decisionInput.safeParse(req.body ?? {})
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const notes = parsed.data.notes ?? null
+  const body = parseOr400(decisionInput, req.body ?? {}, res)
+  if (!body) return
+  const notes = body.notes ?? null
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows: cur } = await c.query('select * from public.approvals where id = $1 for update', [req.params.id])
@@ -249,9 +250,9 @@ matrixRouter.post('/approvals/:id/approve', requireCap('approval:decide'), async
  * The requester fixes what was wrong and submits again, which leaves both
  * attempts in the history rather than overwriting the first. */
 matrixRouter.post('/approvals/:id/reject', requireCap('approval:decide'), async (req, res) => {
-  const parsed = decisionInput.safeParse(req.body ?? {})
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const notes = parsed.data.notes ?? null
+  const body = parseOr400(decisionInput, req.body ?? {}, res)
+  if (!body) return
+  const notes = body.notes ?? null
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows: cur } = await c.query('select * from public.approvals where id = $1 for update', [req.params.id])
@@ -301,9 +302,9 @@ matrixRouter.post('/approvals/:id/reject', requireCap('approval:decide'), async 
 /** Pulling a request back. Only the requester, only while it's still pending —
  * a decision already taken is not theirs to undo. Works on both routes. */
 matrixRouter.post('/approvals/:id/recall', requireCap('approval:create'), async (req, res) => {
-  const parsed = decisionInput.safeParse(req.body ?? {})
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const notes = parsed.data.notes ?? null
+  const body = parseOr400(decisionInput, req.body ?? {}, res)
+  if (!body) return
+  const notes = body.notes ?? null
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows: cur } = await c.query('select * from public.approvals where id = $1 for update', [req.params.id])
