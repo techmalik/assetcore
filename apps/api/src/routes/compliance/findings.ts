@@ -4,7 +4,7 @@ import { withOrgContext } from '../../db.js'
 import { claimsFromReq } from '../../claims.js'
 import { requireCap } from '../../middleware/rbac.js'
 import { writeAuditLog } from '../../audit.js'
-import { nextRef } from '../../refs.js'
+import { createDefect } from '../../services/defects.js'
 import { FINDING_SEVERITIES, FINDING_STATUSES, DEFECT_SEVERITIES } from '@assetcore/domain'
 import { auditDate } from './audits.js'
 
@@ -94,31 +94,23 @@ findingsRouter.post('/compliance-audits/:id/findings/:findingId/defect', require
     if (!finding) return { error: 'not_found' as const }
     if (finding.defect_id) return { error: 'already_raised' as const, defect_id: finding.defect_id }
 
-    const ref = await nextRef(c, 'DEF')
-
-    const { rows: created } = await c.query(
-      `insert into public.defects
-         (org_id, reported_by, ref, title, description, severity, category, asset_id, site_id, due_date)
-       values (current_org_id(), current_user_id(), $1, $2, $3, $4, 'compliance', $5, $6, $7)
-       returning id, ref`,
-      [
-        ref,
-        `${finding.audit_ref}${finding.clause ? ` ${finding.clause}` : ''}: audit finding`,
-        finding.description,
-        parsed.data.severity ?? SEVERITY_MAP[finding.severity] ?? 'moderate',
-        parsed.data.asset_id ?? null,
-        finding.site_id,
-        finding.due_date,
-      ]
-    )
+    const created = await createDefect(c, {
+      title: `${finding.audit_ref}${finding.clause ? ` ${finding.clause}` : ''}: audit finding`,
+      description: finding.description,
+      severity: parsed.data.severity ?? SEVERITY_MAP[finding.severity] ?? 'moderate',
+      category: 'compliance',
+      asset_id: parsed.data.asset_id ?? null,
+      site_id: finding.site_id,
+      due_date: finding.due_date,
+    }, req.claims!.sub)
     await c.query('update public.compliance_audit_findings set defect_id = $2 where id = $1',
-      [req.params.findingId, created[0].id])
+      [req.params.findingId, created.id])
     await writeAuditLog(c, {
       orgId: req.claims!.org_id!, actorId: req.claims!.sub, action: 'compliance_audit.finding.raise_defect',
       entityType: 'compliance_audit', entityId: String(req.params.id),
-      after: { finding_id: req.params.findingId, defect_ref: created[0].ref },
+      after: { finding_id: req.params.findingId, defect_ref: created.ref },
     })
-    return { data: created[0] }
+    return { data: { id: created.id, ref: created.ref } }
   })
 
   if ('error' in result) {

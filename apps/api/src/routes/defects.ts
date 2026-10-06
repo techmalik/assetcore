@@ -4,9 +4,10 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq } from '../claims.js'
 import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
-import { buildSet, buildInsert } from '../sqlUtil.js'
+import { buildSet } from '../sqlUtil.js'
 import { refreshAssetHealth } from '../healthService.js'
-import { nextRef, nextWoRef } from '../refs.js'
+import { nextWoRef } from '../refs.js'
+import { createDefect, DEFECT_ALLOWED } from '../services/defects.js'
 import { DEFECT_SEVERITIES, DEFECT_STATUSES, DEFECT_OPEN_STATUSES, PRIORITIES, WO_TYPES } from '@assetcore/domain'
 
 export const defectsRouter = Router()
@@ -22,10 +23,7 @@ const SEVERITY_TO_PRIORITY: Record<string, string> = {
   critical: 'critical',
 }
 
-const ALLOWED = [
-  'asset_id', 'site_id', 'inspection_id', 'title', 'description', 'severity', 'status',
-  'category', 'assigned_to', 'identified_date', 'due_date', 'resolution_notes',
-]
+const ALLOWED = DEFECT_ALLOWED
 
 const SELECT = `
   select d.*,
@@ -130,24 +128,9 @@ defectsRouter.get('/defects/:id', requireCap('defect:read'), async (req, res) =>
 defectsRouter.post('/defects', requireCap('defect:create'), async (req, res) => {
   const parsed = defectInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { columns, placeholders, values } = buildInsert(parsed.data, ALLOWED, 1)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const ref = await nextRef(c, 'DEF')
-    const { rows } = await c.query(
-      `insert into public.defects (org_id, reported_by, ref${columns ? `, ${columns}` : ''})
-       values (current_org_id(), current_user_id(), $1${placeholders ? `, ${placeholders}` : ''})
-       returning id, org_id, asset_id`,
-      [ref, ...values]
-    )
-    const created = rows[0]
-    // A new defect changes the asset's health immediately — that is the whole
-    // reason the register feeds the score.
-    await refreshAssetHealth(c, created.asset_id)
-    await writeAuditLog(c, {
-      orgId: created.org_id, actorId: req.claims!.sub, action: 'defect.create',
-      entityType: 'defect', entityId: created.id, after: { ref, ...parsed.data },
-    })
+    const created = await createDefect(c, parsed.data, req.claims!.sub)
     const { rows: full } = await c.query(`${SELECT} where d.id = $1`, [created.id])
     return full[0]
   })
