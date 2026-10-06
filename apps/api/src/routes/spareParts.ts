@@ -6,6 +6,7 @@ import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { STOCK_MOVEMENT_KINDS } from '@assetcore/domain'
+import { lockPart, moveStock } from '../services/stock.js'
 
 export const sparePartsRouter = Router()
 
@@ -135,12 +136,8 @@ sparePartsRouter.post('/spare-parts', requireCap('parts:create'), async (req, re
     const part = rows[0]
 
     if (opening_stock && opening_stock > 0) {
-      await c.query('update public.spare_parts set quantity_in_stock = $2 where id = $1', [part.id, opening_stock])
-      await c.query(
-        `insert into public.stock_movements (org_id, part_id, kind, quantity, balance_after, unit_cost_cents, reason, actor_id)
-         values (current_org_id(), $1, 'receipt', $2, $2, $3, 'Opening stock', current_user_id())`,
-        [part.id, opening_stock, fields.unit_cost_cents ?? null]
-      )
+      const locked = await lockPart(c, part.id)
+      await moveStock(c, locked!, { quantity: opening_stock, kind: 'receipt', reason: 'Opening stock', unitCostCents: fields.unit_cost_cents ?? null })
     }
 
     await writeAuditLog(c, {
@@ -217,33 +214,24 @@ sparePartsRouter.post('/spare-parts/:id/adjust', requireCap('parts:adjust'), asy
   const partId = String(req.params.id)
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
-    // Lock the row so two concurrent issues can't both read the same balance.
-    const { rows: cur } = await c.query(
-      'select id, org_id, quantity_in_stock, unit_cost_cents from public.spare_parts where id = $1 and deleted_at is null for update',
-      [req.params.id]
-    )
-    if (!cur[0]) return { error: 'not_found' as const }
-
-    const balanceAfter = Number(cur[0].quantity_in_stock) + delta
-    if (balanceAfter < 0) {
-      return { error: 'insufficient_stock' as const, in_stock: Number(cur[0].quantity_in_stock) }
+    // Locked so two concurrent issues can't both read the same balance.
+    const part = await lockPart(c, partId)
+    if (!part || part.deleted_at) return { error: 'not_found' as const }
+    const before = part.quantity_in_stock
+    if (before + delta < 0) {
+      return { error: 'insufficient_stock' as const, in_stock: before }
     }
 
-    await c.query('update public.spare_parts set quantity_in_stock = $2 where id = $1', [req.params.id, balanceAfter])
-    await c.query(
-      `insert into public.stock_movements (org_id, part_id, kind, quantity, balance_after, unit_cost_cents, reason, actor_id)
-       values (current_org_id(), $1, $2, $3, $4, $5, $6, current_user_id())`,
-      [req.params.id, kind, delta, balanceAfter, unit_cost_cents ?? cur[0].unit_cost_cents, reason ?? null]
-    )
+    const { balanceAfter } = await moveStock(c, part, { quantity: delta, kind, reason: reason ?? null, unitCostCents: unit_cost_cents })
     // A receipt at a new price becomes the part's going rate.
     if (kind === 'receipt' && unit_cost_cents != null) {
       await c.query('update public.spare_parts set unit_cost_cents = $2 where id = $1', [req.params.id, unit_cost_cents])
     }
 
     await writeAuditLog(c, {
-      orgId: cur[0].org_id, actorId: req.claims!.sub, action: `part.${kind}`,
+      orgId: part.org_id, actorId: req.claims!.sub, action: `part.${kind}`,
       entityType: 'spare_part', entityId: partId,
-      before: { quantity_in_stock: Number(cur[0].quantity_in_stock) },
+      before: { quantity_in_stock: before },
       after: { quantity_in_stock: balanceAfter, quantity: delta, reason },
     })
 

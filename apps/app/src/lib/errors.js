@@ -122,6 +122,14 @@ export function errorText(err, fallback = 'Something went wrong. Try again.', ov
   const code = typeof err === 'string' ? err : err?.code || err?.message
   if (!code) return fallback
   if (overrides[code]) return overrides[code]
+  // A close refused for stock names every part that fell short and by how
+  // much: "not enough on hand" alone leaves a job with five parts on it a
+  // guessing game. Closing from the board and completing maintenance against
+  // the job are both refused this way.
+  if (code === 'insufficient_stock' && err?.shortfalls?.length) {
+    const lines = err.shortfalls.map((s) => `${s.part_number} — need ${s.needed}, ${s.in_stock} on hand`).join('; ')
+    return `Not enough stock to close the job: ${lines}.`
+  }
   if (ERROR_MESSAGES[code]) return ERROR_MESSAGES[code]
   // Anything that is not a bare snake_case code is already prose — a network
   // failure from fetch, or a message a caller wrote by hand — so show it.

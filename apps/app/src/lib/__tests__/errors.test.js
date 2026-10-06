@@ -39,3 +39,17 @@ describe('errorText overrides', () => {
     expect(errorText('site_shutdown', 'Failed.', { forbidden: 'x' })).toBe(ERROR_MESSAGES.site_shutdown)
   })
 })
+
+describe('errorText for a close refused for stock', () => {
+  it('names each part that fell short', () => {
+    const err = Object.assign(new Error('insufficient_stock'), {
+      code: 'insufficient_stock',
+      shortfalls: [{ part_number: 'GSK-10', name: 'Gasket', needed: 3, in_stock: 1 }],
+    })
+    expect(errorText(err, 'Failed.')).toBe('Not enough stock to close the job: GSK-10 — need 3, 1 on hand.')
+  })
+
+  it('falls back to the shared sentence without a parts list', () => {
+    expect(errorText('insufficient_stock', 'Failed.')).toBe(ERROR_MESSAGES.insufficient_stock)
+  })
+})

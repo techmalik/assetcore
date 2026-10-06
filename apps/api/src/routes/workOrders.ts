@@ -4,14 +4,14 @@ import { withOrgContext } from '../db.js'
 import { claimsFromReq, effectiveRole } from '../claims.js'
 import { requireCap, hasCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
-import { refreshAssetHealth } from '../healthService.js'
 import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
 import { buildSet, buildInsert } from '../sqlUtil.js'
 import { uploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
-import { notifyUsers, notifyWorkOrderClosed } from '../notify.js'
+import { notifyUsers } from '../notify.js'
 import { eligibleAssignee, insertDirectApproval, loadApproval } from '../approvalRouting.js'
 import { nextWoRef } from '../refs.js'
-import { WO_TRANSITIONS, WO_TYPES, WO_STATUSES, PRIORITIES } from '@assetcore/domain'
+import { WO_SELECT, recordAssignment, transitionWorkOrder } from '../services/workOrders.js'
+import { WO_TYPES, WO_STATUSES, PRIORITIES } from '@assetcore/domain'
 
 export const workOrdersRouter = Router()
 
@@ -30,36 +30,6 @@ const ALLOWED = [
   'safety_observations', 'downtime_hours',
   'incident_type', 'discovery_method', 'systems_affected',
 ]
-
-// Fields the close dialog collects. Its own list so closing a job can never
-// quietly rewrite its asset, assignee or priority.
-const REPORT_FIELDS = [
-  'completion_notes', 'root_cause', 'failure_mode', 'corrective_actions',
-  'safety_observations', 'downtime_hours', 'actual_hours', 'cost_cents',
-]
-
-const WO_STATUS_LABEL: Record<string, string> = {
-  draft: 'Draft', new: 'New', assigned: 'Assigned', in_progress: 'In Progress',
-  awaiting_parts: 'Awaiting Parts', inspection: 'Inspection', closed: 'Closed',
-}
-
-const SELECT = `
-  select w.*,
-    (select count(*)::int from public.work_order_tasks t where t.work_order_id = w.id) as task_count,
-    (select count(*)::int from public.work_order_tasks t where t.work_order_id = w.id and t.done) as task_done_count,
-    (select count(*)::int from public.work_order_parts p where p.work_order_id = w.id) as part_count,
-    case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name) end as site,
-    case when a.id is null then null else jsonb_build_object('id', a.id, 'ain', a.ain, 'name', a.name) end as asset,
-    case when au.id is null then null else jsonb_build_object('id', au.id, 'full_name', au.full_name, 'email', au.email) end as assignee,
-    case when cu.id is null then null else jsonb_build_object('id', cu.id, 'full_name', cu.full_name, 'email', cu.email) end as creator,
-    case when ab.id is null then null else jsonb_build_object('id', ab.id, 'full_name', ab.full_name, 'email', ab.email) end as assigner
-  from public.work_orders w
-  left join public.sites s on s.id = w.site_id
-  left join public.assets a on a.id = w.asset_id
-  left join public.users au on au.id = w.assignee_id
-  left join public.users cu on cu.id = w.created_by
-  left join public.users ab on ab.id = w.assigned_by
-`
 
 // An empty <input type="date"> posts '', which must clear the column rather
 // than fail validation.
@@ -105,7 +75,7 @@ const woInput = z.object({
 workOrdersRouter.get('/work-orders', requireCap('wo:read'), async (req, res) => {
   const { status, priority, asset_id, location_id } = req.query
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
-    const clauses = [SELECT, 'where w.deleted_at is null']
+    const clauses = [WO_SELECT, 'where w.deleted_at is null']
     const values: unknown[] = []
     if (typeof status === 'string') { values.push(status); clauses.push(`and w.status = $${values.length}`) }
     if (typeof priority === 'string') { values.push(priority); clauses.push(`and w.priority = $${values.length}`) }
@@ -119,7 +89,7 @@ workOrdersRouter.get('/work-orders', requireCap('wo:read'), async (req, res) => 
 
 workOrdersRouter.get('/work-orders/:id', requireCap('wo:read'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(`${SELECT} where w.id = $1`, [req.params.id])
+    const { rows } = await c.query(`${WO_SELECT} where w.id = $1`, [req.params.id])
     const wo = rows[0]
     if (!wo) return null
     const { rows: activity } = await c.query(
@@ -164,69 +134,6 @@ workOrdersRouter.get('/work-orders/:id', requireCap('wo:read'), async (req, res)
   res.json(row)
 })
 
-// Inserts a work_order_activity row of kind 'assignment' — trg_notify_wo_activity
-// (0014_activity_assignment_notifications.sql) reacts to it and fires wo_assigned
-// to the new assignee (self-assignment and null-assignee already no-op there).
-async function recordAssignment(c: import('pg').PoolClient, orgId: string, woId: string, actorId: string, assigneeId: string | null): Promise<void> {
-  let body: string
-  if (assigneeId) {
-    const { rows } = await c.query('select full_name from public.users where id = $1', [assigneeId])
-    body = `Assigned to ${rows[0]?.full_name || 'a team member'}.`
-  } else {
-    body = 'Assignee removed.'
-  }
-  // Stamp the durable columns as well as the activity row. The feed alone was
-  // not enough: notifyWorkOrderClosed() used to reverse-engineer "the assigner"
-  // as the newest assignment activity row, but unassignment writes one of those
-  // too, so an assign-by-A / unassign-by-B sequence reported B.
-  await c.query(
-    `update public.work_orders
-     set assigned_by = case when $2::uuid is null then null else $3::uuid end,
-         assigned_at = case when $2::uuid is null then null else now() end
-     where id = $1`,
-    [woId, assigneeId, actorId]
-  )
-  await c.query(
-    `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body)
-     values ($1, $2, $3, 'assignment', $4)`,
-    [orgId, woId, actorId, body]
-  )
-}
-
-// `maintenance` is an operational state, not something anyone should hand-pick
-// on a form (it was removed from the asset status picker in the same commit
-// series). It follows from the work: an asset with a work order actually being
-// worked on IS under maintenance, and stops being so when that work ends.
-//
-// Only ever moves an asset between `operational` and `maintenance`. `offline`
-// and `standby` are deliberate operator decisions and are never overridden —
-// a decommissioned asset with an open WO stays offline.
-async function syncAssetStatusForWorkOrder(c: import('pg').PoolClient, assetId: string | null, actorId: string): Promise<void> {
-  if (!assetId) return
-
-  const { rows: assetRows } = await c.query('select status from public.assets where id = $1 and deleted_at is null', [assetId])
-  const current = assetRows[0]?.status
-  if (current !== 'operational' && current !== 'maintenance') return
-
-  const { rows: active } = await c.query(
-    `select 1 from public.work_orders
-     where asset_id = $1 and deleted_at is null and status = 'in_progress' limit 1`,
-    [assetId]
-  )
-  const next = active[0] ? 'maintenance' : 'operational'
-  if (next === current) return
-
-  await c.query('update public.assets set status = $2 where id = $1', [assetId, next])
-  await c.query(
-    `insert into public.asset_activity (org_id, asset_id, user_id, kind, body)
-     select org_id, id, $2, 'status_change', $3 from public.assets where id = $1`,
-    [assetId, actorId,
-     next === 'maintenance'
-       ? 'Status set to Under Maintenance — a work order is in progress.'
-       : 'Status returned to Operational — no work orders in progress.']
-  )
-}
-
 /**
  * Create a job and send it to a named person for approval, in one transaction.
  *
@@ -270,7 +177,7 @@ async function createForApproval(
     if (data.assignee_id) {
       await recordAssignment(c, req.claims!.org_id!, woId, req.claims!.sub, data.assignee_id)
     }
-    const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [woId])
+    const { rows: full } = await c.query(`${WO_SELECT} where w.id = $1`, [woId])
     const wo = full[0]
     await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.create', entityType: 'work_order', entityId: wo.id, after: wo })
 
@@ -297,6 +204,8 @@ async function createForApproval(
   return res.status(201).json(result.data)
 }
 
+const INITIAL_STATUSES: readonly string[] = ['new', 'assigned', 'draft']
+
 // Sending a new job to a named person for approval, in the same request that
 // creates it. Parsed apart from woInput so a PATCH can never carry it.
 const woApprovalInput = z.object({
@@ -308,6 +217,11 @@ workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) 
   const parsed = woInput.safeParse(req.body)
   const approvalParsed = woApprovalInput.safeParse(req.body ?? {})
   if (!parsed.success || !approvalParsed.success) return res.status(400).json({ error: 'invalid_request' })
+  // A job starts new, assigned (handed to someone as it is raised) or draft
+  // (waiting on approval). Any later status is reached through /transition.
+  if (parsed.data.status && !INITIAL_STATUSES.includes(parsed.data.status)) {
+    return res.status(400).json({ error: 'invalid_initial_status' })
+  }
   const approverId = approvalParsed.data.approver_id
   // It raises an approval request as well as a job, so it needs the
   // capability POST /approvals asks for.
@@ -341,7 +255,7 @@ workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) 
     if (parsed.data.assignee_id) {
       await recordAssignment(c, req.claims!.org_id!, woId, req.claims!.sub, parsed.data.assignee_id)
     }
-    const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [woId])
+    const { rows: full } = await c.query(`${WO_SELECT} where w.id = $1`, [woId])
     const wo = full[0]
     await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.create', entityType: 'work_order', entityId: wo.id, after: wo })
     return wo
@@ -350,6 +264,12 @@ workOrdersRouter.post('/work-orders', requireCap('wo:create'), async (req, res) 
 })
 
 workOrdersRouter.patch('/work-orders/:id', requireCap('wo:update'), async (req, res) => {
+  // A status change goes through /transition, which applies the transition
+  // rules and everything closing means (parts, defect, actual_end). A PATCH
+  // used to set status directly and skip all of it.
+  if (req.body && typeof req.body === 'object' && 'status' in req.body) {
+    return res.status(400).json({ error: 'use_transition' })
+  }
   const parsed = woInput.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { setSql, values } = buildSet(parsed.data, ALLOWED)
@@ -376,14 +296,9 @@ workOrdersRouter.patch('/work-orders/:id', requireCap('wo:update'), async (req, 
     if (assigneeChanged) {
       await recordAssignment(c, rows[0].org_id, String(req.params.id), req.claims!.sub, parsed.data.assignee_id ?? null)
     }
-    const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [req.params.id])
+    const { rows: full } = await c.query(`${WO_SELECT} where w.id = $1`, [req.params.id])
     const wo = full[0]
     await writeAuditLog(c, { orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.update', entityType: 'work_order', entityId: wo.id, after: parsed.data })
-    // PATCH can move `status` too (it's in ALLOWED), so the asset's operational
-    // state has to follow from here as well as from /transition.
-    if ('status' in parsed.data) {
-      await syncAssetStatusForWorkOrder(c, wo.asset_id, req.claims!.sub)
-    }
     return { data: wo }
   })
   if ('error' in result) {
@@ -400,150 +315,14 @@ const transitionInput = z.object({
   report: z.record(z.unknown()).optional(),
 })
 
-/** Draws every unconsumed part on a work order out of stock, writing one
- * ledger row per part. Returns the parts that don't have enough on hand
- * instead of going negative, so the caller can roll the whole close back and
- * say which ones were short. */
-async function consumeParts(
-  c: import('pg').PoolClient,
-  workOrderId: string
-): Promise<{ shortfalls: Array<{ part_number: string; name: string; needed: number; in_stock: number }> }> {
-  const { rows: lines } = await c.query(
-    `select wp.id, wp.part_id, wp.quantity_required, wp.quantity_used, wp.unit_cost_cents
-     from public.work_order_parts wp
-     where wp.work_order_id = $1 and wp.consumed_at is null and wp.part_id is not null`,
-    [workOrderId]
-  )
-
-  const shortfalls: Array<{ part_number: string; name: string; needed: number; in_stock: number }> = []
-
-  for (const line of lines) {
-    // A job closed without anyone recording usage consumed what it reserved.
-    const qty = Number(line.quantity_used) > 0 ? Number(line.quantity_used) : Number(line.quantity_required)
-    if (qty <= 0) continue
-
-    const { rows: part } = await c.query(
-      'select id, part_number, name, quantity_in_stock, unit_cost_cents from public.spare_parts where id = $1 for update',
-      [line.part_id]
-    )
-    if (!part[0]) continue
-
-    const inStock = Number(part[0].quantity_in_stock)
-    if (inStock < qty) {
-      shortfalls.push({ part_number: part[0].part_number, name: part[0].name, needed: qty, in_stock: inStock })
-      continue
-    }
-
-    const balanceAfter = inStock - qty
-    const unitCost = line.unit_cost_cents ?? part[0].unit_cost_cents ?? 0
-    await c.query('update public.spare_parts set quantity_in_stock = $2 where id = $1', [line.part_id, balanceAfter])
-    await c.query(
-      `insert into public.stock_movements
-         (org_id, part_id, kind, quantity, balance_after, unit_cost_cents, reason, work_order_id, actor_id)
-       values (current_org_id(), $1, 'consumption', $2, $3, $4, 'Consumed on work order', $5, current_user_id())`,
-      [line.part_id, -qty, balanceAfter, unitCost, workOrderId]
-    )
-    await c.query(
-      'update public.work_order_parts set consumed_at = now(), quantity_used = $2, unit_cost_cents = $3 where id = $1',
-      [line.id, qty, unitCost]
-    )
-  }
-
-  return { shortfalls }
-}
-
 workOrdersRouter.post('/work-orders/:id/transition', requireCap('wo:transition'), async (req, res) => {
   const parsed = transitionInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { status: newStatus, comment, report } = parsed.data
 
-  const result = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows: cur } = await c.query(
-      'select status, actual_start, asset_id from public.work_orders where id = $1',
-      [req.params.id]
-    )
-    if (!cur[0]) return { error: 'not_found' as const }
-    const allowed: readonly string[] = WO_TRANSITIONS[cur[0].status as keyof typeof WO_TRANSITIONS] ?? []
-    if (!allowed.includes(newStatus)) return { error: 'invalid_transition' as const, from: cur[0].status }
-
-    // Closing draws the reserved parts out of stock. Done before the status
-    // write so a shortfall rolls the whole thing back rather than leaving a
-    // job closed against stock that was never there.
-    if (newStatus === 'closed') {
-      const consumed = await consumeParts(c, String(req.params.id))
-      if (consumed.shortfalls.length > 0) {
-        return { error: 'insufficient_stock' as const, shortfalls: consumed.shortfalls }
-      }
-    }
-
-    // Optional completion report, restricted to the report fields.
-    const reportPatch = report ? buildSet(report, REPORT_FIELDS, 2) : { setSql: '', values: [] as unknown[] }
-    const extra = [
-      reportPatch.setSql,
-      // Stamp the clock the first time work actually starts, and when it ends.
-      newStatus === 'in_progress' && !cur[0].actual_start ? 'actual_start = now()' : '',
-      newStatus === 'closed' ? 'actual_end = now()' : '',
-    ].filter(Boolean).join(', ')
-
-    const { rows } = await c.query(
-      `update public.work_orders
-          set status = $2, updated_at = now()${extra ? `, ${extra}` : ''}
-        where id = $1 returning id, org_id`,
-      [req.params.id, newStatus, ...reportPatch.values]
-    )
-    const wo = rows[0]
-
-    // Closing the job closes the finding it came from. Without this the defect
-    // register slowly fills with items fixed months ago and nobody trusts it —
-    // the failure mode a register exists to avoid.
-    let resolvedDefects: string[] = []
-    if (newStatus === 'closed') {
-      const { rows: defects } = await c.query(
-        `update public.defects
-            set status = 'resolved', resolved_at = now(),
-                resolution_notes = coalesce(resolution_notes, $2)
-          where work_order_id = $1 and deleted_at is null
-            and status not in ('resolved','closed')
-          returning ref`,
-        [req.params.id, comment || 'Resolved by the work order raised for it.']
-      )
-      resolvedDefects = defects.map((d: { ref: string }) => d.ref)
-    }
-
-    await c.query(
-      `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body)
-       values (current_org_id(), $1, current_user_id(), 'status_change', $2)`,
-      [req.params.id, comment || `Status changed to ${WO_STATUS_LABEL[newStatus] || newStatus}`]
-    )
-
-    await writeAuditLog(c, {
-      orgId: wo.org_id, actorId: req.claims!.sub, action: 'wo.transition', entityType: 'work_order', entityId: wo.id,
-      before: { status: cur[0].status }, after: { status: newStatus },
-    })
-
-    const { rows: full } = await c.query(`${SELECT} where w.id = $1`, [req.params.id])
-    const woFull = full[0]
-
-    // Closing a WO is the "done" signal — tell whoever created it and
-    // whoever most recently assigned it (they're the ones who were waiting on
-    // it, not the assignee who just did the work). Auto-drafted WOs that were
-    // never assigned to anyone yield an empty set here — nothing to notify
-    // (supervisors were already alerted when it was drafted).
-    if (newStatus === 'closed') {
-      await notifyWorkOrderClosed(c, {
-        orgId: woFull.org_id, woId: woFull.id, ref: woFull.ref, title: woFull.title,
-        actorId: req.claims!.sub,
-      })
-    }
-
-    await syncAssetStatusForWorkOrder(c, woFull.asset_id, req.claims!.sub)
-
-    // Closing clears an overdue job and may clear a defect with it, both of
-    // which the condition score reads.
-    if (newStatus === 'closed') await refreshAssetHealth(c, woFull.asset_id, req.claims!.sub)
-
-    return { data: { ...woFull, defects_resolved: resolvedDefects } }
-  })
+  const result = await withOrgContext(claimsFromReq(req), (c) =>
+    transitionWorkOrder(c, String(req.params.id), newStatus, { actorId: req.claims!.sub, comment, report })
+  )
 
   if ('error' in result) {
     if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' })

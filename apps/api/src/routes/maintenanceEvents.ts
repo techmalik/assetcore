@@ -6,7 +6,8 @@ import { requireCap } from '../middleware/rbac.js'
 import { writeAuditLog } from '../audit.js'
 import { refreshAssetHealth } from '../healthService.js'
 import { uploadRoute, optionalUploadRoute, DOCUMENT_MIME_TYPES } from '../files.js'
-import { notifyRoleHolders, notifyWorkOrderClosed } from '../notify.js'
+import { notifyRoleHolders } from '../notify.js'
+import { transitionWorkOrder } from '../services/workOrders.js'
 import { isoDate, blankToUndefined } from '../http/zod.js'
 
 export const maintenanceEventsRouter = Router()
@@ -80,6 +81,20 @@ maintenanceEventsRouter.post(
       const asset = assetRows[0]
       if (!asset) return { error: 'not_found' as const }
 
+      // Closing the job goes through the one close path: it draws the job's
+      // reserved parts, resolves its defect, stamps actual_end and tells whoever
+      // raised it. First, so a shortfall refuses the completion before anything
+      // is recorded (the transaction commits on a returned error).
+      if (work_order_id) {
+        const { rows: woRows } = await c.query('select status from public.work_orders where id = $1 and deleted_at is null', [work_order_id])
+        if (woRows[0] && woRows[0].status !== 'closed') {
+          const closed = await transitionWorkOrder(c, work_order_id, 'closed', {
+            actorId: req.claims!.sub, comment: 'Closed via maintenance completion.',
+          })
+          if ('error' in closed) return closed
+        }
+      }
+
       const { rows: evRows } = await c.query(
         `insert into public.maintenance_events
            (org_id, site_id, asset_id, source, pm_task_id, work_order_id, completed_at, next_maintenance_at, notes, report_url, performed_by)
@@ -95,24 +110,6 @@ maintenanceEventsRouter.post(
           [pm_task_id, completed_at]
         )
       }
-      if (work_order_id) {
-        const { rows: woRows } = await c.query(
-          `update public.work_orders set status = 'closed', updated_at = now() where id = $1 and status <> 'closed' returning id, ref, title`,
-          [work_order_id]
-        )
-        if (woRows[0]) {
-          await c.query(
-            `insert into public.work_order_activity (org_id, work_order_id, user_id, kind, body)
-             values (current_org_id(), $1, current_user_id(), 'status_change', 'Closed via maintenance completion.')`,
-            [work_order_id]
-          )
-          await notifyWorkOrderClosed(c, {
-            orgId: asset.org_id, woId: woRows[0].id, ref: woRows[0].ref, title: woRows[0].title,
-            actorId: req.claims!.sub,
-          })
-        }
-      }
-
       await c.query(
         'update public.assets set last_maintenance_at = $2, next_maintenance_at = $3 where id = $1',
         [asset.id, completed_at, next_maintenance_at]
@@ -150,7 +147,11 @@ maintenanceEventsRouter.post(
       return { data: event }
     })
 
-    if ('error' in result) return res.status(404).json({ error: 'not_found' })
+    if ('error' in result) {
+      if (result.error === 'insufficient_stock') return res.status(409).json({ error: 'insufficient_stock', shortfalls: result.shortfalls })
+      if (result.error === 'invalid_transition') return res.status(409).json({ error: 'invalid_transition', from: result.from, to: 'closed' })
+      return res.status(404).json({ error: 'not_found' })
+    }
     res.status(201).json(result.data)
   })
 )

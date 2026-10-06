@@ -118,6 +118,9 @@ async function upload(path, formData, { retry = true } = {}) {
     // up a sentence for it (lib/errors.js) instead of printing the code.
     err.code = payload?.error ?? fallbackCode(res.status)
     if (payload?.missing) err.missing = payload.missing
+    // A maintenance completion that closes a job is an upload, and is refused
+    // with the same parts list as any other close.
+    if (payload?.shortfalls) err.shortfalls = payload.shortfalls
     throw err
   }
   return payload
