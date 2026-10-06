@@ -91,18 +91,18 @@ Baseline: 14 files, 236 tests, all pass (2026-10-05). The app is checked with `n
 | 4.6 | One `<Modal>`, an in-app confirm, and toasts instead of alerts | 4 | M | Done `5512d26` (16 alerts, 13 confirms; Modal piloted on Defects and Risks; lint warnings cap 2) |
 | 4.7 | Shared `Stat`, `EmptyState`, `TableState`, `Field` | 4 | S | Done `e85d491` (fixed Defects form losing focus per keystroke; lint refuses nested components; Scan's row renamed InfoRow) |
 | 4.8 | Profile, password and file helpers in `lib`, one query-string builder | 4 | S | Done `d8be350` (file fetches now refresh tokens, OOS-26; `api.raw` is a first step of 5.7) |
-| 5.0 | Route smoke test for each role | 5 | M | Open |
-| 5.1 | One way to close a work order | 5 | L | Open |
-| 5.2 | Split `approvals.ts` into rules, reads, matrix and direct | 5 | M | Open |
-| 5.3 | Split `workOrders.ts` into core, tasks and parts | 5 | M | Open |
-| 5.4 | Split `assets.ts`; move import and transfer to services | 5 | M | Open |
-| 5.5 | Split `compliance.ts`; share defect creation | 5 | M | Open |
-| 5.6 | One file per export dataset | 5 | M | Open |
-| 5.7 | One fetch core in `apiClient.js` | 5 | M | Open |
-| 5.8 | Split `Admin.jsx` by tab | 5 | M | Open |
-| 5.9 | Split `WorkOrders.jsx` | 5 | M | Open |
-| 5.10 | Split `Assets.jsx` | 5 | L | Open |
-| 5.11 | Extract the Maintenance week strip and modals | 5 | S | Open |
+| 5.0 | Route smoke test for each role | 5 | M | Done `0b53346`, `04ccc1f` (10 roles × 22 routes; 2m18s in CI) |
+| 5.1 | One way to close a work order | 5 | L | Done `95b3f25` (+ OOS-27: a refused close drew the parts that were there) |
+| 5.2 | Split `approvals.ts` into rules, reads, matrix and direct | 5 | M | Done `7c765cb`..`8fb34a4` (largest file 334 lines) |
+| 5.3 | Split `workOrders.ts` into core, tasks and parts | 5 | M | Done `bf6fdc3`, `f841750` (list stays unpaged; detail was already one transaction) |
+| 5.4 | Split `assets.ts`; move import and transfer to services | 5 | M | Done `5aaf950`..`61ef43a` |
+| 5.5 | Split `compliance.ts`; share defect creation | 5 | M | Done `ea58863`..`d8334fc` (finding-to-defect now rescores and logs defect.create) |
+| 5.6 | One file per export dataset | 5 | M | Done `994f3b7` (schemaFlags kept; removal candidate) |
+| 5.7 | One fetch core in `apiClient.js` | 5 | M | Done `f1a8362` (manually checked with a 1-minute token) |
+| 5.8 | Split `Admin.jsx` by tab | 5 | M | Done `f74cd6d`..`6173404` (+ Configuration could save over settings it failed to load) |
+| 5.9 | Split `WorkOrders.jsx` | 5 | M | Done `e803e87`..`f8195e7` (one WorkOrderForm for New, Edit and raise-from-asset) |
+| 5.10 | Split `Assets.jsx` | 5 | L | Done `a6cfc9b`..`53a3523` (lib/csv.js tested; Escape in a photo no longer closes Edit Asset) |
+| 5.11 | Extract the Maintenance week strip and modals | 5 | S | Done `1a5aae8`, `738fbe1` |
 | 6.1 | Shared test helpers; name test files by feature | 6 | S | Open |
 | 6.2 | Test that TS and SQL depreciation agree | 6 | S | Open |
 | 6.3 | Page shell, theme context and one route table | 6 | M | Open |
