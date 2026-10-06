@@ -54,20 +54,40 @@ export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as con
 // covers them at the signature level along with plain .zip attachments.
 // Legacy Office files (.doc/.xls/.ppt) and Outlook .msg share the OLE
 // compound-file signature.
-export const DOCUMENT_MIME_TYPES = [...IMAGE_MIME_TYPES, 'application/pdf', 'application/zip', 'application/x-ole-storage'] as const
+// CSV and plain text (logger exports, meter readings, notes) have no
+// signature. They are accepted only under a .csv or .txt name and only when
+// the content reads as text (see looksLikeText), so an HTML page renamed
+// invoice.pdf is still refused.
+export const DOCUMENT_MIME_TYPES = [...IMAGE_MIME_TYPES, 'application/pdf', 'application/zip', 'application/x-ole-storage', 'text/csv', 'text/plain'] as const
 
-async function sniffMime(filePath: string): Promise<string | null> {
+const TEXT_EXTENSIONS: Record<string, string> = { '.csv': 'text/csv', '.txt': 'text/plain' }
+
+/** Whether the bytes are UTF-8 text: no NUL bytes, and they decode. Only the
+ * first 64 KB are read; a multi-byte character cut at that edge is fine. */
+function looksLikeText(sample: Buffer): boolean {
+  if (sample.includes(0)) return false
+  try {
+    new TextDecoder('utf-8', { fatal: true }).decode(sample, { stream: true })
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function sniffMime(filePath: string, originalName = ''): Promise<string | null> {
   const fh = await openFile(filePath, 'r')
   try {
-    const buf = Buffer.alloc(16)
-    const { bytesRead } = await fh.read(buf, 0, 16, 0)
-    const head = buf.subarray(0, bytesRead)
+    const buf = Buffer.alloc(64 * 1024)
+    const { bytesRead } = await fh.read(buf, 0, buf.length, 0)
+    const head = buf.subarray(0, Math.min(16, bytesRead))
     if (head.length >= 3 && head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return 'image/jpeg'
     if (head.length >= 8 && head.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png'
     if (head.length >= 12 && head.subarray(0, 4).toString('ascii') === 'RIFF' && head.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp'
     if (head.length >= 4 && head.subarray(0, 4).toString('ascii') === '%PDF') return 'application/pdf'
     if (head.length >= 4 && head.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))) return 'application/zip'
     if (head.length >= 8 && head.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))) return 'application/x-ole-storage'
+    const textType = TEXT_EXTENSIONS[path.extname(originalName).toLowerCase()]
+    if (textType && bytesRead > 0 && looksLikeText(buf.subarray(0, bytesRead))) return textType
     return null
   } finally {
     await fh.close()
@@ -134,7 +154,7 @@ function buildUploadRoute(opts: UploadOpts, required: boolean, handler: UploadHa
       await handler(req, res, null)
       return
     }
-    const mime = await sniffMime(req.file.path)
+    const mime = await sniffMime(req.file.path, req.file.originalname)
     if (!mime || !opts.mime.includes(mime)) {
       await cleanupOrphanedUpload(req.file.path)
       return void res.status(400).json({ error: 'unsupported_type' })
@@ -209,5 +229,11 @@ filesRouter.get('/files/*filePath', async (req, res) => {
   const visible = await withOrgContext(claimsFromReq(req), (c) => check(c, relPath))
   if (!visible) return res.status(404).json({ error: 'not_found' })
 
+  // A text upload is always a download, never a page: nosniff (helmet)
+  // stops a browser guessing, and this stops it rendering one at all.
+  if (TEXT_EXTENSIONS[path.extname(fullPath).toLowerCase()]) {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    res.setHeader('Content-Disposition', 'attachment')
+  }
   createReadStream(fullPath).pipe(res)
 })

@@ -87,3 +87,42 @@ describe.each(targets)('$name upload', (t) => {
     expect(res.body.error).toBe('file_too_large')
   })
 })
+
+describe('CSV and text attachments', () => {
+  // Owner decision (follow-ups): documents may be CSV or plain text, checked
+  // as text, never photos, and always served as a download.
+  const CSV = Buffer.from('reading_at,pressure_bar\n2026-10-01 08:00,42.5\n2026-10-01 09:00,42.1\n')
+  const asDoc = (buf: Buffer, name: string) => owner.post(`/api/assets/${ids.asset}/documents`).attach('document', buf, name)
+
+  it('accepts a CSV and a text file as a document, and serves each as a download', async () => {
+    const csv = await asDoc(CSV, 'meter.csv')
+    expect(csv.status).toBe(201)
+    const txt = await asDoc(Buffer.from('Seal replaced; torque 45 Nm.\n'), 'notes.txt')
+    expect(txt.status).toBe(201)
+
+    const doc = (csv.body.documents as Array<{ url: string; name: string }>).find((d) => d.name === 'meter.csv')!
+    const served = await owner.get(`/api/files/${doc.url}`).buffer(true)
+    expect(served.status).toBe(200)
+    expect(served.headers['content-disposition']).toBe('attachment')
+    expect(served.headers['content-type']).toMatch(/^text\/plain/)
+    expect(served.headers['x-content-type-options']).toBe('nosniff')
+  })
+
+  it('refuses binary bytes under a .csv name', async () => {
+    const res = await asDoc(Buffer.from([0x00, 0x01, 0x02, 0xff, 0xfe, 0x00]), 'readings.csv')
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('unsupported_type')
+  })
+
+  it('refuses text under any other name', async () => {
+    const res = await asDoc(CSV, 'readings.xlsx')
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('unsupported_type')
+  })
+
+  it('refuses a CSV as a photo', async () => {
+    const res = await owner.post(`/api/assets/${ids.asset}/photos`).attach('photo', CSV, 'meter.csv')
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('unsupported_type')
+  })
+})
