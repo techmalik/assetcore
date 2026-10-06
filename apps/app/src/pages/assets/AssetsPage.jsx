@@ -20,7 +20,7 @@ import { useConfirm } from '../../lib/ConfirmContext'
 import { LEGACY_STATUS_KEYS, STATE_FILTERS, AssetStatusBadge, nextMaintColor } from './assetBits.jsx'
 import { HealthBar, AssetDetailPanel } from './AssetDetailPanel.jsx'
 import { AssetModal } from './AssetModal.jsx'
-import { RaiseWOModal } from './RaiseWOModal.jsx'
+import { WorkOrderForm } from '../work-orders/WorkOrderForm.jsx'
 import { CompleteMaintenanceModal } from './assetModals.jsx'
 import { ImportModal } from './ImportModal.jsx'
 
@@ -374,11 +374,12 @@ export default function Assets({ dark, toggleDark }) {
         />
       )}
       {woAsset && (
-        <RaiseWOModal
+        <WorkOrderForm
           asset={woAsset}
           users={operators}
+          canAssign={can('wo:assign')}
           onClose={() => setWoAsset(null)}
-          onCreated={() => { setWoAsset(null); load() }}
+          onSaved={() => { setWoAsset(null); load() }}
         />
       )}
       {completingAsset && (
