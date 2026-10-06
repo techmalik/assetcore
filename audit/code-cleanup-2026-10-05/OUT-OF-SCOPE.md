@@ -23,7 +23,7 @@
 | OOS-19 | LOW | Money column headers in exports say "(NGN)" whatever the base currency. | `reportBuilders.ts:41-43`, `exports.ts:137-141,188` | open, not in plan |
 | OOS-20 | LOW | `/org/settings` changes the depreciation policy (recomputing every book value) with no audit row; `PATCH /org`, `PUT /integrations`, WO task and part-line edits are also unaudited. | 05d RF-API-08, RF-API-16 | open, not in plan (governance pass) |
 | OOS-21 | LOW | Neither the Compliance page nor `GET /compliance-licences` checks `compliance:read`, which supervisor and officer roles lack. | `Sidebar.jsx:50`, `App.jsx:150`, `compliance.ts:45` | needs owner decision on what `compliance:read` means; TASK-2.2 lists it |
-| OOS-22 | LOW | The mail fallback prints invite and reset links with live tokens to stdout in production when SMTP is unset. | `auth/mailer.ts:26-27` | open, not in plan |
+| OOS-22 | LOW | The mail fallback prints invite and reset links with live tokens to stdout in production when SMTP is unset. | `auth/mailer.ts:26-27` | fixed in the follow-ups: printed only outside production |
 
 Full detail for every row is in 05b/05c/05d under "Bugs seen in passing".
 | OOS-23 | LOW | The audit-log filter test asserts total equals the rows on one 200-row page, so on a long-lived local test database it fails once more than 200 matching rows pile up. CI uses a fresh database each run. | `apps/api/test/attributionAndAudit.test.ts:277` | fixed in Wave 6: the test compares total with the database's own count |

@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer'
-import { config } from '../config.js'
+import { config, isDev } from '../config.js'
 import { logger } from '../logger.js'
 
 const transport = config.SMTP_HOST
@@ -14,12 +14,21 @@ const transport = config.SMTP_HOST
     })
   : null
 
-/** Sends if a relay is configured; otherwise logs the message and reports that
- * it was not delivered, so the caller can fall back to showing the link. */
+/** Sends if a relay is configured; otherwise reports that it was not
+ * delivered, so the caller can fall back to showing the link.
+ *
+ * Without a relay, development prints the email so the link can be followed.
+ * Production never does: invite and reset emails carry live sign-in tokens,
+ * and printing them put working links in the server's logs for anyone who can
+ * read them. The admin screens show those links to the admin instead. */
 export async function sendMail(opts: { to: string; subject: string; text: string }): Promise<{ delivered: boolean }> {
   if (!transport) {
-    logger.warn({ to: opts.to, subject: opts.subject }, 'SMTP not configured — printing email to console')
-    console.log(`\n--- DEV EMAIL ---\nTo: ${opts.to}\nSubject: ${opts.subject}\n\n${opts.text}\n-----------------\n`)
+    if (isDev) {
+      logger.warn({ to: opts.to, subject: opts.subject }, 'SMTP not configured — printing email to console')
+      console.log(`\n--- DEV EMAIL ---\nTo: ${opts.to}\nSubject: ${opts.subject}\n\n${opts.text}\n-----------------\n`)
+    } else {
+      logger.warn({ to: opts.to, subject: opts.subject }, 'SMTP not configured — email not sent')
+    }
     return { delivered: false }
   }
   try {
