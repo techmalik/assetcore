@@ -91,7 +91,9 @@ describe('TASK-1.2: compliance_audits RLS enforces site scope on write', () => {
     const res = await api.post('/api/compliance-audits').send({
       title, audit_date: '2026-01-01', site_id: SITE_A2,
     })
-    expect(res.status).toBeGreaterThanOrEqual(400)
+    // Refused by row-level security: a 403 for the caller, not a 500.
+    expect(res.status).toBe(403)
+    expect(res.body.error).toBe('forbidden')
 
     const client = ownerClient()
     await client.connect()

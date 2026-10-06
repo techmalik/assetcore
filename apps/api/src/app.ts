@@ -59,6 +59,13 @@ app.use((err: Error & { status?: number; statusCode?: number; type?: string; cod
       : 'invalid_request'
     return res.status(status).json({ error })
   }
+  // A write outside the caller's sites or org, refused by a row-level
+  // security policy's check, is the caller's mistake: 403, not 500. Only that
+  // message: the same code also means a missing grant, which is ours.
+  if (err.code === '42501' && /row-level security policy/.test(err.message)) {
+    logger.warn({ err }, 'client error (outside the caller\'s scope)')
+    return res.status(403).json({ error: 'forbidden' })
+  }
   const pg = typeof err.code === 'string' ? PG_CLIENT_ERRORS[err.code] : undefined
   if (pg) {
     logger.warn({ err }, 'client error (database)')
