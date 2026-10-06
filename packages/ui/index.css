@@ -228,6 +228,7 @@ a { text-decoration: none; color: inherit; }
   outline: none;
 }
 .input:focus { border-color: var(--b500); box-shadow: 0 0 0 3px var(--b100); }
+.input:disabled { background: var(--n50); color: var(--n600); cursor: not-allowed; }
 /* The compact input used in filter bars and table toolbars. */
 .input-sm { height: 34px; font-size: 13px; padding: 0 10px; }
 
