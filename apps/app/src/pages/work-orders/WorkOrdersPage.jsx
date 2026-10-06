@@ -1,24 +1,25 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../../components/Sidebar.jsx'
 import Topbar from '../../components/Topbar.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
-import { listWorkOrders, transitionWorkOrder, WO_TRANSITIONS, WO_STATUS_LABEL, woStatusStyle } from '../../lib/db/workOrders'
+import { listWorkOrders, transitionWorkOrder, WO_STATUS_LABEL, woStatusStyle } from '../../lib/db/workOrders'
 import { listSites } from '../../lib/db/sites'
 import { listAssets } from '../../lib/db/assets'
 import { listOrgUsers } from '../../lib/db/orgMembers'
 import { useAuth, useCan } from '../../lib/AuthContext.jsx'
 import { useToast } from '../../lib/ToastContext'
-import { useMoney } from '../../lib/money'
 import { useLocationFilter } from '../../lib/LocationFilterContext'
 import { errorText } from '../../lib/errors'
-import { STATUS_COL_ORDER, PriorityBadge, TypeBadge, SlaDue } from './badges.jsx'
+import { PriorityBadge, TypeBadge, SlaDue } from './badges.jsx'
 import { WorkOrderForm } from './WorkOrderForm.jsx'
+import { WorkOrderBoard } from './WorkOrderBoard.jsx'
+import { useResource } from '../../lib/useResource'
+import TableState from '../../components/TableState.jsx'
 import { WODetail } from './WorkOrderDetail.jsx'
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function WorkOrders({ dark, toggleDark }) {
-  const { money } = useMoney()
   const can = useCan()
   const { user } = useAuth()
   const toast = useToast()
@@ -34,12 +35,6 @@ export default function WorkOrders({ dark, toggleDark }) {
   const globalLocation = myLocations.find((l) => l.id === globalLocationId)
 
   const [searchParams] = useSearchParams()
-  const [wos, setWos] = useState([])
-  const [sites, setSites] = useState([])
-  const [assets, setAssets] = useState([])
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   // 'open' is a client-side pseudo-status (not closed) — no single status
   // value on the backend means "open", so it fetches everything and filters
   // here, same as the dashboard's "Open Work Orders" KPI counts it.
@@ -52,24 +47,26 @@ export default function WorkOrders({ dark, toggleDark }) {
   const [view, setView] = useState('list')
   const [selectedId, setSelectedId] = useState(null)
   const [showNew, setShowNew] = useState(false)
-  // Board drag state: which card is in the air, and which column it is over.
-  const [dragging, setDragging] = useState(null) // { id, from }
-  const [dropCol, setDropCol] = useState(null)
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const [w, s, a, u] = await Promise.all([
-        listWorkOrders({ status: (filterStatus === 'all' || filterStatus === 'open') ? undefined : filterStatus, locationId: globalLocationId }),
-        listSites(), listAssets(), listOrgUsers().catch(() => []),
-      ])
-      setWos(filterStatus === 'open' ? w.filter(x => x.status !== 'closed') : w)
-      setSites(s); setAssets(a); setUsers(u)
-    } catch (e) { setError(errorText(e, 'Failed to load work orders.')) }
-    finally { setLoading(false) }
-  }, [filterStatus, globalLocationId])
-
-  useEffect(() => { load() }, [load])
+  // The list follows the filters; the pickers' sites, assets and people do
+  // not, so they load once rather than again on every filter click.
+  const list = useResource(
+    () => listWorkOrders({ status: (filterStatus === 'all' || filterStatus === 'open') ? undefined : filterStatus, locationId: globalLocationId })
+      .then((w) => (filterStatus === 'open' ? w.filter(x => x.status !== 'closed') : w)),
+    [filterStatus, globalLocationId],
+    { initial: [], errorFallback: 'Failed to load work orders.' },
+  )
+  const lookups = useResource(
+    () => Promise.all([listSites(), listAssets(), listOrgUsers().catch(() => [])]).then(([sites, assets, users]) => ({ sites, assets, users })),
+    [], { initial: { sites: [], assets: [], users: [] }, errorFallback: 'Failed to load work orders.' },
+  )
+  const wos = list.data
+  const setWos = list.setData
+  const { sites, assets, users } = lookups.data
+  const loading = list.loading || lookups.loading
+  const error = list.error || lookups.error
+  const load = list.reload
+  const retry = () => { list.reload(); if (lookups.error) lookups.reload() }
 
   // Open the deep-linked WO once the list has arrived. Also clears the status
   // filter, so linking to a draft or closed WO doesn't land on a page that
@@ -106,7 +103,6 @@ export default function WorkOrders({ dark, toggleDark }) {
   }
 
   const visibleWos = mineOnly ? wos.filter(w => w.assignee_id === user?.id) : wos
-  const byStatus = STATUS_COL_ORDER.reduce((acc, s) => { acc[s] = visibleWos.filter(w => w.status === s); return acc }, {})
 
   return (
     <div className="app-shell">
@@ -144,13 +140,8 @@ export default function WorkOrders({ dark, toggleDark }) {
 
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
           <div className="table-scroll" style={{ flex: 1, overflowY: 'auto' }}>
-            {loading ? (
-              <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>Loading work orders…</div>
-            ) : error ? (
-              <div style={{ padding: 48, textAlign: 'center' }}>
-                <p style={{ color: 'var(--srt)', fontSize: 13, marginBottom: 12 }}>{error}</p>
-                <button onClick={load} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Retry</button>
-              </div>
+            {loading || error ? (
+              <TableState loading={loading} loadingText="Loading work orders…" error={error} onRetry={retry} />
             ) : visibleWos.length === 0 ? (
               <div style={{ padding: 64, textAlign: 'center' }}>
                 <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>
@@ -168,60 +159,7 @@ export default function WorkOrders({ dark, toggleDark }) {
                 )}
               </div>
             ) : view === 'kanban' ? (
-              <div style={{ display: 'flex', gap: 0, height: '100%', overflowX: 'auto' }}>
-                {STATUS_COL_ORDER.map(s => {
-                  // While a card is in the air, only the columns its current
-                  // status may legally move to accept it; the rest dim, so the
-                  // board shows the transition rules instead of letting you
-                  // drop somewhere the API would refuse.
-                  const legalTarget = dragging && dragging.from !== s && (WO_TRANSITIONS[dragging.from] || []).includes(s)
-                  const dimmed = dragging && dragging.from !== s && !legalTarget
-                  return (
-                  <div key={s}
-                    onDragOver={e => { if (!legalTarget) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (dropCol !== s) setDropCol(s) }}
-                    onDragLeave={() => setDropCol(c => (c === s ? null : c))}
-                    onDrop={e => {
-                      e.preventDefault()
-                      const id = e.dataTransfer.getData('text/plain') || dragging?.id
-                      if (legalTarget && id) moveWo(id, s)
-                      setDragging(null); setDropCol(null)
-                    }}
-                    style={{ minWidth: 240, width: 240, flexShrink: 0, borderRight: 'var(--bdr)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: dropCol === s ? 'var(--b50)' : 'transparent', opacity: dimmed ? .45 : 1, transition: 'background .12s, opacity .12s' }}>
-                    <div style={{ padding: '10px 14px', borderBottom: 'var(--bdr)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: dropCol === s ? 'var(--b100)' : 'var(--n50)', flexShrink: 0 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--n600)' }}>{WO_STATUS_LABEL[s]}</span>
-                      <span style={{ fontSize: 11, background: 'var(--n200)', color: 'var(--n600)', borderRadius: 99, padding: '1px 7px', fontFamily: 'var(--ff-m)' }}>{byStatus[s].length}</span>
-                    </div>
-                    <div style={{ flex: 1, overflowY: 'auto', padding: 10 }}>
-                      {byStatus[s].map(w => {
-                        const movable = canTransition && (WO_TRANSITIONS[w.status] || []).length > 0
-                        return (
-                        <div key={w.id} onClick={() => setSelectedId(w.id)} className="row-hover"
-                          draggable={movable}
-                          onDragStart={e => {
-                            e.dataTransfer.effectAllowed = 'move'
-                            e.dataTransfer.setData('text/plain', w.id)
-                            setDragging({ id: w.id, from: w.status })
-                          }}
-                          onDragEnd={() => { setDragging(null); setDropCol(null) }}
-                          title={movable ? 'Drag to another column to change status' : undefined}
-                          style={{ background: selectedId === w.id ? 'var(--b50)' : 'var(--n0)', border: `1px solid ${selectedId === w.id ? 'var(--b300)' : 'var(--n200)'}`, borderRadius: 6, padding: '10px 12px', marginBottom: 8, cursor: movable ? 'grab' : 'pointer', opacity: dragging?.id === w.id ? .4 : 1 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--n900)', marginBottom: 6, lineHeight: 1.4 }}>{w.title}</div>
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
-                            <PriorityBadge p={w.priority} /><TypeBadge t={w.type} />
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--n500)' }}>{w.asset?.ain || w.site?.name || '—'}</div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                            {w.sla_due ? <SlaDue date={w.sla_due} /> : <span/>}
-                            {w.cost_cents > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--ff-m)', color: 'var(--n600)' }}>{money(w.cost_cents)}</span>}
-                          </div>
-                        </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                  )
-                })}
-              </div>
+              <WorkOrderBoard wos={visibleWos} selectedId={selectedId} canTransition={canTransition} onSelect={setSelectedId} onMove={moveWo} />
             ) : (
               <>
                 <table className="table-view-desktop" style={{ width: '100%', borderCollapse: 'collapse' }}>
