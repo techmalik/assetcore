@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Sidebar from '../../components/Sidebar.jsx'
 import Topbar from '../../components/Topbar.jsx'
@@ -17,6 +17,8 @@ import { useLocationFilter } from '../../lib/LocationFilterContext'
 import { errorText } from '../../lib/errors'
 import { fmtDate } from '../../lib/dates'
 import { useConfirm } from '../../lib/ConfirmContext'
+import { useResource } from '../../lib/useResource'
+import TableState from '../../components/TableState.jsx'
 import { LEGACY_STATUS_KEYS, STATE_FILTERS, AssetStatusBadge, nextMaintColor } from './assetBits.jsx'
 import { HealthBar, AssetDetailPanel } from './AssetDetailPanel.jsx'
 import { AssetModal } from './AssetModal.jsx'
@@ -36,16 +38,8 @@ export default function Assets({ dark, toggleDark }) {
   const canWO = can('wo:create')
   const canCompleteMaintenance = can('maintenance:complete')
 
-  const [assets, setAssets] = useState([])
-  const [sites, setSites] = useState([])
-  const [locations, setLocations] = useState([])
-  const [categories, setCategories] = useState([])
-  const [operators, setOperators] = useState([])
   // Org-wide depreciation policy (Admin -> Configuration). Used to show what an
   // asset inherits when it has no override of its own.
-  const [orgDepreciation, setOrgDepreciation] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [searchParams] = useSearchParams()
   const [filter, setFilter] = useState(searchParams.get('status') || 'all')
   // Health-band drill-down from the dashboard donut (?health=good|attention|critical).
@@ -68,21 +62,30 @@ export default function Assets({ dark, toggleDark }) {
   const [importing, setImporting] = useState(false)
   const [labelling, setLabelling] = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true); setError(null)
-    try {
-      const [a, s, l, c, u, org] = await Promise.all([
-        listAssets({ status: filter, archived: archivedView, locationId: globalLocationId }), listSites(), listLocations().catch(() => []), listCategories(), listOrgUsers().catch(() => []),
-        getOrg().catch(() => null),
-      ])
-      setAssets(a); setSites(s); setLocations(l); setCategories(c); setOperators(u)
-      setOrgDepreciation(org?.settings?.depreciation || null)
-      setSelected((sel) => (sel ? a.find((x) => x.id === sel.id) || null : null))
-    } catch (e) { setError(errorText(e, 'Failed to load assets.')) }
-    finally { setLoading(false) }
-  }, [filter, archivedView, globalLocationId])
+  // The register follows the filters; the pickers' sites, locations,
+  // categories and people, and the org's depreciation policy, do not, so they
+  // load once rather than again on every filter click.
+  const list = useResource(
+    () => listAssets({ status: filter, archived: archivedView, locationId: globalLocationId }),
+    [filter, archivedView, globalLocationId],
+    { initial: [], keepPrevious: true, errorFallback: 'Failed to load assets.' },
+  )
+  const lookups = useResource(
+    () => Promise.all([listSites(), listLocations().catch(() => []), listCategories(), listOrgUsers().catch(() => []), getOrg().catch(() => null)])
+      .then(([sites, locations, categories, operators, org]) => ({ sites, locations, categories, operators, orgDepreciation: org?.settings?.depreciation || null })),
+    [], { initial: { sites: [], locations: [], categories: [], operators: [], orgDepreciation: null }, errorFallback: 'Failed to load assets.' },
+  )
+  const assets = list.data
+  const { sites, locations, categories, operators, orgDepreciation } = lookups.data
+  const loading = (list.loading && assets.length === 0) || lookups.loading
+  const error = list.error || lookups.error
+  const load = list.reload
+  const retry = () => { list.reload(); if (lookups.error) lookups.reload() }
 
-  useEffect(() => { load() }, [load])
+  // Keep the open panel showing the fresh copy of its asset after a reload.
+  useEffect(() => {
+    setSelected((sel) => (sel ? assets.find((x) => x.id === sel.id) || null : null))
+  }, [assets])
 
   // ?id=<uuid> — a notification deep-linking to a specific asset. Opens its
   // detail panel and clears any filter that would hide the row.
@@ -230,13 +233,8 @@ export default function Assets({ dark, toggleDark }) {
 
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
             <div className="table-scroll" style={{ flex: 1, overflowY: 'auto' }}>
-              {loading ? (
-                <div style={{ padding: 48, textAlign: 'center', color: 'var(--n400)', fontSize: 13 }}>Loading assets…</div>
-              ) : error ? (
-                <div style={{ padding: 48, textAlign: 'center' }}>
-                  <p style={{ color: 'var(--srt)', fontSize: 13, marginBottom: 12 }}>{error}</p>
-                  <button onClick={load} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Retry</button>
-                </div>
+              {loading || error ? (
+                <TableState loading={loading} loadingText="Loading assets…" error={error} onRetry={retry} />
               ) : visibleAssets.length === 0 ? (
                 <div style={{ padding: 64, textAlign: 'center' }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--n600)', marginBottom: 6 }}>

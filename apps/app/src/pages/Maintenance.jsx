@@ -428,7 +428,7 @@ function CompleteTaskModal({ task, onClose, onDone }) {
             <input type="file" onChange={(e) => setReportFile(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
           </label>
         </div>
-        <p style={{ fontSize: 11, color: 'var(--n500)', marginTop: 10 }}>Completing this resets the linked asset's health to 100%.</p>
+        <p style={{ fontSize: 11, color: 'var(--n500)', marginTop: 10 }}>Completing this clears the linked asset's overdue maintenance and rescores its health.</p>
         {err && <div style={{ background: 'var(--srb)', border: '1px solid var(--srbr)', borderRadius: 4, padding: '8px 12px', fontSize: 12, color: 'var(--srt)', marginTop: 10 }}>{err}</div>}
         <div style={{ display: 'flex', gap: 8, marginTop: 18, justifyContent: 'flex-end' }}>
           <button onClick={onClose} className="btn btn-secondary" style={{ height: 34, padding: '0 16px', fontSize: 13 }}>Cancel</button>

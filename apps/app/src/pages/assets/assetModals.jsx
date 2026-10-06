@@ -47,7 +47,7 @@ export function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
         notes: form.notes.trim() || null,
         report: report || undefined,
       })
-      toast.success('Maintenance completed — health reset to 100%.')
+      toast.success('Maintenance completed — health rescored.')
       onCompleted()
     } catch (ex) { setErr(errorText(ex, 'Failed to record maintenance completion.')); setSaving(false) }
   }
@@ -62,7 +62,7 @@ export function CompleteMaintenanceModal({ asset, onClose, onCompleted }) {
         </>
       )}
     >
-        <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16 }}>{asset.ain} · {asset.name} — resets health to 100% and schedules the next maintenance date.</p>
+        <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16 }}>{asset.ain} · {asset.name} — clears its overdue maintenance, rescores its health and schedules the next maintenance date.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {(pmTasks.length > 0 || workOrders.length > 0) && (
             <Field label="Linked to (optional)">
@@ -112,7 +112,7 @@ export function PMTaskCompleteModal({ task, onClose, onCompleted }) {
     try {
       await updatePMTask(task.id, { status: 'completed', completed_at: completedAt, notes: notes.trim() || null })
       if (report) await uploadMaintenanceReport(task.id, report)
-      toast.success('PM task completed — health reset to 100%.')
+      toast.success('PM task completed — health rescored.')
       onCompleted()
     } catch (ex) { setErr(errorText(ex, 'Failed to complete task.')); setSaving(false) }
   }
@@ -127,7 +127,7 @@ export function PMTaskCompleteModal({ task, onClose, onCompleted }) {
         </>
       )}
     >
-        <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16 }}>{task.title} — resets the asset's health to 100% and advances the maintenance schedule.</p>
+        <p style={{ fontSize: 12, color: 'var(--n500)', marginBottom: 16 }}>{task.title} — clears the asset's overdue maintenance, rescores its health and advances the maintenance schedule.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Field label="Completed on" required>
             <input className="input" style={{ width: '100%' }} type="date" max={addDaysISO(todayISO(), 0)} value={completedAt} onChange={(e) => setCompletedAt(e.target.value)} />
