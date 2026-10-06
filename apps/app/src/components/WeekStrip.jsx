@@ -1,7 +1,7 @@
 import { fmtDateLong, toISODate, parseISODate } from '../lib/dates'
 
 /** Monday to Sunday of the week holding `refDate` (an ISO date). */
-export function weekDays(refDate) {
+function weekDays(refDate) {
   const ref = parseISODate(refDate)
   const mon = new Date(ref); mon.setDate(ref.getDate() - ((ref.getDay()+6)%7))
   return Array.from({length:7},(_,i) => { const d=new Date(mon); d.setDate(mon.getDate()+i); return d })
