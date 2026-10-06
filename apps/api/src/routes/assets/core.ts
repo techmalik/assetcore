@@ -11,6 +11,7 @@ import { ASSET_STATUSES, ASSET_DEPRECIATION_METHODS, LIFECYCLE_STATUSES, CRITICA
 import { ASSET_SELECT, recomputeDerived, maintenanceDatesOrdered } from '../../services/assets.js'
 import { importAssets, importSummary } from '../../services/assetImport.js'
 import { transferAssets } from '../../services/assetTransfer.js'
+import { parseOr400 } from '../../http/validate.js'
 
 export const coreRouter = Router()
 
@@ -234,8 +235,8 @@ const commentInput = z.object({ body: z.string().min(1) })
 
 // Any active member may log a comment/note on an asset's timeline.
 coreRouter.post('/assets/:id/activity', async (req, res) => {
-  const parsed = commentInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const input = parseOr400(commentInput, req.body, res)
+  if (!input) return
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     // asset_activity's INSERT policy only checks org_id — without this,
     // a site-scoped caller could log a comment against an asset outside
@@ -246,7 +247,7 @@ coreRouter.post('/assets/:id/activity', async (req, res) => {
       `insert into public.asset_activity (org_id, asset_id, user_id, kind, body)
        values (current_org_id(), $1, current_user_id(), 'comment', $2)
        returning *`,
-      [req.params.id, parsed.data.body]
+      [req.params.id, input.body]
     )
     return rows[0]
   })
@@ -255,18 +256,18 @@ coreRouter.post('/assets/:id/activity', async (req, res) => {
 })
 
 coreRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
-  const parsed = assetInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  if (!maintenanceDatesOrdered(parsed.data)) return res.status(400).json({ error: 'invalid_maintenance_dates' })
+  const input = parseOr400(assetInput, req.body, res)
+  if (!input) return
+  if (!maintenanceDatesOrdered(input)) return res.status(400).json({ error: 'invalid_maintenance_dates' })
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     // Registering an asset at a shut-down site is allowed — equipment left on
     // a closed site still belongs on the register — but it arrives Inactive,
     // like everything else there. The status asked for is kept so reopening
     // the site gives it that, not a default.
-    const data: Record<string, unknown> = { ...parsed.data }
-    if (await isSiteShutdown(c, parsed.data.site_id, null)) {
-      data.status_before_shutdown = parsed.data.status && parsed.data.status !== 'inactive' ? parsed.data.status : 'operational'
+    const data: Record<string, unknown> = { ...input }
+    if (await isSiteShutdown(c, input.site_id, null)) {
+      data.status_before_shutdown = input.status && input.status !== 'inactive' ? input.status : 'operational'
       data.status = 'inactive'
     }
     const { columns, placeholders, values } = buildInsert(data, [...ALLOWED, 'status_before_shutdown'])
@@ -304,27 +305,27 @@ coreRouter.post('/assets/import', requireCap('asset:create'), async (req, res) =
 })
 
 coreRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) => {
-  const parsed = assetInput.partial().safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  if (!maintenanceDatesOrdered(parsed.data)) return res.status(400).json({ error: 'invalid_maintenance_dates' })
-  const { setSql, values } = buildSet(parsed.data, ALLOWED)
+  const input = parseOr400(assetInput.partial(), req.body, res)
+  if (!input) return
+  if (!maintenanceDatesOrdered(input)) return res.status(400).json({ error: 'invalid_maintenance_dates' })
+  const { setSql, values } = buildSet(input, ALLOWED)
   if (!setSql) return res.status(400).json({ error: 'empty_patch' })
 
   // Only recompute what the patch could actually have moved: health follows
   // the maintenance window, book value follows the valuation inputs.
-  const touchesHealth = 'last_maintenance_at' in parsed.data || 'next_maintenance_at' in parsed.data
-  const touchesDepreciation = DEPRECIATION_INPUTS.some((k) => k in parsed.data)
+  const touchesHealth = 'last_maintenance_at' in input || 'next_maintenance_at' in input
+  const touchesDepreciation = DEPRECIATION_INPUTS.some((k) => k in input)
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
     // An asset at a shut-down site stays inactive until the site reopens or
     // the asset is transferred out. Checked against the site the asset will be
     // on after this patch, so moving one onto a closed site with a live status
     // is refused too. Resubmitting 'inactive' (the edit form does) is fine.
-    if ('status' in parsed.data || 'site_id' in parsed.data) {
+    if ('status' in input || 'site_id' in input) {
       const { rows: cur } = await c.query('select site_id, status from public.assets where id = $1', [req.params.id])
       if (!cur[0]) return null
-      const siteAfter = 'site_id' in parsed.data ? parsed.data.site_id : cur[0].site_id
-      const statusAfter = parsed.data.status ?? cur[0].status
+      const siteAfter = 'site_id' in input ? input.site_id : cur[0].site_id
+      const statusAfter = input.status ?? cur[0].status
       if (statusAfter !== 'inactive' && (await isSiteShutdown(c, siteAfter, null))) {
         return { error: 'site_shutdown' as const }
       }
@@ -349,7 +350,7 @@ coreRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) => 
     }
     const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
-    await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.update', entityType: 'asset', entityId: asset.id, after: parsed.data })
+    await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.update', entityType: 'asset', entityId: asset.id, after: input })
     return { data: asset }
   })
   if (!result) return res.status(404).json({ error: 'not_found' })
@@ -366,10 +367,10 @@ const transferInput = z.object({
 
 // What a transfer moves with the asset: services/assetTransfer.ts.
 coreRouter.post('/assets/transfer', requireCap('asset:update'), async (req, res) => {
-  const parsed = transferInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { to_site_id: toSiteId, reason, transferred_at: transferredAt } = parsed.data
-  const assetIds = [...new Set(parsed.data.asset_ids)]
+  const input = parseOr400(transferInput, req.body, res)
+  if (!input) return
+  const { to_site_id: toSiteId, reason, transferred_at: transferredAt } = input
+  const assetIds = [...new Set(input.asset_ids)]
 
   const result = await withOrgContext(claimsFromReq(req), (c) =>
     transferAssets(c, { assetIds, toSiteId, reason, transferredAt }, req.claims!.sub)
