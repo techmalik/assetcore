@@ -7,6 +7,7 @@ import { writeAuditLog } from '../../audit.js'
 import { createDefect } from '../../services/defects.js'
 import { FINDING_SEVERITIES, FINDING_STATUSES, DEFECT_SEVERITIES } from '@assetcore/domain'
 import { auditDate } from './audits.js'
+import { parseOr400 } from '../../http/validate.js'
 
 export const findingsRouter = Router()
 
@@ -20,23 +21,23 @@ const findingInput = z.object({
 })
 
 findingsRouter.post('/compliance-audits/:id/findings', requireCap('compliance:update'), async (req, res) => {
-  const parsed = findingInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const input = parseOr400(findingInput, req.body, res)
+  if (!input) return
 
   const row = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(
       `insert into public.compliance_audit_findings (org_id, audit_id, clause, description, severity, due_date)
        values (current_org_id(), $1, $2, $3, $4, $5) returning *`,
-      [req.params.id, parsed.data.clause ?? null, parsed.data.description,
-       parsed.data.severity ?? 'minor', parsed.data.due_date ?? null]
+      [req.params.id, input.clause ?? null, input.description,
+       input.severity ?? 'minor', input.due_date ?? null]
     ).then((r) => r.rows[0])
   )
   res.status(201).json(row)
 })
 
 findingsRouter.patch('/compliance-audits/:id/findings/:findingId', requireCap('compliance:update'), async (req, res) => {
-  const parsed = findingInput.partial().extend({ status: z.enum(FINDING_STATUSES).optional() }).safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  const input = parseOr400(findingInput.partial().extend({ status: z.enum(FINDING_STATUSES).optional() }), req.body, res)
+  if (!input) return
 
   const row = await withOrgContext(claimsFromReq(req), (c) =>
     c.query(
@@ -53,8 +54,8 @@ findingsRouter.patch('/compliance-audits/:id/findings/:findingId', requireCap('c
                                  else null end
         where id = $1 and audit_id = $2
         returning *`,
-      [req.params.findingId, req.params.id, parsed.data.clause ?? null, parsed.data.description ?? null,
-       parsed.data.severity ?? null, parsed.data.due_date ?? null, parsed.data.status ?? null]
+      [req.params.findingId, req.params.id, input.clause ?? null, input.description ?? null,
+       input.severity ?? null, input.due_date ?? null, input.status ?? null]
     ).then((r) => r.rows[0] ?? null)
   )
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -70,11 +71,11 @@ findingsRouter.patch('/compliance-audits/:id/findings/:findingId', requireCap('c
  * maintenance team never hears about it.
  */
 findingsRouter.post('/compliance-audits/:id/findings/:findingId/defect', requireCap('defect:create'), async (req, res) => {
-  const parsed = z.object({
+  const input = parseOr400(z.object({
     severity: z.enum(DEFECT_SEVERITIES).optional(),
     asset_id: z.string().uuid().nullable().optional(),
-  }).safeParse(req.body ?? {})
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
+  }), req.body ?? {}, res)
+  if (!input) return
 
   // An audit finding's severity scale and a defect's are different words for
   // the same idea; map once here rather than at each call site.
@@ -97,9 +98,9 @@ findingsRouter.post('/compliance-audits/:id/findings/:findingId/defect', require
     const created = await createDefect(c, {
       title: `${finding.audit_ref}${finding.clause ? ` ${finding.clause}` : ''}: audit finding`,
       description: finding.description,
-      severity: parsed.data.severity ?? SEVERITY_MAP[finding.severity] ?? 'moderate',
+      severity: input.severity ?? SEVERITY_MAP[finding.severity] ?? 'moderate',
       category: 'compliance',
-      asset_id: parsed.data.asset_id ?? null,
+      asset_id: input.asset_id ?? null,
       site_id: finding.site_id,
       due_date: finding.due_date,
     }, req.claims!.sub)

@@ -7,6 +7,7 @@ import { writeAuditLog } from '../../audit.js'
 import { buildSet, buildInsert } from '../../sqlUtil.js'
 import { uploadRoute, deleteUploadedFile, DOCUMENT_MIME_TYPES } from '../../files.js'
 import { LICENCE_KINDS } from '@assetcore/domain'
+import { parseOr400 } from '../../http/validate.js'
 
 export const licencesRouter = Router()
 
@@ -64,9 +65,9 @@ licencesRouter.get('/regulatory-authorities', async (req, res) => {
 })
 
 licencesRouter.post('/compliance-licences', requireCap('compliance:create'), async (req, res) => {
-  const parsed = licenceInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { columns, placeholders, values } = buildInsert(parsed.data, ALLOWED)
+  const input = parseOr400(licenceInput, req.body, res)
+  if (!input) return
+  const { columns, placeholders, values } = buildInsert(input, ALLOWED)
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
@@ -84,9 +85,9 @@ licencesRouter.post('/compliance-licences', requireCap('compliance:create'), asy
 })
 
 licencesRouter.patch('/compliance-licences/:id', requireCap('compliance:update'), async (req, res) => {
-  const parsed = licenceInput.partial().safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const { setSql, values } = buildSet(parsed.data, ALLOWED)
+  const input = parseOr400(licenceInput.partial(), req.body, res)
+  if (!input) return
+  const { setSql, values } = buildSet(input, ALLOWED)
   if (!setSql) return res.status(400).json({ error: 'empty_patch' })
 
   const row = await withOrgContext(claimsFromReq(req), async (c) => {

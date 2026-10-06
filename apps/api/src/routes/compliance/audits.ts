@@ -8,6 +8,7 @@ import { buildSet, buildInsert } from '../../sqlUtil.js'
 import { uploadRoute, DOCUMENT_MIME_TYPES } from '../../files.js'
 import { nextRef } from '../../refs.js'
 import { AUDIT_KINDS, AUDIT_OUTCOMES, AUDIT_STATUSES } from '@assetcore/domain'
+import { parseOr400 } from '../../http/validate.js'
 
 export const auditsRouter = Router()
 
@@ -122,9 +123,9 @@ auditsRouter.get('/compliance-audits/:id', requireCap('compliance:read'), async 
 })
 
 auditsRouter.post('/compliance-audits', requireCap('compliance:create'), async (req, res) => {
-  const parsed = auditInput.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const data: Record<string, unknown> = { ...parsed.data }
+  const input = parseOr400(auditInput, req.body, res)
+  if (!input) return
+  const data: Record<string, unknown> = { ...input }
   if (data.answers) data.answers = JSON.stringify(data.answers)
   // One date, two names, depending on which half of the merged shape the
   // caller knows about. Neither is allowed to be the only one set.
@@ -143,7 +144,7 @@ auditsRouter.post('/compliance-audits', requireCap('compliance:create'), async (
     )
     await writeAuditLog(c, {
       orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'compliance_audit.create',
-      entityType: 'compliance_audit', entityId: rows[0].id, after: { ref, ...parsed.data },
+      entityType: 'compliance_audit', entityId: rows[0].id, after: { ref, ...input },
     })
     const { rows: full } = await c.query(`${AUDIT_SELECT} where ca.id = $1`, [rows[0].id])
     return full[0]
@@ -160,9 +161,9 @@ auditsRouter.post('/compliance-audits', requireCap('compliance:create'), async (
  * reading a PDF.
  */
 auditsRouter.patch('/compliance-audits/:id', requireCap('compliance:update'), async (req, res) => {
-  const parsed = auditInput.partial().safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
-  const patch: Record<string, unknown> = { ...parsed.data }
+  const input = parseOr400(auditInput.partial(), req.body, res)
+  if (!input) return
+  const patch: Record<string, unknown> = { ...input }
   if (patch.answers) patch.answers = JSON.stringify(patch.answers)
 
   const result = await withOrgContext(claimsFromReq(req), async (c) => {
@@ -173,7 +174,7 @@ auditsRouter.patch('/compliance-audits/:id', requireCap('compliance:update'), as
     if (!cur[0]) return { error: 'not_found' as const }
 
     if (patch.status === 'completed') {
-      const outcome = parsed.data.outcome ?? cur[0].outcome
+      const outcome = input.outcome ?? cur[0].outcome
       if (!outcome) return { error: 'outcome_required' as const }
       if (!patch.completed_date) patch.completed_date = new Date().toISOString().slice(0, 10)
     }
