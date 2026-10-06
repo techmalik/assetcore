@@ -48,7 +48,7 @@ export default [
   {
     // AuthContext builds useCan() on can(); the Admin permissions matrix shows
     // what each role grants on its own, before any per-user grant.
-    files: ['src/lib/AuthContext.jsx', 'src/lib/rbac.js', 'src/pages/Admin.jsx'],
+    files: ['src/lib/AuthContext.jsx', 'src/lib/rbac.js', 'src/pages/admin/UsersTab.jsx'],
     rules: { 'no-restricted-imports': 'off' },
   },
   {
