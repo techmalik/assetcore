@@ -1,17 +1,16 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { withOrgContext } from '../db.js'
-import { claimsFromReq } from '../claims.js'
-import { requireCap } from '../middleware/rbac.js'
-import type { PoolClient } from 'pg'
-import { writeAuditLog } from '../audit.js'
-import { refreshAssetHealth, previewAssetHealth } from '../healthService.js'
-import { buildSet, buildInsert } from '../sqlUtil.js'
-import { uploadRoute, deleteUploadedFile, IMAGE_MIME_TYPES, DOCUMENT_MIME_TYPES } from '../files.js'
-import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../siteShutdown.js'
+import { withOrgContext } from '../../db.js'
+import { claimsFromReq } from '../../claims.js'
+import { requireCap } from '../../middleware/rbac.js'
+import { writeAuditLog } from '../../audit.js'
+import { refreshAssetHealth, previewAssetHealth } from '../../healthService.js'
+import { buildSet, buildInsert } from '../../sqlUtil.js'
+import { isSiteShutdown, SITE_SHUTDOWN_ERROR } from '../../siteShutdown.js'
 import { ASSET_STATUSES, ASSET_DEPRECIATION_METHODS, LIFECYCLE_STATUSES, CRITICALITIES } from '@assetcore/domain'
+import { ASSET_SELECT, recomputeDerived, maintenanceDatesOrdered } from '../../services/assets.js'
 
-export const assetsRouter = Router()
+export const coreRouter = Router()
 
 // operational/maintenance/standby/offline is the current model (TASK-4.2);
 // attention/critical are legacy values kept legal so existing rows stay
@@ -21,11 +20,6 @@ export const assetsRouter = Router()
 //
 // 'inactive' (0027) is what an asset at a shut-down site is. It is set by the
 // shutdown and cleared by a reopen or a transfer out; the UI never offers it.
-
-const PHOTO_UPLOAD = { subdir: 'assets', field: 'photo', mime: IMAGE_MIME_TYPES, maxBytes: 10 * 1024 * 1024 }
-const DOCUMENT_UPLOAD = { subdir: 'asset-documents', field: 'document', mime: DOCUMENT_MIME_TYPES, maxBytes: 25 * 1024 * 1024 }
-
-const MAX_PHOTOS = 5
 
 // photos/documents are intentionally NOT in this list — they may only change
 // via the dedicated upload/remove endpoints below, which validate file
@@ -60,23 +54,6 @@ const DEPRECIATION_INPUTS = [
   'purchase_value_cents', 'purchase_date', 'install_date',
   'depreciation_method', 'useful_life_years', 'salvage_value_cents', 'declining_rate_pct',
 ]
-
-// An asset's location is derived from its site (site -> location), so the two
-// always stay in sync from the single site_id the asset stores.
-const SELECT = `
-  select a.*,
-    -- lat/lng travel with the site so an asset with no fix of its own can
-    -- still be shown on a map at the place it lives.
-    case when s.id is null then null else jsonb_build_object('id', s.id, 'name', s.name, 'location_id', s.location_id, 'lat', s.lat, 'lng', s.lng) end as site,
-    case when loc.id is null then null else jsonb_build_object('id', loc.id, 'name', loc.name) end as location,
-    case when c.id is null then null else jsonb_build_object('id', c.id, 'name', c.name) end as category,
-    case when op.id is null then null else jsonb_build_object('id', op.id, 'full_name', op.full_name) end as operator
-  from public.assets a
-  left join public.sites s on s.id = a.site_id
-  left join public.locations loc on loc.id = s.location_id
-  left join public.asset_categories c on c.id = a.category_id
-  left join public.users op on op.id = a.assigned_operator_id
-`
 
 const assetInput = z.object({
   site_id: z.string().uuid().nullable().optional(),
@@ -122,36 +99,12 @@ const assetInput = z.object({
 // can't, not left believing the write landed.
 }).strict()
 
-// Both derived figures, recomputed for one asset. Called after every write
-// that can move them so the response the client gets back is already correct.
-//
-// Health now comes from the five-signal engine (apps/api/src/health.ts), which
-// replaced recompute_asset_health_for()'s linear decay between the maintenance
-// dates. The decay is not lost — "overdue maintenance" is one of the five
-// inputs — and the score still goes through apply_asset_health(), so the 50%
-// and 30% crossings keep raising inspections and drafting work orders.
-//
-// recompute_asset_depreciation_for() writes nulls when there's no purchase
-// value or start date, and yields entirely to a posted subledger, so it needs
-// no guard here.
-async function recomputeDerived(c: PoolClient, assetId: string, actorId: string): Promise<void> {
-  await refreshAssetHealth(c, assetId, actorId)
-  await c.query('select public.recompute_asset_depreciation_for($1)', [assetId])
-}
-
-// next must be strictly after last, or the decay denominator is <= 0 and the
-// recompute job skips the asset. ISO yyyy-mm-dd strings compare lexically.
-function maintenanceDatesOrdered(data: { last_maintenance_at?: string; next_maintenance_at?: string }): boolean {
-  if (!data.last_maintenance_at || !data.next_maintenance_at) return true
-  return data.next_maintenance_at > data.last_maintenance_at
-}
-
-assetsRouter.get('/assets', requireCap('asset:read'), async (req, res) => {
+coreRouter.get('/assets', requireCap('asset:read'), async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : null
   const archived = req.query.archived === '1' || req.query.archived === 'true'
   const locationId = typeof req.query.location_id === 'string' ? req.query.location_id : null
   const rows = await withOrgContext(claimsFromReq(req), (c) => {
-    const clauses = [SELECT, archived ? 'where a.deleted_at is not null' : 'where a.deleted_at is null']
+    const clauses = [ASSET_SELECT, archived ? 'where a.deleted_at is not null' : 'where a.deleted_at is null']
     const values: unknown[] = []
     if (status && status !== 'all') { values.push(status); clauses.push(`and a.status = $${values.length}`) }
     // EPIC-2 global location filter: same site_id-in-location-subquery
@@ -166,9 +119,9 @@ assetsRouter.get('/assets', requireCap('asset:read'), async (req, res) => {
 // Asset tag lookup — what a QR scan resolves against. AIN is unique per org
 // and RLS scopes the query, so no org filter is needed here. Declared before
 // /assets/:id so the literal segment is not swallowed by the parameter.
-assetsRouter.get('/assets/by-ain/:ain', requireCap('asset:read'), async (req, res) => {
+coreRouter.get('/assets/by-ain/:ain', requireCap('asset:read'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(`${SELECT} where upper(a.ain) = upper($1) and a.deleted_at is null`, [req.params.ain])
+    c.query(`${ASSET_SELECT} where upper(a.ain) = upper($1) and a.deleted_at is null`, [req.params.ain])
       .then((r) => r.rows[0])
   )
   if (!row) return res.status(404).json({ error: 'not_found' })
@@ -183,15 +136,15 @@ assetsRouter.get('/assets/by-ain/:ain', requireCap('asset:read'), async (req, re
  * each with its own sub-score and a sentence saying what it was read from —
  * rather than restating a number nobody can interrogate.
  */
-assetsRouter.get('/assets/:id/health', requireCap('asset:read'), async (req, res) => {
+coreRouter.get('/assets/:id/health', requireCap('asset:read'), async (req, res) => {
   const health = await withOrgContext(claimsFromReq(req), (c) => previewAssetHealth(c, String(req.params.id)))
   if (!health) return res.status(404).json({ error: 'not_found' })
   res.json(health)
 })
 
-assetsRouter.get('/assets/:id', requireCap('asset:read'), async (req, res) => {
+coreRouter.get('/assets/:id', requireCap('asset:read'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), (c) =>
-    c.query(`${SELECT} where a.id = $1`, [req.params.id]).then((r) => r.rows[0])
+    c.query(`${ASSET_SELECT} where a.id = $1`, [req.params.id]).then((r) => r.rows[0])
   )
   if (!row) return res.status(404).json({ error: 'not_found' })
   res.json(row)
@@ -199,7 +152,7 @@ assetsRouter.get('/assets/:id', requireCap('asset:read'), async (req, res) => {
 
 // Merged, newest-first per-asset activity feed: human events from asset_activity
 // (comments, alerts) UNION system events from audit_log (create/update/archive).
-assetsRouter.get('/assets/:id/activity', requireCap('asset:read'), async (req, res) => {
+coreRouter.get('/assets/:id/activity', requireCap('asset:read'), async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), async (c) => {
     // asset_activity and audit_log are org-scoped only, not site-scoped — a
     // caller who knows/guesses an out-of-scope asset's id could otherwise
@@ -252,7 +205,7 @@ assetsRouter.get('/assets/:id/activity', requireCap('asset:read'), async (req, r
 
 // Where an asset has been. Same visibility check as the activity feed:
 // asset_transfers is org-scoped, the asset is site-scoped.
-assetsRouter.get('/assets/:id/transfers', requireCap('asset:read'), async (req, res) => {
+coreRouter.get('/assets/:id/transfers', requireCap('asset:read'), async (req, res) => {
   const rows = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows: assetRows } = await c.query('select 1 from public.assets where id = $1', [req.params.id])
     if (!assetRows[0]) return null
@@ -278,7 +231,7 @@ assetsRouter.get('/assets/:id/transfers', requireCap('asset:read'), async (req, 
 const commentInput = z.object({ body: z.string().min(1) })
 
 // Any active member may log a comment/note on an asset's timeline.
-assetsRouter.post('/assets/:id/activity', async (req, res) => {
+coreRouter.post('/assets/:id/activity', async (req, res) => {
   const parsed = commentInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
@@ -299,7 +252,7 @@ assetsRouter.post('/assets/:id/activity', async (req, res) => {
   res.status(201).json(row)
 })
 
-assetsRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
+coreRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
   const parsed = assetInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   if (!maintenanceDatesOrdered(parsed.data)) return res.status(400).json({ error: 'invalid_maintenance_dates' })
@@ -329,7 +282,7 @@ assetsRouter.post('/assets', requireCap('asset:create'), async (req, res) => {
     // whose next service is overdue shouldn't stay silently at null health
     // until 01:00 tomorrow.
     await recomputeDerived(c, assetId, req.claims!.sub)
-    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [assetId])
+    const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [assetId])
     const asset = full[0]
     await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.create', entityType: 'asset', entityId: asset.id, after: asset })
     return asset
@@ -350,7 +303,7 @@ const importRowSchema = z.object({
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
-assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res) => {
+coreRouter.post('/assets/import', requireCap('asset:create'), async (req, res) => {
   const rows = Array.isArray(req.body?.rows) ? req.body.rows : null
   if (!rows) return res.status(400).json({ error: 'invalid_request' })
   if (rows.length > 1000) return res.status(400).json({ error: 'too_many_rows', max: 1000 })
@@ -460,7 +413,7 @@ assetsRouter.post('/assets/import', requireCap('asset:create'), async (req, res)
   res.json({ summary, results })
 })
 
-assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) => {
+coreRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) => {
   const parsed = assetInput.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   if (!maintenanceDatesOrdered(parsed.data)) return res.status(400).json({ error: 'invalid_maintenance_dates' })
@@ -504,7 +457,7 @@ assetsRouter.patch('/assets/:id', requireCap('asset:update'), async (req, res) =
     if (touchesDepreciation) {
       await c.query('select public.recompute_asset_depreciation_for($1)', [req.params.id])
     }
-    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
+    const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [req.params.id])
     const asset = full[0]
     await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.update', entityType: 'asset', entityId: asset.id, after: parsed.data })
     return { data: asset }
@@ -538,7 +491,7 @@ const transferInput = z.object({
  * Health and book value are not recomputed. Neither reads the site, so a move
  * cannot change them.
  */
-assetsRouter.post('/assets/transfer', requireCap('asset:update'), async (req, res) => {
+coreRouter.post('/assets/transfer', requireCap('asset:update'), async (req, res) => {
   const parsed = transferInput.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'invalid_request' })
   const { to_site_id: toSiteId, reason, transferred_at: transferredAt } = parsed.data
@@ -635,85 +588,8 @@ assetsRouter.post('/assets/transfer', requireCap('asset:update'), async (req, re
   res.json(result.data)
 })
 
-assetsRouter.post('/assets/:id/photos', requireCap('asset:update'), ...uploadRoute(PHOTO_UPLOAD, async (req, res, file) => {
-  const url = file.url
-
-  const result = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows: cur } = await c.query('select coalesce(jsonb_array_length(photos), 0) as n from public.assets where id = $1', [req.params.id])
-    if (!cur[0]) return { error: 'not_found' as const }
-    if (cur[0].n >= MAX_PHOTOS) return { error: 'photo_limit' as const }
-    await c.query(`update public.assets set photos = photos || $2::jsonb where id = $1`, [req.params.id, JSON.stringify([url])])
-    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
-    const asset = full[0]
-    await writeAuditLog(c, { orgId: asset.org_id, actorId: req.claims!.sub, action: 'asset.attachment.add', entityType: 'asset', entityId: asset.id, after: { kind: 'photo', url } })
-    return { data: asset }
-  })
-  if ('error' in result) {
-    if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' })
-    return res.status(400).json({ error: 'photo_limit', max: MAX_PHOTOS })
-  }
-  res.status(201).json(result.data)
-}))
-
-assetsRouter.delete('/assets/:id/photos', requireCap('asset:update'), async (req, res) => {
-  const url = typeof req.query.url === 'string' ? req.query.url : null
-  if (!url) return res.status(400).json({ error: 'invalid_request' })
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(
-      `update public.assets
-       set photos = coalesce((select jsonb_agg(p) from jsonb_array_elements(photos) p where p <> to_jsonb($2::text)), '[]'::jsonb)
-       where id = $1 returning id, org_id`,
-      [req.params.id, url]
-    )
-    if (!rows[0]) return null
-    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
-    const asset = full[0]
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.attachment.remove', entityType: 'asset', entityId: rows[0].id, before: { kind: 'photo', url } })
-    return asset
-  })
-  if (!row) return res.status(404).json({ error: 'not_found' })
-  await deleteUploadedFile(req.claims!.org_id!, url)
-  res.json(row)
-})
-
-assetsRouter.post('/assets/:id/documents', requireCap('asset:update'), ...uploadRoute(DOCUMENT_UPLOAD, async (req, res, file) => {
-  const doc = { url: file.url, name: file.name, size: file.size }
-
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(`update public.assets set documents = documents || $2::jsonb where id = $1 returning id, org_id`, [req.params.id, JSON.stringify([doc])])
-    if (!rows[0]) return null
-    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
-    const asset = full[0]
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.attachment.add', entityType: 'asset', entityId: rows[0].id, after: { kind: 'document', ...doc } })
-    return asset
-  })
-  if (!row) return res.status(404).json({ error: 'not_found' })
-  res.status(201).json(row)
-}))
-
-assetsRouter.delete('/assets/:id/documents', requireCap('asset:update'), async (req, res) => {
-  const url = typeof req.query.url === 'string' ? req.query.url : null
-  if (!url) return res.status(400).json({ error: 'invalid_request' })
-  const row = await withOrgContext(claimsFromReq(req), async (c) => {
-    const { rows } = await c.query(
-      `update public.assets
-       set documents = coalesce((select jsonb_agg(d) from jsonb_array_elements(documents) d where d->>'url' <> $2), '[]'::jsonb)
-       where id = $1 returning id, org_id`,
-      [req.params.id, url]
-    )
-    if (!rows[0]) return null
-    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
-    const asset = full[0]
-    await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.attachment.remove', entityType: 'asset', entityId: rows[0].id, before: { kind: 'document', url } })
-    return asset
-  })
-  if (!row) return res.status(404).json({ error: 'not_found' })
-  await deleteUploadedFile(req.claims!.org_id!, url)
-  res.json(row)
-})
-
 // Archive (soft delete) — record kept, hidden from the default registry.
-assetsRouter.delete('/assets/:id', requireCap('asset:update'), async (req, res) => {
+coreRouter.delete('/assets/:id', requireCap('asset:update'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
       'update public.assets set deleted_at = now() where id = $1 returning id, org_id',
@@ -728,7 +604,7 @@ assetsRouter.delete('/assets/:id', requireCap('asset:update'), async (req, res) 
 })
 
 // Restore an archived asset.
-assetsRouter.post('/assets/:id/restore', requireCap('asset:update'), async (req, res) => {
+coreRouter.post('/assets/:id/restore', requireCap('asset:update'), async (req, res) => {
   const row = await withOrgContext(claimsFromReq(req), async (c) => {
     const { rows } = await c.query(
       'update public.assets set deleted_at = null where id = $1 returning id, org_id',
@@ -736,7 +612,7 @@ assetsRouter.post('/assets/:id/restore', requireCap('asset:update'), async (req,
     )
     if (!rows[0]) return null
     await writeAuditLog(c, { orgId: rows[0].org_id, actorId: req.claims!.sub, action: 'asset.restore', entityType: 'asset', entityId: rows[0].id })
-    const { rows: full } = await c.query(`${SELECT} where a.id = $1`, [req.params.id])
+    const { rows: full } = await c.query(`${ASSET_SELECT} where a.id = $1`, [req.params.id])
     return full[0]
   })
   if (!row) return res.status(404).json({ error: 'not_found' })
