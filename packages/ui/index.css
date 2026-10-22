@@ -240,7 +240,17 @@ a { text-decoration: none; color: inherit; }
   margin-bottom: 5px;
 }
 
-/* Clickable KPI cards (a modifier on .stat-card) */
+/* KPI cards (Dashboard, Integrity). The class is only ever applied inside a
+   template string (`kpi summary-kpi…`), which is how a dead-CSS sweep took it
+   for unused once. */
+.kpi {
+  background: var(--n0);
+  border: var(--bdr);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: var(--sh-sm);
+}
+/* Clickable KPI cards (a modifier on .kpi) */
 .kpi-link {
   cursor: pointer;
   transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
